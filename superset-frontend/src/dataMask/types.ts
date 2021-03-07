@@ -16,21 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { combineReducers } from 'redux';
+import { ExtraFormData, DataMaskCurrentState } from '@superset-ui/core';
 
-import charts from '../../chart/chartReducer';
-import saveModal from './saveModalReducer';
-import explore from './exploreReducer';
-import dataMask from '../../dataMask/reducer';
-import messageToasts from '../../messageToasts/reducers';
+export enum DataMaskType {
+  NativeFilters = 'nativeFilters',
+  CrossFilters = 'crossFilters',
+  OwnFilters = 'ownFilters',
+}
 
-const impressionId = (state = '') => state;
+export type Mask = {
+  extraFormData?: ExtraFormData;
+  currentState: DataMaskCurrentState;
+};
+export type DataMaskUnit = { [filterId: string]: Mask };
+export type DataMaskState = {
+  [DataMaskType.NativeFilters]: Mask;
+  [DataMaskType.CrossFilters]: Mask;
+  [DataMaskType.OwnFilters]: Mask;
+};
 
-export default combineReducers({
-  charts,
-  saveModal,
-  dataMask,
-  explore,
-  impressionId,
-  messageToasts,
-});
+export type MaskWithId = Mask & { id: string };
+export type DataMaskUnitWithId = { [filterId: string]: MaskWithId };
+export type DataMaskStateWithId = {
+  [DataMaskType.NativeFilters]: DataMaskUnitWithId;
+  [DataMaskType.CrossFilters]: DataMaskUnitWithId;
+  [DataMaskType.OwnFilters]: DataMaskUnitWithId;
+};
