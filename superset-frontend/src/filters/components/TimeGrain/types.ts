@@ -16,26 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Behavior, ChartMetadata, ChartPlugin, t } from '@superset-ui/core';
-import controlPanel from './controlPanel';
-import transformProps from './transformProps';
-import thumbnail from './images/thumbnail.png';
+import { QueryFormData, DataRecord, SetDataMaskHook } from '@superset-ui/core';
+import { RefObject } from 'react';
+import { PluginFilterStylesProps } from '../types';
 
-export default class TimeFilterPlugin extends ChartPlugin {
-  constructor() {
-    const metadata = new ChartMetadata({
-      name: t('Time filter'),
-      description: t('Custom time filter plugin'),
-      behaviors: [Behavior.CROSS_FILTER, Behavior.NATIVE_FILTER],
-      thumbnail,
-      datasourceCount: 0,
-    });
-
-    super({
-      controlPanel,
-      loadChart: () => import('./TimeFilterPlugin'),
-      metadata,
-      transformProps,
-    });
-  }
+interface PluginFilterTimeGrainCustomizeProps {
+  defaultValue?: string[] | null;
+  currentValue?: string[] | null;
+  inputRef?: RefObject<HTMLInputElement>;
 }
+
+export type PluginFilterTimeGrainQueryFormData = QueryFormData &
+  PluginFilterStylesProps &
+  PluginFilterTimeGrainCustomizeProps;
+
+export type PluginFilterTimeGrainProps = PluginFilterStylesProps & {
+  data: DataRecord[];
+  setDataMask: SetDataMaskHook;
+  formData: PluginFilterTimeGrainQueryFormData;
+};
+
+export const DEFAULT_FORM_DATA: PluginFilterTimeGrainCustomizeProps = {
+  defaultValue: null,
+  currentValue: null,
+};

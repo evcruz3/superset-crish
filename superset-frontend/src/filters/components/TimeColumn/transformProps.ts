@@ -16,26 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Behavior, ChartMetadata, ChartPlugin, t } from '@superset-ui/core';
-import controlPanel from './controlPanel';
-import transformProps from './transformProps';
-import thumbnail from './images/thumbnail.png';
+import { ChartProps } from '@superset-ui/core';
+import { DEFAULT_FORM_DATA } from './types';
 
-export default class TimeFilterPlugin extends ChartPlugin {
-  constructor() {
-    const metadata = new ChartMetadata({
-      name: t('Time filter'),
-      description: t('Custom time filter plugin'),
-      behaviors: [Behavior.CROSS_FILTER, Behavior.NATIVE_FILTER],
-      thumbnail,
-      datasourceCount: 0,
-    });
+export default function transformProps(chartProps: ChartProps) {
+  const { behaviors, formData, height, hooks, queriesData, width } = chartProps;
+  const { setDataMask = () => {} } = hooks;
 
-    super({
-      controlPanel,
-      loadChart: () => import('./TimeFilterPlugin'),
-      metadata,
-      transformProps,
-    });
-  }
+  const { data } = queriesData[0];
+
+  return {
+    behaviors,
+    width,
+    height,
+    data,
+    formData: { ...DEFAULT_FORM_DATA, ...formData },
+    setDataMask,
+  };
 }

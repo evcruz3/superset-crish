@@ -35,9 +35,10 @@ import { buildQueryContext, QueryFormData } from '@superset-ui/core';
 export default function buildQuery(formData: QueryFormData) {
   return buildQueryContext(formData, baseQueryObject => [
     {
-      ...baseQueryObject,
-      apply_fetch_values_predicate: true,
-      groupby: baseQueryObject.columns,
+      result_type: 'columns',
+      columns: [],
+      metrics: [],
+      orderby: [],
     },
   ]);
 }

@@ -17,23 +17,24 @@
  * under the License.
  */
 import { Behavior, ChartMetadata, ChartPlugin, t } from '@superset-ui/core';
+import buildQuery from './buildQuery';
 import controlPanel from './controlPanel';
 import transformProps from './transformProps';
 import thumbnail from './images/thumbnail.png';
 
-export default class TimeFilterPlugin extends ChartPlugin {
+export default class FilterTimeColumnPlugin extends ChartPlugin {
   constructor() {
     const metadata = new ChartMetadata({
-      name: t('Time filter'),
-      description: t('Custom time filter plugin'),
+      name: t('Time column'),
+      description: t('Time column filter plugin'),
       behaviors: [Behavior.CROSS_FILTER, Behavior.NATIVE_FILTER],
       thumbnail,
-      datasourceCount: 0,
     });
 
     super({
+      buildQuery,
       controlPanel,
-      loadChart: () => import('./TimeFilterPlugin'),
+      loadChart: () => import('./TimeColumnFilterPlugin'),
       metadata,
       transformProps,
     });
