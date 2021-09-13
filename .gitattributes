@@ -1,3 +1,4 @@
+docker/**/*.sh text eol=lf
 *.geojson filter=lfs diff=lfs merge=lfs -text
 *.mp4 filter=lfs diff=lfs merge=lfs -text
 *.js.map filter=lfs diff=lfs merge=lfs -text
