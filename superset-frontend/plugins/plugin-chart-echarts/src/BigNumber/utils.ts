@@ -16,18 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Preset } from '@superset-ui/core';
-import BigNumberChartPlugin from './BigNumber';
-import BigNumberTotalChartPlugin from './BigNumberTotal';
 
-export default class BigNumberChartPreset extends Preset {
-  constructor() {
-    super({
-      name: 'BigNumber charts',
-      plugins: [
-        new BigNumberChartPlugin().configure({ key: 'big_number' }),
-        new BigNumberTotalChartPlugin().configure({ key: 'big_number_total' }),
-      ],
-    });
+import moment from 'moment';
+import {
+  getTimeFormatter,
+  getTimeFormatterForGranularity,
+  smartDateFormatter,
+  TimeGranularity,
+} from '@superset-ui/core';
+
+export const parseMetricValue = (metricValue: number | string | null) => {
+  if (typeof metricValue === 'string') {
+    const dateObject = moment.utc(metricValue, moment.ISO_8601, true);
+    if (dateObject.isValid()) {
+      return dateObject.valueOf();
+    }
+    return null;
   }
-}
+  return metricValue;
+};
+
+export const getDateFormatter = (
+  timeFormat: string,
+  granularity?: TimeGranularity,
+  fallbackFormat?: string | null,
+) =>
+  timeFormat === smartDateFormatter.id
+    ? getTimeFormatterForGranularity(granularity)
+    : getTimeFormatter(timeFormat ?? fallbackFormat);
