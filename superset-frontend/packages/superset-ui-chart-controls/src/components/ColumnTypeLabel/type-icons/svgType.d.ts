@@ -16,36 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { LegacyRef } from 'react';
-import { css, styled } from '@superset-ui/core';
-import Icons from 'src/components/Icons';
-
-interface DragHandleProps {
-  position: 'left' | 'top';
-  innerRef?: LegacyRef<HTMLDivElement> | undefined;
-}
-
-const DragHandleContainer = styled.div<{ position: 'left' | 'top' }>`
-  ${({ theme, position }) => css`
-    height: ${theme.gridUnit * 5}px;
-    overflow: hidden;
-    cursor: move;
-    ${position === 'top' &&
-    css`
-      transform: rotate(90deg);
-    `}
-    & path {
-      fill: ${theme.colors.grayscale.base};
-    }
-  `}
-`;
-export default function DragHandle({
-  position = 'left',
-  innerRef = null,
-}: DragHandleProps) {
-  return (
-    <DragHandleContainer ref={innerRef} position={position}>
-      <Icons.Drag />
-    </DragHandleContainer>
-  );
+declare module '*.svg' {
+  const content: any;
+  export default content;
 }
