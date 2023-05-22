@@ -16,32 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-declare module '@math.gl/web-mercator';
+import { t, ChartMetadata, ChartPlugin } from '@superset-ui/core';
+import transformProps from '../../transformProps';
+import controlPanel from './controlPanel';
+import thumbnail from './images/thumbnail.png';
 
-declare module 'deck.gl' {
-  import { Layer, LayerProps } from '@deck.gl/core';
+const metadata = new ChartMetadata({
+  category: t('Map'),
+  credits: ['https://uber.github.io/deck.gl'],
+  description: t(
+    'Uses Gaussian Kernel Density Estimation to visualize spatial distribution of data',
+  ),
+  name: t('deck.gl Heatmap'),
+  thumbnail,
+  useLegacyApi: true,
+  tags: [t('deckGL'), t('Spatial'), t('Comparison'), t('Experimental')],
+});
 
-  interface HeatmapLayerProps<T extends object = any> extends LayerProps<T> {
-    id?: string;
-    data?: T[];
-    getPosition?: (d: T) => number[] | null | undefined;
-    getWeight?: (d: T) => number | null | undefined;
-    radiusPixels?: number;
-    colorRange?: number[][];
-    threshold?: number;
-    intensity?: number;
-    aggregation?: string;
+export default class HeatmapChartPlugin extends ChartPlugin {
+  constructor() {
+    super({
+      loadChart: () => import('./Heatmap'),
+      controlPanel,
+      metadata,
+      transformProps,
+    });
   }
-
-  export class HeatmapLayer<T extends object = any> extends Layer<
-    T,
-    HeatmapLayerProps<T>
-  > {
-    constructor(props: HeatmapLayerProps<T>);
-  }
-}
-
-declare module '*.png' {
-  const value: any;
-  export default value;
 }
