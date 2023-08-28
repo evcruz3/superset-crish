@@ -22,27 +22,36 @@
 /* eslint no-underscore-dangle: ["error", { "allow": ["", "__timestamp"] }] */
 
 import React from 'react';
-import { t } from '@superset-ui/core';
-import PropTypes from 'prop-types';
+import {
+  HandlerFunction,
+  JsonObject,
+  JsonValue,
+  QueryFormData,
+  t,
+} from '@superset-ui/core';
 
-import { PolygonLayer } from 'deck.gl';
+import { PolygonLayer } from 'deck.gl/typed';
 
-import AnimatableDeckGLContainer from '../../AnimatableDeckGLContainer';
 import Legend from '../../components/Legend';
 import TooltipRow from '../../TooltipRow';
 import { getBuckets, getBreakPointColorScaler } from '../../utils';
 
 import { commonLayerProps } from '../common';
-import { getPlaySliderParams } from '../../utils/time';
 import sandboxedEval from '../../utils/sandbox';
-// eslint-disable-next-line import/extensions
 import getPointsFromPolygon from '../../utils/getPointsFromPolygon';
-// eslint-disable-next-line import/extensions
-import fitViewport from '../../utils/fitViewport';
+import fitViewport, { Viewport } from '../../utils/fitViewport';
+import {
+  DeckGLContainer,
+  DeckGLContainerStyledWrapper,
+} from '../../DeckGLContainer';
+import { TooltipProps } from '../../components/Tooltip';
 
 const DOUBLE_CLICK_THRESHOLD = 250; // milliseconds
 
-function getElevation(d, colorScaler) {
+function getElevation(
+  d: JsonObject,
+  colorScaler: (d: JsonObject) => [number, number, number, number],
+) {
   /* in deck.gl 5.3.4 (used in Superset as of 2018-10-24), if a polygon has
    * opacity zero it will make everything behind it have opacity zero,
    * effectively showing the map layer no matter what other polygons are
@@ -51,8 +60,8 @@ function getElevation(d, colorScaler) {
   return colorScaler(d)[3] === 0 ? 0 : d.elevation;
 }
 
-function setTooltipContent(formData) {
-  return o => {
+function setTooltipContent(formData: PolygonFormData) {
+  return (o: JsonObject) => {
     const metricLabel = formData.metric.label || formData.metric;
 
     return (
@@ -82,24 +91,17 @@ function setTooltipContent(formData) {
 }
 
 export function getLayer(
-  formData,
-  payload,
-  onAddFilter,
-  setTooltip,
-  selected,
-  onSelect,
-  filters,
+  formData: PolygonFormData,
+  payload: JsonObject,
+  onAddFilter: HandlerFunction,
+  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
+  selected: JsonObject[],
+  onSelect: (value: JsonValue) => void,
 ) {
   const fd = formData;
   const fc = fd.fill_color_picker;
   const sc = fd.stroke_color_picker;
   let data = [...payload.data.features];
-
-  if (filters != null) {
-    filters.forEach(f => {
-      data = data.filter(x => f(x));
-    });
-  }
 
   if (fd.js_data_mutator) {
     // Applying user defined data mutator if defined
@@ -108,7 +110,7 @@ export function getLayer(
   }
 
   const metricLabel = fd.metric ? fd.metric.label || fd.metric : null;
-  const accessor = d => d[metricLabel];
+  const accessor = (d: JsonObject) => d[metricLabel];
   // base color for the polygons
   const baseColorScaler =
     fd.metric === null
@@ -116,8 +118,13 @@ export function getLayer(
       : getBreakPointColorScaler(fd, data, accessor);
 
   // when polygons are selected, reduce the opacity of non-selected polygons
-  const colorScaler = d => {
-    const baseColor = baseColorScaler(d);
+  const colorScaler = (d: JsonObject): [number, number, number, number] => {
+    const baseColor = (baseColorScaler?.(d) as [
+      number,
+      number,
+      number,
+      number,
+    ]) || [0, 0, 0, 0];
     if (selected.length > 0 && !selected.includes(d[fd.line_column])) {
       baseColor[3] /= 2;
     }
@@ -130,12 +137,11 @@ export function getLayer(
     fd.metric &&
     ['json', 'geohash', 'zipcode'].includes(fd.line_type)
       ? setTooltipContent(fd)
-      : undefined;
+      : () => null;
 
   return new PolygonLayer({
-    id: `path-layer-${fd.slice_id}`,
+    id: `path-layer-${fd.slice_id}` as const,
     data,
-    pickable: true,
     filled: fd.filled,
     stroked: fd.stroked,
     getPolygon: getPointsFromPolygon,
@@ -151,34 +157,50 @@ export function getLayer(
   });
 }
 
-const propTypes = {
-  formData: PropTypes.object.isRequired,
-  payload: PropTypes.object.isRequired,
-  setControlValue: PropTypes.func.isRequired,
-  viewport: PropTypes.object.isRequired,
-  onAddFilter: PropTypes.func,
-  width: PropTypes.number.isRequired,
-  height: PropTypes.number.isRequired,
+export type PolygonFormData = QueryFormData & {
+  break_points: string[];
+  num_buckets: string;
+  linear_color_scheme: string | string[];
+  opacity: number;
+};
+export type DeckGLPolygonProps = {
+  formData: PolygonFormData;
+  payload: JsonObject;
+  setControlValue: (control: string, value: JsonValue) => void;
+  viewport: Viewport;
+  onAddFilter: HandlerFunction;
+  width: number;
+  height: number;
 };
 
-const defaultProps = {
-  onAddFilter() {},
+export type DeckGLPolygonState = {
+  lastClick: number;
+  viewport: Viewport;
+  formData: PolygonFormData;
+  selected: JsonObject[];
 };
 
-class DeckGLPolygon extends React.Component {
-  containerRef = React.createRef();
+class DeckGLPolygon extends React.PureComponent<
+  DeckGLPolygonProps,
+  DeckGLPolygonState
+> {
+  containerRef = React.createRef<DeckGLContainer>();
 
-  constructor(props) {
+  constructor(props: DeckGLPolygonProps) {
     super(props);
 
-    this.state = DeckGLPolygon.getDerivedStateFromProps(props);
+    this.state = DeckGLPolygon.getDerivedStateFromProps(
+      props,
+    ) as DeckGLPolygonState;
 
     this.getLayers = this.getLayers.bind(this);
     this.onSelect = this.onSelect.bind(this);
-    this.onValuesChange = this.onValuesChange.bind(this);
   }
 
-  static getDerivedStateFromProps(props, state) {
+  static getDerivedStateFromProps(
+    props: DeckGLPolygonProps,
+    state?: DeckGLPolygonState,
+  ) {
     const { width, height, formData, payload } = props;
 
     // the state is computed only from the payload; if it hasn't changed, do
@@ -189,19 +211,6 @@ class DeckGLPolygon extends React.Component {
     }
 
     const features = payload.data.features || [];
-    const timestamps = features.map(f => f.__timestamp);
-
-    // the granularity has to be read from the payload form_data, not the
-    // props formData which comes from the instantaneous controls state
-    const granularity =
-      payload.form_data.time_grain_sqla ||
-      payload.form_data.granularity ||
-      'P1D';
-
-    const { start, end, getStep, values, disabled } = getPlaySliderParams(
-      timestamps,
-      granularity,
-    );
 
     let { viewport } = props;
     if (formData.autozoom) {
@@ -213,11 +222,6 @@ class DeckGLPolygon extends React.Component {
     }
 
     return {
-      start,
-      end,
-      getStep,
-      values,
-      disabled,
       viewport,
       selected: [],
       lastClick: 0,
@@ -225,10 +229,10 @@ class DeckGLPolygon extends React.Component {
     };
   }
 
-  onSelect(polygon) {
+  onSelect(polygon: JsonObject) {
     const { formData, onAddFilter } = this.props;
 
-    const now = new Date();
+    const now = new Date().getDate();
     const doubleClick = now - this.state.lastClick <= DOUBLE_CLICK_THRESHOLD;
 
     // toggle selected polygons
@@ -252,30 +256,9 @@ class DeckGLPolygon extends React.Component {
     }
   }
 
-  onValuesChange(values) {
-    this.setState({
-      values: Array.isArray(values)
-        ? values
-        : [values, values + this.state.getStep(values)],
-    });
-  }
-
-  getLayers(values) {
+  getLayers() {
     if (this.props.payload.data.features === undefined) {
       return [];
-    }
-
-    const filters = [];
-
-    // time filter
-    if (values[0] === values[1] || values[1] === this.end) {
-      filters.push(
-        d => d.__timestamp >= values[0] && d.__timestamp <= values[1],
-      );
-    } else {
-      filters.push(
-        d => d.__timestamp >= values[0] && d.__timestamp < values[1],
-      );
     }
 
     const layer = getLayer(
@@ -285,13 +268,12 @@ class DeckGLPolygon extends React.Component {
       this.setTooltip,
       this.state.selected,
       this.onSelect,
-      filters,
     );
 
     return [layer];
   }
 
-  setTooltip = tooltip => {
+  setTooltip = (tooltip: TooltipProps['tooltip']) => {
     const { current } = this.containerRef;
     if (current) {
       current.setTooltip(tooltip);
@@ -300,48 +282,36 @@ class DeckGLPolygon extends React.Component {
 
   render() {
     const { payload, formData, setControlValue } = this.props;
-    const { start, end, getStep, values, disabled, viewport } = this.state;
 
     const fd = formData;
     const metricLabel = fd.metric ? fd.metric.label || fd.metric : null;
-    const accessor = d => d[metricLabel];
+    const accessor = (d: JsonObject) => d[metricLabel];
 
     const buckets = getBuckets(formData, payload.data.features, accessor);
 
     return (
       <div style={{ position: 'relative' }}>
-        <AnimatableDeckGLContainer
+        <DeckGLContainerStyledWrapper
           ref={this.containerRef}
-          aggregation
-          getLayers={this.getLayers}
-          start={start}
-          end={end}
-          getStep={getStep}
-          values={values}
-          disabled={disabled}
-          viewport={viewport}
+          viewport={this.state.viewport}
+          layers={this.getLayers()}
+          setControlValue={setControlValue}
+          mapStyle={formData.mapbox_style}
+          mapboxApiAccessToken={payload.data.mapboxApiKey}
           width={this.props.width}
           height={this.props.height}
-          mapboxApiAccessToken={payload.data.mapboxApiKey}
-          mapStyle={formData.mapbox_style}
-          setControlValue={setControlValue}
-          onValuesChange={this.onValuesChange}
-          onViewportChange={this.onViewportChange}
-        >
-          {formData.metric !== null && (
-            <Legend
-              categories={buckets}
-              position={formData.legend_position}
-              format={formData.legend_format}
-            />
-          )}
-        </AnimatableDeckGLContainer>
+        />
+
+        {formData.metric !== null && (
+          <Legend
+            categories={buckets}
+            position={formData.legend_position}
+            format={formData.legend_format}
+          />
+        )}
       </div>
     );
   }
 }
-
-DeckGLPolygon.propTypes = propTypes;
-DeckGLPolygon.defaultProps = defaultProps;
 
 export default DeckGLPolygon;

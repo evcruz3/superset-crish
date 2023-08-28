@@ -25,19 +25,31 @@
 /* eslint no-underscore-dangle: ["error", { "allow": ["", "__timestamp"] }] */
 
 import React from 'react';
-import PropTypes from 'prop-types';
-import { CategoricalColorNamespace } from '@superset-ui/core';
-import AnimatableDeckGLContainer from './AnimatableDeckGLContainer';
+import {
+  CategoricalColorNamespace,
+  Datasource,
+  HandlerFunction,
+  JsonObject,
+  JsonValue,
+  QueryFormData,
+} from '@superset-ui/core';
+import { Layer } from 'deck.gl/typed';
 import Legend from './components/Legend';
 import { hexToRGB } from './utils/colors';
-import { getPlaySliderParams } from './utils/time';
 import sandboxedEval from './utils/sandbox';
 // eslint-disable-next-line import/extensions
-import fitViewport from './utils/fitViewport';
+import fitViewport, { Viewport } from './utils/fitViewport';
+import {
+  DeckGLContainer,
+  DeckGLContainerStyledWrapper,
+} from './DeckGLContainer';
+import { Point } from './types';
+import { getLayerType } from './factory';
+import { TooltipProps } from './components/Tooltip';
 
 const { getScale } = CategoricalColorNamespace;
 
-function getCategories(fd, data) {
+function getCategories(fd: QueryFormData, data: JsonObject[]) {
   const c = fd.color_picker || { r: 0, g: 0, b: 0, a: 1 };
   const fixedColor = [c.r, c.g, c.b, 255 * c.a];
   const colorFn = getScale(fd.color_scheme);
@@ -57,22 +69,31 @@ function getCategories(fd, data) {
   return categories;
 }
 
-const propTypes = {
-  datasource: PropTypes.object.isRequired,
-  formData: PropTypes.object.isRequired,
-  getLayer: PropTypes.func.isRequired,
-  getPoints: PropTypes.func.isRequired,
-  height: PropTypes.number.isRequired,
-  mapboxApiKey: PropTypes.string.isRequired,
-  onAddFilter: PropTypes.func,
-  payload: PropTypes.object.isRequired,
-  setControlValue: PropTypes.func.isRequired,
-  viewport: PropTypes.object.isRequired,
-  width: PropTypes.number.isRequired,
+export type CategoricalDeckGLContainerProps = {
+  datasource: Datasource;
+  formData: QueryFormData;
+  mapboxApiKey: string;
+  getPoints: (data: JsonObject[]) => Point[];
+  height: number;
+  width: number;
+  viewport: Viewport;
+  getLayer: getLayerType<unknown>;
+  payload: JsonObject;
+  onAddFilter?: HandlerFunction;
+  setControlValue: (control: string, value: JsonValue) => void;
 };
 
-export default class CategoricalDeckGLContainer extends React.PureComponent {
-  containerRef = React.createRef();
+export type CategoricalDeckGLContainerState = {
+  formData?: QueryFormData;
+  viewport: Viewport;
+  categories: JsonObject;
+};
+
+export default class CategoricalDeckGLContainer extends React.PureComponent<
+  CategoricalDeckGLContainerProps,
+  CategoricalDeckGLContainerState
+> {
+  containerRef = React.createRef<DeckGLContainer>();
 
   /*
    * A Deck.gl container that handles categories.
@@ -80,34 +101,27 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
    * The container will have an interactive legend, populated from the
    * categories present in the data.
    */
-  constructor(props) {
+  constructor(props: CategoricalDeckGLContainerProps) {
     super(props);
     this.state = this.getStateFromProps(props);
 
     this.getLayers = this.getLayers.bind(this);
-    this.onValuesChange = this.onValuesChange.bind(this);
     this.toggleCategory = this.toggleCategory.bind(this);
     this.showSingleCategory = this.showSingleCategory.bind(this);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: CategoricalDeckGLContainerProps) {
     if (nextProps.payload.form_data !== this.state.formData) {
       this.setState({ ...this.getStateFromProps(nextProps) });
     }
   }
 
-  onValuesChange(values) {
-    this.setState({
-      values: Array.isArray(values)
-        ? values
-        : [values, values + this.state.getStep(values)],
-    });
-  }
-
   // eslint-disable-next-line class-methods-use-this
-  getStateFromProps(props, state) {
+  getStateFromProps(
+    props: CategoricalDeckGLContainerProps,
+    state?: CategoricalDeckGLContainerState,
+  ) {
     const features = props.payload.data.features || [];
-    const timestamps = features.map(f => f.__timestamp);
     const categories = getCategories(props.formData, features);
 
     // the state is computed only from the payload; if it hasn't changed, do
@@ -116,18 +130,6 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
     if (state && props.payload.form_data === state.formData) {
       return { ...state, categories };
     }
-
-    // the granularity has to be read from the payload form_data, not the
-    // props formData which comes from the instantaneous controls state
-    const granularity =
-      props.payload.form_data.time_grain_sqla ||
-      props.payload.form_data.granularity ||
-      'P1D';
-
-    const { start, end, getStep, values, disabled } = getPlaySliderParams(
-      timestamps,
-      granularity,
-    );
 
     const { width, height, formData } = props;
     let { viewport } = props;
@@ -143,11 +145,6 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
     }
 
     return {
-      start,
-      end,
-      getStep,
-      values,
-      disabled,
       viewport,
       selected: [],
       lastClick: 0,
@@ -156,7 +153,7 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
     };
   }
 
-  getLayers(values) {
+  getLayers() {
     const { getLayer, payload, formData: fd, onAddFilter } = this.props;
     let features = payload.data.features ? [...payload.data.features] : [];
 
@@ -169,23 +166,10 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
       features = jsFnMutator(features);
     }
 
-    // Filter by time
-    if (values[0] === values[1] || values[1] === this.end) {
-      features = features.filter(
-        d => d.__timestamp >= values[0] && d.__timestamp <= values[1],
-      );
-    } else {
-      features = features.filter(
-        d => d.__timestamp >= values[0] && d.__timestamp < values[1],
-      );
-    }
-
     // Show only categories selected in the legend
     const cats = this.state.categories;
     if (fd.dimension) {
-      features = features.filter(
-        d => cats[d.cat_color] && cats[d.cat_color].enabled,
-      );
+      features = features.filter(d => cats[d.cat_color]?.enabled);
     }
 
     const filteredPayload = {
@@ -200,12 +184,12 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
         onAddFilter,
         this.setTooltip,
         this.props.datasource,
-      ),
+      ) as Layer,
     ];
   }
 
   // eslint-disable-next-line class-methods-use-this
-  addColor(data, fd) {
+  addColor(data: JsonObject[], fd: QueryFormData) {
     const c = fd.color_picker || { r: 0, g: 0, b: 0, a: 1 };
     const colorFn = getScale(fd.color_scheme);
 
@@ -221,7 +205,7 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
     });
   }
 
-  toggleCategory(category) {
+  toggleCategory(category: string) {
     const categoryState = this.state.categories[category];
     const categories = {
       ...this.state.categories,
@@ -241,7 +225,7 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
     this.setState({ categories });
   }
 
-  showSingleCategory(category) {
+  showSingleCategory(category: string) {
     const categories = { ...this.state.categories };
     /* eslint-disable no-param-reassign */
     Object.values(categories).forEach(v => {
@@ -251,7 +235,7 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
     this.setState({ categories });
   }
 
-  setTooltip = tooltip => {
+  setTooltip = (tooltip: TooltipProps['tooltip']) => {
     const { current } = this.containerRef;
     if (current) {
       current.setTooltip(tooltip);
@@ -261,33 +245,25 @@ export default class CategoricalDeckGLContainer extends React.PureComponent {
   render() {
     return (
       <div style={{ position: 'relative' }}>
-        <AnimatableDeckGLContainer
+        <DeckGLContainerStyledWrapper
           ref={this.containerRef}
-          getLayers={this.getLayers}
-          start={this.state.start}
-          end={this.state.end}
-          getStep={this.state.getStep}
-          values={this.state.values}
-          disabled={this.state.disabled}
           viewport={this.state.viewport}
-          mapboxApiAccessToken={this.props.mapboxApiKey}
-          mapStyle={this.props.formData.mapbox_style}
+          layers={this.getLayers()}
           setControlValue={this.props.setControlValue}
+          mapStyle={this.props.formData.mapbox_style}
+          mapboxApiAccessToken={this.props.mapboxApiKey}
           width={this.props.width}
           height={this.props.height}
-        >
-          <Legend
-            forceCategorical
-            categories={this.state.categories}
-            format={this.props.formData.legend_format}
-            position={this.props.formData.legend_position}
-            showSingleCategory={this.showSingleCategory}
-            toggleCategory={this.toggleCategory}
-          />
-        </AnimatableDeckGLContainer>
+        />
+        <Legend
+          forceCategorical
+          categories={this.state.categories}
+          format={this.props.formData.legend_format}
+          position={this.props.formData.legend_position}
+          showSingleCategory={this.showSingleCategory}
+          toggleCategory={this.toggleCategory}
+        />
       </div>
     );
   }
 }
-
-CategoricalDeckGLContainer.propTypes = propTypes;

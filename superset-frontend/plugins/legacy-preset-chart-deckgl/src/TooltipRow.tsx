@@ -16,25 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-const NOOP = () => {};
+import React from 'react';
 
-export default function transformProps(chartProps) {
-  const { datasource, height, hooks, queriesData, rawFormData, width } =
-    chartProps;
-  const { onAddFilter = NOOP, setControlValue = NOOP } = hooks;
+type TooltipRowProps = {
+  label: string;
+  value: string;
+};
 
-  return {
-    datasource,
-    formData: rawFormData,
-    height,
-    onAddFilter,
-    payload: queriesData[0],
-    setControlValue,
-    viewport: {
-      ...rawFormData.viewport,
-      height,
-      width,
-    },
-    width,
-  };
+export default class TooltipRow extends React.PureComponent<TooltipRowProps> {
+  render() {
+    const { label, value } = this.props;
+
+    return (
+      <div>
+        {label}
+        <strong>{value}</strong>
+      </div>
+    );
+  }
 }

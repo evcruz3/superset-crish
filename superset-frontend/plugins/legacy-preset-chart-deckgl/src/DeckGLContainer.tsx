@@ -20,38 +20,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
-import PropTypes from 'prop-types';
+import React, { ReactNode } from 'react';
 import { isEqual } from 'lodash';
 import { StaticMap } from 'react-map-gl';
-import DeckGL from 'deck.gl';
-import { styled } from '@superset-ui/core';
-import Tooltip from './components/Tooltip';
+import DeckGL, { Layer } from 'deck.gl/typed';
+import { JsonObject, JsonValue, styled } from '@superset-ui/core';
+import Tooltip, { TooltipProps } from './components/Tooltip';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { Viewport } from './utils/fitViewport';
 
 const TICK = 250; // milliseconds
 
-const propTypes = {
-  viewport: PropTypes.object.isRequired,
-  layers: PropTypes.array.isRequired,
-  setControlValue: PropTypes.func,
-  mapStyle: PropTypes.string,
-  mapboxApiAccessToken: PropTypes.string.isRequired,
-  children: PropTypes.node,
-  bottomMargin: PropTypes.number,
-  width: PropTypes.number.isRequired,
-  height: PropTypes.number.isRequired,
-  onViewportChange: PropTypes.func,
-};
-const defaultProps = {
-  mapStyle: 'light',
-  setControlValue: () => {},
-  children: null,
-  bottomMargin: 0,
+export type DeckGLContainerProps = {
+  viewport: Viewport;
+  setControlValue?: (control: string, value: JsonValue) => void;
+  mapStyle?: string;
+  mapboxApiAccessToken: string;
+  children?: ReactNode;
+  width: number;
+  height: number;
+  layers: (Layer | (() => Layer))[];
+  onViewportChange?: (viewport: Viewport) => void;
 };
 
-export class DeckGLContainer extends React.Component {
-  constructor(props) {
+export type DeckGLContainerState = {
+  lastUpdate: number | null;
+  viewState: Viewport;
+  tooltip: TooltipProps['tooltip'];
+  timer: ReturnType<typeof setInterval>;
+};
+
+export class DeckGLContainer extends React.Component<
+  DeckGLContainerProps,
+  DeckGLContainerState
+> {
+  constructor(props: DeckGLContainerProps) {
     super(props);
     this.tick = this.tick.bind(this);
     this.onViewStateChange = this.onViewStateChange.bind(this);
@@ -60,10 +63,11 @@ export class DeckGLContainer extends React.Component {
       timer: setInterval(this.tick, TICK),
       tooltip: null,
       viewState: props.viewport,
+      lastUpdate: null,
     };
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: DeckGLContainerProps) {
     if (!isEqual(nextProps.viewport, this.props.viewport)) {
       this.setState({ viewState: nextProps.viewport });
     }
@@ -73,8 +77,8 @@ export class DeckGLContainer extends React.Component {
     clearInterval(this.state.timer);
   }
 
-  onViewStateChange({ viewState }) {
-    this.setState({ viewState, lastUpdate: Date.now() });
+  onViewStateChange({ viewState }: { viewState: JsonObject }) {
+    this.setState({ viewState: viewState as Viewport, lastUpdate: Date.now() });
   }
 
   tick() {
@@ -92,31 +96,31 @@ export class DeckGLContainer extends React.Component {
   layers() {
     // Support for layer factory
     if (this.props.layers.some(l => typeof l === 'function')) {
-      return this.props.layers.map(l => (typeof l === 'function' ? l() : l));
+      return this.props.layers.map(l =>
+        typeof l === 'function' ? l() : l,
+      ) as Layer[];
     }
 
-    return this.props.layers;
+    return this.props.layers as Layer[];
   }
 
-  setTooltip = tooltip => {
+  setTooltip = (tooltip: TooltipProps['tooltip']) => {
     this.setState({ tooltip });
   };
 
   render() {
-    const { children, bottomMargin, height, width } = this.props;
+    const { children = null, height, width } = this.props;
     const { viewState, tooltip } = this.state;
-    const adjustedHeight = height - bottomMargin;
 
     const layers = this.layers();
 
     return (
       <>
-        <div style={{ position: 'relative', width, height: adjustedHeight }}>
+        <div style={{ position: 'relative', width, height }}>
           <DeckGL
-            initWebGLParameters
             controller
             width={width}
-            height={adjustedHeight}
+            height={height}
             layers={layers}
             viewState={viewState}
             glOptions={{ preserveDrawingBuffer: true }}
@@ -124,7 +128,7 @@ export class DeckGLContainer extends React.Component {
           >
             <StaticMap
               preserveDrawingBuffer
-              mapStyle={this.props.mapStyle}
+              mapStyle={this.props.mapStyle || 'light'}
               mapboxApiAccessToken={this.props.mapboxApiAccessToken}
             />
           </DeckGL>
@@ -135,9 +139,6 @@ export class DeckGLContainer extends React.Component {
     );
   }
 }
-
-DeckGLContainer.propTypes = propTypes;
-DeckGLContainer.defaultProps = defaultProps;
 
 export const DeckGLContainerStyledWrapper = styled(DeckGLContainer)`
   .deckgl-tooltip > div {

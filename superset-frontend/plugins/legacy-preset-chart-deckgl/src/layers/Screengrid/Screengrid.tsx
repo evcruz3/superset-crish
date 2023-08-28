@@ -21,22 +21,25 @@
 /* eslint no-underscore-dangle: ["error", { "allow": ["", "__timestamp"] }] */
 
 import React from 'react';
-import PropTypes from 'prop-types';
-import { ScreenGridLayer } from 'deck.gl';
-import { t } from '@superset-ui/core';
-import AnimatableDeckGLContainer from '../../AnimatableDeckGLContainer';
-import { getPlaySliderParams } from '../../utils/time';
+import { ScreenGridLayer } from 'deck.gl/typed';
+import { JsonObject, JsonValue, QueryFormData, t } from '@superset-ui/core';
+import { noop } from 'lodash';
 import sandboxedEval from '../../utils/sandbox';
 import { commonLayerProps } from '../common';
 import TooltipRow from '../../TooltipRow';
 // eslint-disable-next-line import/extensions
-import fitViewport from '../../utils/fitViewport';
+import fitViewport, { Viewport } from '../../utils/fitViewport';
+import {
+  DeckGLContainer,
+  DeckGLContainerStyledWrapper,
+} from '../../DeckGLContainer';
+import { TooltipProps } from '../../components/Tooltip';
 
-function getPoints(data) {
+function getPoints(data: JsonObject[]) {
   return data.map(d => d.position);
 }
 
-function setTooltipContent(o) {
+function setTooltipContent(o: JsonObject) {
   return (
     <div className="deckgl-tooltip">
       <TooltipRow
@@ -54,17 +57,14 @@ function setTooltipContent(o) {
 }
 
 export function getLayer(
-  formData,
-  payload,
-  onAddFilter,
-  setTooltip,
-  selected,
-  onSelect,
-  filters,
+  formData: QueryFormData,
+  payload: JsonObject,
+  onAddFilter: () => void,
+  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
 ) {
   const fd = formData;
   const c = fd.color_picker;
-  let data = payload.data.features.map(d => ({
+  let data = payload.data.features.map((d: JsonObject) => ({
     ...d,
     color: [c.r, c.g, c.b, 255 * c.a],
   }));
@@ -75,18 +75,11 @@ export function getLayer(
     data = jsFnMutator(data);
   }
 
-  if (filters != null) {
-    filters.forEach(f => {
-      data = data.filter(x => f(x));
-    });
-  }
-
   // Passing a layer creator function instead of a layer since the
   // layer needs to be regenerated at each render
   return new ScreenGridLayer({
-    id: `screengrid-layer-${fd.slice_id}`,
+    id: `screengrid-layer-${fd.slice_id}` as const,
     data,
-    pickable: true,
     cellSizePixels: fd.grid_size,
     minColor: [c.r, c.g, c.b, 0],
     maxColor: [c.r, c.g, c.b, 255 * c.a],
@@ -96,32 +89,41 @@ export function getLayer(
   });
 }
 
-const propTypes = {
-  formData: PropTypes.object.isRequired,
-  payload: PropTypes.object.isRequired,
-  setControlValue: PropTypes.func.isRequired,
-  viewport: PropTypes.object.isRequired,
-  onAddFilter: PropTypes.func,
-  width: PropTypes.number.isRequired,
-  height: PropTypes.number.isRequired,
-};
-const defaultProps = {
-  onAddFilter() {},
+export type DeckGLScreenGridProps = {
+  formData: QueryFormData;
+  payload: JsonObject;
+  setControlValue: (control: string, value: JsonValue) => void;
+  viewport: Viewport;
+  width: number;
+  height: number;
+  onAddFilter: () => void;
 };
 
-class DeckGLScreenGrid extends React.PureComponent {
-  containerRef = React.createRef();
+export type DeckGLScreenGridState = {
+  viewport: Viewport;
+  formData: QueryFormData;
+};
 
-  constructor(props) {
+class DeckGLScreenGrid extends React.PureComponent<
+  DeckGLScreenGridProps,
+  DeckGLScreenGridState
+> {
+  containerRef = React.createRef<DeckGLContainer>();
+
+  constructor(props: DeckGLScreenGridProps) {
     super(props);
 
-    this.state = DeckGLScreenGrid.getDerivedStateFromProps(props);
+    this.state = DeckGLScreenGrid.getDerivedStateFromProps(
+      props,
+    ) as DeckGLScreenGridState;
 
     this.getLayers = this.getLayers.bind(this);
-    this.onValuesChange = this.onValuesChange.bind(this);
   }
 
-  static getDerivedStateFromProps(props, state) {
+  static getDerivedStateFromProps(
+    props: DeckGLScreenGridProps,
+    state?: DeckGLScreenGridState,
+  ) {
     // the state is computed only from the payload; if it hasn't changed, do
     // not recompute state since this would reset selections and/or the play
     // slider position due to changes in form controls
@@ -130,19 +132,7 @@ class DeckGLScreenGrid extends React.PureComponent {
     }
 
     const features = props.payload.data.features || [];
-    const timestamps = features.map(f => f.__timestamp);
 
-    // the granularity has to be read from the payload form_data, not the
-    // props formData which comes from the instantaneous controls state
-    const granularity =
-      props.payload.form_data.time_grain_sqla ||
-      props.payload.form_data.granularity ||
-      'P1D';
-
-    const { start, end, getStep, values, disabled } = getPlaySliderParams(
-      timestamps,
-      granularity,
-    );
     const { width, height, formData } = props;
 
     let { viewport } = props;
@@ -155,53 +145,23 @@ class DeckGLScreenGrid extends React.PureComponent {
     }
 
     return {
-      start,
-      end,
-      getStep,
-      values,
-      disabled,
       viewport,
-      selected: [],
-      lastClick: 0,
-      formData: props.payload.form_data,
+      formData: props.payload.form_data as QueryFormData,
     };
   }
 
-  onValuesChange(values) {
-    this.setState({
-      values: Array.isArray(values)
-        ? values
-        : // eslint-disable-next-line react/no-access-state-in-setstate
-          [values, values + this.state.getStep(values)],
-    });
-  }
-
-  getLayers(values) {
-    const filters = [];
-
-    // time filter
-    if (values[0] === values[1] || values[1] === this.end) {
-      filters.push(
-        d => d.__timestamp >= values[0] && d.__timestamp <= values[1],
-      );
-    } else {
-      filters.push(
-        d => d.__timestamp >= values[0] && d.__timestamp < values[1],
-      );
-    }
-
+  getLayers() {
     const layer = getLayer(
       this.props.formData,
       this.props.payload,
-      this.props.onAddFilter,
+      noop,
       this.setTooltip,
-      filters,
     );
 
     return [layer];
   }
 
-  setTooltip = tooltip => {
+  setTooltip = (tooltip: TooltipProps['tooltip']) => {
     const { current } = this.containerRef;
     if (current) {
       current.setTooltip(tooltip);
@@ -213,30 +173,19 @@ class DeckGLScreenGrid extends React.PureComponent {
 
     return (
       <div>
-        <AnimatableDeckGLContainer
+        <DeckGLContainerStyledWrapper
           ref={this.containerRef}
-          aggregation
-          getLayers={this.getLayers}
-          start={this.state.start}
-          end={this.state.end}
-          getStep={this.state.getStep}
-          values={this.state.values}
-          disabled={this.state.disabled}
           viewport={this.state.viewport}
+          layers={this.getLayers()}
+          setControlValue={setControlValue}
+          mapStyle={formData.mapbox_style}
+          mapboxApiAccessToken={payload.data.mapboxApiKey}
           width={this.props.width}
           height={this.props.height}
-          mapboxApiAccessToken={payload.data.mapboxApiKey}
-          mapStyle={formData.mapbox_style}
-          setControlValue={setControlValue}
-          onValuesChange={this.onValuesChange}
-          onViewportChange={this.onViewportChange}
         />
       </div>
     );
   }
 }
-
-DeckGLScreenGrid.propTypes = propTypes;
-DeckGLScreenGrid.defaultProps = defaultProps;
 
 export default DeckGLScreenGrid;

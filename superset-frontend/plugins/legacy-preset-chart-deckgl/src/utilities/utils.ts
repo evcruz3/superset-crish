@@ -16,14 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { rgb } from 'd3-color';
+/* eslint camelcase: 0 */
 
-// eslint-disable-next-line import/prefer-default-export
-export function hexToRGB(hex, alpha = 255) {
-  if (!hex) {
-    return [0, 0, 0, alpha];
-  }
-  const { r, g, b } = rgb(hex);
-
-  return [r, g, b, alpha];
+export function formatSelectOptions(options: (string | number)[]) {
+  return options.map(opt => [opt, opt.toString()]);
 }
