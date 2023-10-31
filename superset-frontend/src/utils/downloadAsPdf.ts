@@ -17,9 +17,9 @@
  * under the License.
  */
 import { SyntheticEvent } from 'react';
-import domToImage from 'dom-to-image-more';
+import domToPdf from 'dom-to-pdf';
 import kebabCase from 'lodash/kebabCase';
-import { t, supersetTheme } from '@superset-ui/core';
+import { logging, t } from '@superset-ui/core';
 import { addWarningToast } from 'src/components/MessageToasts/actions';
 
 /**
@@ -40,7 +40,7 @@ const generateFileStem = (description: string, date = new Date()) =>
  * @param isExactSelector if false, searches for the closest ancestor that matches selector.
  * @returns event handler
  */
-export default function downloadAsImage(
+export default function downloadAsPdf(
   selector: string,
   description: string,
   isExactSelector = false,
@@ -52,36 +52,22 @@ export default function downloadAsImage(
 
     if (!elementToPrint) {
       return addWarningToast(
-        t('Image download failed, please refresh and try again.'),
+        t('PDF download failed, please refresh and try again.'),
       );
     }
 
-    // Mapbox controls are loaded from different origin, causing CORS error
-    // See https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL#exceptions
-    const filter = (node: Element) => {
-      if (typeof node.className === 'string') {
-        return (
-          node.className !== 'mapboxgl-control-container' &&
-          !node.className.includes('ant-dropdown')
-        );
-      }
-      return true;
+    const options = {
+      margin: 10,
+      filename: `${generateFileStem(description)}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { scale: 2 },
     };
-
-    return domToImage
-      .toJpeg(elementToPrint, {
-        quality: 1,
-        bgcolor: supersetTheme.colors.grayscale.light4,
-        filter,
+    return domToPdf(elementToPrint, options)
+      .then(() => {
+        // nothing to be done
       })
-      .then(dataUrl => {
-        const link = document.createElement('a');
-        link.download = `${generateFileStem(description)}.jpg`;
-        link.href = dataUrl;
-        link.click();
-      })
-      .catch(e => {
-        console.error('Creating image failed', e);
+      .catch((e: Error) => {
+        logging.error('PDF generation failed', e);
       });
   };
 }
