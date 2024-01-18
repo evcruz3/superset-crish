@@ -14,27 +14,31 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-slice_name: Vaccine Candidates per Country & Stage
-viz_type: sunburst_v2
-params:
-  adhoc_filters: []
-  color_scheme: supersetColors
-  datasource: 69__table
-  columns:
-    - product_category
-    - clinical_stage
-  linear_color_scheme: schemeYlOrBr
-  metric: count
-  queryFields:
-    groupby: groupby
-    metric: metrics
-    secondary_metric: metrics
-  row_limit: 10000
-  slice_id: 3964
-  time_range: No filter
-  url_params: {}
-  viz_type: sunburst_v2
-cache_timeout: null
-uuid: f69c556f-15fe-4a82-a8bb-69d5b6954123
-version: 1.0.0
-dataset_uuid: 974b7a1c-22ea-49cb-9214-97b7dbd511e0
+"""migrate-sunburst-chart
+
+Revision ID: a32e0c4d8646
+Revises: 59a1450b3c10
+Create Date: 2023-12-22 14:41:43.638321
+
+"""
+
+# revision identifiers, used by Alembic.
+revision = "a32e0c4d8646"
+down_revision = "59a1450b3c10"
+
+from alembic import op
+
+from superset import db
+from superset.migrations.shared.migrate_viz import MigrateSunburst
+
+
+def upgrade():
+    bind = op.get_bind()
+    session = db.Session(bind=bind)
+    MigrateSunburst.upgrade(session)
+
+
+def downgrade():
+    bind = op.get_bind()
+    session = db.Session(bind=bind)
+    MigrateSunburst.downgrade(session)
