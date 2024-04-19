@@ -25,25 +25,26 @@ import {
 } from '@superset-ui/core';
 import Modal from 'src/components/Modal';
 import Button from 'src/components/Button';
-import { Switch } from 'src/components/Switch';
+import { Switch, SwitchProps } from 'src/components/Switch';
 import Collapse from 'src/components/Collapse';
 import {
-  Upload,
   AntdForm,
+  AsyncSelect,
   Col,
   Row,
-  AsyncSelect,
   Select,
+  Upload,
 } from 'src/components';
 import { UploadOutlined } from '@ant-design/icons';
 import { Input, InputNumber } from 'src/components/Input';
 import rison from 'rison';
 import { UploadChangeParam, UploadFile } from 'antd/lib/upload/interface';
 import withToasts from 'src/components/MessageToasts/withToasts';
+import * as XLSX from 'xlsx';
 import {
-  antDModalStyles,
-  antDModalNoPaddingStyles,
   antdCollapseStyles,
+  antDModalNoPaddingStyles,
+  antDModalStyles,
   formStyles,
   StyledFormItem,
   StyledSwitchContainer,
@@ -51,18 +52,48 @@ import {
 import ColumnsPreview from './ColumnsPreview';
 import StyledFormItemWithTip from './StyledFormItemWithTip';
 
-interface CSVUploadModalProps {
+type UploadType = 'csv' | 'excel' | 'columnar';
+
+interface UploadDataModalProps {
   addDangerToast: (msg: string) => void;
   addSuccessToast: (msg: string) => void;
   onHide: () => void;
   show: boolean;
   allowedExtensions: string[];
+  type: UploadType;
 }
 
+const CSVSpecificFields = [
+  'delimiter',
+  'skip_initial_space',
+  'skip_blank_lines',
+  'day_first',
+  'overwrite_duplicates',
+  'column_data_types',
+];
+
+const ExcelSpecificFields = ['sheet_name'];
+
+const ColumnarSpecificFields: string[] = [];
+
+const NonNullFields = ['rows_to_read', 'index_column'];
+
+const AllSpecificFields = [
+  ...CSVSpecificFields,
+  ...ExcelSpecificFields,
+  ...ColumnarSpecificFields,
+];
+
+const UploadTypeToSpecificFields: Record<UploadType, string[]> = {
+  csv: CSVSpecificFields,
+  excel: ExcelSpecificFields,
+  columnar: ColumnarSpecificFields,
+};
+
 interface UploadInfo {
-  database_id: number;
   table_name: string;
   schema: string;
+  sheet_name?: string;
   delimiter: string;
   already_exists: string;
   skip_initial_space: boolean;
@@ -83,9 +114,9 @@ interface UploadInfo {
 }
 
 const defaultUploadInfo: UploadInfo = {
-  database_id: 0,
   table_name: '',
   schema: '',
+  sheet_name: undefined,
   delimiter: ',',
   already_exists: 'fail',
   skip_initial_space: false,
@@ -108,7 +139,6 @@ const defaultUploadInfo: UploadInfo = {
 // Allowed extensions to accept for file upload, users can always override this
 // by selecting all file extensions on the OS file picker. Also ".txt" will
 // allow all files to be selected.
-const allowedExtensionsToAccept = '.csv, .tsv';
 const READ_HEADER_SIZE = 10000;
 
 export const validateUploadFileExtension = (
@@ -124,33 +154,60 @@ export const validateUploadFileExtension = (
   return allowedExtensions.includes(fileType);
 };
 
-const SwitchContainer: React.FC<{ label: string; dataTest: string }> = ({
+interface StyledSwitchContainerProps extends SwitchProps {
+  label: string;
+  dataTest: string;
+  children?: React.ReactNode;
+}
+
+const SwitchContainer = ({
   label,
   dataTest,
   children,
-}) => (
+  ...switchProps
+}: StyledSwitchContainerProps) => (
   <StyledSwitchContainer>
-    <Switch data-test={dataTest} />
+    <Switch data-test={dataTest} {...switchProps} />
     <div className="switch-label">{label}</div>
     {children}
   </StyledSwitchContainer>
 );
 
-const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
+const UploadDataModal: FunctionComponent<UploadDataModalProps> = ({
   addDangerToast,
   addSuccessToast,
   onHide,
   show,
   allowedExtensions,
+  type = 'csv',
 }) => {
   const [form] = AntdForm.useForm();
-  // Declare states here
   const [currentDatabaseId, setCurrentDatabaseId] = useState<number>(0);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [columns, setColumns] = React.useState<string[]>([]);
+  const [sheetNames, setSheetNames] = React.useState<string[]>([]);
+  const [currentSheetName, setCurrentSheetName] = React.useState<
+    string | undefined
+  >();
   const [delimiter, setDelimiter] = useState<string>(',');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentSchema, setCurrentSchema] = useState<string | undefined>();
+  const [previewUploadedFile, setPreviewUploadedFile] = useState<boolean>(true);
+  const [fileLoading, setFileLoading] = useState<boolean>(false);
+
+  const allowedExtensionsToAccept = {
+    csv: '.csv, .tsv',
+    excel: '.xls, .xlsx',
+    columnar: '.parquet, .orc',
+  };
+
+  const createTypeToEndpointMap = (
+    databaseId: number,
+  ): { [key: string]: string } => ({
+    csv: `/api/v1/database/${databaseId}/csv_upload/`,
+    excel: `/api/v1/database/${databaseId}/excel_upload/`,
+    columnar: `/api/v1/database/${databaseId}/columnar_upload/`,
+  });
 
   const nullValuesOptions = [
     {
@@ -209,6 +266,10 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
     },
   ];
 
+  const onChangePreviewUploadedFile = (value: boolean) => {
+    setPreviewUploadedFile(value);
+  };
+
   const onChangeDatabase = (database: { value: number; label: string }) => {
     setCurrentDatabaseId(database?.value);
     setCurrentSchema(undefined);
@@ -228,7 +289,12 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
     setColumns([]);
     setCurrentSchema('');
     setCurrentDatabaseId(0);
+    setCurrentSheetName(undefined);
+    setSheetNames([]);
     setIsLoading(false);
+    setDelimiter(',');
+    setPreviewUploadedFile(true);
+    setFileLoading(false);
     form.resetFields();
   };
 
@@ -280,6 +346,22 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
     [currentDatabaseId],
   );
 
+  const getAllFieldsNotInType = (): string[] => {
+    const specificFields = UploadTypeToSpecificFields[type] || [];
+    return [...AllSpecificFields].filter(
+      field => !specificFields.includes(field),
+    );
+  };
+
+  const appendFormData = (formData: FormData, data: Record<string, any>) => {
+    const allFieldsNotInType = getAllFieldsNotInType();
+    Object.entries(data).forEach(([key, value]) => {
+      if (!(allFieldsNotInType.includes(key) || NonNullFields.includes(key))) {
+        formData.append(key, value);
+      }
+    });
+  };
+
   const onClose = () => {
     clearModal();
     onHide();
@@ -287,7 +369,7 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
 
   const onFinish = () => {
     const fields = form.getFieldsValue();
-    fields.database_id = currentDatabaseId;
+    delete fields.database;
     fields.schema = currentSchema;
     const mergedValues = { ...defaultUploadInfo, ...fields };
     const formData = new FormData();
@@ -295,37 +377,16 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
     if (file) {
       formData.append('file', file);
     }
-    formData.append('delimiter', mergedValues.delimiter);
-    formData.append('table_name', mergedValues.table_name);
-    formData.append('schema', mergedValues.schema);
-    formData.append('already_exists', mergedValues.already_exists);
-    formData.append('skip_initial_space', mergedValues.skip_initial_space);
-    formData.append('skip_blank_lines', mergedValues.skip_blank_lines);
-    formData.append('day_first', mergedValues.day_first);
-    formData.append('decimal_character', mergedValues.decimal_character);
-    formData.append('null_values', mergedValues.null_values);
-    formData.append('header_row', mergedValues.header_row);
-    if (mergedValues.rows_to_read != null) {
-      formData.append('rows_to_read', mergedValues.rows_to_read);
-    }
-    formData.append('skip_rows', mergedValues.skip_rows);
-    formData.append('column_dates', mergedValues.column_dates);
-    if (mergedValues.index_column != null) {
-      formData.append('index_column', mergedValues.index_column);
-    }
-    formData.append('dataframe_index', mergedValues.dataframe_index);
-    formData.append('column_labels', mergedValues.column_labels);
-    formData.append('columns_read', mergedValues.columns_read);
-    formData.append('overwrite_duplicates', mergedValues.overwrite_duplicates);
-    formData.append('column_data_types', mergedValues.column_data_types);
+    appendFormData(formData, mergedValues);
     setIsLoading(true);
+    const endpoint = createTypeToEndpointMap(currentDatabaseId)[type];
     return SupersetClient.post({
-      endpoint: `/api/v1/database/${currentDatabaseId}/csv_upload/`,
+      endpoint,
       body: formData,
       headers: { Accept: 'application/json' },
     })
       .then(() => {
-        addSuccessToast(t('CSV Imported'));
+        addSuccessToast(t('Data Imported'));
         setIsLoading(false);
         onClose();
       })
@@ -342,13 +403,26 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
   const onRemoveFile = (removedFile: UploadFile) => {
     setFileList(fileList.filter(file => file.uid !== removedFile.uid));
     setColumns([]);
+    setSheetNames([]);
+    setCurrentSheetName(undefined);
+    form.setFieldsValue({ sheet_name: undefined });
     return false;
+  };
+
+  const onSheetNameChange = (value: string) => {
+    setCurrentSheetName(value);
   };
 
   const columnsToOptions = () =>
     columns.map(column => ({
       value: column,
       label: column,
+    }));
+
+  const sheetNamesToOptions = () =>
+    sheetNames.map(sheetName => ({
+      value: sheetName,
+      label: sheetName,
     }));
 
   const readFileContent = (file: File) =>
@@ -368,18 +442,79 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
       reader.readAsText(file.slice(0, READ_HEADER_SIZE));
     });
 
-  const processFileContent = async (file: File) => {
+  const processCSVFile = async (file: File) => {
     try {
+      setFileLoading(true);
       const text = await readFileContent(file);
       const firstLine = text.split('\n')[0].trim();
       const firstRow = firstLine
         .split(delimiter)
         .map(column => column.replace(/^"(.*)"$/, '$1'));
       setColumns(firstRow);
+      setFileLoading(false);
     } catch (error) {
       addDangerToast('Failed to process file content');
+      setFileLoading(false);
     }
   };
+
+  const processExcelColumns = (workbook: XLSX.WorkBook, sn: string[]) => {
+    if (!workbook) {
+      return;
+    }
+    let cSheetName = currentSheetName;
+    if (!currentSheetName) {
+      setCurrentSheetName(sn[0]);
+      cSheetName = sn[0];
+    }
+    cSheetName = cSheetName || sn[0];
+    form.setFieldsValue({ sheet_name: cSheetName });
+    const worksheet = workbook.Sheets[cSheetName];
+
+    const worksheetRef: string = worksheet['!ref'] ? worksheet['!ref'] : '';
+    const range = XLSX.utils.decode_range(worksheetRef);
+    const columnNames = Array.from({ length: range.e.c + 1 }, (_, i) => {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: i });
+      return worksheet[cellAddress]?.v;
+    });
+    setColumns(columnNames);
+  };
+
+  const processExcelFile = async (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      setFileLoading(true);
+      const reader = new FileReader();
+      reader.readAsBinaryString(file);
+
+      reader.onload = event => {
+        if (!event.target && event.target == null) {
+          reader.onerror = () => {
+            reject(new Error('Failed to read file content'));
+          };
+          return;
+        }
+        // Read workbook
+        const workbook = XLSX.read(event.target.result, { type: 'binary' });
+        if (workbook == null) {
+          reject(new Error('Failed to process file content'));
+          addDangerToast('Failed to process file content');
+          setFileLoading(false);
+          return;
+        }
+        // Extract sheet names
+        const tmpSheetNames = workbook.SheetNames;
+        if (tmpSheetNames.length < 1) {
+          reject(new Error('Failed to read file content'));
+          addDangerToast('Failed to process file content');
+          setFileLoading(false);
+          return;
+        }
+        processExcelColumns(workbook, tmpSheetNames);
+        setSheetNames(workbook.SheetNames);
+        setFileLoading(false);
+        resolve('success');
+      };
+    });
 
   const onChangeFile = async (info: UploadChangeParam<any>) => {
     setFileList([
@@ -388,7 +523,17 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
         status: 'done',
       },
     ]);
-    await processFileContent(info.file.originFileObj);
+    if (!previewUploadedFile) {
+      return;
+    }
+    if (type === 'csv') {
+      await processCSVFile(info.file.originFileObj);
+    }
+    if (type === 'excel') {
+      setSheetNames([]);
+      setCurrentSheetName(undefined);
+      await processExcelFile(info.file.originFileObj);
+    }
   };
 
   useEffect(() => {
@@ -397,9 +542,27 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
       fileList[0].originFileObj &&
       fileList[0].originFileObj instanceof File
     ) {
-      processFileContent(fileList[0].originFileObj).then(r => r);
+      if (!previewUploadedFile) {
+        return;
+      }
+      processCSVFile(fileList[0].originFileObj).then(r => r);
     }
   }, [delimiter]);
+
+  useEffect(() => {
+    (async () => {
+      if (
+        columns.length > 0 &&
+        fileList[0].originFileObj &&
+        fileList[0].originFileObj instanceof File
+      ) {
+        if (!previewUploadedFile) {
+          return;
+        }
+        await processExcelFile(fileList[0].originFileObj);
+      }
+    })();
+  }, [currentSheetName]);
 
   const validateUpload = (_: any, value: string) => {
     if (fileList.length === 0) {
@@ -423,6 +586,17 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
     return Promise.resolve();
   };
 
+  const uploadTitles = {
+    csv: t('CSV Upload'),
+    excel: t('Excel Upload'),
+    columnar: t('Columnar Upload'),
+  };
+
+  const UploadTitle: React.FC = () => {
+    const title = uploadTitles[type] || t('Upload');
+    return <h4>{title}</h4>;
+  };
+
   return (
     <Modal
       css={(theme: SupersetTheme) => [
@@ -432,14 +606,14 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
       ]}
       primaryButtonLoading={isLoading}
       name="database"
-      data-test="csvupload-modal"
+      data-test="upload-modal"
       onHandledPrimaryAction={form.submit}
       onHide={onClose}
       width="500px"
       primaryButtonName="Upload"
       centered
       show={show}
-      title={<h4>{t('CSV Upload')}</h4>}
+      title={<UploadTitle />}
     >
       <AntdForm
         form={form}
@@ -458,18 +632,16 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
             header={
               <div>
                 <h4>{t('General information')}</h4>
-                <p className="helper">
-                  {t('Upload a CSV file to a database.')}
-                </p>
+                <p className="helper">{t('Upload a file to a database.')}</p>
               </div>
             }
             key="general"
           >
             <Row>
-              <Col span={24}>
+              <Col span={12}>
                 <StyledFormItem
-                  label={t('CSV File')}
-                  name="upload"
+                  label={t('%(type)s File', { type })}
+                  name="file"
                   required
                   rules={[{ validator: validateUpload }]}
                 >
@@ -477,31 +649,47 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
                     name="modelFile"
                     id="modelFile"
                     data-test="model-file-input"
-                    accept={allowedExtensionsToAccept}
+                    accept={allowedExtensionsToAccept[type]}
                     fileList={fileList}
                     onChange={onChangeFile}
                     onRemove={onRemoveFile}
                     // upload is handled by hook
                     customRequest={() => {}}
                   >
-                    <Button aria-label={t('Select')} icon={<UploadOutlined />}>
+                    <Button
+                      aria-label={t('Select')}
+                      icon={<UploadOutlined />}
+                      loading={fileLoading}
+                    >
                       {t('Select')}
                     </Button>
                   </Upload>
                 </StyledFormItem>
               </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <ColumnsPreview columns={columns} />
+              <Col span={12}>
+                <StyledFormItem>
+                  <SwitchContainer
+                    label={t('Preview uploaded file')}
+                    dataTest="previewUploadedFile"
+                    onChange={onChangePreviewUploadedFile}
+                    checked={previewUploadedFile}
+                  />
+                </StyledFormItem>
               </Col>
             </Row>
+            {previewUploadedFile && (
+              <Row>
+                <Col span={24}>
+                  <ColumnsPreview columns={columns} />
+                </Col>
+              </Row>
+            )}
             <Row>
               <Col span={24}>
                 <StyledFormItem
                   label={t('Database')}
-                  name="database"
                   required
+                  name="database"
                   rules={[{ validator: validateDatabase }]}
                 >
                   <AsyncSelect
@@ -544,25 +732,40 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
                     name="table_name"
                     data-test="properties-modal-name-input"
                     type="text"
-                    placeholder={t('Name of table to be created with CSV file')}
+                    placeholder={t('Name of table to be created')}
                   />
                 </StyledFormItem>
               </Col>
             </Row>
             <Row>
               <Col span={24}>
-                <StyledFormItemWithTip
-                  label={t('Delimiter')}
-                  tip={t('Select a delimiter for this data')}
-                  name="delimiter"
-                >
-                  <Select
-                    ariaLabel={t('Choose a delimiter')}
-                    options={delimiterOptions}
-                    onChange={onChangeDelimiter}
-                    allowNewOptions
-                  />
-                </StyledFormItemWithTip>
+                {type === 'csv' && (
+                  <StyledFormItemWithTip
+                    label={t('Delimiter')}
+                    tip={t('Select a delimiter for this data')}
+                    name="delimiter"
+                  >
+                    <Select
+                      ariaLabel={t('Choose a delimiter')}
+                      options={delimiterOptions}
+                      onChange={onChangeDelimiter}
+                      allowNewOptions
+                    />
+                  </StyledFormItemWithTip>
+                )}
+                {type === 'excel' && (
+                  <StyledFormItem label={t('Sheet name')} name="sheet_name">
+                    <Select
+                      ariaLabel={t('Choose sheet name')}
+                      options={sheetNamesToOptions()}
+                      onChange={onSheetNameChange}
+                      allowNewOptions
+                      placeholder={t(
+                        'Select a sheet name from the uploaded file',
+                      )}
+                    />
+                  </StyledFormItem>
+                )}
               </Col>
             </Row>
           </Collapse.Panel>
@@ -642,40 +845,44 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
                 </StyledFormItemWithTip>
               </Col>
             </Row>
-            <Row>
-              <Col span={24}>
-                <StyledFormItem name="skip_initial_space">
-                  <SwitchContainer
-                    label={t('Skip spaces after delimiter')}
-                    dataTest="skipInitialSpace"
-                  />
-                </StyledFormItem>
-              </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <StyledFormItem name="skip_blank_lines">
-                  <SwitchContainer
-                    label={t(
-                      'Skip blank lines rather than interpreting them as Not A Number values',
-                    )}
-                    dataTest="skipBlankLines"
-                  />
-                </StyledFormItem>
-              </Col>
-            </Row>
-            <Row>
-              <Col span={24}>
-                <StyledFormItem name="day_first">
-                  <SwitchContainer
-                    label={t(
-                      'DD/MM format dates, international and European format',
-                    )}
-                    dataTest="dayFirst"
-                  />
-                </StyledFormItem>
-              </Col>
-            </Row>
+            {type === 'csv' && (
+              <>
+                <Row>
+                  <Col span={24}>
+                    <StyledFormItem name="skip_initial_space">
+                      <SwitchContainer
+                        label={t('Skip spaces after delimiter')}
+                        dataTest="skipInitialSpace"
+                      />
+                    </StyledFormItem>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <StyledFormItem name="skip_blank_lines">
+                      <SwitchContainer
+                        label={t(
+                          'Skip blank lines rather than interpreting them as Not A Number values',
+                        )}
+                        dataTest="skipBlankLines"
+                      />
+                    </StyledFormItem>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <StyledFormItem name="day_first">
+                      <SwitchContainer
+                        label={t(
+                          'DD/MM format dates, international and European format',
+                        )}
+                        dataTest="dayFirst"
+                      />
+                    </StyledFormItem>
+                  </Col>
+                </Row>
+              </>
+            )}
           </Collapse.Panel>
           <Collapse.Panel
             header={
@@ -743,19 +950,21 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
                 </StyledFormItem>
               </Col>
             </Row>
-            <Row>
-              <Col span={24}>
-                <StyledFormItemWithTip
-                  label={t('Column Data Types')}
-                  tip={t(
-                    'A dictionary with column names and their data types if you need to change the defaults. Example: {"user_id":"int"}. Check Python\'s Pandas library for supported data types.',
-                  )}
-                  name="column_data_types"
-                >
-                  <Input aria-label={t('Column data types')} type="text" />
-                </StyledFormItemWithTip>
-              </Col>
-            </Row>
+            {type === 'csv' && (
+              <Row>
+                <Col span={24}>
+                  <StyledFormItemWithTip
+                    label={t('Column Data Types')}
+                    tip={t(
+                      'A dictionary with column names and their data types if you need to change the defaults. Example: {"user_id":"int"}. Check Python\'s Pandas library for supported data types.',
+                    )}
+                    name="column_data_types"
+                  >
+                    <Input aria-label={t('Column data types')} type="text" />
+                  </StyledFormItemWithTip>
+                </Col>
+              </Row>
+            )}
             <Row>
               <Col span={24}>
                 <StyledFormItem name="dataframe_index">
@@ -766,18 +975,20 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
                 </StyledFormItem>
               </Col>
             </Row>
-            <Row>
-              <Col span={24}>
-                <StyledFormItem name="overwrite_duplicates">
-                  <SwitchContainer
-                    label={t(
-                      'Overwrite Duplicate Columns. If duplicate columns are not overridden, they will be presented as "X.1, X.2 ...X.x"',
-                    )}
-                    dataTest="overwriteDuplicates"
-                  />
-                </StyledFormItem>
-              </Col>
-            </Row>
+            {type === 'csv' && (
+              <Row>
+                <Col span={24}>
+                  <StyledFormItem name="overwrite_duplicates">
+                    <SwitchContainer
+                      label={t(
+                        'Overwrite Duplicate Columns. If duplicate columns are not overridden, they will be presented as "X.1, X.2 ...X.x"',
+                      )}
+                      dataTest="overwriteDuplicates"
+                    />
+                  </StyledFormItem>
+                </Col>
+              </Row>
+            )}
           </Collapse.Panel>
           <Collapse.Panel
             header={
@@ -838,4 +1049,4 @@ const CSVUploadModal: FunctionComponent<CSVUploadModalProps> = ({
   );
 };
 
-export default withToasts(CSVUploadModal);
+export default withToasts(UploadDataModal);

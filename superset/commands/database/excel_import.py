@@ -38,37 +38,32 @@ from superset.views.database.validators import schema_allows_file_upload
 
 logger = logging.getLogger(__name__)
 
-READ_CSV_CHUNK_SIZE = 1000
+READ_EXCEL_CHUNK_SIZE = 1000
 
 
-class CSVImportOptions(TypedDict, total=False):
+class ExcelImportOptions(TypedDict, total=False):
+    sheet_name: str
     schema: str
-    delimiter: str
     already_exists: str
-    column_data_types: dict[str, str]
     column_dates: list[str]
     column_labels: str
     columns_read: list[str]
     dataframe_index: str
-    day_first: bool
     decimal_character: str
     header_row: int
     index_column: str
     null_values: list[str]
-    overwrite_duplicates: bool
     rows_to_read: int
-    skip_blank_lines: bool
-    skip_initial_space: bool
     skip_rows: int
 
 
-class CSVImportCommand(BaseCommand):
+class ExcelImportCommand(BaseCommand):
     def __init__(
         self,
         model_id: int,
         table_name: str,
         file: Any,
-        options: CSVImportOptions,
+        options: ExcelImportOptions,
     ) -> None:
         self._model_id = model_id
         self._model: Optional[Database] = None
@@ -77,41 +72,31 @@ class CSVImportCommand(BaseCommand):
         self._file = file
         self._options = options
 
-    def _read_csv(self) -> pd.DataFrame:
+    def _read_excel(self) -> pd.DataFrame:
         """
-        Read CSV file into a DataFrame
+        Read Excel file into a DataFrame
 
         :return: pandas DataFrame
         :throws DatabaseUploadFailed: if there is an error reading the CSV file
         """
+
+        kwargs = {
+            "header": self._options.get("header_row", 0),
+            "index_col": self._options.get("index_column"),
+            "io": self._file,
+            "keep_default_na": not self._options.get("null_values"),
+            "na_values": self._options.get("null_values")
+            if self._options.get("null_values")  # None if an empty list
+            else None,
+            "parse_dates": self._options.get("column_dates"),
+            "skiprows": self._options.get("skip_rows", 0),
+            "sheet_name": self._options.get("sheet_name", 0),
+            "nrows": self._options.get("rows_to_read"),
+        }
+        if self._options.get("columns_read"):
+            kwargs["usecols"] = self._options.get("columns_read")
         try:
-            return pd.concat(
-                pd.read_csv(
-                    chunksize=READ_CSV_CHUNK_SIZE,
-                    encoding="utf-8",
-                    filepath_or_buffer=self._file,
-                    header=self._options.get("header_row", 0),
-                    index_col=self._options.get("index_column"),
-                    dayfirst=self._options.get("day_first", False),
-                    iterator=True,
-                    keep_default_na=not self._options.get("null_values"),
-                    usecols=self._options.get("columns_read")
-                    if self._options.get("columns_read")  # None if an empty list
-                    else None,
-                    na_values=self._options.get("null_values")
-                    if self._options.get("null_values")  # None if an empty list
-                    else None,
-                    nrows=self._options.get("rows_to_read"),
-                    parse_dates=self._options.get("column_dates"),
-                    sep=self._options.get("delimiter", ","),
-                    skip_blank_lines=self._options.get("skip_blank_lines", False),
-                    skipinitialspace=self._options.get("skip_initial_space", False),
-                    skiprows=self._options.get("skip_rows", 0),
-                    dtype=self._options.get("column_data_types")
-                    if self._options.get("column_data_types")
-                    else None,
-                )
-            )
+            return pd.read_excel(**kwargs)
         except (
             pd.errors.ParserError,
             pd.errors.EmptyDataError,
@@ -122,7 +107,7 @@ class CSVImportCommand(BaseCommand):
                 message=_("Parsing error: %(error)s", error=str(ex))
             ) from ex
         except Exception as ex:
-            raise DatabaseUploadFailed(_("Error reading CSV file")) from ex
+            raise DatabaseUploadFailed(_("Error reading Excel file")) from ex
 
     def _dataframe_to_database(self, df: pd.DataFrame, database: Database) -> None:
         """
@@ -132,13 +117,13 @@ class CSVImportCommand(BaseCommand):
         :throws DatabaseUploadFailed: if there is an error uploading the DataFrame
         """
         try:
-            csv_table = Table(table=self._table_name, schema=self._schema)
+            data_table = Table(table=self._table_name, schema=self._schema)
             database.db_engine_spec.df_to_sql(
                 database,
-                csv_table,
+                data_table,
                 df,
                 to_sql_kwargs={
-                    "chunksize": READ_CSV_CHUNK_SIZE,
+                    "chunksize": READ_EXCEL_CHUNK_SIZE,
                     "if_exists": self._options.get("already_exists", "fail"),
                     "index": self._options.get("index_column"),
                     "index_label": self._options.get("column_labels"),
@@ -160,7 +145,7 @@ class CSVImportCommand(BaseCommand):
         if not self._model:
             return
 
-        df = self._read_csv()
+        df = self._read_excel()
         self._dataframe_to_database(df, self._model)
 
         sqla_table = (
