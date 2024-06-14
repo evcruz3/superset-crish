@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,14 +17,5 @@
  * under the License.
  */
 
-export * from './types';
-
-export { default as getComparisonInfo } from './getComparisonInfo';
-export { default as getComparisonFilters } from './getComparisonFilters';
-export {
-  parseDttmToDate,
-  getTimeOffset,
-  computeCustomDateTime,
-} from './getTimeOffset';
-export { SEPARATOR, fetchTimeRange } from './fetchTimeRange';
-export { customTimeRangeDecode } from './customTimeRangeDecode';
+export { Dropdown } from 'antd';
+export type { DropDownProps } from 'antd/lib/dropdown';
