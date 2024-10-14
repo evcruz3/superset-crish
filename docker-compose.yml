@@ -64,9 +64,9 @@ services:
   db:
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     image: postgres:15
     container_name: superset_db
     restart: unless-stopped
@@ -79,9 +79,9 @@ services:
   superset:
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     build:
       <<: *common-build
     container_name: superset_app
@@ -137,16 +137,16 @@ services:
     command: ["/app/docker/docker-init.sh"]
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     depends_on: *superset-depends-on
     user: *superset-user
     volumes: *superset-volumes
     environment:
       CYPRESS_CONFIG: "${CYPRESS_CONFIG:-}"
     healthcheck:
-      disable: true
+      disable: "true"
 
   superset-node:
     build:
@@ -160,15 +160,15 @@ services:
     environment:
       # set this to false if you have perf issues running the npm i; npm run dev in-docker
       # if you do so, you have to run this manually on the host, which should perform better!
-      BUILD_SUPERSET_FRONTEND_IN_DOCKER: true
+      BUILD_SUPERSET_FRONTEND_IN_DOCKER: "true"
       SCARF_ANALYTICS: "${SCARF_ANALYTICS:-}"
     container_name: superset_node
     command: ["/app/docker/docker-frontend.sh"]
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     depends_on: *superset-depends-on
     volumes: *superset-volumes
 
@@ -179,9 +179,9 @@ services:
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     environment:
       CELERYD_CONCURRENCY: 2
     restart: unless-stopped
@@ -203,15 +203,15 @@ services:
     command: ["/app/docker/docker-bootstrap.sh", "beat"]
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     restart: unless-stopped
     depends_on: *superset-depends-on
     user: *superset-user
     volumes: *superset-volumes
     healthcheck:
-      disable: true
+      disable: "true"
 
   superset-tests-worker:
     build:
@@ -220,9 +220,9 @@ services:
     command: ["/app/docker/docker-bootstrap.sh", "worker"]
     env_file:
       - path: docker/.env # default
-        required: true
+        required: "true"
       - path: docker/.env-local # optional override
-        required: false
+        required: "false"
     profiles:
       - optional
     environment:
@@ -241,8 +241,8 @@ services:
 
 volumes:
   superset_home:
-    external: false
+    external: "false"
   db_home:
-    external: false
+    external: "false"
   redis:
-    external: false
+    external: "false"
