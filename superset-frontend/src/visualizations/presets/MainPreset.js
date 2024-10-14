@@ -82,6 +82,20 @@ import { PivotTableChartPlugin as PivotTableChartPluginV2 } from '@superset-ui/p
 import { HandlebarsChartPlugin } from '@superset-ui/plugin-chart-handlebars';
 import { FilterPlugins } from 'src/constants';
 import TimeTableChartPlugin from '../TimeTable';
+// import DeckGLOSMChartPreset from 'preset-chart-deckgl-osm'
+import { 
+  ScatterChartPlugin as ScatterChartOsmPlugin, 
+  ArcChartPlugin as ArcChartOsmPlugin, 
+  GeoJsonChartPlugin as GeoJsonChartOsmPlugin, 
+  GridChartPlugin as GridChartOsmPlugin, 
+  HexChartPlugin as HexChartOsmPlugin, 
+  HeatmapChartPlugin as HeatmapChartOsmPlugin, 
+  MultiChartPlugin as MultiChartOsmPlugin, 
+  PathChartPlugin as PathChartOsmPlugin, 
+  PolygonChartPlugin as PolygonChartOsmPlugin, 
+  ScreengridChartPlugin as ScreengridChartOsmPlugin, 
+  ContourChartPlugin as ContourChartOsmPlugin, 
+} from 'preset-chart-deckgl-osm';
 
 export default class MainPreset extends Preset {
   constructor() {
@@ -97,7 +111,10 @@ export default class MainPreset extends Preset {
 
     super({
       name: 'Legacy charts',
-      presets: [new DeckGLChartPreset()],
+      presets: [
+        // new DeckGLChartPreset(), 
+        // new DeckGLOSMChartPreset()
+      ],
       plugins: [
         new AreaChartPlugin().configure({ key: 'area' }),
         new BarChartPlugin().configure({ key: 'bar' }),
@@ -178,6 +195,17 @@ export default class MainPreset extends Preset {
         new HandlebarsChartPlugin().configure({ key: 'handlebars' }),
         new EchartsBubbleChartPlugin().configure({ key: 'bubble_v2' }),
         ...experimentalPlugins,
+        new ArcChartOsmPlugin().configure({ key: 'deck_arc' }),
+        new GeoJsonChartOsmPlugin().configure({ key: 'deck_geojson' }),
+        new GridChartOsmPlugin().configure({ key: 'deck_grid' }),
+        new HexChartOsmPlugin().configure({ key: 'deck_hex' }),
+        new HeatmapChartOsmPlugin().configure({ key: 'deck_heatmap' }),
+        new MultiChartOsmPlugin().configure({ key: 'deck_multi' }),
+        new PathChartOsmPlugin().configure({ key: 'deck_path' }),
+        new PolygonChartOsmPlugin().configure({ key: 'deck_polygon' }),
+        new ScatterChartOsmPlugin().configure({ key: 'deck_scatter' }),
+        new ScreengridChartOsmPlugin().configure({ key: 'deck_screengrid' }),
+        new ContourChartOsmPlugin().configure({ key: 'deck_contour' }),
       ],
     });
   }
