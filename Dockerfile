@@ -53,6 +53,8 @@ ENV BUILD_CMD=${NPM_BUILD_CMD} \
 RUN --mount=type=bind,target=/frontend-mem-nag.sh,src=./docker/frontend-mem-nag.sh \
     /frontend-mem-nag.sh
 
+COPY preset-chart-deckgl-osm /app/preset-chart-deckgl-osm
+
 WORKDIR /app/superset-frontend
 # Creating empty folders to avoid errors when running COPY later on
 RUN mkdir -p /app/superset/static/assets
@@ -67,7 +69,6 @@ RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json
 # Runs the webpack build process
 COPY superset-frontend /app/superset-frontend
 
-COPY preset-chart-deckgl-osm /app/preset-chart-deckgl-osm
 # This copies the .po files needed for translation
 RUN mkdir -p /app/superset/translations
 COPY superset/translations /app/superset/translations
