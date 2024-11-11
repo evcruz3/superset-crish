@@ -70,9 +70,6 @@ RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json
 # Runs the webpack build process
 COPY superset-frontend /app/superset-frontend
 
-# Log the contents of node_modules/preset-chart-deckgl-osm
-RUN ls -la /app/superset-frontend/node_modules/preset-chart-deckgl-osm
-
 # This copies the .po files needed for translation
 RUN mkdir -p /app/superset/translations
 COPY superset/translations /app/superset/translations
@@ -82,6 +79,8 @@ RUN if [ "$DEV_MODE" = "false" ]; then \
         echo "Skipping 'npm run ${BUILD_CMD}' in dev mode"; \
     fi
 
+# Log the contents of node_modules/preset-chart-deckgl-osm
+RUN ls -la /app/superset-frontend/node_modules/preset-chart-deckgl-osm
 
 # Compiles .json files from the .po files, then deletes the .po files
 RUN if [ "$BUILD_TRANSLATIONS" = "true" ]; then \
