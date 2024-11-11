@@ -56,12 +56,16 @@ RUN --mount=type=bind,target=/frontend-mem-nag.sh,src=./docker/frontend-mem-nag.
 COPY preset-chart-deckgl-osm /app/preset-chart-deckgl-osm
 
 WORKDIR /app/superset-frontend
+
+# Log the contents of node_modules/preset-chart-deckgl-osm
+RUN ls -la /app/superset-frontend/node_modules/preset-chart-deckgl-osm
+
 # Creating empty folders to avoid errors when running COPY later on
 RUN mkdir -p /app/superset/static/assets
 RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json \
     --mount=type=bind,target=./package-lock.json,src=./superset-frontend/package-lock.json \
     if [ "$DEV_MODE" = "false" ]; then \
-        npm install; \
+        npm ci; \
     else \
         echo "Skipping 'npm ci' in dev mode"; \
     fi
