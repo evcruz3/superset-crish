@@ -28,7 +28,6 @@ x-superset-volumes:
   &superset-volumes # /app/pythonpath_docker will be appended to the PYTHONPATH in the final container
   - ./docker:/app/docker
   - superset_home:/app/superset_home
-  - ./preset-chart-deckgl-osm/:/app/preset-chart-deckgl-osm
 
 x-common-build: &common-build
   context: .
