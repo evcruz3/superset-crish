@@ -57,9 +57,6 @@ COPY preset-chart-deckgl-osm /app/preset-chart-deckgl-osm
 
 WORKDIR /app/superset-frontend
 
-# Log the contents of node_modules/preset-chart-deckgl-osm
-RUN ls -la /app/superset-frontend/node_modules/preset-chart-deckgl-osm
-
 # Creating empty folders to avoid errors when running COPY later on
 RUN mkdir -p /app/superset/static/assets
 RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json \
@@ -72,6 +69,9 @@ RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json
 
 # Runs the webpack build process
 COPY superset-frontend /app/superset-frontend
+
+# Log the contents of node_modules/preset-chart-deckgl-osm
+RUN ls -la /app/superset-frontend/node_modules/preset-chart-deckgl-osm
 
 # This copies the .po files needed for translation
 RUN mkdir -p /app/superset/translations
