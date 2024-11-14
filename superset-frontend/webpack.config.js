@@ -554,6 +554,7 @@ if (isDevMode) {
       });
     },
     historyApiFallback: true,
+    allowedHosts: 'all',
     hot: true,
     port: devserverPort,
     // Only serves bundled files from webpack-dev-server
