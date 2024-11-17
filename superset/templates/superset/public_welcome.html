@@ -19,5 +19,31 @@ under the License.
 {% extends "appbuilder/base.html" %}
 
 {% block content %}
-<h2><center>Welcome to CRISH Health DSS</center></h2>
+<!-- <h2><center>Welcome to CRISH Health DSS</center></h2> -->
+<script src="https://unpkg.com/@superset-ui/embedded-sdk"></script>
+
+<script>
+  supersetEmbeddedSdk.embedDashboard({
+    id: "f5a80122-1efd-4e01-b7d5-85342117d4f0", // given by the Superset embedding UI
+    supersetDomain: "https://crish-demo.rimes.int",
+    mountPoint: document.getElementById("my-superset-container"), // any html element that can contain an iframe
+    fetchGuestToken: () => "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7InVzZXJuYW1lIjoiZGFzaGJvYXJkIiwiZmlyc3RfbmFtZSI6IkRhc2hib2FyZCBVc2VyIiwibGFzdF9uYW1lIjoiRGFzaGJvYXJkIFVzZXIifSwicmVzb3VyY2VzIjpbeyJ0eXBlIjoiZGFzaGJvYXJkIiwiaWQiOiJmNWE4MDEyMi0xZWZkLTRlMDEtYjdkNS04NTM0MjExN2Q0ZjAifV0sInJsc19ydWxlcyI6W10sImlhdCI6MTczMTg0MzQ3Mi45NDEzMjExLCJleHAiOjE3MzE4NDM3NzIuOTQxMzIxMSwiYXVkIjoiaHR0cDovL3N1cGVyc2V0OjgwODgvIiwidHlwZSI6Imd1ZXN0In0.kWTCtk9bswYWawoSzHh6gGjartkStpE6NJ-qzGnlMak",
+    dashboardUiConfig: { // dashboard UI config: hideTitle, hideTab, hideChartControls, filters.visible, filters.expanded (optional), urlParams (optional)
+        hideTitle: true,
+        filters: {
+            expanded: true,
+        },
+        // urlParams: {
+        //     foo: 'value1',
+        //     bar: 'value2',
+        //     // ...
+        // }
+    },
+        // optional additional iframe sandbox attributes
+    iframeSandboxExtras: ['allow-top-navigation', 'allow-popups-to-escape-sandbox']
+  });
+</script>
+
+<div id="my-superset-container"></div>
+
 {% endblock %}
