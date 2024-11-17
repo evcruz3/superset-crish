@@ -153,25 +153,18 @@ const DeckMulti = (props: DeckMultiProps) => {
   }, [loadLayers, prevDeckSlices, props])
 
   const { payload, formData, setControlValue, height, width } = props
-  const layers = Object.values(subSlicesLayers);
+  const layers = Object.entries(subSlicesLayers)
+  .map(([id, layer]) => ({
+    ...layer,
+    visible: visibleLayers[Number(id)] !== false,
+  }))
 
   const toggleLayerVisibility = (layerId: number) => {
-    setVisibleLayers(prev => {
-      const newVisibility = !prev[layerId];
-      const updatedLayers = {
-        ...prev,
-        [layerId]: newVisibility,
-      };
-
-      // Update the actual layer visibility
-      const layer = subSlicesLayers[layerId];
-      if (layer) {
-        layer.setProps({ visible: newVisibility });
-      }
-
-      return updatedLayers;
-    });
-  };
+    setVisibleLayers(prev => ({
+      ...prev,
+      [layerId]: !prev[layerId],
+    }))
+  }
 
   return (
     <div className="relative w-full h-full">
