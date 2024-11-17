@@ -137,17 +137,23 @@ var DeckMulti = props => {
     height,
     width
   } = props;
-  var layers = Object.entries(subSlicesLayers).filter(_ref8 => {
-    var [id] = _ref8;
-    return visibleLayers[Number(id)];
-  }).map(_ref9 => {
-    var [, layer] = _ref9;
-    return layer;
-  });
+  var layers = Object.values(subSlicesLayers);
   var toggleLayerVisibility = layerId => {
-    setVisibleLayers(prev => _extends({}, prev, {
-      [layerId]: !prev[layerId]
-    }));
+    setVisibleLayers(prev => {
+      var newVisibility = !prev[layerId];
+      var updatedLayers = _extends({}, prev, {
+        [layerId]: newVisibility
+      });
+
+      // Update the actual layer visibility
+      var layer = subSlicesLayers[layerId];
+      if (layer) {
+        layer.setProps({
+          visible: newVisibility
+        });
+      }
+      return updatedLayers;
+    });
   };
   return /*#__PURE__*/_jsxs("div", {
     className: "relative w-full h-full",
@@ -162,14 +168,14 @@ var DeckMulti = props => {
       height: height,
       width: width
     }), /*#__PURE__*/_jsxs(Card, {
-      className: "absolute top-4 left-4 w-64 bg-white/80 backdrop-blur-sm",
+      className: "absolute top-4 left-4 z-10 w-64 bg-white/80 backdrop-blur-sm",
       children: [/*#__PURE__*/_jsx(CardHeader, {
         children: /*#__PURE__*/_jsx(CardTitle, {
           children: "Layers"
         })
       }), /*#__PURE__*/_jsx(CardContent, {
-        children: Object.entries(subSlicesLayers).map(_ref10 => {
-          var [id, layer] = _ref10;
+        children: Object.entries(subSlicesLayers).map(_ref8 => {
+          var [id, layer] = _ref8;
           return /*#__PURE__*/_jsxs("div", {
             className: "flex items-center space-x-2 mb-2",
             children: [/*#__PURE__*/_jsx(Checkbox, {

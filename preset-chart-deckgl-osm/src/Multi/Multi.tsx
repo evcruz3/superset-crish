@@ -153,16 +153,25 @@ const DeckMulti = (props: DeckMultiProps) => {
   }, [loadLayers, prevDeckSlices, props])
 
   const { payload, formData, setControlValue, height, width } = props
-  const layers = Object.entries(subSlicesLayers)
-    .filter(([id]) => visibleLayers[Number(id)])
-    .map(([, layer]) => layer)
+  const layers = Object.values(subSlicesLayers);
 
   const toggleLayerVisibility = (layerId: number) => {
-    setVisibleLayers(prev => ({
-      ...prev,
-      [layerId]: !prev[layerId],
-    }))
-  }
+    setVisibleLayers(prev => {
+      const newVisibility = !prev[layerId];
+      const updatedLayers = {
+        ...prev,
+        [layerId]: newVisibility,
+      };
+
+      // Update the actual layer visibility
+      const layer = subSlicesLayers[layerId];
+      if (layer) {
+        layer.setProps({ visible: newVisibility });
+      }
+
+      return updatedLayers;
+    });
+  };
 
   return (
     <div className="relative w-full h-full">
@@ -177,7 +186,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         height={height}
         width={width}
       />
-      <Card className="absolute top-4 left-4 w-64 bg-white/80 backdrop-blur-sm">
+      <Card className="absolute top-4 left-4 z-10 w-64 bg-white/80 backdrop-blur-sm">
         <CardHeader>
           <CardTitle>Layers</CardTitle>
         </CardHeader>
