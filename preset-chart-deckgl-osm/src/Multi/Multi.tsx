@@ -154,10 +154,8 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   const { payload, formData, setControlValue, height, width } = props
   const layers = Object.entries(subSlicesLayers)
-  .map(([id, layer]) => ({
-    ...layer,
-    visible: visibleLayers[Number(id)] !== false,
-  }))
+    .filter(([id]) => visibleLayers[Number(id)])
+    .map(([, layer]) => layer)
 
   const toggleLayerVisibility = (layerId: number) => {
     setVisibleLayers(prev => ({
@@ -167,34 +165,34 @@ const DeckMulti = (props: DeckMultiProps) => {
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <DeckGLContainerStyledWrapper
-        ref={containerRef}
-        mapboxApiAccessToken={payload.data.mapboxApiKey}
-        viewport={viewport || props.viewport}
-        layers={layers}
-        mapStyle={formData.mapbox_style}
-        setControlValue={setControlValue}
-        onViewportChange={setViewport}
-        height={height}
-        width={width}
+      ref={containerRef}
+      mapboxApiAccessToken={payload.data.mapboxApiKey}
+      viewport={viewport || props.viewport}
+      layers={layers}
+      mapStyle={formData.mapbox_style}
+      setControlValue={setControlValue}
+      onViewportChange={setViewport}
+      height={height}
+      width={width}
       />
-      <Card className="absolute top-4 left-4 z-10 w-64 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle>Layers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {Object.entries(subSlicesLayers).map(([id, layer]) => (
-            <div key={id} className="flex items-center space-x-2 mb-2">
-              <Checkbox
-                id={`layer-${id}`}
-                checked={visibleLayers[Number(id)]}
-                onCheckedChange={() => toggleLayerVisibility(Number(id))}
-              />
-              <Label htmlFor={`layer-${id}`}>{layer.id}</Label>
-            </div>
-          ))}
-        </CardContent>
+      <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)' }}>
+      <CardHeader>
+        <CardTitle>Layers</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {Object.entries(subSlicesLayers).map(([id, layer]) => (
+        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <Checkbox
+          id={`layer-${id}`}
+          checked={visibleLayers[Number(id)]}
+          onCheckedChange={() => toggleLayerVisibility(Number(id))}
+          />
+          <Label htmlFor={`layer-${id}`}>{layer.id}</Label>
+        </div>
+        ))}
+      </CardContent>
       </Card>
     </div>
   )

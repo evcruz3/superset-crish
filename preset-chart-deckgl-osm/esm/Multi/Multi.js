@@ -137,11 +137,12 @@ var DeckMulti = props => {
     height,
     width
   } = props;
-  var layers = Object.entries(subSlicesLayers).map(_ref8 => {
-    var [id, layer] = _ref8;
-    return _extends({}, layer, {
-      visible: visibleLayers[Number(id)] !== false
-    });
+  var layers = Object.entries(subSlicesLayers).filter(_ref8 => {
+    var [id] = _ref8;
+    return visibleLayers[Number(id)];
+  }).map(_ref9 => {
+    var [, layer] = _ref9;
+    return layer;
   });
   var toggleLayerVisibility = layerId => {
     setVisibleLayers(prev => _extends({}, prev, {
@@ -149,7 +150,11 @@ var DeckMulti = props => {
     }));
   };
   return /*#__PURE__*/_jsxs("div", {
-    className: "relative w-full h-full",
+    style: {
+      position: 'relative',
+      width: '100%',
+      height: '100%'
+    },
     children: [/*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
       ref: containerRef,
       mapboxApiAccessToken: payload.data.mapboxApiKey,
@@ -161,16 +166,28 @@ var DeckMulti = props => {
       height: height,
       width: width
     }), /*#__PURE__*/_jsxs(Card, {
-      className: "absolute top-4 left-4 z-10 w-64 bg-white/80 backdrop-blur-sm",
+      style: {
+        position: 'absolute',
+        top: '1rem',
+        left: '1rem',
+        width: '16rem',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(10px)'
+      },
       children: [/*#__PURE__*/_jsx(CardHeader, {
         children: /*#__PURE__*/_jsx(CardTitle, {
           children: "Layers"
         })
       }), /*#__PURE__*/_jsx(CardContent, {
-        children: Object.entries(subSlicesLayers).map(_ref9 => {
-          var [id, layer] = _ref9;
+        children: Object.entries(subSlicesLayers).map(_ref10 => {
+          var [id, layer] = _ref10;
           return /*#__PURE__*/_jsxs("div", {
-            className: "flex items-center space-x-2 mb-2",
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            },
             children: [/*#__PURE__*/_jsx(Checkbox, {
               id: "layer-" + id,
               checked: visibleLayers[Number(id)],
