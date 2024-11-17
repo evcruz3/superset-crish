@@ -1,36 +1,86 @@
+'use client';
+
+import _pt from "prop-types";
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/* eslint-disable react/jsx-handler-names */
-/* eslint-disable react/no-access-state-in-setstate */
-/* eslint-disable camelcase */
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { isEqual } from 'lodash';
 import { SupersetClient, usePrevious } from '@superset-ui/core';
 import { DeckGLContainerStyledWrapper } from '../DeckGLContainer';
 import { getExploreLongUrl } from '../utils/explore';
 import layerGenerators from '../layers';
-import { jsx as _jsx } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+// Custom Card component
+var Card = _ref => {
+  var {
+    children,
+    className = ''
+  } = _ref;
+  return /*#__PURE__*/_jsx("div", {
+    className: "bg-white rounded-lg shadow-md " + className,
+    children: children
+  });
+};
+var CardHeader = _ref2 => {
+  var {
+    children
+  } = _ref2;
+  return /*#__PURE__*/_jsx("div", {
+    className: "px-4 py-3 border-b border-gray-200",
+    children: children
+  });
+};
+var CardTitle = _ref3 => {
+  var {
+    children
+  } = _ref3;
+  return /*#__PURE__*/_jsx("h3", {
+    className: "text-lg font-semibold text-gray-800",
+    children: children
+  });
+};
+var CardContent = _ref4 => {
+  var {
+    children
+  } = _ref4;
+  return /*#__PURE__*/_jsx("div", {
+    className: "p-4",
+    children: children
+  });
+};
+
+// Custom Checkbox component
+var Checkbox = _ref5 => {
+  var {
+    id,
+    checked,
+    onCheckedChange
+  } = _ref5;
+  return /*#__PURE__*/_jsx("input", {
+    type: "checkbox",
+    id: id,
+    checked: checked,
+    onChange: e => onCheckedChange(e.target.checked),
+    className: "form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+  });
+};
+
+// Custom Label component
+var Label = _ref6 => {
+  var {
+    children,
+    htmlFor
+  } = _ref6;
+  return /*#__PURE__*/_jsx("label", {
+    htmlFor: htmlFor,
+    className: "ml-2 text-sm text-gray-700",
+    children: children
+  });
+};
 var DeckMulti = props => {
-  var containerRef = useRef();
+  var containerRef = useRef(null);
   var [viewport, setViewport] = useState();
   var [subSlicesLayers, setSubSlicesLayers] = useState({});
+  var [visibleLayers, setVisibleLayers] = useState({});
   var setTooltip = useCallback(tooltip => {
     var {
       current
@@ -42,10 +92,8 @@ var DeckMulti = props => {
   var loadLayers = useCallback((formData, payload, viewport) => {
     setViewport(viewport);
     setSubSlicesLayers({});
+    setVisibleLayers({});
     payload.data.slices.forEach(subslice => {
-      // Filters applied to multi_deck are passed down to underlying charts
-      // note that dashboard contextual information (filter_immune_slices and such) aren't
-      // taken into consideration here
       var filters = [...(subslice.form_data.filters || []), ...(formData.filters || []), ...(formData.extra_filters || [])];
       var subsliceCopy = _extends({}, subslice, {
         form_data: _extends({}, subslice.form_data, {
@@ -56,13 +104,16 @@ var DeckMulti = props => {
       if (url) {
         SupersetClient.get({
           endpoint: url
-        }).then(_ref => {
+        }).then(_ref7 => {
           var {
             json
-          } = _ref;
+          } = _ref7;
           var layer = layerGenerators[subsliceCopy.form_data.viz_type](subsliceCopy.form_data, json, props.onAddFilter, setTooltip, props.datasource, [], props.onSelect);
-          setSubSlicesLayers(subSlicesLayers => _extends({}, subSlicesLayers, {
+          setSubSlicesLayers(prevLayers => _extends({}, prevLayers, {
             [subsliceCopy.slice_id]: layer
+          }));
+          setVisibleLayers(prevVisible => _extends({}, prevVisible, {
+            [subsliceCopy.slice_id]: true
           }));
         }).catch(() => {});
       }
@@ -86,17 +137,59 @@ var DeckMulti = props => {
     height,
     width
   } = props;
-  var layers = Object.values(subSlicesLayers);
-  return /*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
-    ref: containerRef,
-    mapboxApiAccessToken: payload.data.mapboxApiKey,
-    viewport: viewport || props.viewport,
-    layers: layers,
-    mapStyle: formData.mapbox_style,
-    setControlValue: setControlValue,
-    onViewportChange: setViewport,
-    height: height,
-    width: width
+  var layers = Object.entries(subSlicesLayers).filter(_ref8 => {
+    var [id] = _ref8;
+    return visibleLayers[Number(id)];
+  }).map(_ref9 => {
+    var [, layer] = _ref9;
+    return layer;
   });
+  var toggleLayerVisibility = layerId => {
+    setVisibleLayers(prev => _extends({}, prev, {
+      [layerId]: !prev[layerId]
+    }));
+  };
+  return /*#__PURE__*/_jsxs("div", {
+    className: "relative w-full h-full",
+    children: [/*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
+      ref: containerRef,
+      mapboxApiAccessToken: payload.data.mapboxApiKey,
+      viewport: viewport || props.viewport,
+      layers: layers,
+      mapStyle: formData.mapbox_style,
+      setControlValue: setControlValue,
+      onViewportChange: setViewport,
+      height: height,
+      width: width
+    }), /*#__PURE__*/_jsxs(Card, {
+      className: "absolute top-4 left-4 w-64 bg-white/80 backdrop-blur-sm",
+      children: [/*#__PURE__*/_jsx(CardHeader, {
+        children: /*#__PURE__*/_jsx(CardTitle, {
+          children: "Layers"
+        })
+      }), /*#__PURE__*/_jsx(CardContent, {
+        children: Object.entries(subSlicesLayers).map(_ref10 => {
+          var [id, layer] = _ref10;
+          return /*#__PURE__*/_jsxs("div", {
+            className: "flex items-center space-x-2 mb-2",
+            children: [/*#__PURE__*/_jsx(Checkbox, {
+              id: "layer-" + id,
+              checked: visibleLayers[Number(id)],
+              onCheckedChange: () => toggleLayerVisibility(Number(id))
+            }), /*#__PURE__*/_jsx(Label, {
+              htmlFor: "layer-" + id,
+              children: layer.id
+            })]
+          }, id);
+        })
+      })]
+    })]
+  });
+};
+DeckMulti.propTypes = {
+  setControlValue: _pt.func.isRequired,
+  height: _pt.number.isRequired,
+  width: _pt.number.isRequired,
+  onSelect: _pt.func.isRequired
 };
 export default /*#__PURE__*/memo(DeckMulti);
