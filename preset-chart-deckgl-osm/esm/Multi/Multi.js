@@ -13,10 +13,14 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 var Card = _ref => {
   var {
     children,
-    className = ''
+    style = {}
   } = _ref;
   return /*#__PURE__*/_jsx("div", {
-    className: "bg-white rounded-lg shadow-md " + className,
+    style: _extends({
+      backgroundColor: 'white',
+      borderRadius: '0.5rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+    }, style),
     children: children
   });
 };
@@ -25,7 +29,10 @@ var CardHeader = _ref2 => {
     children
   } = _ref2;
   return /*#__PURE__*/_jsx("div", {
-    className: "px-4 py-3 border-b border-gray-200",
+    style: {
+      padding: '1rem',
+      borderBottom: '1px solid #e5e7eb'
+    },
     children: children
   });
 };
@@ -34,7 +41,11 @@ var CardTitle = _ref3 => {
     children
   } = _ref3;
   return /*#__PURE__*/_jsx("h3", {
-    className: "text-lg font-semibold text-gray-800",
+    style: {
+      fontSize: '1.125rem',
+      fontWeight: '600',
+      color: '#1f2937'
+    },
     children: children
   });
 };
@@ -43,7 +54,9 @@ var CardContent = _ref4 => {
     children
   } = _ref4;
   return /*#__PURE__*/_jsx("div", {
-    className: "p-4",
+    style: {
+      padding: '1rem'
+    },
     children: children
   });
 };
@@ -165,8 +178,7 @@ var DeckMulti = props => {
         top: '1rem',
         left: '1rem',
         width: '16rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)'
+        zIndex: 10
       },
       children: [/*#__PURE__*/_jsx(CardHeader, {
         children: /*#__PURE__*/_jsx(CardTitle, {

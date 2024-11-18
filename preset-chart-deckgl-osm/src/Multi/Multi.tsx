@@ -20,26 +20,26 @@ import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
 
 // Custom Card component
-const Card: React.FC<React.PropsWithChildren<{ className?: string }>> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow-md ${className}`}>
+const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style = {} }) => (
+  <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', ...style }}>
     {children}
   </div>
 )
 
 const CardHeader: React.FC<React.PropsWithChildren> = ({ children }) => (
-  <div className="px-4 py-3 border-b border-gray-200">
+  <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
     {children}
   </div>
 )
 
 const CardTitle: React.FC<React.PropsWithChildren> = ({ children }) => (
-  <h3 className="text-lg font-semibold text-gray-800">
+  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937' }}>
     {children}
   </h3>
 )
 
 const CardContent: React.FC<React.PropsWithChildren> = ({ children }) => (
-  <div className="p-4">
+  <div style={{ padding: '1rem' }}>
     {children}
   </div>
 )
@@ -176,22 +176,22 @@ const DeckMulti = (props: DeckMultiProps) => {
       height={height}
       width={width}
       >
-        <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)' }}>
-        <CardHeader>
-          <CardTitle>Layers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {Object.entries(subSlicesLayers).map(([id, layer]) => (
-          <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Checkbox
-            id={`layer-${id}`}
-            checked={visibleLayers[Number(id)]}
-            onCheckedChange={() => toggleLayerVisibility(Number(id))}
-            />
-            <Label htmlFor={`layer-${id}`}>{layer.id}</Label>
-          </div>
-          ))}
-        </CardContent>
+        <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', zIndex: 10 }}>
+          <CardHeader>
+            <CardTitle>Layers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Object.entries(subSlicesLayers).map(([id, layer]) => (
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Checkbox
+                  id={`layer-${id}`}
+                  checked={visibleLayers[Number(id)]}
+                  onCheckedChange={() => toggleLayerVisibility(Number(id))}
+                />
+                <Label htmlFor={`layer-${id}`}>{layer.id}</Label>
+              </div>
+            ))}
+          </CardContent>
         </Card>
       </DeckGLContainerStyledWrapper>
   )
