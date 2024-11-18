@@ -165,7 +165,6 @@ const DeckMulti = (props: DeckMultiProps) => {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <DeckGLContainerStyledWrapper
       ref={containerRef}
       mapboxApiAccessToken={payload.data.mapboxApiKey}
@@ -176,25 +175,25 @@ const DeckMulti = (props: DeckMultiProps) => {
       onViewportChange={setViewport}
       height={height}
       width={width}
-      />
-      <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)' }}>
-      <CardHeader>
-        <CardTitle>Layers</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {Object.entries(subSlicesLayers).map(([id, layer]) => (
-        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <Checkbox
-          id={`layer-${id}`}
-          checked={visibleLayers[Number(id)]}
-          onCheckedChange={() => toggleLayerVisibility(Number(id))}
-          />
-          <Label htmlFor={`layer-${id}`}>{layer.id}</Label>
-        </div>
-        ))}
-      </CardContent>
-      </Card>
-    </div>
+      >
+        <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)' }}>
+        <CardHeader>
+          <CardTitle>Layers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {Object.entries(subSlicesLayers).map(([id, layer]) => (
+          <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <Checkbox
+            id={`layer-${id}`}
+            checked={visibleLayers[Number(id)]}
+            onCheckedChange={() => toggleLayerVisibility(Number(id))}
+            />
+            <Label htmlFor={`layer-${id}`}>{layer.id}</Label>
+          </div>
+          ))}
+        </CardContent>
+        </Card>
+      </DeckGLContainerStyledWrapper>
   )
 }
 

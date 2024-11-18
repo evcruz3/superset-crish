@@ -149,23 +149,17 @@ var DeckMulti = props => {
       [layerId]: !prev[layerId]
     }));
   };
-  return /*#__PURE__*/_jsxs("div", {
-    style: {
-      position: 'relative',
-      width: '100%',
-      height: '100%'
-    },
-    children: [/*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
-      ref: containerRef,
-      mapboxApiAccessToken: payload.data.mapboxApiKey,
-      viewport: viewport || props.viewport,
-      layers: layers,
-      mapStyle: formData.mapbox_style,
-      setControlValue: setControlValue,
-      onViewportChange: setViewport,
-      height: height,
-      width: width
-    }), /*#__PURE__*/_jsxs(Card, {
+  return /*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
+    ref: containerRef,
+    mapboxApiAccessToken: payload.data.mapboxApiKey,
+    viewport: viewport || props.viewport,
+    layers: layers,
+    mapStyle: formData.mapbox_style,
+    setControlValue: setControlValue,
+    onViewportChange: setViewport,
+    height: height,
+    width: width,
+    children: /*#__PURE__*/_jsxs(Card, {
       style: {
         position: 'absolute',
         top: '1rem',
@@ -199,7 +193,7 @@ var DeckMulti = props => {
           }, id);
         })
       })]
-    })]
+    })
   });
 };
 DeckMulti.propTypes = {
