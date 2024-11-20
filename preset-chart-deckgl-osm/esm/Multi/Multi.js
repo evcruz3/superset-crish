@@ -73,7 +73,12 @@ var Checkbox = _ref5 => {
     id: id,
     checked: checked,
     onChange: e => onCheckedChange(e.target.checked),
-    className: "form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+    style: {
+      height: '1rem',
+      width: '1rem',
+      color: '#2563eb',
+      transition: 'all 150ms ease-in-out'
+    }
   });
 };
 
@@ -85,7 +90,11 @@ var Label = _ref6 => {
   } = _ref6;
   return /*#__PURE__*/_jsx("label", {
     htmlFor: htmlFor,
-    className: "ml-2 text-sm text-gray-700",
+    style: {
+      marginLeft: '0.5rem',
+      fontSize: '0.875rem',
+      color: '#374151'
+    },
     children: children
   });
 };
@@ -102,36 +111,37 @@ var DeckMulti = props => {
       current.setTooltip(tooltip);
     }
   }, []);
+  var loadLayer = useCallback((subslice, filters) => {
+    var subsliceCopy = _extends({}, subslice, {
+      form_data: _extends({}, subslice.form_data, {
+        filters
+      })
+    });
+    var url = getExploreLongUrl(subsliceCopy.form_data, 'json');
+    if (url) {
+      SupersetClient.get({
+        endpoint: url
+      }).then(_ref7 => {
+        var {
+          json
+        } = _ref7;
+        var layer = layerGenerators[subsliceCopy.form_data.viz_type](subsliceCopy.form_data, json, props.onAddFilter, setTooltip, props.datasource, [], props.onSelect);
+        setSubSlicesLayers(prevLayers => _extends({}, prevLayers, {
+          [subsliceCopy.slice_id]: layer
+        }));
+      }).catch(() => {});
+    }
+  }, [props.datasource, props.onAddFilter, props.onSelect, setTooltip]);
   var loadLayers = useCallback((formData, payload, viewport) => {
     setViewport(viewport);
-    setSubSlicesLayers({});
-    setVisibleLayers({});
     payload.data.slices.forEach(subslice => {
       var filters = [...(subslice.form_data.filters || []), ...(formData.filters || []), ...(formData.extra_filters || [])];
-      var subsliceCopy = _extends({}, subslice, {
-        form_data: _extends({}, subslice.form_data, {
-          filters
-        })
-      });
-      var url = getExploreLongUrl(subsliceCopy.form_data, 'json');
-      if (url) {
-        SupersetClient.get({
-          endpoint: url
-        }).then(_ref7 => {
-          var {
-            json
-          } = _ref7;
-          var layer = layerGenerators[subsliceCopy.form_data.viz_type](subsliceCopy.form_data, json, props.onAddFilter, setTooltip, props.datasource, [], props.onSelect);
-          setSubSlicesLayers(prevLayers => _extends({}, prevLayers, {
-            [subsliceCopy.slice_id]: layer
-          }));
-          setVisibleLayers(prevVisible => _extends({}, prevVisible, {
-            [subsliceCopy.slice_id]: true
-          }));
-        }).catch(() => {});
-      }
+      loadLayer(subslice, filters);
+      setVisibleLayers(prevVisible => _extends({}, prevVisible, {
+        [subslice.slice_id]: true
+      }));
     });
-  }, [props.datasource, props.onAddFilter, props.onSelect, setTooltip]);
+  }, [loadLayer]);
   var prevDeckSlices = usePrevious(props.formData.deck_slices);
   useEffect(() => {
     var {
@@ -143,6 +153,18 @@ var DeckMulti = props => {
       loadLayers(formData, payload);
     }
   }, [loadLayers, prevDeckSlices, props]);
+  var toggleLayerVisibility = layerId => {
+    setVisibleLayers(prev => _extends({}, prev, {
+      [layerId]: !prev[layerId]
+    }));
+    if (!visibleLayers[layerId]) {
+      var subslice = props.payload.data.slices.find(slice => slice.slice_id === layerId);
+      if (subslice) {
+        var filters = [...(subslice.form_data.filters || []), ...(props.formData.filters || []), ...(props.formData.extra_filters || [])];
+        loadLayer(subslice, filters);
+      }
+    }
+  };
   var {
     payload,
     formData,
@@ -157,11 +179,7 @@ var DeckMulti = props => {
     var [, layer] = _ref9;
     return layer;
   });
-  var toggleLayerVisibility = layerId => {
-    setVisibleLayers(prev => _extends({}, prev, {
-      [layerId]: !prev[layerId]
-    }));
-  };
+  console.log(payload.data.slices);
   return /*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
     ref: containerRef,
     mapboxApiAccessToken: payload.data.mapboxApiKey,
@@ -182,11 +200,11 @@ var DeckMulti = props => {
       },
       children: [/*#__PURE__*/_jsx(CardHeader, {
         children: /*#__PURE__*/_jsx(CardTitle, {
-          children: "Layers"
+          children: "Geo Layers"
         })
       }), /*#__PURE__*/_jsx(CardContent, {
-        children: Object.entries(subSlicesLayers).map(_ref10 => {
-          var [id, layer] = _ref10;
+        children: Object.entries(props.payload.data.slices).map(_ref10 => {
+          var [index, subslice] = _ref10;
           return /*#__PURE__*/_jsxs("div", {
             style: {
               display: 'flex',
@@ -195,14 +213,14 @@ var DeckMulti = props => {
               marginBottom: '0.5rem'
             },
             children: [/*#__PURE__*/_jsx(Checkbox, {
-              id: "layer-" + id,
-              checked: visibleLayers[Number(id)],
-              onCheckedChange: () => toggleLayerVisibility(Number(id))
+              id: "layer-" + subslice.slice_id,
+              checked: !!visibleLayers[subslice.slice_id],
+              onCheckedChange: () => toggleLayerVisibility(subslice.slice_id)
             }), /*#__PURE__*/_jsx(Label, {
-              htmlFor: "layer-" + id,
-              children: layer.id
+              htmlFor: "layer-" + subslice.slice_id,
+              children: subslice.slice_name
             })]
-          }, id);
+          }, subslice.slice_id);
         })
       })]
     })
