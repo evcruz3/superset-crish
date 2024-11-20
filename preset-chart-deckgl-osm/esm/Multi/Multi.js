@@ -3,6 +3,7 @@
 import _pt from "prop-types";
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { isEqual } from 'lodash';
 import { SupersetClient, usePrevious } from '@superset-ui/core';
 import { DeckGLContainerStyledWrapper } from '../DeckGLContainer';
@@ -103,6 +104,7 @@ var DeckMulti = props => {
   var [viewport, setViewport] = useState();
   var [subSlicesLayers, setSubSlicesLayers] = useState({});
   var [visibleLayers, setVisibleLayers] = useState({});
+  var [layerOrder, setLayerOrder] = useState([]);
   var setTooltip = useCallback(tooltip => {
     var {
       current
@@ -129,6 +131,7 @@ var DeckMulti = props => {
         setSubSlicesLayers(prevLayers => _extends({}, prevLayers, {
           [subsliceCopy.slice_id]: layer
         }));
+        setLayerOrder(prevOrder => prevOrder.includes(subslice.slice_id) ? prevOrder : [...prevOrder, subslice.slice_id]); // Ensure no duplicate IDs in layerOrder
       }).catch(() => {});
     }
   }, [props.datasource, props.onAddFilter, props.onSelect, setTooltip]);
@@ -157,8 +160,34 @@ var DeckMulti = props => {
     setVisibleLayers(prev => _extends({}, prev, {
       [layerId]: !prev[layerId]
     }));
+
+    // If layer is being toggled back to visible, reinitialize it
     if (!visibleLayers[layerId]) {
       var subslice = props.payload.data.slices.find(slice => slice.slice_id === layerId);
+      if (subslice) {
+        var filters = [...(subslice.form_data.filters || []), ...(props.formData.filters || []), ...(props.formData.extra_filters || [])];
+        loadLayer(subslice, filters);
+      }
+    } else {
+      // Remove the layer from subSlicesLayers to prevent reuse of finalized layers
+      setSubSlicesLayers(prevLayers => {
+        var updatedLayers = _extends({}, prevLayers);
+        delete updatedLayers[layerId];
+        return updatedLayers;
+      });
+    }
+  };
+  var onDragEnd = result => {
+    if (!result.destination) return;
+    var reordered = Array.from(layerOrder);
+    var [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+    setLayerOrder(reordered);
+
+    // Reinitialize the moved layer to avoid reusing a finalized layer
+    var movedLayerId = parseInt(result.draggableId, 10);
+    if (!visibleLayers[movedLayerId]) {
+      var subslice = props.payload.data.slices.find(slice => slice.slice_id === movedLayerId);
       if (subslice) {
         var filters = [...(subslice.form_data.filters || []), ...(props.formData.filters || []), ...(props.formData.extra_filters || [])];
         loadLayer(subslice, filters);
@@ -172,14 +201,7 @@ var DeckMulti = props => {
     height,
     width
   } = props;
-  var layers = Object.entries(subSlicesLayers).filter(_ref8 => {
-    var [id] = _ref8;
-    return visibleLayers[Number(id)];
-  }).map(_ref9 => {
-    var [, layer] = _ref9;
-    return layer;
-  });
-  console.log(payload.data.slices);
+  var layers = layerOrder.filter(id => visibleLayers[id]).map(id => subSlicesLayers[id]);
   return /*#__PURE__*/_jsx(DeckGLContainerStyledWrapper, {
     ref: containerRef,
     mapboxApiAccessToken: payload.data.mapboxApiKey,
@@ -202,25 +224,52 @@ var DeckMulti = props => {
         children: /*#__PURE__*/_jsx(CardTitle, {
           children: "Geo Layers"
         })
-      }), /*#__PURE__*/_jsx(CardContent, {
-        children: Object.entries(props.payload.data.slices).map(_ref10 => {
-          var [index, subslice] = _ref10;
-          return /*#__PURE__*/_jsxs("div", {
+      }), /*#__PURE__*/_jsx(DragDropContext, {
+        onDragEnd: onDragEnd,
+        children: /*#__PURE__*/_jsx(Droppable, {
+          droppableId: "layers",
+          children: provided => /*#__PURE__*/_jsxs("div", _extends({
             style: {
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.5rem'
+              marginTop: "1rem"
             },
-            children: [/*#__PURE__*/_jsx(Checkbox, {
-              id: "layer-" + subslice.slice_id,
-              checked: !!visibleLayers[subslice.slice_id],
-              onCheckedChange: () => toggleLayerVisibility(subslice.slice_id)
-            }), /*#__PURE__*/_jsx(Label, {
-              htmlFor: "layer-" + subslice.slice_id,
-              children: subslice.slice_name
-            })]
-          }, subslice.slice_id);
+            ref: provided.innerRef
+          }, provided.droppableProps, {
+            children: [layerOrder.map((id, index) => {
+              var subslice = props.payload.data.slices.find(slice => slice.slice_id === id);
+              return /*#__PURE__*/_jsx(Draggable, {
+                draggableId: id.toString(),
+                index: index,
+                children: draggableProvided => /*#__PURE__*/_jsxs("div", _extends({
+                  ref: draggableProvided.innerRef
+                }, draggableProvided.draggableProps, draggableProvided.dragHandleProps, {
+                  style: _extends({
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem',
+                    paddingLeft: '1rem',
+                    paddingRight: '1rem'
+                  }, draggableProvided.draggableProps.style),
+                  children: [/*#__PURE__*/_jsx(Checkbox, {
+                    id: "layer-" + id,
+                    checked: !!visibleLayers[id],
+                    onCheckedChange: () => toggleLayerVisibility(id)
+                  }), /*#__PURE__*/_jsx(Label, {
+                    htmlFor: "layer-" + id,
+                    children: subslice == null ? void 0 : subslice.slice_name
+                  }), /*#__PURE__*/_jsx("span", {
+                    style: {
+                      cursor: 'grab',
+                      fontSize: '1rem',
+                      marginLeft: 'auto'
+                    },
+                    children: "\u2630"
+                  })]
+                }))
+              }, id);
+            }), provided.placeholder]
+          }))
         })
       })]
     })

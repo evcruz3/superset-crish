@@ -1,6 +1,7 @@
 'use client'
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
 import { isEqual } from 'lodash'
 import {
   Datasource,
@@ -84,6 +85,7 @@ const DeckMulti = (props: DeckMultiProps) => {
   const [viewport, setViewport] = useState<Viewport>()
   const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer>>({})
   const [visibleLayers, setVisibleLayers] = useState<Record<number, boolean>>({})
+  const [layerOrder, setLayerOrder] = useState<number[]>([])
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef
@@ -101,9 +103,9 @@ const DeckMulti = (props: DeckMultiProps) => {
           filters,
         },
       }
-
+  
       const url = getExploreLongUrl(subsliceCopy.form_data, 'json')
-
+  
       if (url) {
         SupersetClient.get({
           endpoint: url,
@@ -122,6 +124,11 @@ const DeckMulti = (props: DeckMultiProps) => {
               ...prevLayers,
               [subsliceCopy.slice_id]: layer,
             }))
+            setLayerOrder((prevOrder) =>
+              prevOrder.includes(subslice.slice_id)
+                ? prevOrder
+                : [...prevOrder, subslice.slice_id],
+            ) // Ensure no duplicate IDs in layerOrder
           })
           .catch(() => {})
       }
@@ -162,8 +169,39 @@ const DeckMulti = (props: DeckMultiProps) => {
       ...prev,
       [layerId]: !prev[layerId],
     }))
+  
+    // If layer is being toggled back to visible, reinitialize it
     if (!visibleLayers[layerId]) {
       const subslice = props.payload.data.slices.find((slice) => slice.slice_id === layerId)
+      if (subslice) {
+        const filters = [
+          ...(subslice.form_data.filters || []),
+          ...(props.formData.filters || []),
+          ...(props.formData.extra_filters || []),
+        ]
+        loadLayer(subslice, filters)
+      }
+    } else {
+      // Remove the layer from subSlicesLayers to prevent reuse of finalized layers
+      setSubSlicesLayers((prevLayers) => {
+        const updatedLayers = { ...prevLayers }
+        delete updatedLayers[layerId]
+        return updatedLayers
+      })
+    }
+  }
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return
+    const reordered = Array.from(layerOrder)
+    const [moved] = reordered.splice(result.source.index, 1)
+    reordered.splice(result.destination.index, 0, moved)
+    setLayerOrder(reordered)
+  
+    // Reinitialize the moved layer to avoid reusing a finalized layer
+    const movedLayerId = parseInt(result.draggableId, 10)
+    if (!visibleLayers[movedLayerId]) {
+      const subslice = props.payload.data.slices.find((slice) => slice.slice_id === movedLayerId)
       if (subslice) {
         const filters = [
           ...(subslice.form_data.filters || []),
@@ -175,13 +213,10 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }
 
-
   const { payload, formData, setControlValue, height, width } = props
-  const layers = Object.entries(subSlicesLayers)
-    .filter(([id]) => visibleLayers[Number(id)])
-    .map(([, layer]) => layer)
-
-  console.log(payload.data.slices)
+  const layers = layerOrder
+    .filter((id) => visibleLayers[id])
+    .map((id) => subSlicesLayers[id])
 
   return (
     <DeckGLContainerStyledWrapper
@@ -199,18 +234,47 @@ const DeckMulti = (props: DeckMultiProps) => {
         <CardHeader>
           <CardTitle>Geo Layers</CardTitle>
         </CardHeader>
-        <CardContent>
-          {Object.entries(props.payload.data.slices as JsonObject).map(([index, subslice]) => (
-            <div key={subslice.slice_id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <Checkbox
-                id={`layer-${subslice.slice_id}`}
-                checked={!!visibleLayers[subslice.slice_id]}
-                onCheckedChange={() => toggleLayerVisibility(subslice.slice_id)}
-              />
-              <Label htmlFor={`layer-${subslice.slice_id}`}>{subslice.slice_name}</Label>
-            </div>
-          ))}
-        </CardContent>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="layers">
+            {(provided) => (
+              <div style={{marginTop: "1rem"}} ref={provided.innerRef} {...provided.droppableProps}>
+                {layerOrder.map((id, index) => {
+                  const subslice = props.payload.data.slices.find((slice) => slice.slice_id === id)
+                  return (
+                    <Draggable key={id} draggableId={id.toString()} index={index}>
+                      {(draggableProvided) => (
+                        <div
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                          {...draggableProvided.dragHandleProps}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'flex-start',
+                            gap: '0.5rem',
+                            marginBottom: '0.5rem',
+                            paddingLeft: '1rem',
+                            paddingRight: '1rem',
+                            ...draggableProvided.draggableProps.style,
+                          }}
+                        >
+                          <Checkbox
+                            id={`layer-${id}`}
+                            checked={!!visibleLayers[id]}
+                            onCheckedChange={() => toggleLayerVisibility(id)}
+                          />
+                          <Label htmlFor={`layer-${id}`}>{subslice?.slice_name}</Label>
+                          <span style={{ cursor: 'grab', fontSize: '1rem', marginLeft: 'auto' }}>☰</span>
+                        </div>
+                      )}
+                    </Draggable>
+                  )
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       </Card>
     </DeckGLContainerStyledWrapper>
   )
