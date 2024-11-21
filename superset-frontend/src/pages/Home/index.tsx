@@ -56,7 +56,6 @@ import ActivityTable from 'src/features/home/ActivityTable';
 import ChartTable from 'src/features/home/ChartTable';
 import SavedQueries from 'src/features/home/SavedQueries';
 import DashboardTable from 'src/features/home/DashboardTable';
-import { embedDashboard } from '@superset-ui/embedded-sdk'
 
 const extensionsRegistry = getExtensionsRegistry();
 
@@ -369,12 +368,12 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
               width="600"
               height="400"
               seamless
-              // frameBorder="0"
-              // scrolling="no"
+              frameBorder="0"
+              scrolling="no"
               src="https://crish-demo.rimes.int/superset/dashboard/p/xXnLeYGL79R/?standalone=2&show_filters=1"
             >
             </iframe>
-            {/* <Collapse
+            <Collapse
               activeKey={activeState}
               onChange={handleCollapse}
               ghost
@@ -439,7 +438,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
                   )}
                 </Collapse.Panel>
               )}
-            </Collapse> */}
+            </Collapse>
           </>
         )}
       </WelcomeContainer>
