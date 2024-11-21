@@ -17,6 +17,7 @@
  * under the License.
  */
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import {
   isFeatureEnabled,
   FeatureFlag,
@@ -26,7 +27,7 @@ import {
   t,
 } from '@superset-ui/core';
 import rison from 'rison';
-import Collapse from 'src/components/Collapse';
+// import Collapse from 'src/components/Collapse';
 import { User } from 'src/types/bootstrapTypes';
 import { reject } from 'lodash';
 import {
@@ -52,10 +53,11 @@ import { TableTab } from 'src/views/CRUD/types';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import { userHasPermission } from 'src/dashboard/util/permissionUtils';
 import { WelcomePageLastTab } from 'src/features/home/types';
-import ActivityTable from 'src/features/home/ActivityTable';
-import ChartTable from 'src/features/home/ChartTable';
-import SavedQueries from 'src/features/home/SavedQueries';
-import DashboardTable from 'src/features/home/DashboardTable';
+// import ActivityTable from 'src/features/home/ActivityTable';
+// import ChartTable from 'src/features/home/ChartTable';
+// import SavedQueries from 'src/features/home/SavedQueries';
+// import DashboardTable from 'src/features/home/DashboardTable';
+import { embedDashboard } from '@superset-ui/embedded-sdk'
 
 const extensionsRegistry = getExtensionsRegistry();
 
@@ -334,6 +336,79 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
     name: t('Home'),
   };
 
+  async function getToken() {
+    // This uses admin creds to fetch the token
+    const login_body = {
+      "password": "admin",
+      "provider": "db",
+      "refresh": true,
+      "username": "admin@superset.com"
+    };
+    const login_headers = {
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+
+    const supersetApiUrl = "https://crish-demo.rimes.int/api/v1/security"
+  
+    const { data } = await axios.post(supersetApiUrl + '/login', login_body, login_headers)
+    const access_token = data['access_token']
+    console.log(access_token)
+  
+  
+    // Calling guest token
+    const guest_token_body = JSON.stringify({
+      "resources": [
+        {
+          "type": "dashboard",
+          "id": "52565ed9-87b6-4fa7-b7bb-8165d3d94f69",
+        }
+      ],
+      "rls": [],
+      "user": {
+        "username": "dashboard",
+        "first_name": "Dashboard User",
+        "last_name": "Dashboard User",
+      }
+    });
+  
+    const guest_token_headers = {
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": 'Bearer ' + access_token
+      }
+    }
+
+    // Calling guest token endpoint to get the guest_token
+    await axios.post(supersetApiUrl + '/guest_token/', guest_token_body, guest_token_headers).then(dt => {
+      console.log(dt.data['token'])
+      embedDashboard({
+        id: "52565ed9-87b6-4fa7-b7bb-8165d3d94f69",  // Use the id obtained from enabling embedding dashboard option
+        supersetDomain: "crish-demo.rimes.int",
+        mountPoint: document.getElementById("superset-container"), // html element in which iframe will be mounted to show the dashboard
+        fetchGuestToken: () => dt.data['token'],
+        dashboardUiConfig: { 
+          // hideTitle: true,
+          // hideTab:true
+          filters:{
+            expanded:true
+          },
+          urlParams:{
+            standalone:3 // here you can add the url_params and there values
+          }
+        }
+      });
+    })
+  
+    var iframe = document.querySelector("iframe")
+    if (iframe) {
+      iframe.style.width = '100%'; // Set the width of the iframe
+      iframe.style.minHeight = '100vw'; // Set the height of the iframe
+    }
+  
+  }
+
   if (isThumbnailsEnabled) {
     menuData.buttons = [
       {
@@ -351,6 +426,8 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
     ];
   }
 
+  getToken()
+
   return (
     <>
       {SubmenuExtension ? (
@@ -364,7 +441,8 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
         {WelcomeMainExtension && <WelcomeMainExtension />}
         {(!WelcomeTopExtension || !WelcomeMainExtension) && (
           <>
-            <Collapse
+            <div id='superset-container'></div>
+            {/* <Collapse
               activeKey={activeState}
               onChange={handleCollapse}
               ghost
@@ -429,7 +507,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
                   )}
                 </Collapse.Panel>
               )}
-            </Collapse>
+            </Collapse> */}
           </>
         )}
       </WelcomeContainer>
