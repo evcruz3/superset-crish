@@ -364,15 +364,6 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
         {WelcomeMainExtension && <WelcomeMainExtension />}
         {(!WelcomeTopExtension || !WelcomeMainExtension) && (
           <>
-            <iframe
-              width="600"
-              height="400"
-              seamless
-              frameBorder="0"
-              scrolling="no"
-              src="https://crish-demo.rimes.int/superset/dashboard/p/xXnLeYGL79R/?standalone=2&show_filters=1"
-            >
-            </iframe>
             <Collapse
               activeKey={activeState}
               onChange={handleCollapse}
