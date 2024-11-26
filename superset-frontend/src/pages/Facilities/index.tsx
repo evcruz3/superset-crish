@@ -57,7 +57,7 @@ function Facilities() {
           embedDashboard({
             id: dashboardId,  // Use the id obtained from enabling embedding dashboard option
             supersetDomain: supersetUrl,
-            mountPoint: document.getElementById("superset-container"), // html element in which iframe will be mounted to show the dashboard
+            mountPoint: document.getElementById("superset-container")!, // html element in which iframe will be mounted to show the dashboard
             fetchGuestToken: () => dt.data['token'],
             dashboardUiConfig: { 
               // hideTitle: true,
