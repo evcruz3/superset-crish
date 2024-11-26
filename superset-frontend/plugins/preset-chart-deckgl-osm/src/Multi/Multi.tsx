@@ -191,7 +191,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }
 
-  const onDragEnd = (result) => {
+  const onDragEnd = (result: any) => {
     if (!result.destination) return
     const reordered = Array.from(layerOrder)
     const [moved] = reordered.splice(result.source.index, 1)
