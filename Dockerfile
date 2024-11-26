@@ -53,7 +53,7 @@ ENV BUILD_CMD=${NPM_BUILD_CMD} \
 RUN --mount=type=bind,target=/frontend-mem-nag.sh,src=./docker/frontend-mem-nag.sh \
     /frontend-mem-nag.sh
 
-COPY preset-chart-deckgl-osm /app/preset-chart-deckgl-osm
+# COPY preset-chart-deckgl-osm /app/preset-chart-deckgl-osm
 
 WORKDIR /app/superset-frontend
 
@@ -78,9 +78,6 @@ RUN if [ "$DEV_MODE" = "false" ]; then \
     else \
         echo "Skipping 'npm run ${BUILD_CMD}' in dev mode"; \
     fi
-
-# Log the contents of node_modules/preset-chart-deckgl-osm
-RUN ls -la /app/superset-frontend/node_modules/preset-chart-deckgl-osm
 
 # Compiles .json files from the .po files, then deletes the .po files
 RUN if [ "$BUILD_TRANSLATIONS" = "true" ]; then \
