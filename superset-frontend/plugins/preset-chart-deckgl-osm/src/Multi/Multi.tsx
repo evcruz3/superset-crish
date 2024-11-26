@@ -172,7 +172,7 @@ const DeckMulti = (props: DeckMultiProps) => {
   
     // If layer is being toggled back to visible, reinitialize it
     if (!visibleLayers[layerId]) {
-      const subslice = props.payload.data.slices.find((slice) => slice.slice_id === layerId)
+      const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === layerId)
       if (subslice) {
         const filters = [
           ...(subslice.form_data.filters || []),
@@ -201,7 +201,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     // Reinitialize the moved layer to avoid reusing a finalized layer
     const movedLayerId = parseInt(result.draggableId, 10)
     if (!visibleLayers[movedLayerId]) {
-      const subslice = props.payload.data.slices.find((slice) => slice.slice_id === movedLayerId)
+      const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === movedLayerId)
       if (subslice) {
         const filters = [
           ...(subslice.form_data.filters || []),
@@ -236,13 +236,13 @@ const DeckMulti = (props: DeckMultiProps) => {
         </CardHeader>
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="layers">
-            {(provided) => (
+            {(provided: any) => (
               <div style={{marginTop: "1rem"}} ref={provided.innerRef} {...provided.droppableProps}>
                 {layerOrder.map((id, index) => {
-                  const subslice = props.payload.data.slices.find((slice) => slice.slice_id === id)
+                  const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === id)
                   return (
                     <Draggable key={id} draggableId={id.toString()} index={index}>
-                      {(draggableProvided) => (
+                      {(draggableProvided: any) => (
                         <div
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
