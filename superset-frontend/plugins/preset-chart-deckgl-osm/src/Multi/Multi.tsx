@@ -27,23 +27,23 @@ const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> =
   </div>
 )
 
-const CardHeader: React.FC<React.PropsWithChildren> = ({ children }) => (
+const CardHeader: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
   <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
     {children}
   </div>
 )
 
-const CardTitle: React.FC<React.PropsWithChildren> = ({ children }) => (
+const CardTitle: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
   <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937' }}>
     {children}
   </h3>
 )
 
-const CardContent: React.FC<React.PropsWithChildren> = ({ children }) => (
-  <div style={{ padding: '1rem' }}>
-    {children}
-  </div>
-)
+// const CardContent: React.FC<React.PropsWithChildren> = ({ children }) => (
+//   <div style={{ padding: '1rem' }}>
+//     {children}
+//   </div>
+// )
 
 // Custom Checkbox component
 const Checkbox: React.FC<{

@@ -32,13 +32,14 @@ import {
 } from 'react';
 import { isEqual } from 'lodash';
 import { Layer } from '@deck.gl/core';
-import DeckGL from 'deck.gl';
+import DeckGL from '@deck.gl/react';
 import { JsonObject, JsonValue, styled, usePrevious } from '@superset-ui/core';
 import Tooltip, { TooltipProps } from './components/Tooltip';
 // import 'mapbox-gl/dist/mapbox-gl.css';
 import { Viewport } from './utils/fitViewport';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { BitmapLayer } from '@deck.gl/layers';
+import React from 'react';
 
 const TICK = 250; // milliseconds
 
