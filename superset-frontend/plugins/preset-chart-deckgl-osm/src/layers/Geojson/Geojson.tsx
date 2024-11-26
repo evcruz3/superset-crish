@@ -154,7 +154,7 @@ export function getLayer(
 
   return new GeoJsonLayer({
     id: `geojson-layer-${fd.slice_id}` as const,
-    data: features,
+    data: features as any,
     extruded: fd.extruded,
     filled: fd.filled,
     stroked: fd.stroked,
