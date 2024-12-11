@@ -26,6 +26,9 @@ FROM --platform=${BUILDPLATFORM} node:20-bullseye-slim AS superset-node
 
 ARG NPM_BUILD_CMD="build"
 
+# Install pnpm globally
+RUN npm install -g pnpm
+
 # Include translations in the final build. The default supports en only to
 # reduce complexity and weight for those only using en
 ARG BUILD_TRANSLATIONS="false"
@@ -62,9 +65,9 @@ RUN mkdir -p /app/superset/static/assets
 RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json \
     --mount=type=bind,target=./package-lock.json,src=./superset-frontend/package-lock.json \
     if [ "$DEV_MODE" = "false" ]; then \
-        npm ci; \
+        pnpm install --frozen-lockfile; \
     else \
-        echo "Skipping 'npm ci' in dev mode"; \
+        echo "Skipping 'pnpm install' in dev mode"; \
     fi
 
 # Runs the webpack build process
@@ -74,14 +77,14 @@ COPY superset-frontend /app/superset-frontend
 RUN mkdir -p /app/superset/translations
 COPY superset/translations /app/superset/translations
 RUN if [ "$DEV_MODE" = "false" ]; then \
-        BUILD_TRANSLATIONS=$BUILD_TRANSLATIONS npm run ${BUILD_CMD}; \
+        BUILD_TRANSLATIONS=$BUILD_TRANSLATIONS pnpm run ${BUILD_CMD}; \
     else \
-        echo "Skipping 'npm run ${BUILD_CMD}' in dev mode"; \
+        echo "Skipping 'pnpm run ${BUILD_CMD}' in dev mode"; \
     fi
 
 # Compiles .json files from the .po files, then deletes the .po files
 RUN if [ "$BUILD_TRANSLATIONS" = "true" ]; then \
-        npm run build-translation; \
+        pnpm run build-translation; \
     else \
         echo "Skipping translations as requested by build flag"; \
     fi
