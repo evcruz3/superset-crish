@@ -63,7 +63,7 @@ WORKDIR /app/superset-frontend
 # Creating empty folders to avoid errors when running COPY later on
 RUN mkdir -p /app/superset/static/assets
 RUN --mount=type=bind,target=./package.json,src=./superset-frontend/package.json \
-    --mount=type=bind,target=./package-lock.json,src=./superset-frontend/package-lock.json \
+    --mount=type=bind,target=./pnpm-lock.yaml,src=./superset-frontend/pnpm-lock.yaml \
     if [ "$DEV_MODE" = "false" ]; then \
         pnpm install --frozen-lockfile; \
     else \
