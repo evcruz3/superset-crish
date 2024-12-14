@@ -307,6 +307,7 @@ AUTH_RATE_LIMIT = "5 per second"
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
+
 APP_NAME = "Superset"
 
 # Specify the App icon

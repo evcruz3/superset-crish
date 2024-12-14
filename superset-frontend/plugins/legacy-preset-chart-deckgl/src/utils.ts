@@ -141,11 +141,11 @@ export function getBreakPointColorScaler(
     // interpolate colors linearly
     const linearScaleDomain = extent(features, accessor);
     if (!linearScaleDomain.some(isNumber)) {
-      scaler = colorScheme.createLinearScale();
+      scaler = colorScheme.createLinearScale() as any;
     } else {
       scaler = colorScheme.createLinearScale(
         extent(features, accessor) as number[],
-      );
+      ) as any;
     }
     maskPoint = () => false;
   }

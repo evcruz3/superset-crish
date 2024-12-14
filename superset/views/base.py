@@ -51,6 +51,7 @@ from flask_jwt_extended.exceptions import NoAuthorizationError
 from flask_wtf.form import FlaskForm
 from sqlalchemy.orm import Query
 from wtforms.fields.core import Field, UnboundField
+from babel.core import UnknownLocaleError
 
 from superset import (
     app as superset_app,
@@ -348,8 +349,18 @@ def cached_common_bootstrap_data(  # pylint: disable=unused-argument
 
 
 def common_bootstrap_payload() -> dict[str, Any]:
+    logger.info("common_bootstrap_payload")
+
+    locale = Locale("en")
+    
+    try:
+        locale = get_locale()
+    except UnknownLocaleError as e:
+        # if the locale is not set, we default to 'en'
+        pass
+
     return {
-        **cached_common_bootstrap_data(utils.get_user_id(), get_locale()),
+        **cached_common_bootstrap_data(utils.get_user_id(), locale),
         "flash_messages": get_flashed_messages(with_categories=True),
     }
 

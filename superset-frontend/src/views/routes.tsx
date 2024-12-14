@@ -123,6 +123,20 @@ const RowLevelSecurityList = lazy(
     ),
 );
 
+const WeatherForecasts = lazy(
+  () =>
+    import(
+      /* webpackChunkName: "WeatherForecasts" */ 'src/pages/WeatherForecasts'
+    ),
+);
+
+const Facilities = lazy(
+  () =>
+    import(
+      /* webpackChunkName: "Facilities" */ 'src/pages/Facilities'
+    ),
+);
+
 type Routes = {
   path: string;
   Component: ComponentType;
@@ -131,6 +145,14 @@ type Routes = {
 }[];
 
 export const routes: Routes = [
+  {
+    path: '/weather_forecasts/',
+    Component: WeatherForecasts
+  },
+  {
+    path: '/facilities/',
+    Component: Facilities
+  },
   {
     path: '/superset/welcome/',
     Component: Home,
