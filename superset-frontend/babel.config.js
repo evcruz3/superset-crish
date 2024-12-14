@@ -54,6 +54,7 @@ module.exports = {
     ['@babel/plugin-transform-runtime', { corejs: 3 }],
     // only used in packages/superset-ui-core/src/chart/components/reactify.tsx
     ['babel-plugin-typescript-to-proptypes', { loose: true }],
+    ['@babel/plugin-transform-class-static-block'],
     'react-hot-loader/babel',
     [
       '@emotion/babel-plugin',
