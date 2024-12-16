@@ -29,7 +29,7 @@ const metadata = new ChartMetadata({
     'The GeoJsonLayer takes in GeoJSON formatted data and renders it as interactive polygons, lines and points (circles, icons and/or texts).',
   ),
   exampleGallery: [{ url: example }],
-  name: t('deck.gl Geojson'),
+  name: t('deck.gl Geojson OSM'),
   thumbnail,
   useLegacyApi: true,
   tags: [t('deckGL'), t('2D')],

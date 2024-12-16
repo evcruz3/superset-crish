@@ -17,24 +17,29 @@
  * under the License.
  */
 import { Preset } from '@superset-ui/core';
-import ArcChartPlugin from './layers/Arc';
-import GeoJsonChartPlugin from './layers/Geojson';
-import GridChartPlugin from './layers/Grid';
-import HexChartPlugin from './layers/Hex';
-import HeatmapChartPlugin from './layers/Heatmap';
-import MultiChartPlugin from './Multi';
-import PathChartPlugin from './layers/Path';
-import PolygonChartPlugin from './layers/Polygon';
-import ScatterChartPlugin from './layers/Scatter';
-import ScreengridChartPlugin from './layers/Screengrid';
-import ContourChartPlugin from './layers/Contour';
+import {
+  ArcChartPlugin,
+  CountryChartPlugin,
+  GeoJsonChartPlugin,
+  GridChartPlugin,
+  HexChartPlugin,
+  MultiChartPlugin,
+  PathChartPlugin,
+  PolygonChartPlugin,
+  ScatterChartPlugin,
+  ScreengridChartPlugin,
+  ContourChartPlugin,
+  HeatmapChartPlugin,
+} from '.';
 
 export default class DeckGLOSMChartPreset extends Preset {
   constructor() {
     super({
-      name: 'deck.gl osm charts',
+      name: 'deck.gl OSM Charts',
+      presets: [],
       plugins: [
         new ArcChartPlugin().configure({ key: 'deck_arc' }),
+        new CountryChartPlugin().configure({ key: 'deck_country' }),
         new GeoJsonChartPlugin().configure({ key: 'deck_geojson' }),
         new GridChartPlugin().configure({ key: 'deck_grid' }),
         new HexChartPlugin().configure({ key: 'deck_hex' }),

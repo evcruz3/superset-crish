@@ -91,6 +91,7 @@ import TimeTableChartPlugin from '../TimeTable';
 import { 
   ScatterChartPlugin as ScatterChartOsmPlugin, 
   ArcChartPlugin as ArcChartOsmPlugin, 
+  CountryChartPlugin as CountryChartOsmPlugin,
   GeoJsonChartPlugin as GeoJsonChartOsmPlugin, 
   GridChartPlugin as GridChartOsmPlugin, 
   HexChartPlugin as HexChartOsmPlugin, 
@@ -205,6 +206,7 @@ export default class MainPreset extends Preset {
         new EchartsBubbleChartPlugin().configure({ key: VizType.Bubble }),
         ...experimentalPlugins,
         new ArcChartOsmPlugin().configure({ key: 'deck_arc' }),
+        new CountryChartOsmPlugin().configure({ key: 'deck_country' }),
         new GeoJsonChartOsmPlugin().configure({ key: 'deck_geojson' }),
         new GridChartOsmPlugin().configure({ key: 'deck_grid' }),
         new HexChartOsmPlugin().configure({ key: 'deck_hex' }),

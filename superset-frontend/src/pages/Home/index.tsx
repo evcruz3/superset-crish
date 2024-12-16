@@ -56,6 +56,9 @@ import ActivityTable from 'src/features/home/ActivityTable';
 import ChartTable from 'src/features/home/ChartTable';
 import SavedQueries from 'src/features/home/SavedQueries';
 import DashboardTable from 'src/features/home/DashboardTable';
+import DashboardPage from 'src/dashboard/containers/DashboardPage';
+import { useDispatch } from 'react-redux';
+import { dashboardInfoChanged } from 'src/dashboard/actions/dashboardInfo';
 
 const extensionsRegistry = getExtensionsRegistry();
 
@@ -156,9 +159,24 @@ export const LoadingCards = ({ cover }: LoadingProps) => (
 );
 
 function Welcome({ user, addDangerToast }: WelcomeProps) {
+  const dispatch = useDispatch();
   const canReadSavedQueries = userHasPermission(user, 'SavedQuery', 'can_read');
   const userid = user.userId;
   const id = userid!.toString(); // confident that user is not a guest user
+
+  const roles = user.roles;
+  const isAdmin = roles.hasOwnProperty('Admin');
+  const isAlpha = roles.hasOwnProperty('Alpha');
+  if (!isAdmin && !isAlpha) {
+    dispatch(dashboardInfoChanged({
+      metadata: {
+        show_native_filters: false
+      }
+    }));
+    return <DashboardPage idOrSlug={"overview"}/>;
+  }
+
+
   const params = rison.encode({ page_size: 6 });
   const recent = `/api/v1/log/recent_activity/?q=${params}`;
   const [activeChild, setActiveChild] = useState('Loading');

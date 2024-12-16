@@ -18,6 +18,7 @@
  */
 export { default as DeckGLOSMChartPreset } from './preset';
 export { default as ArcChartPlugin } from './layers/Arc';
+export { default as CountryChartPlugin } from './layers/Country';
 export { default as GeoJsonChartPlugin } from './layers/Geojson';
 export { default as GridChartPlugin } from './layers/Grid';
 export { default as HexChartPlugin } from './layers/Hex';

@@ -28,7 +28,7 @@ const metadata = new ChartMetadata({
   description: t(
     'Plot the distance (like flight paths) between origin and destination.',
   ),
-  name: t('deck.gl Arc'),
+  name: t('deck.gl Arc OSM'),
   thumbnail,
   exampleGallery: [{ url: example }],
   useLegacyApi: true,

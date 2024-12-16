@@ -157,6 +157,7 @@ class Superset(BaseSupersetView):
 
     def get_raw_results(self, viz_obj: BaseViz) -> FlaskResponse:
         payload = viz_obj.get_df_payload()
+
         if viz_obj.has_error(payload):
             return json_error_response(payload=payload, status=400)
         return self.json_response(

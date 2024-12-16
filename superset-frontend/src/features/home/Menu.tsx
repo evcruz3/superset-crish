@@ -373,7 +373,6 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     ...data,
   };
 
-  console.log(newMenuData);
   // Menu items that should go into settings dropdown
   const settingsMenus = {
     Data: true,
@@ -383,8 +382,6 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
 
   // Cycle through menu.menu to build out cleanedMenu and settings
   const cleanedMenu: MenuObjectProps[] = [
-    {name: "Weather Forecasts", icon: "fa-bar-chart", label: "Weather Forecasts", url: "/weather_forecasts/"},
-    {name: "Facilities", icon: "fa-building", label: "Facilities", url: "/facilities/"},
   ];
   const settings: MenuObjectProps[] = [];
   newMenuData.menu.forEach((item: any) => {

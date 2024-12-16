@@ -19,6 +19,7 @@ import { getExploreLongUrl } from '../utils/explore'
 import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
+import countries from '../layers/Country/countries'
 
 // Custom Card component
 const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style = {} }) => (
@@ -67,6 +68,8 @@ const Label: React.FC<React.PropsWithChildren<{ htmlFor: string }>> = ({ childre
   </label>
 )
 
+const geoJsonCache: { [key: string]: JsonObject } = {};
+
 export type DeckMultiProps = {
   formData: QueryFormData
   payload: JsonObject
@@ -111,30 +114,70 @@ const DeckMulti = (props: DeckMultiProps) => {
           endpoint: url,
         })
           .then(({ json }) => {
-            const layer = layerGenerators[subsliceCopy.form_data.viz_type](
-              subsliceCopy.form_data,
-              json,
-              props.onAddFilter,
-              setTooltip,
-              props.datasource,
-              [],
-              props.onSelect,
-            )
-            setSubSlicesLayers((prevLayers) => ({
-              ...prevLayers,
-              [subsliceCopy.slice_id]: layer,
-            }))
-            setLayerOrder((prevOrder) =>
-              prevOrder.includes(subslice.slice_id)
-                ? prevOrder
-                : [...prevOrder, subslice.slice_id],
-            ) // Ensure no duplicate IDs in layerOrder
+            // if viz_type is country, fetch the geojson from the url
+            if (subsliceCopy.form_data.viz_type === 'deck_country') {
+              const country = subsliceCopy.form_data.select_country;
+              
+              const createAndSetLayer = (geoJsonData: JsonObject) => {
+                const layer = layerGenerators[subsliceCopy.form_data.viz_type](
+                  subsliceCopy.form_data,
+                  json,
+                  props.onAddFilter,
+                  setTooltip,
+                  geoJsonData
+                );
+
+                setSubSlicesLayers((prevLayers) => ({
+                  ...prevLayers,
+                  [subsliceCopy.slice_id]: layer,
+                }));
+
+                setLayerOrder((prevOrder) =>
+                  prevOrder.includes(subslice.slice_id)
+                    ? prevOrder
+                    : [...prevOrder, subslice.slice_id],
+                );
+              };
+
+              if (geoJsonCache[country]) {
+                createAndSetLayer(geoJsonCache[country]);
+              } else {
+                const url = countries[country];
+                fetch(url)
+                  .then(response => response.json())
+                  .then(data => {
+                    geoJsonCache[country] = data;
+                    createAndSetLayer(data);
+                  });
+              }
+            } else {
+              const layer = layerGenerators[subsliceCopy.form_data.viz_type](
+                subsliceCopy.form_data,
+                json,
+                props.onAddFilter,
+                setTooltip,
+                props.datasource,
+                [],
+                props.onSelect,
+              );
+
+              setSubSlicesLayers((prevLayers) => ({
+                ...prevLayers,
+                [subsliceCopy.slice_id]: layer,
+              }));
+
+              setLayerOrder((prevOrder) =>
+                prevOrder.includes(subslice.slice_id)
+                  ? prevOrder
+                  : [...prevOrder, subslice.slice_id],
+              );
+            }
           })
-          .catch(() => {})
+          .catch(() => {});
       }
     },
     [props.datasource, props.onAddFilter, props.onSelect, setTooltip],
-  )
+  );
 
   const loadLayers = useCallback(
     (formData: QueryFormData, payload: JsonObject, viewport?: Viewport) => {
@@ -217,6 +260,7 @@ const DeckMulti = (props: DeckMultiProps) => {
   const layers = layerOrder
     .filter((id) => visibleLayers[id])
     .map((id) => subSlicesLayers[id])
+    .reverse()
 
   return (
     <DeckGLContainerStyledWrapper
@@ -232,7 +276,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     >
       <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', zIndex: 10 }}>
         <CardHeader>
-          <CardTitle>Geo Layers</CardTitle>
+          <CardTitle>Layers</CardTitle>
         </CardHeader>
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="layers">

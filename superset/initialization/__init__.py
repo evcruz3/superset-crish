@@ -189,6 +189,10 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         )
         from superset.views.sqllab import SqllabView
         from superset.views.tags import TagModelView, TagView
+        from superset.views.weather import WeatherForecastView
+        from superset.views.diseases import DiseasesView
+        from superset.views.facilities import FacilitiesView
+        from superset.views.bulletins_and_advisories import BulletinsAndAdvisoriesView
         from superset.views.users.api import CurrentUserRestApi, UserRestApi
 
         set_app_error_handlers(self.superset_app)
@@ -235,6 +239,69 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             label=__("Home"),
             href="/superset/welcome/",
             cond=lambda: bool(appbuilder.app.config["LOGO_TARGET_PATH"]),
+        )
+
+        appbuilder.add_view(
+            WeatherForecastView,
+            "Weather Forecasts",
+            label=__("Weather Forecasts"),
+            icon="fa-cloud",
+            category="",
+            category_icon="",
+        )
+
+        appbuilder.add_view(
+            DiseasesView,
+            "Overview",
+            label=__("Overview"),
+            icon="fa-heart",
+            category="Diseases",
+            category_label=__("Diseases"),
+        )
+
+        appbuilder.add_link(
+            "Dengue",
+            label=__("Dengue"),
+            href="/diseases/dengue/",
+            icon="fa-mosquito",  # or another appropriate icon
+            category="Diseases",
+            category_label=__("Diseases"),
+        )
+
+        appbuilder.add_link(
+            "Diarrhea",
+            label=__("Diarrhea"),
+            href="/diseases/diarrhea/",
+            icon="fa-pills",  # or another appropriate icon
+            category="Diseases",
+            category_label=__("Diseases"),
+        )
+
+        appbuilder.add_link(
+            "Acute Respiratory Infection",
+            label=__("Acute Respiratory Infection"),
+            href="/diseases/ari/",
+            icon="fa-lungs",  # or another appropriate icon
+            category="Diseases",
+            category_label=__("Diseases"),
+        )
+
+        appbuilder.add_view(
+            FacilitiesView,
+            "Facilities",
+            label=__("Facilities"),
+            icon="fa-building",
+            category="",
+            category_icon="",
+        )
+
+        appbuilder.add_view(
+            BulletinsAndAdvisoriesView,
+            "Bulletins and Advisories",
+            label=__("Bulletins and Advisories"),
+            icon="fa-bullhorn",
+            category="",
+            category_icon="",
         )
 
         appbuilder.add_view(
@@ -405,6 +472,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category_label=__("Security"),
             icon="fa-lock",
         )
+
+        
 
     def init_app_in_ctx(self) -> None:
         """

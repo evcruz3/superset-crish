@@ -29,7 +29,7 @@ const metadata = new ChartMetadata({
     'Uses Gaussian Kernel Density Estimation to visualize spatial distribution of data',
   ),
   exampleGallery: [{ url: example }],
-  name: t('deck.gl Contour'),
+  name: t('deck.gl Contour OSM'),
   thumbnail,
   useLegacyApi: true,
   tags: [t('deckGL'), t('Spatial'), t('Comparison')],

@@ -146,7 +146,7 @@ type Routes = {
 
 export const routes: Routes = [
   {
-    path: '/weather_forecasts/',
+    path: '/weather/',
     Component: WeatherForecasts
   },
   {

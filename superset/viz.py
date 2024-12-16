@@ -2274,6 +2274,81 @@ class DeckContour(BaseDeckGLViz):
         return super().get_data(df)
 
 
+# Add this class after the other DeckGL visualizations (like DeckGeoJson, DeckArc, etc.)
+
+class DeckCountry(BaseDeckGLViz):
+    """deck.gl's Country Layer"""
+
+    viz_type = "deck_country"
+    verbose_name = _("Deck.gl - Country")
+    spatial_control_keys: list[str] = []
+    is_timeseries = False
+
+    def query_obj(self) -> QueryObjectDict:
+        # Get country and entity from form data
+        if not self.form_data.get("select_country"):
+            raise QueryObjectValidationError(_("Must specify a country"))
+        
+        entity = self.form_data.get("entity")
+        if not entity:
+            raise QueryObjectValidationError(_("Must provide ISO codes column"))
+
+        metric = self.form_data.get("metric")
+        if not metric:
+            raise QueryObjectValidationError(_("Must specify a metric"))
+
+        query_obj = super().query_obj()
+        query_obj["metrics"] = [metric]
+        query_obj["columns"] = [entity]
+        
+        if self.form_data.get("js_columns"):
+            query_obj["columns"].extend(self.form_data.get("js_columns") or [])
+        
+        # Sort by metric if specified
+        if sort_by := self.form_data.get("sort_by_metric"):
+            sort_by_label = utils.get_metric_name(sort_by)
+            if sort_by_label not in utils.get_metric_names(query_obj["metrics"]):
+                query_obj["metrics"].append(sort_by)
+            if self.form_data.get("order_desc"):
+                query_obj["orderby"] = [(sort_by, not self.form_data.get("order_desc", True))]
+
+        return query_obj
+
+    def get_data(self, df: pd.DataFrame) -> VizData:
+        if df.empty:
+            return None
+
+        entity = self.form_data.get("entity")
+        metric = utils.get_metric_name(self.form_data["metric"])
+        
+        # Prepare the data for the visualization
+        df = df[[entity, metric]]
+        df.columns = ["country_id", "metric"]
+        
+        # Apply any custom data mutator if specified
+        data = df.to_dict(orient="records")
+        if self.form_data.get("js_data_mutator"):
+            data = self.get_js_fn(self.form_data.get("js_data_mutator"))(data)
+
+        return {
+            "data": data,
+            "mapboxApiKey": config["MAPBOX_API_KEY"],
+            "mapStyle": self.form_data.get("mapbox_style"),
+            "aggregatorName": self.form_data.get("pandas_aggfunc"),
+            "clusteringRadius": self.form_data.get("clustering_radius"),
+            "pointRadiusUnit": self.form_data.get("point_radius_unit"),
+            "globalOpacity": self.form_data.get("global_opacity"),
+            "renderWhileDragging": self.form_data.get("render_while_dragging"),
+            "tooltip": self.form_data.get("rich_tooltip"),
+            "color": self.form_data.get("mapbox_color"),
+        }
+
+    def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "metric": data.get("metric"),
+            "country_id": data.get("country_id"),
+        }
+
 class DeckGeoJson(BaseDeckGLViz):
     """deck.gl's GeoJSONLayer"""
 
