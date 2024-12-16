@@ -15,31 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#!/usr/bin/env bash
 set -euo pipefail
-
-# First, install gnupg2 without verification
-apt-get update -y --allow-unauthenticated
-apt-get install -y --allow-unauthenticated gnupg2
-
-# Update GPG keys
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DCC9EFBF77E11517
-
-# Additional Debian keys
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC
-apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
-
-# Update package lists
-apt-get update
-
-# Install packages
-apt-get install -y --no-install-recommends "$@"
-
-# Clean up
-apt-get clean
-rm -rf /var/lib/apt/lists/*
 
 # Ensure this script is run as root
 if [[ $EUID -ne 0 ]]; then
