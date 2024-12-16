@@ -204,13 +204,38 @@ RUN if [ "$INCLUDE_CHROMIUM" = "true" ]; then \
 # Install GeckoDriver WebDriver and Firefox (if required)
 ARG GECKODRIVER_VERSION=v0.34.0
 ARG FIREFOX_VERSION=125.0.3
-RUN --mount=type=bind,source=./docker,target=/docker \
-    if [ "$INCLUDE_FIREFOX" = "true" ]; then \
-        /docker/apt-install.sh wget bzip2 \
-        && wget -q https://github.com/mozilla/geckodriver/releases/download/${GECKODRIVER_VERSION}/geckodriver-${GECKODRIVER_VERSION}-linux64.tar.gz -O - | tar xfz - -C /usr/local/bin \
-        && wget -q https://download-installer.cdn.mozilla.net/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.tar.bz2 -O - | tar xfj - -C /opt \
-        && ln -s /opt/firefox/firefox /usr/local/bin/firefox \
-        && apt-get autoremove -yqq --purge wget bzip2 && rm -rf /var/[log,tmp]/* /tmp/* /var/lib/apt/lists/* /var/cache/apt/archives/*; \
+
+# Verify that INCLUDE_FIREFOX is set to true
+RUN if [ "$INCLUDE_FIREFOX" = "true" ]; then \
+        echo "Firefox installation is enabled in dev mode"; \
+    else \
+        echo "Firefox installation is disabled in dev mode"; \
+    fi
+
+RUN if [ "$INCLUDE_FIREFOX" = "true" ]; then \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+        # Throw an error if we're on arm64
+        echo "Firefox is not supported on arm64. Please use x86_64." >&2; \
+        exit 1; \
+    else \
+        FIREFOX_ARCH="linux-x86_64" \
+        GECKODRIVER_ARCH="linux64" \
+        FIREFOX_URL="https://archive.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${FIREFOX_ARCH}/en-US/firefox-${FIREFOX_VERSION}.tar.bz2" \
+    fi && \
+    /docker/apt-install.sh wget bzip2 \
+    && echo "Downloading Firefox from: ${FIREFOX_URL}" \
+    && wget --spider -v "${FIREFOX_URL}" \
+    && wget -q --show-progress "${FIREFOX_URL}" -O firefox.tar.bz2 \
+    && tar xjf firefox.tar.bz2 -C /opt \
+    && rm firefox.tar.bz2 \
+    && wget -q https://github.com/mozilla/geckodriver/releases/download/${GECKODRIVER_VERSION}/geckodriver-${GECKODRIVER_VERSION}-${GECKODRIVER_ARCH}.tar.gz -O - | tar xfz - -C /usr/local/bin \
+    && ln -s /opt/firefox/firefox /usr/local/bin/firefox \
+    && chmod +x /usr/local/bin/geckodriver \
+    && chmod +x /usr/local/bin/firefox \
+    && echo "Firefox installation completed. Testing binary..." \
+    && /usr/local/bin/firefox --version \
+    && apt-get autoremove -yqq --purge wget bzip2 && rm -rf /var/[log,tmp]/* /tmp/* /var/lib/apt/lists/* /var/cache/apt/archives/*; \
     else \
         echo "Skipping Firefox installation in dev mode"; \
     fi

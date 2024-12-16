@@ -167,292 +167,295 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   const roles = user.roles;
   const isAdmin = roles.hasOwnProperty('Admin');
   const isAlpha = roles.hasOwnProperty('Alpha');
-  if (!isAdmin && !isAlpha) {
-    dispatch(dashboardInfoChanged({
-      metadata: {
-        show_native_filters: false
-      }
-    }));
-    return <DashboardPage idOrSlug={"overview"}/>;
-  }
+
+  return <DashboardPage idOrSlug={"overview"}/>;
+
+  // if (!isAdmin && !isAlpha) {
+  //   dispatch(dashboardInfoChanged({
+  //     metadata: {
+  //       show_native_filters: false
+  //     }
+  //   }));
+  //   return <DashboardPage idOrSlug={"overview"}/>;
+  // }
 
 
-  const params = rison.encode({ page_size: 6 });
-  const recent = `/api/v1/log/recent_activity/?q=${params}`;
-  const [activeChild, setActiveChild] = useState('Loading');
-  const userKey = dangerouslyGetItemDoNotUse(id, null);
-  let defaultChecked = false;
-  const isThumbnailsEnabled = isFeatureEnabled(FeatureFlag.Thumbnails);
-  if (isThumbnailsEnabled) {
-    defaultChecked =
-      userKey?.thumbnails === undefined ? true : userKey?.thumbnails;
-  }
-  const [checked, setChecked] = useState(defaultChecked);
-  const [activityData, setActivityData] = useState<ActivityData | null>(null);
-  const [chartData, setChartData] = useState<Array<object> | null>(null);
-  const [queryData, setQueryData] = useState<Array<object> | null>(null);
-  const [dashboardData, setDashboardData] = useState<Array<object> | null>(
-    null,
-  );
-  const [isFetchingActivityData, setIsFetchingActivityData] = useState(true);
+  // const params = rison.encode({ page_size: 6 });
+  // const recent = `/api/v1/log/recent_activity/?q=${params}`;
+  // const [activeChild, setActiveChild] = useState('Loading');
+  // const userKey = dangerouslyGetItemDoNotUse(id, null);
+  // let defaultChecked = false;
+  // const isThumbnailsEnabled = isFeatureEnabled(FeatureFlag.Thumbnails);
+  // if (isThumbnailsEnabled) {
+  //   defaultChecked =
+  //     userKey?.thumbnails === undefined ? true : userKey?.thumbnails;
+  // }
+  // const [checked, setChecked] = useState(defaultChecked);
+  // const [activityData, setActivityData] = useState<ActivityData | null>(null);
+  // const [chartData, setChartData] = useState<Array<object> | null>(null);
+  // const [queryData, setQueryData] = useState<Array<object> | null>(null);
+  // const [dashboardData, setDashboardData] = useState<Array<object> | null>(
+  //   null,
+  // );
+  // const [isFetchingActivityData, setIsFetchingActivityData] = useState(true);
 
-  const collapseState = getItem(LocalStorageKeys.HomepageCollapseState, []);
-  const [activeState, setActiveState] = useState<Array<string>>(collapseState);
+  // const collapseState = getItem(LocalStorageKeys.HomepageCollapseState, []);
+  // const [activeState, setActiveState] = useState<Array<string>>(collapseState);
 
-  const handleCollapse = (state: Array<string>) => {
-    setActiveState(state);
-    setItem(LocalStorageKeys.HomepageCollapseState, state);
-  };
+  // const handleCollapse = (state: Array<string>) => {
+  //   setActiveState(state);
+  //   setItem(LocalStorageKeys.HomepageCollapseState, state);
+  // };
 
-  const SubmenuExtension = extensionsRegistry.get('home.submenu');
-  const WelcomeMessageExtension = extensionsRegistry.get('welcome.message');
-  const WelcomeTopExtension = extensionsRegistry.get('welcome.banner');
-  const WelcomeMainExtension = extensionsRegistry.get(
-    'welcome.main.replacement',
-  );
+  // const SubmenuExtension = extensionsRegistry.get('home.submenu');
+  // const WelcomeMessageExtension = extensionsRegistry.get('welcome.message');
+  // const WelcomeTopExtension = extensionsRegistry.get('welcome.banner');
+  // const WelcomeMainExtension = extensionsRegistry.get(
+  //   'welcome.main.replacement',
+  // );
 
-  const [otherTabTitle, otherTabFilters] = useMemo(() => {
-    const lastTab = bootstrapData.common?.conf
-      .WELCOME_PAGE_LAST_TAB as WelcomePageLastTab;
-    const [customTitle, customFilter] = Array.isArray(lastTab)
-      ? lastTab
-      : [undefined, undefined];
-    if (customTitle && customFilter) {
-      return [t(customTitle), customFilter];
-    }
-    if (lastTab === 'all') {
-      return [t('All'), []];
-    }
-    return [
-      t('Examples'),
-      [
-        {
-          col: 'created_by',
-          opr: 'rel_o_m',
-          value: 0,
-        },
-      ],
-    ];
-  }, []);
+  // const [otherTabTitle, otherTabFilters] = useMemo(() => {
+  //   const lastTab = bootstrapData.common?.conf
+  //     .WELCOME_PAGE_LAST_TAB as WelcomePageLastTab;
+  //   const [customTitle, customFilter] = Array.isArray(lastTab)
+  //     ? lastTab
+  //     : [undefined, undefined];
+  //   if (customTitle && customFilter) {
+  //     return [t(customTitle), customFilter];
+  //   }
+  //   if (lastTab === 'all') {
+  //     return [t('All'), []];
+  //   }
+  //   return [
+  //     t('Examples'),
+  //     [
+  //       {
+  //         col: 'created_by',
+  //         opr: 'rel_o_m',
+  //         value: 0,
+  //       },
+  //     ],
+  //   ];
+  // }, []);
 
-  useEffect(() => {
-    if (!otherTabFilters || WelcomeMainExtension) {
-      return;
-    }
-    const activeTab = getItem(LocalStorageKeys.HomepageActivityFilter, null);
-    setActiveState(collapseState.length > 0 ? collapseState : DEFAULT_TAB_ARR);
-    getRecentActivityObjs(user.userId!, recent, addDangerToast, otherTabFilters)
-      .then(res => {
-        const data: ActivityData | null = {};
-        data[TableTab.Other] = res.other;
-        if (res.viewed) {
-          const filtered = reject(res.viewed, ['item_url', null]).map(r => r);
-          data[TableTab.Viewed] = filtered;
-          if (!activeTab && data[TableTab.Viewed]) {
-            setActiveChild(TableTab.Viewed);
-          } else if (!activeTab && !data[TableTab.Viewed]) {
-            setActiveChild(TableTab.Created);
-          } else setActiveChild(activeTab || TableTab.Created);
-        } else if (!activeTab) setActiveChild(TableTab.Created);
-        else setActiveChild(activeTab);
-        setActivityData(activityData => ({ ...activityData, ...data }));
-      })
-      .catch(
-        createErrorHandler((errMsg: unknown) => {
-          setActivityData(activityData => ({
-            ...activityData,
-            [TableTab.Viewed]: [],
-          }));
-          addDangerToast(
-            t('There was an issue fetching your recent activity: %s', errMsg),
-          );
-        }),
-      );
+  // useEffect(() => {
+  //   if (!otherTabFilters || WelcomeMainExtension) {
+  //     return;
+  //   }
+  //   const activeTab = getItem(LocalStorageKeys.HomepageActivityFilter, null);
+  //   setActiveState(collapseState.length > 0 ? collapseState : DEFAULT_TAB_ARR);
+  //   getRecentActivityObjs(user.userId!, recent, addDangerToast, otherTabFilters)
+  //     .then(res => {
+  //       const data: ActivityData | null = {};
+  //       data[TableTab.Other] = res.other;
+  //       if (res.viewed) {
+  //         const filtered = reject(res.viewed, ['item_url', null]).map(r => r);
+  //         data[TableTab.Viewed] = filtered;
+  //         if (!activeTab && data[TableTab.Viewed]) {
+  //           setActiveChild(TableTab.Viewed);
+  //         } else if (!activeTab && !data[TableTab.Viewed]) {
+  //           setActiveChild(TableTab.Created);
+  //         } else setActiveChild(activeTab || TableTab.Created);
+  //       } else if (!activeTab) setActiveChild(TableTab.Created);
+  //       else setActiveChild(activeTab);
+  //       setActivityData(activityData => ({ ...activityData, ...data }));
+  //     })
+  //     .catch(
+  //       createErrorHandler((errMsg: unknown) => {
+  //         setActivityData(activityData => ({
+  //           ...activityData,
+  //           [TableTab.Viewed]: [],
+  //         }));
+  //         addDangerToast(
+  //           t('There was an issue fetching your recent activity: %s', errMsg),
+  //         );
+  //       }),
+  //     );
 
-    // Sets other activity data in parallel with recents api call
-    const ownSavedQueryFilters = [
-      {
-        col: 'created_by',
-        opr: 'rel_o_m',
-        value: `${id}`,
-      },
-    ];
-    Promise.all([
-      getUserOwnedObjects(id, 'dashboard')
-        .then(r => {
-          setDashboardData(r);
-          return Promise.resolve();
-        })
-        .catch((err: unknown) => {
-          setDashboardData([]);
-          addDangerToast(
-            t('There was an issue fetching your dashboards: %s', err),
-          );
-          return Promise.resolve();
-        }),
-      getUserOwnedObjects(id, 'chart')
-        .then(r => {
-          setChartData(r);
-          return Promise.resolve();
-        })
-        .catch((err: unknown) => {
-          setChartData([]);
-          addDangerToast(t('There was an issue fetching your chart: %s', err));
-          return Promise.resolve();
-        }),
-      canReadSavedQueries
-        ? getUserOwnedObjects(id, 'saved_query', ownSavedQueryFilters)
-            .then(r => {
-              setQueryData(r);
-              return Promise.resolve();
-            })
-            .catch((err: unknown) => {
-              setQueryData([]);
-              addDangerToast(
-                t('There was an issue fetching your saved queries: %s', err),
-              );
-              return Promise.resolve();
-            })
-        : Promise.resolve(),
-    ]).then(() => {
-      setIsFetchingActivityData(false);
-    });
-  }, [otherTabFilters]);
+  //   // Sets other activity data in parallel with recents api call
+  //   const ownSavedQueryFilters = [
+  //     {
+  //       col: 'created_by',
+  //       opr: 'rel_o_m',
+  //       value: `${id}`,
+  //     },
+  //   ];
+  //   Promise.all([
+  //     getUserOwnedObjects(id, 'dashboard')
+  //       .then(r => {
+  //         setDashboardData(r);
+  //         return Promise.resolve();
+  //       })
+  //       .catch((err: unknown) => {
+  //         setDashboardData([]);
+  //         addDangerToast(
+  //           t('There was an issue fetching your dashboards: %s', err),
+  //         );
+  //         return Promise.resolve();
+  //       }),
+  //     getUserOwnedObjects(id, 'chart')
+  //       .then(r => {
+  //         setChartData(r);
+  //         return Promise.resolve();
+  //       })
+  //       .catch((err: unknown) => {
+  //         setChartData([]);
+  //         addDangerToast(t('There was an issue fetching your chart: %s', err));
+  //         return Promise.resolve();
+  //       }),
+  //     canReadSavedQueries
+  //       ? getUserOwnedObjects(id, 'saved_query', ownSavedQueryFilters)
+  //           .then(r => {
+  //             setQueryData(r);
+  //             return Promise.resolve();
+  //           })
+  //           .catch((err: unknown) => {
+  //             setQueryData([]);
+  //             addDangerToast(
+  //               t('There was an issue fetching your saved queries: %s', err),
+  //             );
+  //             return Promise.resolve();
+  //           })
+  //       : Promise.resolve(),
+  //   ]).then(() => {
+  //     setIsFetchingActivityData(false);
+  //   });
+  // }, [otherTabFilters]);
 
-  const handleToggle = () => {
-    setChecked(!checked);
-    dangerouslySetItemDoNotUse(id, { thumbnails: !checked });
-  };
+  // const handleToggle = () => {
+  //   setChecked(!checked);
+  //   dangerouslySetItemDoNotUse(id, { thumbnails: !checked });
+  // };
 
-  useEffect(() => {
-    if (!collapseState && queryData?.length) {
-      setActiveState(activeState => [...activeState, '4']);
-    }
-    setActivityData(activityData => ({
-      ...activityData,
-      Created: [
-        ...(chartData?.slice(0, 3) || []),
-        ...(dashboardData?.slice(0, 3) || []),
-        ...(queryData?.slice(0, 3) || []),
-      ],
-    }));
-  }, [chartData, queryData, dashboardData]);
+  // useEffect(() => {
+  //   if (!collapseState && queryData?.length) {
+  //     setActiveState(activeState => [...activeState, '4']);
+  //   }
+  //   setActivityData(activityData => ({
+  //     ...activityData,
+  //     Created: [
+  //       ...(chartData?.slice(0, 3) || []),
+  //       ...(dashboardData?.slice(0, 3) || []),
+  //       ...(queryData?.slice(0, 3) || []),
+  //     ],
+  //   }));
+  // }, [chartData, queryData, dashboardData]);
 
-  useEffect(() => {
-    if (!collapseState && activityData?.[TableTab.Viewed]?.length) {
-      setActiveState(activeState => ['1', ...activeState]);
-    }
-  }, [activityData]);
+  // useEffect(() => {
+  //   if (!collapseState && activityData?.[TableTab.Viewed]?.length) {
+  //     setActiveState(activeState => ['1', ...activeState]);
+  //   }
+  // }, [activityData]);
 
-  const isRecentActivityLoading =
-    !activityData?.[TableTab.Other] && !activityData?.[TableTab.Viewed];
+  // const isRecentActivityLoading =
+  //   !activityData?.[TableTab.Other] && !activityData?.[TableTab.Viewed];
 
-  const menuData: SubMenuProps = {
-    activeChild: 'Home',
-    name: t('Home'),
-  };
+  // const menuData: SubMenuProps = {
+  //   activeChild: 'Home',
+  //   name: t('Home'),
+  // };
 
-  if (isThumbnailsEnabled) {
-    menuData.buttons = [
-      {
-        name: (
-          <WelcomeNav>
-            <div className="switch">
-              <Switch checked={checked} onClick={handleToggle} />
-              <span>{t('Thumbnails')}</span>
-            </div>
-          </WelcomeNav>
-        ),
-        onClick: handleToggle,
-        buttonStyle: 'link',
-      },
-    ];
-  }
+  // if (isThumbnailsEnabled) {
+  //   menuData.buttons = [
+  //     {
+  //       name: (
+  //         <WelcomeNav>
+  //           <div className="switch">
+  //             <Switch checked={checked} onClick={handleToggle} />
+  //             <span>{t('Thumbnails')}</span>
+  //           </div>
+  //         </WelcomeNav>
+  //       ),
+  //       onClick: handleToggle,
+  //       buttonStyle: 'link',
+  //     },
+  //   ];
+  // }
 
-  return (
-    <>
-      {SubmenuExtension ? (
-        <SubmenuExtension {...menuData} />
-      ) : (
-        <SubMenu {...menuData} />
-      )}
-      <WelcomeContainer>
-        {WelcomeMessageExtension && <WelcomeMessageExtension />}
-        {WelcomeTopExtension && <WelcomeTopExtension />}
-        {WelcomeMainExtension && <WelcomeMainExtension />}
-        {(!WelcomeTopExtension || !WelcomeMainExtension) && (
-          <>
-            <Collapse
-              activeKey={activeState}
-              onChange={handleCollapse}
-              ghost
-              bigger
-            >
-              <Collapse.Panel header={t('Recents')} key="1">
-                {activityData &&
-                (activityData[TableTab.Viewed] ||
-                  activityData[TableTab.Other] ||
-                  activityData[TableTab.Created]) &&
-                activeChild !== 'Loading' ? (
-                  <ActivityTable
-                    user={{ userId: user.userId! }} // user is definitely not a guest user on this page
-                    activeChild={activeChild}
-                    setActiveChild={setActiveChild}
-                    activityData={activityData}
-                    isFetchingActivityData={isFetchingActivityData}
-                  />
-                ) : (
-                  <LoadingCards />
-                )}
-              </Collapse.Panel>
-              <Collapse.Panel header={t('Dashboards')} key="2">
-                {!dashboardData || isRecentActivityLoading ? (
-                  <LoadingCards cover={checked} />
-                ) : (
-                  <DashboardTable
-                    user={user}
-                    mine={dashboardData}
-                    showThumbnails={checked}
-                    otherTabData={activityData?.[TableTab.Other]}
-                    otherTabFilters={otherTabFilters}
-                    otherTabTitle={otherTabTitle}
-                  />
-                )}
-              </Collapse.Panel>
-              <Collapse.Panel header={t('Charts')} key="3">
-                {!chartData || isRecentActivityLoading ? (
-                  <LoadingCards cover={checked} />
-                ) : (
-                  <ChartTable
-                    showThumbnails={checked}
-                    user={user}
-                    mine={chartData}
-                    otherTabData={activityData?.[TableTab.Other]}
-                    otherTabFilters={otherTabFilters}
-                    otherTabTitle={otherTabTitle}
-                  />
-                )}
-              </Collapse.Panel>
-              {canReadSavedQueries && (
-                <Collapse.Panel header={t('Saved queries')} key="4">
-                  {!queryData ? (
-                    <LoadingCards cover={checked} />
-                  ) : (
-                    <SavedQueries
-                      showThumbnails={checked}
-                      user={user}
-                      mine={queryData}
-                      featureFlag={isThumbnailsEnabled}
-                    />
-                  )}
-                </Collapse.Panel>
-              )}
-            </Collapse>
-          </>
-        )}
-      </WelcomeContainer>
-    </>
-  );
+  // return (
+  //   <>
+  //     {SubmenuExtension ? (
+  //       <SubmenuExtension {...menuData} />
+  //     ) : (
+  //       <SubMenu {...menuData} />
+  //     )}
+  //     <WelcomeContainer>
+  //       {WelcomeMessageExtension && <WelcomeMessageExtension />}
+  //       {WelcomeTopExtension && <WelcomeTopExtension />}
+  //       {WelcomeMainExtension && <WelcomeMainExtension />}
+  //       {(!WelcomeTopExtension || !WelcomeMainExtension) && (
+  //         <>
+  //           <Collapse
+  //             activeKey={activeState}
+  //             onChange={handleCollapse}
+  //             ghost
+  //             bigger
+  //           >
+  //             <Collapse.Panel header={t('Recents')} key="1">
+  //               {activityData &&
+  //               (activityData[TableTab.Viewed] ||
+  //                 activityData[TableTab.Other] ||
+  //                 activityData[TableTab.Created]) &&
+  //               activeChild !== 'Loading' ? (
+  //                 <ActivityTable
+  //                   user={{ userId: user.userId! }} // user is definitely not a guest user on this page
+  //                   activeChild={activeChild}
+  //                   setActiveChild={setActiveChild}
+  //                   activityData={activityData}
+  //                   isFetchingActivityData={isFetchingActivityData}
+  //                 />
+  //               ) : (
+  //                 <LoadingCards />
+  //               )}
+  //             </Collapse.Panel>
+  //             <Collapse.Panel header={t('Dashboards')} key="2">
+  //               {!dashboardData || isRecentActivityLoading ? (
+  //                 <LoadingCards cover={checked} />
+  //               ) : (
+  //                 <DashboardTable
+  //                   user={user}
+  //                   mine={dashboardData}
+  //                   showThumbnails={checked}
+  //                   otherTabData={activityData?.[TableTab.Other]}
+  //                   otherTabFilters={otherTabFilters}
+  //                   otherTabTitle={otherTabTitle}
+  //                 />
+  //               )}
+  //             </Collapse.Panel>
+  //             <Collapse.Panel header={t('Charts')} key="3">
+  //               {!chartData || isRecentActivityLoading ? (
+  //                 <LoadingCards cover={checked} />
+  //               ) : (
+  //                 <ChartTable
+  //                   showThumbnails={checked}
+  //                   user={user}
+  //                   mine={chartData}
+  //                   otherTabData={activityData?.[TableTab.Other]}
+  //                   otherTabFilters={otherTabFilters}
+  //                   otherTabTitle={otherTabTitle}
+  //                 />
+  //               )}
+  //             </Collapse.Panel>
+  //             {canReadSavedQueries && (
+  //               <Collapse.Panel header={t('Saved queries')} key="4">
+  //                 {!queryData ? (
+  //                   <LoadingCards cover={checked} />
+  //                 ) : (
+  //                   <SavedQueries
+  //                     showThumbnails={checked}
+  //                     user={user}
+  //                     mine={queryData}
+  //                     featureFlag={isThumbnailsEnabled}
+  //                   />
+  //                 )}
+  //               </Collapse.Panel>
+  //             )}
+  //           </Collapse>
+  //         </>
+  //       )}
+  //     </WelcomeContainer>
+  //   </>
+  // );
 }
 
 export default withToasts(Welcome);
