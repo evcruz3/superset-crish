@@ -97,15 +97,13 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True, "ENABLE_JAVASCRIPT_CONTROLS": True}
-ALERT_REPORTS_NOTIFICATION_DRY_RUN = False
+FEATURE_FLAGS = {"ALERT_REPORTS": True}
+ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 WEBDRIVER_BASEURL = "http://superset:8088/"  # When using docker compose baseurl should be http://superset_app:8088/
 # The base URL for the email report hyperlinks.
 WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
 SQLLAB_CTAS_NO_LIMIT = True
 
-
-TALISMAN_ENABLED = False
 #
 # Optionally import superset_config_docker.py (which will have been included on
 # the PYTHONPATH) in order to allow for local settings to be overridden
@@ -119,20 +117,3 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
-
-# WebDriver configuration
-WEBDRIVER_TYPE = "chrome"
-WEBDRIVER_OPTION_ARGS = [
-    "--headless",
-    "--no-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--disable-dev-tools"
-]
-WEBDRIVER_BASEURL = "http://superset:8088/"
-WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
-WEBDRIVER_WINDOW = {
-    "dashboard": (1600, 2000),
-    "slice": (3000, 1200),
-    "pixel_density": 1
-}

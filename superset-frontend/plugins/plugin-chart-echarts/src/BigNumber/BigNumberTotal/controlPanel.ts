@@ -24,7 +24,7 @@ import {
   Dataset,
   getStandardizedControls,
 } from '@superset-ui/chart-controls';
-import { headerFontSize, subheaderFontSize } from '../sharedControls';
+import { headerFontSize, subheaderFontSize, backgroundIconControl, backgroundIconColorControl } from '../sharedControls';
 
 export default {
   controlPanelSections: [
@@ -61,6 +61,8 @@ export default {
         [subheaderFontSize],
         ['y_axis_format'],
         ['currency_format'],
+        [backgroundIconControl],
+        [backgroundIconColorControl],
         [
           {
             name: 'time_format',

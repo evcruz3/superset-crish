@@ -25,7 +25,7 @@ import {
   getStandardizedControls,
   temporalColumnMixin,
 } from '@superset-ui/chart-controls';
-import { headerFontSize, subheaderFontSize } from '../sharedControls';
+import { headerFontSize, subheaderFontSize, backgroundIconControl, backgroundIconColorControl } from '../sharedControls';
 
 const config: ControlPanelConfig = {
   controlPanelSections: [
@@ -134,6 +134,8 @@ const config: ControlPanelConfig = {
         [subheaderFontSize],
         ['y_axis_format'],
         ['currency_format'],
+        [backgroundIconControl],
+        [backgroundIconColorControl],
         [
           {
             name: 'time_format',

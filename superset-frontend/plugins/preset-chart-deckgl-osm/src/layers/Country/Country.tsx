@@ -17,7 +17,10 @@
  * under the License.
  */
 import React, { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { GeoJsonLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, IconLayer } from '@deck.gl/layers';
+import { CompositeLayer } from '@deck.gl/core';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { geoCentroid } from 'd3-geo';
 import geojsonExtent from '@mapbox/geojson-extent';
 import {
   HandlerFunction,
@@ -39,9 +42,119 @@ import TooltipRow from '../../TooltipRow';
 import fitViewport, { Viewport } from '../../utils/fitViewport';
 import { TooltipProps } from '../../components/Tooltip';
 import { countries } from './countries';
+import { ICON_MAPPING, createSVGIcon, cleanupIconUrl } from './markers';
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
+
+interface IconData {
+  coordinates: [number, number];
+  url: string;
+  size: number;
+  metric: number;
+}
+
+interface PolygonRing {
+  area: number;
+  ring: [number, number][];
+}
+
+interface IconInfo {
+  object: IconData;
+  x: number;
+  y: number;
+}
+
+// Helper function to process conditional icons
+function processConditionalIcons(features: JsonObject[], formData: QueryFormData): IconData[] {
+  const {
+    show_icons,
+    icon_threshold,
+    icon_threshold_operator,
+    icon_type,
+    icon_color,
+    icon_size,
+  } = formData;
+
+  if (!show_icons || icon_threshold === '') {
+    return [];
+  }
+
+  const icons: IconData[] = [];
+  const threshold = Number(icon_threshold);
+
+  features.forEach(feature => {
+    const metricValue = feature.properties?.metric ?? undefined;
+    
+    if (metricValue === undefined) return;
+
+    let matches = false;
+    switch (icon_threshold_operator) {
+      case '==':
+        matches = Number(metricValue) === threshold;
+        break;
+      case '!=':
+        matches = Number(metricValue) !== threshold;
+        break;
+      case '>':
+        matches = Number(metricValue) > threshold;
+        break;
+      case '<':
+        matches = Number(metricValue) < threshold;
+        break;
+      case '>=':
+        matches = Number(metricValue) >= threshold;
+        break;
+      case '<=':
+        matches = Number(metricValue) <= threshold;
+        break;
+    }
+
+    if (matches) {
+      let coordinates: [number, number] | undefined;
+      if (feature.geometry.type === 'Polygon') {
+        const ring = feature.geometry.coordinates[0];
+        const center = ring.reduce(
+          (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
+          [0, 0]
+        ).map((sum: number) => sum / ring.length) as [number, number];
+        coordinates = center;
+      } else if (feature.geometry.type === 'MultiPolygon') {
+        const areas = feature.geometry.coordinates.map((poly: [number, number][][]) => {
+          const ring = poly[0];
+          return {
+            area: Math.abs(ring.reduce((area: number, point: [number, number], i: number) => {
+              const next = ring[(i + 1) % ring.length];
+              return area + (point[0] * next[1] - next[0] * point[1]);
+            }, 0)) / 2,
+            ring
+          } as PolygonRing;
+        });
+        const largestRing = areas.sort((a: PolygonRing, b: PolygonRing) => b.area - a.area)[0].ring;
+        const center = largestRing.reduce(
+          (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
+          [0, 0]
+        ).map((sum: number) => sum / largestRing.length) as [number, number];
+        coordinates = center;
+      }
+
+      if (coordinates) {
+        const color = `rgba(${icon_color.r},${icon_color.g},${icon_color.b},${icon_color.a})`;
+        const iconKey = icon_type as keyof typeof ICON_MAPPING;
+        const url = createSVGIcon(ICON_MAPPING[iconKey], color, icon_size);
+        
+        icons.push({
+          coordinates,
+          url,
+          size: icon_size,
+          metric: metricValue,
+        });
+      }
+    }
+  });
+
+  return icons;
+}
 
 export function getLayer(
   formData: QueryFormData,
@@ -51,72 +164,52 @@ export function getLayer(
   geoJson: JsonObject,
 ) {
   const fd = formData;
-  // console.log("Country - Creating layer with formData:", fd);
-  
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
-  // console.log("Country - Stroke color:", strokeColor);
-  
   const data = payload.data.data;
   const records = Array.isArray(data) ? data : (data?.records || []);
-  // console.log("Country - Records:", records);
 
-  // console.log("payload: ", payload);
-  // Get metric values for color scale
   const metricValues = records.map((d: JsonObject) => d.metric);
   const extent = [Math.min(...metricValues), Math.max(...metricValues)];
-  // console.log("Country - Metric extent:", extent);
-
-  // Create color scale
   const colorScale = getSequentialSchemeRegistry()
     .get(fd.linear_color_scheme)
     .createLinearScale(extent);
 
-  // Map values
   const valueMap: { [key: string]: number } = {};
   records.forEach((d: JsonObject) => {
     valueMap[d.country_id] = d.metric;
   });
-  // console.log("Country - Value map:", valueMap);
 
-  // Create features
   const features = geoJson.features.map((feature: JsonObject) => {
     const value = valueMap[feature.properties.ISO];
-    const color = value ? hexToRGB(colorScale(value)) : [0, 0, 0, 0];
-    // console.log("Country - Feature:", feature.properties.ISO, "Value:", value, "Color:", color);
     return {
       ...feature,
       properties: {
         ...feature.properties,
         metric: value,
-        fillColor: color,
+        fillColor: value ? hexToRGB(colorScale(value)) : [0, 0, 0, 0],
         strokeColor,
       },
     };
   });
 
-  let jsFnMutator;
+  let processedFeatures = features;
   if (fd.js_data_mutator) {
-    jsFnMutator = sandboxedEval(fd.js_data_mutator);
-    features = jsFnMutator(features);
+    const jsFnMutator = sandboxedEval(fd.js_data_mutator);
+    processedFeatures = jsFnMutator(features);
   }
 
-  const getFillColor = (f: JsonObject) => f.properties.fillColor;
-  const getLineColor = (f: JsonObject) => f.properties.strokeColor;
-
   function setTooltipContent(o: JsonObject) {
-
-    // if no extraProps, get from properties.metric
     if (!o.object?.extraProps) {
-
       const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
+      const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
+      const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
 
       return (
         <div className="deckgl-tooltip">
           <TooltipRow
-            label={o.object.properties.name || o.object.properties.NAME || o.object.
-            properties.ISO + " "}
-            value={formatter(o.object.properties.metric)}
+            label={(o.object.properties.ADM1 || o.object.properties.name || o.object.properties.NAME || o.object.properties.ISO) + " "}
+            value={`${prefix}${formatter(o.object.properties.metric)}${unit}`}
           />
         </div>
       );
@@ -136,24 +229,79 @@ export function getLayer(
     );
   }
 
-  const layer = new GeoJsonLayer({
-    id: `geojson-layer-${fd.slice_id}` as const,
-    data: features,
+  function setIconTooltipContent(info: any) {
+    if (info.object) {
+      const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
+      const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
+      const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
+      const formattedValue = `${prefix}${formatter(info.object.metric)}${unit}`;
+      const message = (fd.icon_hover_message || 'Value: {metric}')
+        .replace('{metric}', formattedValue);
+      
+      return (
+        <div className="deckgl-tooltip">
+          <TooltipRow
+            label=""
+            value={message}
+          />
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const geoJsonLayer = new GeoJsonLayer({
+    id: `geojson-layer-${fd.slice_id}`,
+    data: processedFeatures,
     extruded: fd.extruded,
     filled: fd.filled,
     stroked: fd.stroked,
     opacity: 0.8,
-    getFillColor,
-    getLineColor,
+    getFillColor: (f: JsonObject) => f.properties.fillColor,
+    getLineColor: (f: JsonObject) => f.properties.strokeColor,
     getLineWidth: fd.line_width || 1,
     lineWidthUnits: fd.line_width_unit,
-    pickable: true,
     autoHighlight: true,
     ...commonLayerProps(fd, setTooltip, setTooltipContent),
   });
 
-  // console.log("Country - Created layer:", layer);
-  return layer;
+  let iconLayer = null;
+
+  if (fd.show_icons && fd.icon_threshold !== '') {
+    const iconData = processConditionalIcons(processedFeatures, fd);
+    iconLayer = new IconLayer({
+      id: `icon-layer-${fd.slice_id}`,
+      data: iconData,
+      getIcon: (d: IconData) => ({
+        url: d.url,
+        width: d.size,
+        height: d.size,
+      }),
+      getPosition: (d: IconData) => d.coordinates,
+      getSize: (d: IconData) => d.size,
+      sizeScale: 1,
+      billboard: true,
+      alphaCutoff: 0.05,
+      parameters: {
+        depthTest: false,
+      },
+      pickable: true,
+      onHover: (info: any) => {
+        if (info.object) {
+          setTooltip({
+            x: info.x,
+            y: info.y,
+            content: setIconTooltipContent(info)
+          });
+        } else {
+          setTooltip(null);
+        }
+      },
+    });
+  }
+
+  // Return an array of layers instead of a composite layer
+  return iconLayer ? [geoJsonLayer, iconLayer] : [geoJsonLayer];
 }
 
 export type DeckGLCountryProps = {
@@ -170,6 +318,7 @@ const DeckGLCountry = (props: DeckGLCountryProps) => {
   const containerRef = useRef<DeckGLContainerHandle>();
   const [geoJson, setGeoJson] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [iconUrls, setIconUrls] = useState<string[]>([]);
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef;
@@ -180,7 +329,6 @@ const DeckGLCountry = (props: DeckGLCountryProps) => {
 
   const { formData, payload, setControlValue, onAddFilter, height, width } = props;
 
-  // Load GeoJSON data
   useEffect(() => {
     const country = formData.select_country;
     if (!country) {
@@ -234,6 +382,12 @@ const DeckGLCountry = (props: DeckGLCountryProps) => {
     }
     return props.viewport;
   }, [formData.autozoom, height, geoJson, props.viewport, width]);
+
+  useEffect(() => {
+    return () => {
+      iconUrls.forEach(url => cleanupIconUrl(url));
+    };
+  }, [iconUrls]);
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;

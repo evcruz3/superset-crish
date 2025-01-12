@@ -1,0 +1,63 @@
+slice_name: ' '
+description: null
+certified_by: null
+certification_details: null
+viz_type: big_number_total
+params:
+  datasource: 1__table
+  viz_type: big_number_total
+  slice_id: 3
+  metric:
+    aggregate: MAX
+    column:
+      advanced_data_type: null
+      changed_on: '2024-12-14T07:32:38.306191'
+      column_name: weekNumber
+      created_on: '2024-12-14T07:32:38.306188'
+      description: null
+      expression: null
+      extra: '{"warning_markdown":null}'
+      filterable: true
+      groupby: true
+      id: 16
+      is_active: true
+      is_dttm: false
+      python_date_format: null
+      type: INTEGER
+      type_generic: 0
+      uuid: b2eac10a-d446-46d1-a2e5-786101dc516a
+      verbose_name: null
+    datasourceWarning: false
+    expressionType: SIMPLE
+    hasCustomLabel: false
+    label: MAX(weekNumber)
+    optionName: metric_n5z6zzukvk_1gj91tjhjn6
+    sqlExpression: null
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    datasourceWarning: false
+    expressionType: SIMPLE
+    filterOptionName: filter_sn7ty2vieqc_afug97onu45
+    isExtra: false
+    isNew: false
+    operator: TEMPORAL_RANGE
+    sqlExpression: null
+    subject: reportingDate
+  subheader: Week Number
+  header_font_size: 0.6
+  subheader_font_size: 0.15
+  y_axis_format: SMART_NUMBER
+  time_format: smart_date
+  conditional_formatting: []
+  extra_form_data: {}
+  dashboards:
+  - 1
+query_context: '{"datasource":{"id":1,"type":"table"},"force":false,"queries":[{"filters":[{"col":"reportingDate","op":"TEMPORAL_RANGE","val":"No
+  filter"}],"extras":{"having":"","where":""},"applied_time_extras":{},"columns":[],"metrics":[{"aggregate":"MAX","column":{"advanced_data_type":null,"changed_on":"2024-12-14T07:32:38.306191","column_name":"weekNumber","created_on":"2024-12-14T07:32:38.306188","description":null,"expression":null,"extra":"{\"warning_markdown\":null}","filterable":true,"groupby":true,"id":16,"is_active":true,"is_dttm":false,"python_date_format":null,"type":"INTEGER","type_generic":0,"uuid":"b2eac10a-d446-46d1-a2e5-786101dc516a","verbose_name":null},"datasourceWarning":false,"expressionType":"SIMPLE","hasCustomLabel":false,"label":"MAX(weekNumber)","optionName":"metric_n5z6zzukvk_1gj91tjhjn6","sqlExpression":null}],"annotation_layers":[],"series_limit":0,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{}}],"form_data":{"datasource":"1__table","viz_type":"big_number_total","slice_id":3,"metric":{"aggregate":"MAX","column":{"advanced_data_type":null,"changed_on":"2024-12-14T07:32:38.306191","column_name":"weekNumber","created_on":"2024-12-14T07:32:38.306188","description":null,"expression":null,"extra":"{\"warning_markdown\":null}","filterable":true,"groupby":true,"id":16,"is_active":true,"is_dttm":false,"python_date_format":null,"type":"INTEGER","type_generic":0,"uuid":"b2eac10a-d446-46d1-a2e5-786101dc516a","verbose_name":null},"datasourceWarning":false,"expressionType":"SIMPLE","hasCustomLabel":false,"label":"MAX(weekNumber)","optionName":"metric_n5z6zzukvk_1gj91tjhjn6","sqlExpression":null},"adhoc_filters":[{"clause":"WHERE","comparator":"No
+  filter","datasourceWarning":false,"expressionType":"SIMPLE","filterOptionName":"filter_sn7ty2vieqc_afug97onu45","isExtra":false,"isNew":false,"operator":"TEMPORAL_RANGE","sqlExpression":null,"subject":"reportingDate"}],"subheader":"Week
+  Number","header_font_size":0.6,"subheader_font_size":0.15,"y_axis_format":"SMART_NUMBER","time_format":"smart_date","conditional_formatting":[],"extra_form_data":{},"dashboards":[1],"force":false,"result_format":"json","result_type":"full"},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 65b23ebe-c4c7-41f9-af00-57a3eed3b5e7
+version: 1.0.0
+dataset_uuid: d7532550-c526-4043-a9a4-e16cc5c14c7f
