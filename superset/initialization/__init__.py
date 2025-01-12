@@ -61,11 +61,11 @@ from superset.utils.core import is_test, pessimistic_connection_handling
 from superset.utils.decorators import transaction
 from superset.utils.log import DBEventLogger, get_event_logger_from_cfg_value
 
+
 if TYPE_CHECKING:
     from superset.app import SupersetApp
 
 logger = logging.getLogger(__name__)
-
 
 class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
     def __init__(self, app: SupersetApp) -> None:
@@ -189,11 +189,16 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         )
         from superset.views.sqllab import SqllabView
         from superset.views.tags import TagModelView, TagView
-        from superset.views.weather import WeatherForecastView
-        from superset.views.diseases import DiseasesView
-        from superset.views.facilities import FacilitiesView
-        from superset.views.bulletins_and_advisories import BulletinsAndAdvisoriesView
         from superset.views.users.api import CurrentUserRestApi, UserRestApi
+        from superset.views.weather import WeatherForecastView
+        from superset.views.diseases.views import DiseasesView
+        from superset.views.facilities import FacilitiesView
+        from superset.views.update_facilities import UpdateFacilitiesRestApi
+        from superset.views.diseases.api import UpdateCaseReportsRestApi
+        from superset.bulletins.api import BulletinsRestApi
+        from superset.views.bulletins_and_advisories import BulletinsAndAdvisoriesView
+        from superset.views.public_education import PublicEducationView
+
 
         set_app_error_handlers(self.superset_app)
 
@@ -231,6 +236,9 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(SavedQueryRestApi)
         appbuilder.add_api(TagRestApi)
         appbuilder.add_api(SqlLabRestApi)
+        appbuilder.add_api(UpdateFacilitiesRestApi)
+        appbuilder.add_api(UpdateCaseReportsRestApi)
+        appbuilder.add_api(BulletinsRestApi)
         #
         # Setup regular views
         #
@@ -286,12 +294,32 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category_label=__("Diseases"),
         )
 
+        appbuilder.add_link(
+            "Update Case Reports",
+            label=__("Update Case Reports"),
+            href="/diseases/update/",
+            icon="fa-upload",
+            category="Diseases",
+            category_label=__("Diseases"),
+        )
+
         appbuilder.add_view(
             FacilitiesView,
-            "Facilities",
-            label=__("Facilities"),
+            "Overview",
+            label=__("Overview"),
             icon="fa-building",
-            category="",
+            category="Facilities",
+            category_label=__("Facilities"),
+            category_icon="",
+        )
+
+        appbuilder.add_link(
+            "Update",
+            label=__("Update Facilities"),
+            href="/facilities/update/",
+            icon="fa-upload",
+            category="Facilities",
+            category_label=__("Facilities"),
             category_icon="",
         )
 
@@ -300,6 +328,15 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             "Bulletins and Advisories",
             label=__("Bulletins and Advisories"),
             icon="fa-bullhorn",
+            category="",
+            category_icon="",
+        )
+
+        appbuilder.add_view(
+            PublicEducationView,
+            "Public Education",
+            label=__("Public Education"),
+            icon="fa-graduation-cap",
             category="",
             category_icon="",
         )
@@ -472,8 +509,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category_label=__("Security"),
             icon="fa-lock",
         )
-
-        
 
     def init_app_in_ctx(self) -> None:
         """

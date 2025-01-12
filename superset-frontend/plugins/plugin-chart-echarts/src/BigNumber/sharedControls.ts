@@ -88,3 +88,44 @@ export const subheaderFontSize: CustomControlItem = {
     ],
   },
 };
+
+export const backgroundIconControl: CustomControlItem = {
+  name: 'background_icon',
+  config: {
+    type: 'SelectControl',
+    label: t('Background Icon'),
+    renderTrigger: true,
+    default: null,
+    choices: [
+      [null, t('None')],
+      // Weather Parameters
+      ['cloud-rain', t('Rainfall')],
+      ['droplet', t('Humidity')],
+      ['temperature-high', t('Temperature High')],
+      ['temperature-low', t('Temperature Low')],
+      ['wind', t('Wind')],
+      ['sun', t('Sun')],
+      ['cloud', t('Cloud')],
+      // Diseases
+      ['virus', t('Dengue')],
+      ['head-side-cough', t('ARI')],
+      ['toilet', t('Diarrhea')],
+      ['hospital', t('Hospital')],
+      ['syringe', t('Vaccination')],
+      ['prescription-bottle-medical', t('Medicine')],
+    ],
+    description: t('Icon to display in the background'),
+  },
+};
+
+export const backgroundIconColorControl: CustomControlItem = {
+  name: 'background_icon_color',
+  config: {
+    type: 'ColorPickerControl',
+    label: t('Background Icon Color'),
+    renderTrigger: true,
+    default: { r: 200, g: 200, b: 200, a: 0.3 },
+    description: t('Color of the background icon'),
+    visibility: ({ controls }) => !!controls?.background_icon?.value,
+  },
+};

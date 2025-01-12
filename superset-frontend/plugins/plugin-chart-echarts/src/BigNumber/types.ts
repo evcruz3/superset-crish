@@ -38,6 +38,16 @@ export type BigNumberTotalFormData = QueryFormData & {
   metric?: QueryFormMetric;
   yAxisFormat?: string;
   forceTimestampFormatting?: boolean;
+  headerFontSize?: number;
+  subheaderFontSize?: number;
+  currencyFormat?: string;
+  backgroundIcon?: string;
+  backgroundIconColor?: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  };
 };
 
 export type BigNumberWithTrendlineFormData = BigNumberTotalFormData & {
@@ -47,6 +57,14 @@ export type BigNumberWithTrendlineFormData = BigNumberTotalFormData & {
     b: number;
   };
   compareLag?: string | number;
+  timeRangeFixed?: boolean;
+  backgroundIcon?: string;
+  backgroundIconColor?: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  };
 };
 
 export interface BigNumberTotalChartDataResponseResult
@@ -67,7 +85,7 @@ export type BigNumberWithTrendlineChartProps =
 
 export type TimeSeriesDatum = [number, number | null];
 
-export type BigNumberVizProps = {
+export interface BigNumberVizProps {
   className?: string;
   width: number;
   height: number;
@@ -96,4 +114,11 @@ export type BigNumberVizProps = {
   formData?: BigNumberWithTrendlineFormData;
   refs: Refs;
   colorThresholdFormatters?: ColorFormatters;
-};
+  background_icon?: string | null;
+  background_icon_color?: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  };
+}

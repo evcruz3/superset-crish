@@ -44,6 +44,10 @@ export default function transformProps(
     hooks,
     datasource: { currencyFormats = {}, columnFormats = {} },
   } = chartProps;
+
+  console.log('Raw Form Data:', rawFormData);
+  console.log('Form Data:', formData);
+
   const {
     headerFontSize,
     metric = 'value',
@@ -54,7 +58,13 @@ export default function transformProps(
     yAxisFormat,
     conditionalFormatting,
     currencyFormat,
+    backgroundIcon: background_icon,
+    backgroundIconColor: background_icon_color,
   } = formData;
+
+  console.log('Background Icon:', background_icon);
+  console.log('Background Icon Color:', background_icon_color);
+
   const refs: Refs = {};
   const { data = [], coltypes = [] } = queriesData[0];
   const granularity = extractTimegrain(rawFormData as QueryFormData);
@@ -110,5 +120,7 @@ export default function transformProps(
     onContextMenu,
     refs,
     colorThresholdFormatters,
+    background_icon,
+    background_icon_color,
   };
 }

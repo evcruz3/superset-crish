@@ -73,6 +73,8 @@ export default function transformProps(
     yAxisFormat,
     currencyFormat,
     timeRangeFixed,
+    backgroundIcon,
+    backgroundIconColor,
   } = formData;
   const granularity = extractTimegrain(rawFormData);
   const {
@@ -276,5 +278,7 @@ export default function transformProps(
     onContextMenu,
     xValueFormatter: formatTime,
     refs,
+    background_icon: backgroundIcon,
+    background_icon_color: backgroundIconColor,
   };
 }

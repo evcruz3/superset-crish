@@ -1,0 +1,71 @@
+slice_name: Dengue Cases
+description: null
+certified_by: null
+certification_details: null
+viz_type: big_number
+params:
+  datasource: 2__table
+  viz_type: big_number
+  x_axis: reportingDate
+  time_grain_sqla: P1W
+  metric:
+    expressionType: SIMPLE
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: numberOfCases
+      description: null
+      expression: null
+      filterable: true
+      groupby: true
+      id: 23
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: FLOAT
+      type_generic: 0
+      verbose_name: null
+      warning_markdown: null
+    aggregate: SUM
+    sqlExpression: null
+    datasourceWarning: false
+    hasCustomLabel: false
+    label: SUM(numberOfCases)
+    optionName: metric_85qbxk500cx_fhvnghzbrxc
+  adhoc_filters:
+  - expressionType: SIMPLE
+    subject: reportingDate
+    operator: TEMPORAL_RANGE
+    comparator: No filter
+    clause: WHERE
+    sqlExpression: null
+    isExtra: false
+    isNew: false
+    datasourceWarning: false
+    filterOptionName: filter_frkfyh96k6v_1vwwk3nz2j8
+  compare_lag: 1
+  compare_suffix: Cases
+  show_timestamp: false
+  show_trend_line: true
+  start_y_axis_at_zero: true
+  color_picker:
+    r: 0
+    g: 122
+    b: 135
+    a: 1
+  header_font_size: 0.4
+  subheader_font_size: 0.15
+  y_axis_format: SMART_NUMBER
+  time_format: smart_date
+  rolling_type: None
+  extra_form_data: {}
+  dashboards:
+  - 1
+query_context: '{"datasource":{"id":2,"type":"table"},"force":false,"queries":[{"filters":[{"col":"reportingDate","op":"TEMPORAL_RANGE","val":"No
+  filter"}],"extras":{"time_grain_sqla":"P1W","having":"","where":""},"applied_time_extras":{},"columns":[{"timeGrain":"P1W","columnType":"BASE_AXIS","sqlExpression":"reportingDate","label":"reportingDate","expressionType":"SQL"}],"metrics":[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"numberOfCases","description":null,"expression":null,"filterable":true,"groupby":true,"id":23,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"FLOAT","type_generic":0,"verbose_name":null,"warning_markdown":null},"aggregate":"SUM","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":false,"label":"SUM(numberOfCases)","optionName":"metric_85qbxk500cx_fhvnghzbrxc"}],"annotation_layers":[],"series_limit":0,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"post_processing":[{"operation":"pivot","options":{"index":["reportingDate"],"columns":[],"aggregates":{"SUM(numberOfCases)":{"operator":"mean"}},"drop_missing_columns":true}},{"operation":"flatten"}]}],"form_data":{"datasource":"2__table","viz_type":"big_number","x_axis":"reportingDate","time_grain_sqla":"P1W","metric":{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"numberOfCases","description":null,"expression":null,"filterable":true,"groupby":true,"id":23,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"FLOAT","type_generic":0,"verbose_name":null,"warning_markdown":null},"aggregate":"SUM","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":false,"label":"SUM(numberOfCases)","optionName":"metric_85qbxk500cx_fhvnghzbrxc"},"adhoc_filters":[{"expressionType":"SIMPLE","subject":"reportingDate","operator":"TEMPORAL_RANGE","comparator":"No
+  filter","clause":"WHERE","sqlExpression":null,"isExtra":false,"isNew":false,"datasourceWarning":false,"filterOptionName":"filter_frkfyh96k6v_1vwwk3nz2j8"}],"compare_lag":1,"compare_suffix":"Cases","show_timestamp":false,"show_trend_line":true,"start_y_axis_at_zero":true,"color_picker":{"r":0,"g":122,"b":135,"a":1},"header_font_size":0.4,"subheader_font_size":0.15,"y_axis_format":"SMART_NUMBER","time_format":"smart_date","rolling_type":"None","extra_form_data":{},"dashboards":[1],"force":false,"result_format":"json","result_type":"full"},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 8390c0e5-22ff-4f69-882e-c5356ee213cd
+version: 1.0.0
+dataset_uuid: 0b1c83fe-be89-465a-9264-cd297f13c3ee

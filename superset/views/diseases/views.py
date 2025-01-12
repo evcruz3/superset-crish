@@ -32,4 +32,10 @@ class DiseasesView(BaseSupersetView):
     @has_access
     def ari(self):
         """Acute Respiratory Infection dashboard"""
-        return super().render_app_template() 
+        return super().render_app_template()
+
+    @expose("/update/")
+    # @has_access
+    def update(self):
+        """View for uploading case reports data"""
+        return super().render_app_template()

@@ -1,0 +1,43 @@
+slice_name: Overview Map
+description: null
+certified_by: null
+certification_details: null
+viz_type: deck_multi
+params:
+  datasource: 5__table
+  viz_type: deck_multi
+  slice_id: 18
+  mapbox_style: https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png
+  viewport:
+    width: 828
+    height: 366
+    latitude: -8.467327468675036
+    longitude: 125.48970268392208
+    zoom: 7.263501674438334
+    bearing: 0
+    pitch: 0
+    altitude: 1.5
+    maxZoom: 20
+    minZoom: 0
+    maxPitch: 60
+    minPitch: 0
+    normalize: true
+    position:
+    - 0
+    - 0
+    - 0
+  deck_slices:
+  - 23
+  - 27
+  - 29
+  - 8
+  - 22
+  adhoc_filters: []
+  extra_form_data: {}
+  dashboards:
+  - 1
+query_context: '{"datasource":{"id":5,"type":"table"},"force":false,"queries":[{"filters":[],"extras":{"having":"","where":""},"applied_time_extras":{},"columns":[],"metrics":[],"annotation_layers":[],"series_limit":0,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{}}],"form_data":{"datasource":"5__table","viz_type":"deck_multi","slice_id":18,"mapbox_style":"https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png","viewport":{"width":828,"height":366,"latitude":-8.467327468675036,"longitude":125.48970268392208,"zoom":7.263501674438334,"bearing":0,"pitch":0,"altitude":1.5,"maxZoom":20,"minZoom":0,"maxPitch":60,"minPitch":0,"normalize":true,"position":[0,0,0]},"deck_slices":[23,27,29,8,22],"adhoc_filters":[],"extra_form_data":{},"dashboards":[1],"force":false,"result_format":"json","result_type":"full"},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 67f53b29-fa57-4173-a171-141456f5e750
+version: 1.0.0
+dataset_uuid: 5b1c39aa-01ad-4bc5-88b4-bc2deddf02e0

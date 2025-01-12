@@ -1,17 +1,13 @@
-from flask import redirect
-from flask_appbuilder import BaseView, expose
-from flask_appbuilder.security.decorators import has_access
+from flask import Response
+from flask_appbuilder import expose, has_access
 from flask_babel import lazy_gettext as _
+from superset.views.base import BaseSupersetView
 
-
-class BulletinsAndAdvisoriesView(BaseView):
-    """View that redirects to the bulletins and advisories dashboard"""
-    
+class BulletinsAndAdvisoriesView(BaseSupersetView):
     route_base = "/bulletins_and_advisories"
-    default_view = "bulletins_and_advisories"
-
+    class_permission_name = "BulletinsAndAdvisories"
+    
     @expose("/")
     @has_access
-    def bulletins_and_advisories(self):
-        """Redirects to the bulletins and advisories dashboard"""
-        return redirect(f"/superset/welcome/") 
+    def list(self) -> Response:
+        return self.render_app_template()

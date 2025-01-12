@@ -88,6 +88,30 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        [
+          {
+            name: 'metric_prefix',
+            config: {
+              type: 'TextControl',
+              label: t('Metric Prefix'),
+              description: t('Text to be displayed before the metric value'),
+              default: '',
+              renderTrigger: true,
+            },
+          },
+        ],
+        [
+          {
+            name: 'metric_unit',
+            config: {
+              type: 'TextControl',
+              label: t('Metric Unit'),
+              description: t('Unit to be displayed after the metric value'),
+              default: '',
+              renderTrigger: true,
+            },
+          },
+        ],
         ['linear_color_scheme'],
       ],
     },
@@ -131,6 +155,107 @@ const config: ControlPanelConfig = {
         [jsDataMutator],
         [jsTooltip],
         [jsOnclickHref],
+      ],
+    },
+    {
+      label: t('Conditional Icons'),
+      expanded: true,
+      controlSetRows: [
+        [
+          {
+            name: 'show_icons',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Show Icons'),
+              default: false,
+              description: t('Show icons on regions based on conditions'),
+            },
+          },
+        ],
+        [
+          {
+            name: 'icon_threshold',
+            config: {
+              type: 'TextControl',
+              label: t('Threshold Value'),
+              default: '',
+              description: t('Show icon when metric value exceeds this threshold'),
+              visibility: ({ controls }) => controls.show_icons.value,
+            },
+          },
+          {
+            name: 'icon_threshold_operator',
+            config: {
+              type: 'SelectControl',
+              label: t('Threshold Operator'),
+              default: '>',
+              choices: [
+                ['>', t('Greater than')],
+                ['>=', t('Greater than or equal')],
+                ['<', t('Less than')],
+                ['<=', t('Less than or equal')],
+                ['==', t('Equal to')],
+                ['!=', t('Not equal to')],
+              ],
+              visibility: ({ controls }) => controls.show_icons.value,
+            },
+          },
+        ],
+        [
+          {
+            name: 'icon_type',
+            config: {
+              type: 'SelectControl',
+              label: t('Icon'),
+              default: 'fa-exclamation-circle',
+              choices: [
+                ['fa-exclamation-circle', t('Exclamation Circle')],
+                ['fa-warning', t('Warning')],
+                ['fa-info-circle', t('Info Circle')],
+                ['fa-check-circle', t('Check Circle')],
+                ['fa-times-circle', t('Times Circle')],
+                ['fa-question-circle', t('Question Circle')],
+                ['fa-flag', t('Flag')],
+                ['fa-bell', t('Bell')],
+              ],
+              visibility: ({ controls }) => controls.show_icons.value,
+            },
+          },
+        ],
+        [
+          {
+            name: 'icon_color',
+            config: {
+              type: 'ColorPickerControl',
+              label: t('Icon Color'),
+              default: { r: 255, g: 0, b: 0, a: 1 },
+              visibility: ({ controls }) => controls.show_icons.value,
+            },
+          },
+          {
+            name: 'icon_size',
+            config: {
+              type: 'SliderControl',
+              label: t('Icon Size'),
+              default: 20,
+              min: 10,
+              max: 100,
+              visibility: ({ controls }) => controls.show_icons.value,
+            },
+          },
+        ],
+        [
+          {
+            name: 'icon_hover_message',
+            config: {
+              type: 'TextControl',
+              label: t('Icon Hover Message'),
+              description: t('Message to display when hovering over the icon. Use {metric} to include the metric value.'),
+              default: 'Value: {metric}',
+              visibility: ({ controls }) => controls.show_icons.value,
+            },
+          },
+        ],
       ],
     },
   ],
