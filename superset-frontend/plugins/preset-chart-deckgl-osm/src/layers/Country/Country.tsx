@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import * as React from 'react';
 import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { GeoJsonLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer } from '@deck.gl/core';

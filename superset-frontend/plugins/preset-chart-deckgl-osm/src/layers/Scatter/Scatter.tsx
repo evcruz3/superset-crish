@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import * as React from 'react';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import {
   Datasource,

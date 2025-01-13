@@ -17,7 +17,6 @@
  * under the License.
  */
 
-import * as React from 'react';
 import { styled, safeHtmlSpan } from '@superset-ui/core';
 import { ReactNode } from 'react';
 
