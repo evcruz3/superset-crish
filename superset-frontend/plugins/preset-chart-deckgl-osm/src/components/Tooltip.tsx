@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import * as React from 'react';
 import { styled, safeHtmlSpan } from '@superset-ui/core';
 import { ReactNode } from 'react';
 
@@ -47,7 +48,7 @@ const StyledDiv = styled.div<{ top: number; left: number }>`
   `}
 `;
 
-export default function Tooltip(props: TooltipProps) {
+const Tooltip: React.FC<TooltipProps> = props => {
   const { tooltip } = props;
   if (typeof tooltip === 'undefined' || tooltip === null) {
     return null;
@@ -62,4 +63,6 @@ export default function Tooltip(props: TooltipProps) {
       {safeContent}
     </StyledDiv>
   );
-}
+};
+
+export default Tooltip;

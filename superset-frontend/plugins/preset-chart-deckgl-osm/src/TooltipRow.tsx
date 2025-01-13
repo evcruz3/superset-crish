@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import * as React from 'react';
+
 type TooltipRowProps = {
   label: string;
   value: string;
 };
 
-const TooltipRow = ({ label, value }: TooltipRowProps) => (
+const TooltipRow: React.FC<TooltipRowProps> = ({ label, value }) => (
   <div>
     {label}
     <strong>{value}</strong>
