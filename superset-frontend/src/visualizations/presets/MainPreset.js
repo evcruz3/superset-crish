@@ -101,7 +101,7 @@ import {
   PolygonChartPlugin as PolygonChartOsmPlugin, 
   ScreengridChartPlugin as ScreengridChartOsmPlugin, 
   ContourChartPlugin as ContourChartOsmPlugin, 
-} from 'preset-chart-deckgl-osm';
+} from '@superset-ui/preset-chart-deckgl-osm';
 
 export default class MainPreset extends Preset {
   constructor() {
