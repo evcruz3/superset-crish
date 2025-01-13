@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import * as React from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { GeoJsonLayer, IconLayer } from '@deck.gl/layers';
 import { CompositeLayer } from '@deck.gl/core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -314,7 +315,7 @@ export type DeckGLCountryProps = {
   width: number;
 };
 
-const DeckGLCountry = (props: DeckGLCountryProps) => {
+const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
   const containerRef = useRef<DeckGLContainerHandle>();
   const [geoJson, setGeoJson] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);

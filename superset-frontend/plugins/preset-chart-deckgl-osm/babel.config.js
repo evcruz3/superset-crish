@@ -16,7 +16,10 @@ config.plugins = [
   ['babel-plugin-transform-dev', { evaluate: false }],
   ['babel-plugin-typescript-to-proptypes', { loose: true }],
   ['@babel/plugin-proposal-class-properties', { loose: true }],
-  ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }],
+  ['@babel/plugin-transform-react-jsx', { 
+    runtime: 'automatic',
+    importSource: 'react'
+  }],
 ];
 
 module.exports = config;
