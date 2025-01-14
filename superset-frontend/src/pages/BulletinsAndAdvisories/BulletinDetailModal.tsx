@@ -103,7 +103,7 @@ export default function BulletinDetailModal({ bulletin, onClose }: BulletinDetai
         )}
         {bulletin.created_on && (
           <>
-            {t('on')} {moment(bulletin.created_on).format('MMMM D, YYYY')}
+            {moment(bulletin.created_on).fromNow()}
           </>
         )}
       </div>

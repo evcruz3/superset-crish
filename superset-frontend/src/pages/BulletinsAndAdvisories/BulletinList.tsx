@@ -115,8 +115,8 @@ export default function BulletinList() {
         </div>
         <div className="bulletin-meta">
           <small>
-            {t('Created by')} {bulletin.created_by.first_name} {bulletin.created_by.last_name} {t('on')}{' '}
-            {moment(bulletin.created_on).format('MMMM D, YYYY')}
+            {t('Created by')} {bulletin.created_by.first_name} {bulletin.created_by.last_name} {' '}
+            {moment(bulletin.created_on).fromNow()}
           </small>
         </div>
       </StyledCard>

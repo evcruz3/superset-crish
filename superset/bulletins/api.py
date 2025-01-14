@@ -41,16 +41,6 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         "title",
     ]
 
-    base_related_field_filters = {
-        "created_by": [["id", BaseFilterRelatedUsers, lambda: []]],
-    }
-
-    related_field_filters = {
-        "created_by": RelatedFieldFilter("first_name", FilterRelatedOwners),
-    }
-
-    allowed_rel_fields = {"created_by"}
-
     def pre_add(self, item: Bulletin) -> None:
         """Set the created_by user before adding"""
         item.created_by_fk = g.user.id

@@ -7,6 +7,7 @@ import withToasts from 'src/components/MessageToasts/withToasts';
 import { PublicEducationPost } from './types';
 import PublicEducationCard from './PublicEducationCard';
 import CreatePublicEducationModal from './CreatePublicEducationModal';
+import PublicEducationDetailModal from './PublicEducationDetailModal';
 
 const PAGE_SIZE = 25;
 
@@ -64,6 +65,7 @@ function PublicEducationList({
   user 
 }: PublicEducationListProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<PublicEducationPost | null>(null);
 
   const {
     state: {
@@ -130,13 +132,6 @@ function PublicEducationList({
         debounceTime: 300,
       },
       {
-        Header: t('Created by'),
-        id: 'created_by',
-        input: 'search',
-        operator: 'ct',
-        debounceTime: 300,
-      },
-      {
         Header: t('Hashtags'),
         id: 'hashtags',
         input: 'search',
@@ -158,6 +153,7 @@ function PublicEducationList({
           post={post}
           hasPerm={hasPerm}
           bulkSelectEnabled={bulkSelectEnabled}
+          onClick={() => setSelectedPost(post)}
         />
       );
     },
@@ -239,6 +235,11 @@ function PublicEducationList({
           setCreateModalVisible(false);
           refreshData();
         }}
+      />
+
+      <PublicEducationDetailModal
+        post={selectedPost}
+        onClose={() => setSelectedPost(null)}
       />
     </>
   );

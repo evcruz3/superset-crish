@@ -5,6 +5,7 @@ import { Bulletin } from './types';
 import BulletinChart from './BulletinChart';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import BulletinDetailModal from './BulletinDetailModal';
+import moment from 'moment';
 
 const FALLBACK_THUMBNAIL_URL = '/static/assets/images/chart-card-fallback.svg';
 
@@ -144,7 +145,7 @@ export default function BulletinCard({
           )}
           {bulletin.created_on && (
             <>
-              {t('on')} {new Date(bulletin.created_on).toLocaleDateString()}
+              {moment(bulletin.created_on).fromNow()}
             </>
           )}
         </div>

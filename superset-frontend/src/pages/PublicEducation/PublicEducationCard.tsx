@@ -9,12 +9,20 @@ interface PublicEducationCardProps {
   post: PublicEducationPost;
   hasPerm: (perm: string) => boolean;
   bulkSelectEnabled: boolean;
+  onClick?: () => void;
 }
 
 const StyledCard = styled(Card)`
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
   border-radius: ${({ theme }) => theme.borderRadius}px;
   margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    box-shadow: ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit * 4}px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
 `;
 
 const AttachmentPreview = styled.div`
@@ -73,9 +81,17 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
   post,
   hasPerm,
   bulkSelectEnabled,
+  onClick,
 }) => {
-  const handleAttachmentClick = (attachmentId: number) => {
+  const handleAttachmentClick = (e: React.MouseEvent, attachmentId: number) => {
+    e.stopPropagation();
     window.open(`/api/v1/public_education/attachment/${attachmentId}/download`, '_blank');
+  };
+
+  const handleCardClick = () => {
+    if (!bulkSelectEnabled && onClick) {
+      onClick();
+    }
   };
 
   if (!post) {
@@ -83,7 +99,10 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
   }
 
   return (
-    <StyledCard>
+    <StyledCard 
+      onClick={handleCardClick}
+      style={{ cursor: bulkSelectEnabled ? 'default' : 'pointer' }}
+    >
       <Title level={4}>{post.title}</Title>
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         <Text>{post.message}</Text>
@@ -95,7 +114,7 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
               <div 
                 key={attachment.id}
                 className="attachment-item"
-                onClick={() => handleAttachmentClick(attachment.id)}
+                onClick={(e) => handleAttachmentClick(e, attachment.id)}
                 title={attachment.file_name}
               >
                 {attachment.file_type === 'image' ? (

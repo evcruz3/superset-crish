@@ -7,6 +7,7 @@ import withToasts from 'src/components/MessageToasts/withToasts';
 import { Bulletin } from './types';
 import BulletinCard from './BulletinCard';
 import CreateBulletinModal from './CreateBulletinModal';
+import moment from 'moment';
 
 const PAGE_SIZE = 25;
 
@@ -107,12 +108,12 @@ function BulletinsAndAdvisories({
       {
         Cell: ({ row: { original } }: any) => 
           `${original.created_by.first_name} ${original.created_by.last_name}`,
-        Header: t('Created by'),
+        Header: t('Created By'),
         accessor: 'created_by',
       },
       {
-        Cell: ({ row: { original } }: any) => original.created_on,
-        Header: t('Created on'),
+        Cell: ({ row: { original } }: any) => <>{moment(original.created_on).fromNow()}</>,
+        Header: t('Created'),
         accessor: 'created_on',
       },
     ],
@@ -124,13 +125,6 @@ function BulletinsAndAdvisories({
       {
         Header: t('Title'),
         id: 'title',
-        input: 'search',
-        operator: 'ct',
-        debounceTime: 300,
-      },
-      {
-        Header: t('Created by'),
-        id: 'created_by',
         input: 'search',
         operator: 'ct',
         debounceTime: 300,
