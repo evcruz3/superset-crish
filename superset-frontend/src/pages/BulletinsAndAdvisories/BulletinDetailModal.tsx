@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Tag } from 'antd';
-import { styled, t, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
+import { styled, t, isFeatureEnabled, FeatureFlag, SupersetClient } from '@superset-ui/core';
 import moment from 'moment';
 import { Bulletin } from './types';
 import BulletinChart from './BulletinChart';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
+
+const FALLBACK_THUMBNAIL_URL = '/static/assets/images/chart-card-fallback.svg';
 
 const StyledModal = styled(Modal)`
   .bulletin-title {
@@ -52,6 +54,34 @@ interface BulletinDetailModalProps {
 }
 
 export default function BulletinDetailModal({ bulletin, onClose }: BulletinDetailModalProps) {
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
+
+  useEffect(() => {
+    const fetchThumbnailUrl = async () => {
+      if (bulletin?.chart_id) {
+        try {
+          const response = await SupersetClient.get({
+            endpoint: `/api/v1/chart/${bulletin.chart_id}`,
+          });
+          const chartData = response.json.result;
+          if (chartData.thumbnail_url) {
+            const fullThumbnailUrl = chartData.thumbnail_url.startsWith('/')
+              ? `${window.location.origin}${chartData.thumbnail_url}`
+              : chartData.thumbnail_url;
+            setThumbnailUrl(fullThumbnailUrl);
+          }
+        } catch (error) {
+          // Handle error silently and fallback to BulletinChart
+          setThumbnailUrl('');
+        }
+      } else {
+        setThumbnailUrl('');
+      }
+    };
+
+    fetchThumbnailUrl();
+  }, [bulletin?.chart_id]);
+
   if (!bulletin) return null;
 
   const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
@@ -81,13 +111,15 @@ export default function BulletinDetailModal({ bulletin, onClose }: BulletinDetai
       <div className="bulletin-chart">
         {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
           <BulletinChart chartId={bulletin.chart_id} />
-        ) : (
+        ) : bulletin.chart_id ? (
           <ImageLoader
-            src={bulletin.thumbnail_url || ''}
-            fallback={bulletin.chart_id ? '/static/assets/images/chart-card-fallback.svg' : '/static/assets/images/placeholder-chart.png'}
-            isLoading={bulletin.chart_id && !bulletin.thumbnail_url}
+            src={thumbnailUrl || ''}
+            fallback={FALLBACK_THUMBNAIL_URL}
+            isLoading={bulletin.chart_id && !thumbnailUrl}
             position="top"
           />
+        ) : (
+          <div style={{ height: '400px' }}></div>
         )}
       </div>
       {hashtags.length > 0 && (
