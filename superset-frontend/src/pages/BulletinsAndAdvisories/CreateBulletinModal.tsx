@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Form, Input, Select } from 'antd';
-import { SupersetClient, t, useTheme } from '@superset-ui/core';
+import { SupersetClient, t, useTheme, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { AsyncSelect } from 'src/components';
 import { getClientErrorObject } from '@superset-ui/core';
@@ -8,16 +8,17 @@ import rison from 'rison';
 import { SelectValue } from 'antd/lib/select';
 import { CreateBulletinPayload } from './types';
 import styled from 'styled-components';
+import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 
 const ThumbnailPreview = styled.div`
   margin-top: 16px;
   text-align: center;
+  height: 200px;
+  position: relative;
   
-  img {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 4px;
-    border: 1px solid #d9d9d9;
+  .gradient-container {
+    position: relative;
+    height: 100%;
   }
 `;
 
@@ -155,16 +156,16 @@ export default function CreateBulletinModal({
           />
         </Form.Item>
 
-        {selectedChart?.thumbnail_url && (
+        {selectedChart?.thumbnail_url && isFeatureEnabled(FeatureFlag.Thumbnails) && (
           <ThumbnailPreview>
-            <img
-              src={selectedChart.thumbnail_url}
-              alt={selectedChart.label}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/static/assets/images/chart-card-fallback.svg';
-              }}
-            />
+            <div className="gradient-container">
+              <ImageLoader
+                src={selectedChart.thumbnail_url}
+                fallback="/static/assets/images/chart-card-fallback.svg"
+                isLoading={false}
+                position="top"
+              />
+            </div>
           </ThumbnailPreview>
         )}
       </Form>

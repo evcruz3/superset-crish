@@ -1,10 +1,16 @@
+export interface CreatedBy {
+  first_name: string;
+  last_name: string;
+}
+
 export interface Bulletin {
   id: number;
   title: string;
   message: string;
   hashtags: string;
   chart_id: number | null;
-  created_by: string;
+  thumbnail_url?: string;
+  created_by: CreatedBy;
   created_on: string;
 }
 

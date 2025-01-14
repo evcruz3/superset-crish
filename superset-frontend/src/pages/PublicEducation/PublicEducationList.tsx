@@ -1,16 +1,16 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { styled, t} from '@superset-ui/core';
+import { styled, t } from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import ListView, { ListViewProps, Filter, Filters } from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { Bulletin } from './types';
-import BulletinCard from './BulletinCard';
-import CreateBulletinModal from './CreateBulletinModal';
+import { PublicEducationPost } from './types';
+import PublicEducationCard from './PublicEducationCard';
+import CreatePublicEducationModal from './CreatePublicEducationModal';
 
 const PAGE_SIZE = 25;
 
-interface BulletinsAndAdvisoriesProps {
+interface PublicEducationListProps {
   addDangerToast: (msg: string) => void;
   addSuccessToast: (msg: string) => void;
   user: {
@@ -18,17 +18,18 @@ interface BulletinsAndAdvisoriesProps {
   };
 }
 
-const BULLETIN_COLUMNS_TO_FETCH = [
+const POST_COLUMNS_TO_FETCH = [
   'id',
   'title',
   'message',
   'hashtags',
-  'chart_id',
+  'attachments',
   'created_by',
   'created_on',
+  'changed_on',
 ];
 
-const StyledListView = styled(ListView<Bulletin>)`
+const StyledListView = styled(ListView<PublicEducationPost>)`
   .card-container {
     .ant-col {
       width: 100% !important;
@@ -37,13 +38,11 @@ const StyledListView = styled(ListView<Bulletin>)`
     }
   }
 
-  // Additional styling for better spacing
   .ant-card {
     border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
     border-radius: ${({ theme }) => theme.borderRadius}px;
   }
 
-  // Ensure proper spacing between cards
   .ant-row.card-container {
     margin: 0;
     padding: ${({ theme }) => theme.gridUnit * 4}px;
@@ -59,33 +58,33 @@ const StyledListView = styled(ListView<Bulletin>)`
   }
 `;
 
-function BulletinsAndAdvisories({ 
+function PublicEducationList({ 
   addDangerToast, 
   addSuccessToast,
   user 
-}: BulletinsAndAdvisoriesProps) {
+}: PublicEducationListProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const {
     state: {
       loading,
-      resourceCount: bulletinCount,
-      resourceCollection: bulletins,
+      resourceCount: postCount,
+      resourceCollection: posts,
       bulkSelectEnabled,
     },
     hasPerm,
     fetchData,
     toggleBulkSelect,
     refreshData,
-  } = useListViewResource<Bulletin>(
-    'bulletins_and_advisories',
-    t('bulletin'),
+  } = useListViewResource<PublicEducationPost>(
+    'public_education',
+    t('public education post'),
     addDangerToast,
     true,
-    BULLETIN_COLUMNS_TO_FETCH,
+    POST_COLUMNS_TO_FETCH,
   );
 
-  const initialSort = [{ id: 'created_on', desc: true }];
+  const initialSort = [{ id: 'changed_on', desc: true }];
 
   const columns = useMemo(
     () => [
@@ -105,13 +104,15 @@ function BulletinsAndAdvisories({
         accessor: 'hashtags',
       },
       {
-        Cell: ({ row: { original } }: any) => 
-          `${original.created_by.first_name} ${original.created_by.last_name}`,
+        Cell: ({ row: { original } }: any) => original.created_by.first_name + ' ' + original.created_by.last_name,
         Header: t('Created by'),
         accessor: 'created_by',
       },
       {
-        Cell: ({ row: { original } }: any) => original.created_on,
+        Cell: ({ row: { original } }: any) => {
+          const date = new Date(original.created_on);
+          return date.toLocaleDateString();
+        },
         Header: t('Created on'),
         accessor: 'created_on',
       },
@@ -147,14 +148,14 @@ function BulletinsAndAdvisories({
   );
 
   const renderCard = useCallback(
-    (bulletin: Bulletin) => {
-      if (!bulletin) {
-        console.warn('Received undefined bulletin in renderCard');
+    (post: PublicEducationPost) => {
+      if (!post) {
+        console.warn('Received undefined post in renderCard');
         return null;
       }
       return (
-        <BulletinCard
-          bulletin={bulletin}
+        <PublicEducationCard
+          post={post}
           hasPerm={hasPerm}
           bulkSelectEnabled={bulkSelectEnabled}
         />
@@ -164,12 +165,15 @@ function BulletinsAndAdvisories({
   );
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
-  
+
+//   console.log("hasPerm('can_write'): ", hasPerm('can_write'));
+
+
   if (hasPerm('can_create')) {
     subMenuButtons.push({
       name: (
         <>
-          <i className="fa fa-plus" /> {t('Bulletin')}
+          <i className="fa fa-plus" /> {t('Post')}
         </>
       ),
       buttonStyle: 'primary',
@@ -177,26 +181,26 @@ function BulletinsAndAdvisories({
     });
   }
 
-  if (hasPerm('can_create')) {
+//   if (hasPerm('can_write')) {
     subMenuButtons.push({
       name: t('Bulk select'),
       buttonStyle: 'secondary',
       onClick: toggleBulkSelect,
     });
-  }
+//   }
 
   const cardSortSelectOptions = [
+    {
+      desc: true,
+      id: 'changed_on',
+      label: t('Recently modified'),
+      value: 'recently_modified',
+    },
     {
       desc: true,
       id: 'created_on',
       label: t('Recently created'),
       value: 'recently_created',
-    },
-    {
-      desc: false,
-      id: 'created_on',
-      label: t('Least recently created'),
-      value: 'least_recently_created',
     },
     {
       desc: false,
@@ -208,16 +212,16 @@ function BulletinsAndAdvisories({
 
   return (
     <>
-      <SubMenu name={t('Bulletins & Advisories')} buttons={subMenuButtons} />
+      <SubMenu name={t('Public Education')} buttons={subMenuButtons} />
       
-      <StyledListView<Bulletin>
+      <StyledListView<PublicEducationPost>
         bulkActions={[]}
         bulkSelectEnabled={bulkSelectEnabled}
         cardSortSelectOptions={cardSortSelectOptions}
-        className="bulletin-list-view"
+        className="public-education-list-view"
         columns={columns}
-        count={bulletinCount}
-        data={bulletins}
+        count={postCount}
+        data={posts}
         disableBulkSelect={toggleBulkSelect}
         fetchData={fetchData}
         filters={filters}
@@ -228,7 +232,7 @@ function BulletinsAndAdvisories({
         defaultViewMode="card"
       />
 
-      <CreateBulletinModal
+      <CreatePublicEducationModal
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
         onSuccess={() => {
@@ -240,4 +244,4 @@ function BulletinsAndAdvisories({
   );
 }
 
-export default withToasts(BulletinsAndAdvisories); 
+export default withToasts(PublicEducationList); 

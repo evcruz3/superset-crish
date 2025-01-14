@@ -1,128 +1,61 @@
-from flask import request, g
-from flask_appbuilder.api import expose as expose_api, protect, safe
-from flask_appbuilder.security.decorators import permission_name
-from superset.views.base_api import BaseSupersetApi
+from flask import request, g, Response
+from flask_appbuilder.api import expose, protect, safe
+from flask_appbuilder.security.decorators import has_access_api
+from superset.views.base_api import BaseSupersetModelRestApi
 from superset.extensions import db
 from superset.models.bulletins import Bulletin
+from flask_appbuilder.models.sqla.interface import SQLAInterface
 from typing import Any, Dict
-import simplejson as json
+from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP
+from werkzeug.wrappers import Response as WerkzeugResponse
+from marshmallow import ValidationError
 
-class BulletinsRestApi(BaseSupersetApi):
+class BulletinsRestApi(BaseSupersetModelRestApi):
+    datamodel = SQLAInterface(Bulletin)
     resource_name = "bulletins_and_advisories"
     allow_browser_login = True
     class_permission_name = "BulletinsAndAdvisories"
-    base_permissions = [
-        'can_list',
-        'can_show',
-        'can_add',
-        'can_write',
-        'can_read',
-        'menu_access'
+    method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
+    include_route_methods = {"get_list", "info", "create"}
+
+    list_columns = [
+        "id",
+        "title",
+        "message",
+        "hashtags",
+        "chart_id",
+        "created_by.first_name",
+        "created_by.last_name",
+        "created_on",
+        "changed_on",
+    ]
+    show_columns = list_columns
+    list_select_columns = list_columns
+    add_columns = ["title", "message", "hashtags", "chart_id"]
+    edit_columns = add_columns
+
+    order_columns = [
+        "changed_on",
+        "created_on",
+        "title",
     ]
 
-    @expose_api("/", methods=["GET"])
+    def pre_add(self, item: Bulletin) -> None:
+        """Set the created_by user before adding"""
+        item.created_by_fk = g.user.id
+
+    @expose("/create/", methods=["POST"])
     @protect()
     @safe
-    @permission_name("list")
-    def list(self) -> Dict[str, Any]:
-        """Get list of bulletins
-        ---
-        get:
-          summary: Get all bulletins
-          parameters:
-          - in: query
-            name: q
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    page:
-                      type: integer
-                    page_size:
-                      type: integer
-                    order_column:
-                      type: string
-                    order_direction:
-                      type: string
-                      enum: [asc, desc]
-          responses:
-            200:
-              description: List of bulletins
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      count:
-                        type: integer
-                      result:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/BulletinResponseModel'
-        """
-        # Get query parameters
-        qparams = request.args.get("q", "{}")
-        try:
-            params = json.loads(qparams)
-        except json.JSONDecodeError:
-            params = {}
-
-        # Extract pagination params
-        page = params.get("page", 0)
-        page_size = params.get("page_size", 25)
-        
-        # Extract sorting params
-        order_column = params.get("order_column", "created_on")
-        order_direction = params.get("order_direction", "desc")
-        
-        # Build query
-        query = db.session.query(Bulletin)
-        
-        # Apply sorting
-        if hasattr(Bulletin, order_column):
-            order_col = getattr(Bulletin, order_column)
-            if order_direction == "desc":
-                query = query.order_by(order_col.desc())
-            else:
-                query = query.order_by(order_col.asc())
-        
-        # Get total count before pagination
-        total_count = query.count()
-        
-        # Apply pagination
-        query = query.offset(page * page_size).limit(page_size)
-        
-        bulletins = query.all()
-        
-        payload = {
-            "result": [
-                {
-                    "id": bulletin.id,
-                    "title": bulletin.title,
-                    "message": bulletin.message,
-                    "hashtags": bulletin.hashtags,
-                    "chart_id": bulletin.chart_id,
-                    "created_by": bulletin.created_by.username,
-                    "created_on": bulletin.created_on.isoformat(),
-                }
-                for bulletin in bulletins
-            ],
-            "count": total_count,
-        }
-        
-        return self.response(200, **payload)
-
-    @expose_api("/create/", methods=["POST"])
-    @protect()
-    @safe
-    @permission_name("add")
-    def create(self) -> dict:
-        """Create a new bulletin
+    @has_access_api
+    def create(self) -> WerkzeugResponse:
+        """Creates a new bulletin
         ---
         post:
-          summary: Create a new bulletin
+          description: >-
+            Create a new bulletin
           requestBody:
+            description: Bulletin schema
             required: true
             content:
               application/json:
@@ -139,14 +72,16 @@ class BulletinsRestApi(BaseSupersetApi):
                       type: integer
           responses:
             201:
-              description: Bulletin created
+              description: Bulletin added
               content:
                 application/json:
                   schema:
                     type: object
                     properties:
                       id:
-                        type: integer
+                        type: number
+                      result:
+                        type: object
             400:
               $ref: '#/components/responses/400'
             401:
@@ -156,24 +91,22 @@ class BulletinsRestApi(BaseSupersetApi):
             500:
               $ref: '#/components/responses/500'
         """
+        if not request.is_json:
+            return self.response_400(message="Request is not JSON")
         try:
-            data = request.json
-            # Extract chart_id value if it's a dict
-            chart_id = data.get("chartId")
-            if isinstance(chart_id, dict):
-                chart_id = chart_id.get("value")
-            
-            bulletin = Bulletin(
-                title=data["title"],
-                message=data["message"],
-                hashtags=data["hashtags"],
-                chart_id=chart_id,
-                created_by_fk=g.user.id,
-            )
+            item = self.add_model_schema.load(request.json)
+            # Handle chart_id if it's a dict
+            if isinstance(item.get("chart_id"), dict):
+                item["chart_id"] = item["chart_id"].get("value")
+        except ValidationError as err:
+            return self.response_400(message=err.messages)
+        try:
+            bulletin = Bulletin()
+            self.populate_model(bulletin, item)
+            self.pre_add(bulletin)
             db.session.add(bulletin)
             db.session.commit()
-            return self.response(201, id=bulletin.id)
-        except KeyError as ex:
-            return self.response(422, message=f"Missing required field: {ex}")
+            return self.response(201, id=bulletin.id, result=item)
         except Exception as ex:
-            return self.response(500, message=str(ex)) 
+            db.session.rollback()
+            return self.response_422(message=str(ex)) 

@@ -156,6 +156,7 @@ const UpdateCaseReports = lazy(
 );
 
 import BulletinsAndAdvisories from 'src/pages/BulletinsAndAdvisories';
+import PublicEducationList from 'src/pages/PublicEducation/PublicEducationList';
 
 type Routes = {
   path: string;
@@ -294,6 +295,10 @@ export const routes: Routes = [
   {
     path: '/bulletins_and_advisories/',
     Component: BulletinsAndAdvisories,
+  },
+  {
+    path: '/public_education/',
+    Component: PublicEducationList,
   },
 ];
 

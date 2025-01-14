@@ -351,15 +351,6 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
     guest_user_cls = GuestUser
     pyjwt_for_guest_token = _jwt_global_obj
 
-    EXTRA_REGULAR_PERMISSIONS = {
-        # ... existing permissions ...
-        "BulletinAndAdvisory": [
-            ("can_read", "Can read bulletins and advisories"),
-            ("can_write", "Can write bulletins and advisories"),
-            ("can_list", "Can list bulletins and advisories"),
-        ],
-    }
-
     def create_login_manager(self, app: Flask) -> LoginManager:
         lm = super().create_login_manager(app)
         lm.request_loader(self.request_loader)
