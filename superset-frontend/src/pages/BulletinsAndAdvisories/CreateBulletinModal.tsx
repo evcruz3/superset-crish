@@ -80,8 +80,11 @@ export default function CreateBulletinModal({
     [addDangerToast],
   );
 
-  const handleChartSelect = (value: any, option: any) => {
+  const handleChartSelect = (value: any, option: ChartOption | null) => {
     setSelectedChart(option);
+    // Extract the numeric value if we received an object
+    const chartId = typeof value === 'object' ? value.value : value;
+    form.setFieldsValue({ chartId: chartId });
   };
 
   const handleSubmit = async () => {
@@ -89,9 +92,21 @@ export default function CreateBulletinModal({
       setLoading(true);
       const values = await form.validateFields();
       
+      // Get the current chart ID from the form and ensure it's a number
+      const currentChartId = form.getFieldValue('chartId');
+      const chartId = typeof currentChartId === 'object' ? currentChartId.value : currentChartId;
+      
+      const payload = {
+        ...values,
+        chartId: chartId ? Number(chartId) : null,
+        message: values.message || '',
+        title: values.title || '',
+        hashtags: values.hashtags || ''
+      };
+      
       await SupersetClient.post({
         endpoint: '/api/v1/bulletins_and_advisories/create/',
-        jsonPayload: values,
+        jsonPayload: payload,
       });
       
       addSuccessToast(t('Bulletin created successfully'));
@@ -147,12 +162,17 @@ export default function CreateBulletinModal({
         >
           <AsyncSelect
             name="chart"
+            value={form.getFieldValue('chartId')}
             options={loadChartOptions}
             placeholder={t('Select a chart')}
             showSearch
             filterOption={false}
             allowClear
             onChange={handleChartSelect}
+            onClear={() => {
+              setSelectedChart(null);
+              form.setFieldsValue({ chartId: null });
+            }}
           />
         </Form.Item>
 

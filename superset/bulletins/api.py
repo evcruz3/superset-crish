@@ -1,7 +1,7 @@
 from flask import request, g, Response
 from flask_appbuilder.api import expose, protect, safe
 from flask_appbuilder.security.decorators import has_access_api
-from superset.views.base_api import BaseSupersetModelRestApi
+from superset.views.base_api import BaseSupersetModelRestApi, RelatedFieldFilter
 from superset.extensions import db
 from superset.models.bulletins import Bulletin
 from flask_appbuilder.models.sqla.interface import SQLAInterface
@@ -9,6 +9,7 @@ from typing import Any, Dict
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP
 from werkzeug.wrappers import Response as WerkzeugResponse
 from marshmallow import ValidationError
+from superset.views.filters import BaseFilterRelatedUsers, FilterRelatedOwners
 
 class BulletinsRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(Bulletin)
@@ -39,6 +40,16 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         "created_on",
         "title",
     ]
+
+    base_related_field_filters = {
+        "created_by": [["id", BaseFilterRelatedUsers, lambda: []]],
+    }
+
+    related_field_filters = {
+        "created_by": RelatedFieldFilter("first_name", FilterRelatedOwners),
+    }
+
+    allowed_rel_fields = {"created_by"}
 
     def pre_add(self, item: Bulletin) -> None:
         """Set the created_by user before adding"""
@@ -94,19 +105,43 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         if not request.is_json:
             return self.response_400(message="Request is not JSON")
         try:
-            item = self.add_model_schema.load(request.json)
-            # Handle chart_id if it's a dict
-            if isinstance(item.get("chart_id"), dict):
-                item["chart_id"] = item["chart_id"].get("value")
-        except ValidationError as err:
-            return self.response_400(message=err.messages)
-        try:
-            bulletin = Bulletin()
-            self.populate_model(bulletin, item)
-            self.pre_add(bulletin)
+            # Get the JSON data
+            data = request.json
+            
+            # Validate required fields
+            required_fields = ['title', 'message', 'hashtags']
+            for field in required_fields:
+                if not data.get(field):
+                    return self.response_400(message=f"{field} is required")
+                if not isinstance(data[field], str):
+                    return self.response_400(message=f"{field} must be a string")
+            
+            # Handle chart_id
+            chart_id = data.get('chartId')
+            print(f"Received chartId: {chart_id}")
+            if chart_id:
+                if isinstance(chart_id, dict):
+                    chart_id = chart_id.get('value')
+                    print(f"Extracted chart_id from dict: {chart_id}")
+                if not isinstance(chart_id, (int, type(None))):
+                    return self.response_400(message="chartId must be an integer or null")
+                print(f"Final chart_id value: {chart_id}")
+            
+            # Create bulletin with validated data
+            bulletin = Bulletin(
+                title=data['title'],
+                message=data['message'],
+                hashtags=data['hashtags'],
+                chart_id=chart_id,
+                created_by_fk=g.user.id
+            )
+            
             db.session.add(bulletin)
             db.session.commit()
-            return self.response(201, id=bulletin.id, result=item)
+            
+            return self.response(201, id=bulletin.id, result=data)
+        except ValidationError as err:
+            return self.response_400(message=str(err.messages))
         except Exception as ex:
             db.session.rollback()
             return self.response_422(message=str(ex)) 
