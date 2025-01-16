@@ -287,7 +287,9 @@ export function getLayer(
 
   const valueMap: { [key: string]: number } = {};
   records.forEach((d: JsonObject) => {
-    valueMap[d.country_id] = d.metric;
+    if (d.metric !== undefined && d.metric !== null) {
+      valueMap[d.country_id] = d.metric;
+    }
   });
 
   const features = geoJson.features.map((feature: JsonObject) => {
@@ -297,20 +299,21 @@ export function getLayer(
       properties: {
         ...feature.properties,
         metric: value,
-        fillColor: value ? hexToRGB(colorScale(value)) : [0, 0, 0, 0],
+        fillColor: value !== undefined ? hexToRGB(colorScale(value)) : [0, 0, 0, 0],
         strokeColor,
       },
     };
   });
 
-  let processedFeatures = features;
+  let processedFeatures = features.filter((feature: JsonObject) => feature.properties.metric !== undefined);
   if (fd.js_data_mutator) {
     const jsFnMutator = sandboxedEval(fd.js_data_mutator);
-    processedFeatures = jsFnMutator(features);
+    processedFeatures = jsFnMutator(processedFeatures);
   }
 
   function setTooltipContent(o: JsonObject) {
     if (!o.object?.extraProps) {
+      const areaName = o.object.properties.ADM1 || o.object.properties.name || o.object.properties.NAME || o.object.properties.ISO;
       const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
@@ -318,8 +321,8 @@ export function getLayer(
       return (
         <div className="deckgl-tooltip">
           <TooltipRow
-            label={(o.object.properties.ADM1 || o.object.properties.name || o.object.properties.NAME || o.object.properties.ISO) + " "}
-            value={`${prefix}${formatter(o.object.properties.metric)}${unit}`}
+            label={`${areaName} `}
+            value={o.object.properties.metric !== undefined ? `${prefix}${formatter(o.object.properties.metric)}${unit}` : 'No data'}
           />
         </div>
       );
