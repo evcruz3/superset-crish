@@ -18,7 +18,7 @@
  */
 import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { GeoJsonLayer, IconLayer } from '@deck.gl/layers';
-import { CompositeLayer } from '@deck.gl/core';
+import { CompositeLayer, Layer } from '@deck.gl/core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { geoCentroid } from 'd3-geo';
 import geojsonExtent from '@mapbox/geojson-extent';
@@ -29,7 +29,9 @@ import {
   QueryFormData,
   getNumberFormatter,
   getSequentialSchemeRegistry,
+  styled,
 } from '@superset-ui/core';
+import { scaleLinear, ScaleLinear } from 'd3-scale';
 
 import {
   DeckGLContainerHandle,
@@ -156,24 +158,132 @@ function processConditionalIcons(features: JsonObject[], formData: QueryFormData
   return icons;
 }
 
+const StyledLegend = styled.div`
+  ${({ theme }) => `
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    padding: ${theme.gridUnit * 3}px;
+    background: ${theme.colors.grayscale.light5};
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    min-width: 150px;
+    
+    .legend-title {
+      font-size: ${theme.typography.sizes.s}px;
+      font-weight: ${theme.typography.weights.bold};
+      margin-bottom: ${theme.gridUnit * 2}px;
+      color: ${theme.colors.grayscale.dark2};
+    }
+    
+    .legend-items {
+      display: flex;
+      flex-direction: column;
+      gap: ${theme.gridUnit}px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: ${theme.gridUnit * 2}px;
+      
+      .color-box {
+        width: ${theme.gridUnit * 3}px;
+        height: ${theme.gridUnit * 3}px;
+        border: 1px solid ${theme.colors.grayscale.light2};
+      }
+      
+      .label {
+        font-size: ${theme.typography.sizes.s}px;
+        color: ${theme.colors.grayscale.dark1};
+        font-weight: ${theme.typography.weights.normal};
+      }
+    }
+  `}
+`;
+
+interface ColorLegendProps {
+  colorScale: ScaleLinear<string, string>;
+  extent: [number, number];
+  format: (value: number) => string;
+  metricPrefix?: string;
+  metricUnit?: string;
+  values: number[];
+  metricName?: string;
+}
+
+const ColorLegend = ({ 
+  colorScale, 
+  extent, 
+  format, 
+  metricPrefix = '', 
+  metricUnit = '', 
+  values,
+  metricName = 'Metric Range' 
+}: ColorLegendProps) => {
+  // Get unique values and sort them in descending order
+  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  
+  // If we have more than 5 values, we need to select a subset
+  let displayValues = uniqueValues;
+  if (uniqueValues.length > 5) {
+    // Always include min and max
+    const min = uniqueValues[uniqueValues.length - 1];
+    const max = uniqueValues[0];
+    
+    // For the middle values, take evenly spaced indices
+    const middleIndices = [
+      Math.floor(uniqueValues.length * 0.25),
+      Math.floor(uniqueValues.length * 0.5),
+      Math.floor(uniqueValues.length * 0.75),
+    ];
+    
+    const middleValues = middleIndices.map(i => uniqueValues[i]);
+    displayValues = [max, ...middleValues, min];
+  }
+
+  return (
+    <StyledLegend>
+      <div className="legend-title">{metricName}</div>
+      <div className="legend-items">
+        {displayValues.map((value, i) => (
+          <div key={i} className="legend-item">
+            <div 
+              className="color-box" 
+              style={{ backgroundColor: colorScale(value) || '#fff' }}
+            />
+            <span className="label">{`${metricPrefix}${format(value)}${metricUnit}`}</span>
+          </div>
+        ))}
+      </div>
+    </StyledLegend>
+  );
+};
+
+// Add custom properties to GeoJsonLayer
+interface ExtendedGeoJsonLayer extends GeoJsonLayer {
+  colorScale?: ScaleLinear<string, string>;
+  extent?: [number, number];
+  metricValues?: number[];
+}
+
 export function getLayer(
   formData: QueryFormData,
   payload: JsonObject,
   onAddFilter: HandlerFunction,
   setTooltip: (tooltip: TooltipProps['tooltip']) => void,
   geoJson: JsonObject,
-) {
+): (Layer<{}> | (() => Layer<{}>))[] {
   const fd = formData;
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
   const data = payload.data.data;
   const records = Array.isArray(data) ? data : (data?.records || []);
 
-  const metricValues = records.map((d: JsonObject) => d.metric);
-  const extent = [Math.min(...metricValues), Math.max(...metricValues)];
-  const colorScale = getSequentialSchemeRegistry()
-    .get(fd.linear_color_scheme)
-    .createLinearScale(extent);
+  const metricValues = records.map((d: JsonObject) => d.metric).filter((v: number) => v !== undefined && v !== null);
+  const extent: [number, number] = [Math.min(...metricValues), Math.max(...metricValues)];
+  const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || '');
+  const colorScale = scheme ? scheme.createLinearScale(extent) : scaleLinear<string>().range(['#ccc', '#343434']);
 
   const valueMap: { [key: string]: number } = {};
   records.forEach((d: JsonObject) => {
@@ -263,7 +373,12 @@ export function getLayer(
     lineWidthUnits: fd.line_width_unit,
     autoHighlight: true,
     ...commonLayerProps(fd, setTooltip, setTooltipContent),
-  });
+  }) as ExtendedGeoJsonLayer;
+
+  // Attach metadata to the layer instance
+  geoJsonLayer.colorScale = colorScale;
+  geoJsonLayer.extent = extent;
+  geoJsonLayer.metricValues = metricValues;
 
   let iconLayer = null;
 
@@ -300,7 +415,6 @@ export function getLayer(
     });
   }
 
-  // Return an array of layers instead of a composite layer
   return iconLayer ? [geoJsonLayer, iconLayer] : [geoJsonLayer];
 }
 
@@ -336,7 +450,8 @@ const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
       return;
     }
 
-    const url = countries[country];
+    const countryKey = country as keyof typeof countries;
+    const url = countries[countryKey];
     if (!url) {
       setError(`No GeoJSON data available for ${country}`);
       return;
@@ -397,19 +512,44 @@ const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
     return <div>Loading...</div>;
   }
 
-  const layer = getLayer(formData, payload, onAddFilter, setTooltip, geoJson);
+  const layers = getLayer(formData, payload, onAddFilter, setTooltip, geoJson);
+  const formatter = getNumberFormatter(formData.number_format || 'SMART_NUMBER');
+  
+  // Extract metadata from the GeoJsonLayer
+  const geoJsonLayer = layers[0] as ExtendedGeoJsonLayer;
+  const colorScale = geoJsonLayer.colorScale;
+  const extent = geoJsonLayer.extent;
+  const metricValues = geoJsonLayer.metricValues || [];
 
   return (
-    <DeckGLContainerStyledWrapper
-      ref={containerRef}
-      mapboxApiAccessToken={payload.data.mapboxApiKey}
-      viewport={viewport}
-      layers={[layer]}
-      mapStyle={formData.mapbox_style}
-      setControlValue={setControlValue}
-      height={height}
-      width={width}
-    />
+    <>
+      <DeckGLContainerStyledWrapper
+        ref={containerRef}
+        mapboxApiAccessToken={payload.data.mapboxApiKey}
+        viewport={viewport}
+        layers={layers}
+        mapStyle={formData.mapbox_style}
+        setControlValue={setControlValue}
+        height={height}
+        width={width}
+      >
+      {colorScale && extent && (
+        <ColorLegend 
+          colorScale={colorScale} 
+          extent={extent} 
+          format={formatter}
+          metricPrefix={formData.metric_prefix ? `${formData.metric_prefix} ` : ''}
+          metricUnit={formData.metric_unit ? ` ${formData.metric_unit}` : ''}
+          values={metricValues}
+          metricName={
+            typeof formData.metric === 'object' 
+              ? (formData.metric.label || formData.metric_label || 'Metric Range')
+              : (formData.metric || formData.metric_label || 'Metric Range')
+          }
+        />
+      )}
+      </DeckGLContainerStyledWrapper>
+    </>
   );
 };
 
