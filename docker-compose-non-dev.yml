@@ -127,6 +127,21 @@ services:
     healthcheck:
       disable: true
 
+  disease-predictor:
+    build: ./crish-disease-predictor
+    container_name: superset_disease_predictor
+    volumes:
+      - ./crish-disease-predictor:/app
+    env_file:
+      - path: docker/.env # default
+        required: true
+      - path: docker/.env-local # optional override
+        required: false
+    depends_on:
+      - db
+    restart: unless-stopped
+    user: "root"
+
 volumes:
   superset_home:
     external: false

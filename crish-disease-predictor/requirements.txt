@@ -1,0 +1,10 @@
+numpy
+tensorflow
+python-dotenv
+requests
+psycopg2-binary
+joblib
+schedule
+isoweek
+scikit-learn
+pandas 

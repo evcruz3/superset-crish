@@ -240,6 +240,20 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "celery inspect ping -A superset.tasks.celery_app:app -d celery@$$HOSTNAME"]
 
+  disease-predictor:
+    build: ./crish-disease-predictor
+    container_name: superset_disease_predictor
+    volumes:
+      - ./crish-disease-predictor:/app
+    env_file:
+      - path: docker/.env # default
+        required: true
+      - path: docker/.env-local # optional override
+        required: false
+    depends_on:
+      - db
+    restart: unless-stopped
+
 volumes:
   superset_home:
     external: false

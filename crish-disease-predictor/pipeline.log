@@ -1,0 +1,423 @@
+2025-01-16 07:05:32,469 - INFO - Pipeline scheduled to run weekly on Monday at 01:00
+2025-01-16 07:05:32,470 - INFO - Next pipeline run scheduled for: 2025-01-20 01:00:00
+2025-01-16 07:05:32,470 - INFO - Skipping immediate run, waiting for scheduled time
+2025-01-16 07:06:39,198 - INFO - Pipeline scheduled to run weekly on Monday at 01:00
+2025-01-16 07:06:39,199 - INFO - Next pipeline run scheduled for: 2025-01-20 01:00:00
+2025-01-16 07:06:39,199 - INFO - Skipping immediate run, waiting for scheduled time
+2025-01-16 07:07:45,143 - INFO - Pipeline scheduled to run weekly on Monday at 01:00
+2025-01-16 07:07:45,144 - INFO - Next pipeline run scheduled for: 2025-01-20 01:00:00
+2025-01-16 07:07:45,144 - INFO - Running pipeline immediately as configured
+2025-01-16 07:07:45,145 - INFO - Starting disease prediction pipeline
+2025-01-16 07:07:45,145 - INFO - Running visual_crossing_puller.py
+2025-01-16 07:08:15,569 - INFO - visual_crossing_puller.py output:
+Fetching weather data from 2024-12-19 to 2025-01-16
+
+Processing Aileu
+Successfully processed data for Aileu
+
+Processing Ainaro
+Successfully processed data for Ainaro
+
+Processing Atauro
+Successfully processed data for Atauro
+
+Processing Baucau
+Successfully processed data for Baucau
+
+Processing Bobonaro
+Successfully processed data for Bobonaro
+
+Processing Covalima
+Successfully processed data for Covalima
+
+Processing Dili
+Successfully processed data for Dili
+
+Processing Ermera
+Successfully processed data for Ermera
+
+Processing Lautem
+Successfully processed data for Lautem
+
+Processing Liquica
+Successfully processed data for Liquica
+
+Processing Manatuto
+Successfully processed data for Manatuto
+
+Processing Manufahi
+Successfully processed data for Manufahi
+
+Processing Raeoa
+Successfully processed data for Raeoa
+
+Processing Viqueque
+Successfully processed data for Viqueque
+
+Weather data saved to weather_data/all_municipalities_weekly_averages_20250116.json
+
+2025-01-16 07:08:16,573 - INFO - Running dengue_predictor.py
+2025-01-16 07:08:22,227 - INFO - dengue_predictor.py output:
+Connected to the database successfully
+Error loading model for Aileu: No module named 'sklearn'
+Error loading model for Ainaro: No module named 'sklearn'
+Skipping Atauro: Model or scaler not found
+Error loading model for Baucau: No module named 'sklearn'
+Error loading model for Bobonaro: No module named 'sklearn'
+Error loading model for Covalima: No module named 'sklearn'
+Error loading model for Dili: No module named 'sklearn'
+Error loading model for Ermera: No module named 'sklearn'
+Skipping Lautem: Model or scaler not found
+Error loading model for Liquica: No module named 'sklearn'
+Error loading model for Manatuto: No module named 'sklearn'
+Skipping Manufahi: Model or scaler not found
+Skipping Raeoa: Model or scaler not found
+Error loading model for Viqueque: No module named 'sklearn'
+
+Processing predictions for 0 municipalities with available models
+
+Predictions saved to predictions/dengue_predictions_20250116.json
+
+Predicted dengue cases for each municipality:
+Database connection closed
+
+2025-01-16 07:08:22,228 - WARNING - dengue_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+
+2025-01-16 07:08:23,229 - INFO - Running diarrhea_predictor.py
+2025-01-16 07:08:25,271 - INFO - diarrhea_predictor.py output:
+Connected to the database successfully
+Error loading model for Aileu: No module named 'sklearn'
+Error loading model for Ainaro: No module named 'sklearn'
+Skipping Atauro: Model or scaler not found
+Error loading model for Baucau: No module named 'sklearn'
+Error loading model for Bobonaro: No module named 'sklearn'
+Error loading model for Covalima: No module named 'sklearn'
+Error loading model for Dili: No module named 'sklearn'
+Error loading model for Ermera: No module named 'sklearn'
+Skipping Lautem: Model or scaler not found
+Error loading model for Liquica: No module named 'sklearn'
+Error loading model for Manatuto: No module named 'sklearn'
+Skipping Manufahi: Model or scaler not found
+Skipping Raeoa: Model or scaler not found
+Skipping Viqueque: Model or scaler not found
+
+Processing predictions for 0 municipalities with available models
+
+Predictions saved to predictions/diarrhea_predictions_20250116.json
+
+Predicted diarrhea cases for each municipality:
+Database connection closed
+
+2025-01-16 07:08:25,271 - WARNING - diarrhea_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+
+2025-01-16 07:08:26,278 - INFO - Running upload_predictions.py
+2025-01-16 07:08:26,353 - INFO - upload_predictions.py output:
+Error connecting to the database: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+Error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+
+2025-01-16 07:08:27,360 - INFO - Pipeline completed successfully in 42.21 seconds
+2025-01-16 07:12:26,882 - INFO - Pipeline scheduled to run weekly on Monday at 01:00
+2025-01-16 07:12:26,883 - INFO - Next pipeline run scheduled for: 2025-01-20 01:00:00
+2025-01-16 07:12:26,884 - INFO - Running pipeline immediately as configured
+2025-01-16 07:12:26,885 - INFO - Starting disease prediction pipeline
+2025-01-16 07:12:26,885 - INFO - Running visual_crossing_puller.py
+2025-01-16 07:12:57,441 - INFO - visual_crossing_puller.py output:
+Fetching weather data from 2024-12-19 to 2025-01-16
+
+Processing Aileu
+Successfully processed data for Aileu
+
+Processing Ainaro
+Successfully processed data for Ainaro
+
+Processing Atauro
+Successfully processed data for Atauro
+
+Processing Baucau
+Successfully processed data for Baucau
+
+Processing Bobonaro
+Successfully processed data for Bobonaro
+
+Processing Covalima
+Successfully processed data for Covalima
+
+Processing Dili
+Successfully processed data for Dili
+
+Processing Ermera
+Successfully processed data for Ermera
+
+Processing Lautem
+Successfully processed data for Lautem
+
+Processing Liquica
+Successfully processed data for Liquica
+
+Processing Manatuto
+Successfully processed data for Manatuto
+
+Processing Manufahi
+Successfully processed data for Manufahi
+
+Processing Raeoa
+Successfully processed data for Raeoa
+
+Processing Viqueque
+Successfully processed data for Viqueque
+
+Weather data saved to weather_data/all_municipalities_weekly_averages_20250116.json
+
+2025-01-16 07:12:58,446 - INFO - Running dengue_predictor.py
+2025-01-16 07:13:04,179 - INFO - dengue_predictor.py output:
+Connected to the database successfully
+Loaded model and scaler for Aileu
+Loaded model and scaler for Ainaro
+Skipping Atauro: Model or scaler not found
+Loaded model and scaler for Baucau
+Loaded model and scaler for Bobonaro
+Loaded model and scaler for Covalima
+Loaded model and scaler for Dili
+Loaded model and scaler for Ermera
+Skipping Lautem: Model or scaler not found
+Loaded model and scaler for Liquica
+Loaded model and scaler for Manatuto
+Skipping Manufahi: Model or scaler not found
+Skipping Raeoa: Model or scaler not found
+Loaded model and scaler for Viqueque
+
+Processing predictions for 10 municipalities with available models
+
+Predictions saved to predictions/dengue_predictions_20250116.json
+
+Predicted dengue cases for each municipality:
+Database connection closed
+
+2025-01-16 07:13:04,180 - WARNING - dengue_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.2.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+
+2025-01-16 07:13:05,182 - INFO - Running diarrhea_predictor.py
+2025-01-16 07:13:11,942 - INFO - diarrhea_predictor.py output:
+Connected to the database successfully
+Loaded model and scaler for Aileu
+Loaded model and scaler for Ainaro
+Skipping Atauro: Model or scaler not found
+Loaded model and scaler for Baucau
+Loaded model and scaler for Bobonaro
+Loaded model and scaler for Covalima
+Loaded model and scaler for Dili
+Loaded model and scaler for Ermera
+Skipping Lautem: Model or scaler not found
+Loaded model and scaler for Liquica
+Loaded model and scaler for Manatuto
+Skipping Manufahi: Model or scaler not found
+Skipping Raeoa: Model or scaler not found
+Skipping Viqueque: Model or scaler not found
+
+Processing predictions for 9 municipalities with available models
+
+Predictions saved to predictions/diarrhea_predictions_20250116.json
+
+Predicted diarrhea cases for each municipality:
+Database connection closed
+
+2025-01-16 07:13:11,945 - WARNING - diarrhea_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.2.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+
+2025-01-16 07:13:12,947 - INFO - Running upload_predictions.py
+2025-01-16 07:13:13,204 - INFO - upload_predictions.py output:
+Error connecting to the database: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+Error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+
+2025-01-16 07:13:14,211 - INFO - Pipeline completed successfully in 47.32 seconds
+2025-01-16 07:46:04,462 - INFO - Pipeline scheduled to run weekly on Monday at 01:00
+2025-01-16 07:46:04,463 - INFO - Next pipeline run scheduled for: 2025-01-20 01:00:00
+2025-01-16 07:46:04,464 - INFO - Running pipeline immediately as configured
+2025-01-16 07:46:04,465 - INFO - Starting disease prediction pipeline
+2025-01-16 07:46:04,466 - INFO - Running visual_crossing_puller.py
+2025-01-16 07:46:35,794 - INFO - visual_crossing_puller.py output:
+Fetching weather data from 2024-12-19 to 2025-01-16
+
+Processing Aileu
+Successfully processed data for Aileu
+
+Processing Ainaro
+Successfully processed data for Ainaro
+
+Processing Atauro
+Successfully processed data for Atauro
+
+Processing Baucau
+Successfully processed data for Baucau
+
+Processing Bobonaro
+Successfully processed data for Bobonaro
+
+Processing Covalima
+Successfully processed data for Covalima
+
+Processing Dili
+Successfully processed data for Dili
+
+Processing Ermera
+Successfully processed data for Ermera
+
+Processing Lautem
+Successfully processed data for Lautem
+
+Processing Liquica
+Successfully processed data for Liquica
+
+Processing Manatuto
+Successfully processed data for Manatuto
+
+Processing Manufahi
+Successfully processed data for Manufahi
+
+Processing Raeoa
+Successfully processed data for Raeoa
+
+Processing Viqueque
+Successfully processed data for Viqueque
+
+Weather data saved to weather_data/all_municipalities_weekly_averages_20250116.json
+
+2025-01-16 07:46:36,804 - INFO - Running dengue_predictor.py
+2025-01-16 07:46:48,517 - INFO - dengue_predictor.py output:
+Connected to the database successfully
+Loaded model and scaler for Aileu
+Loaded model and scaler for Ainaro
+Skipping Atauro: Model or scaler not found
+Loaded model and scaler for Baucau
+Loaded model and scaler for Bobonaro
+Loaded model and scaler for Covalima
+Loaded model and scaler for Dili
+Loaded model and scaler for Ermera
+Skipping Lautem: Model or scaler not found
+Loaded model and scaler for Liquica
+Loaded model and scaler for Manatuto
+Skipping Manufahi: Model or scaler not found
+Skipping Raeoa: Model or scaler not found
+Loaded model and scaler for Viqueque
+
+Processing predictions for 10 municipalities with available models
+
+Predictions saved to predictions/dengue_predictions_20250116.json
+
+Predicted dengue cases for each municipality:
+Database connection closed
+
+2025-01-16 07:46:48,519 - WARNING - dengue_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.2.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+
+2025-01-16 07:46:49,521 - INFO - Running diarrhea_predictor.py
+2025-01-16 07:46:55,249 - INFO - diarrhea_predictor.py output:
+Connected to the database successfully
+Loaded model and scaler for Aileu
+Loaded model and scaler for Ainaro
+Skipping Atauro: Model or scaler not found
+Loaded model and scaler for Baucau
+Loaded model and scaler for Bobonaro
+Loaded model and scaler for Covalima
+Loaded model and scaler for Dili
+Loaded model and scaler for Ermera
+Skipping Lautem: Model or scaler not found
+Loaded model and scaler for Liquica
+Loaded model and scaler for Manatuto
+Skipping Manufahi: Model or scaler not found
+Skipping Raeoa: Model or scaler not found
+Skipping Viqueque: Model or scaler not found
+
+Processing predictions for 9 municipalities with available models
+
+Predictions saved to predictions/diarrhea_predictions_20250116.json
+
+Predicted diarrhea cases for each municipality:
+Database connection closed
+
+2025-01-16 07:46:55,253 - WARNING - diarrhea_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.2.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+
+2025-01-16 07:46:56,273 - INFO - Running upload_predictions.py
+2025-01-16 07:46:56,357 - INFO - upload_predictions.py output:
+Error connecting to the database: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+Error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+
+2025-01-16 07:46:57,359 - INFO - Pipeline completed successfully in 52.89 seconds
