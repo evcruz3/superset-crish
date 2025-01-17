@@ -355,7 +355,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             "Dashboards",
             label=__("Dashboards"),
             icon="fa-dashboard",
-            category="",
+            category="Manage",
+            category_label=__("Manage"),
             category_icon="",
         )
         appbuilder.add_view(
@@ -363,7 +364,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             "Charts",
             label=__("Charts"),
             icon="fa-bar-chart",
-            category="",
+            category="Manage",
+            category_label=__("Manage"),
             category_icon="",
         )
 
@@ -372,7 +374,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             label=__("Datasets"),
             href="/tablemodelview/list/",
             icon="fa-table",
-            category="",
+            category="Manage",
+            category_label=__("Manage"),
             category_icon="",
         )
 
@@ -433,25 +436,24 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             href="/sqllab/",
             category_icon="fa-flask",
             icon="fa-flask",
-            category="SQL Lab",
-            category_label=__("SQL"),
+            category="Manage",
+            category_label=__("Manage"),
         )
         appbuilder.add_link(
             "Saved Queries",
             label=__("Saved Queries"),
             href="/savedqueryview/list/",
             icon="fa-save",
-            category="SQL Lab",
-            category_label=__("SQL"),
+            category="Manage",
+            category_label=__("Manage"),
         )
         appbuilder.add_link(
             "Query Search",
             label=__("Query History"),
             href="/sqllab/history/",
             icon="fa-search",
-            category_icon="fa-flask",
-            category="SQL Lab",
-            category_label=__("SQL Lab"),
+            category="Manage",
+            category_label=__("Manage"),
         )
         appbuilder.add_view(
             TagModelView,
@@ -484,8 +486,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             AlertView,
             "Alerts & Report",
             label=__("Alerts & Reports"),
-            category="Manage",
-            category_label=__("Manage"),
+            category="",
+            category_label="",
             icon="fa-exclamation-triangle",
             menu_cond=lambda: feature_flag_manager.is_feature_enabled("ALERT_REPORTS"),
         )
