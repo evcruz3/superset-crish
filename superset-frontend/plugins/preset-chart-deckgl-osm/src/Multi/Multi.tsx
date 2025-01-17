@@ -182,7 +182,18 @@ const DeckMulti = (props: DeckMultiProps) => {
   const loadLayers = useCallback(
     (formData: QueryFormData, payload: JsonObject, viewport?: Viewport) => {
       setViewport(viewport)
-      payload.data.slices.forEach((subslice: { slice_id: number } & JsonObject) => {
+      // Initialize layerOrder with the order from deck_slices
+      const initialOrder = formData.deck_slices || []
+      setLayerOrder(initialOrder)
+      
+      // Process slices in the order specified by deck_slices
+      const orderedSlices = [...payload.data.slices].sort((a, b) => {
+        const aIndex = initialOrder.indexOf(a.slice_id)
+        const bIndex = initialOrder.indexOf(b.slice_id)
+        return aIndex - bIndex
+      })
+      
+      orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
         const filters = [
           ...(subslice.form_data.filters || []),
           ...(formData.filters || []),

@@ -719,12 +719,17 @@ export function setDatasetsStatus(status) {
   };
 }
 
-const storeDashboardMetadata = async (id, metadata) =>
-  SupersetClient.put({
-    endpoint: `/api/v1/dashboard/${id}`,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ json_metadata: JSON.stringify(metadata) }),
-  });
+const storeDashboardMetadata = async (id, metadata) => {
+  try {
+    await SupersetClient.put({
+      endpoint: `/api/v1/dashboard/${id}`,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json_metadata: JSON.stringify(metadata) }),
+    });
+  } catch (error) {
+    console.error('Failed to store dashboard metadata:', error);
+  }
+};
 
 /**
  *

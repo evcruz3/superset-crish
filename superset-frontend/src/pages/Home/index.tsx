@@ -16,446 +16,234 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  isFeatureEnabled,
-  FeatureFlag,
-  getExtensionsRegistry,
-  JsonObject,
   styled,
   t,
+  SupersetClient,
 } from '@superset-ui/core';
-import rison from 'rison';
-import Collapse from 'src/components/Collapse';
-import { User } from 'src/types/bootstrapTypes';
-import { reject } from 'lodash';
-import {
-  dangerouslyGetItemDoNotUse,
-  dangerouslySetItemDoNotUse,
-  getItem,
-  LocalStorageKeys,
-  setItem,
-} from 'src/utils/localStorageHelpers';
-import ListViewCard from 'src/components/ListViewCard';
-import withToasts from 'src/components/MessageToasts/withToasts';
-import {
-  CardContainer,
-  createErrorHandler,
-  getRecentActivityObjs,
-  getUserOwnedObjects,
-  loadingCardCount,
-  mq,
-} from 'src/views/CRUD/utils';
-import { Switch } from 'src/components/Switch';
-import getBootstrapData from 'src/utils/getBootstrapData';
-import { TableTab } from 'src/views/CRUD/types';
-import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
-import { userHasPermission } from 'src/dashboard/util/permissionUtils';
-import { WelcomePageLastTab } from 'src/features/home/types';
-import ActivityTable from 'src/features/home/ActivityTable';
-import ChartTable from 'src/features/home/ChartTable';
-import SavedQueries from 'src/features/home/SavedQueries';
-import DashboardTable from 'src/features/home/DashboardTable';
-import DashboardPage from 'src/dashboard/containers/DashboardPage';
 import { useDispatch } from 'react-redux';
-import { dashboardInfoChanged } from 'src/dashboard/actions/dashboardInfo';
+import withToasts from 'src/components/MessageToasts/withToasts';
+import ChartContainer from 'src/components/Chart/ChartContainer';
+import DashboardPageWrapper from 'src/components/DashboardPageWrapper';
 
-const extensionsRegistry = getExtensionsRegistry();
+const FloatingToggle = styled.div`
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 1000;
+  &:hover {
+    background: #f0f0f0;
+  }
+`;
+
+// Replace logging with console for now
+const logInfo = (message: string, ...args: any[]) => {
+  console.info(`[Welcome] ${message}`, ...args);
+};
+
+const logError = (message: string, ...args: any[]) => {
+  console.error(`[Welcome] ${message}`, ...args);
+};
+
+const logWarn = (message: string, ...args: any[]) => {
+  console.warn(`[Welcome] ${message}`, ...args);
+};
 
 interface WelcomeProps {
-  user: User;
-  addDangerToast: (arg0: string) => void;
+  user: {
+    userId: number;
+  };
+  addDangerToast: (message: string) => void;
 }
-
-export interface ActivityData {
-  [TableTab.Created]?: JsonObject[];
-  [TableTab.Edited]?: JsonObject[];
-  [TableTab.Viewed]?: JsonObject[];
-  [TableTab.Other]?: JsonObject[];
-}
-
-interface LoadingProps {
-  cover?: boolean;
-}
-
-const DEFAULT_TAB_ARR = ['2', '3'];
-
-const WelcomeContainer = styled.div`
-  background-color: ${({ theme }) => theme.colors.grayscale.light4};
-  .ant-row.menu {
-    margin-top: -15px;
-    background-color: ${({ theme }) => theme.colors.grayscale.light4};
-    &:after {
-      content: '';
-      display: block;
-      border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-      margin: 0px ${({ theme }) => theme.gridUnit * 6}px;
-      position: relative;
-      width: 100%;
-      ${mq[1]} {
-        margin-top: 5px;
-        margin: 0px 2px;
-      }
-    }
-    .ant-menu.ant-menu-light.ant-menu-root.ant-menu-horizontal {
-      padding-left: ${({ theme }) => theme.gridUnit * 8}px;
-    }
-    button {
-      padding: 3px 21px;
-    }
-  }
-  .antd5-card-meta-description {
-    margin-top: ${({ theme }) => theme.gridUnit}px;
-  }
-  .antd5-card.ant-card-bordered {
-    border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  }
-  .ant-collapse-item .ant-collapse-content {
-    margin-bottom: ${({ theme }) => theme.gridUnit * -6}px;
-  }
-  div.ant-collapse-item:last-child.ant-collapse-item-active
-    .ant-collapse-header {
-    padding-bottom: ${({ theme }) => theme.gridUnit * 3}px;
-  }
-  div.ant-collapse-item:last-child .ant-collapse-header {
-    padding-bottom: ${({ theme }) => theme.gridUnit * 9}px;
-  }
-  .loading-cards {
-    margin-top: ${({ theme }) => theme.gridUnit * 8}px;
-    .antd5-card-cover > div {
-      height: 168px;
-    }
-  }
-`;
-
-const WelcomeNav = styled.div`
-  ${({ theme }) => `
-    .switch {
-      display: flex;
-      flex-direction: row;
-      margin: ${theme.gridUnit * 4}px;
-      span {
-        display: block;
-        margin: ${theme.gridUnit}px;
-        line-height: ${theme.gridUnit * 3.5}px;
-      }
-    }
-  `}
-`;
-
-const bootstrapData = getBootstrapData();
-
-export const LoadingCards = ({ cover }: LoadingProps) => (
-  <CardContainer showThumbnails={cover} className="loading-cards">
-    {[...new Array(loadingCardCount)].map((_, index) => (
-      <ListViewCard
-        key={index}
-        cover={cover ? false : <></>}
-        description=""
-        loading
-      />
-    ))}
-  </CardContainer>
-);
 
 function Welcome({ user, addDangerToast }: WelcomeProps) {
   const dispatch = useDispatch();
-  const canReadSavedQueries = userHasPermission(user, 'SavedQuery', 'can_read');
-  const userid = user.userId;
-  const id = userid!.toString(); // confident that user is not a guest user
+  const [formData, setFormData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [chartStatus, setChartStatus] = useState<'loading' | 'rendered' | 'failed'>('loading');
+  const [queriesResponse, setQueriesResponse] = useState<any[]>([]);
+  const [showFullChart, setShowFullChart] = useState(true);
+  // Get slice_id from .env, default to 8
+  const SLICE_ID = process.env.REACT_APP_SLICE_ID || 8;
 
-  const roles = user.roles;
-  const isAdmin = roles.hasOwnProperty('Admin');
-  const isAlpha = roles.hasOwnProperty('Alpha');
+  const resetChartState = useCallback(() => {
+    setFormData(null);
+    setQueriesResponse([]);
+    setChartStatus('loading');
+    setIsLoading(true);
+  }, []);
 
-  return <DashboardPage idOrSlug={"overview"}/>;
+  const fetchChartData = useCallback(async (formDataResponse: any) => {
+    try {
+      let chartDataResponse;
+      const vizType = formDataResponse.viz_type;
 
-  // if (!isAdmin && !isAlpha) {
-  //   dispatch(dashboardInfoChanged({
-  //     metadata: {
-  //       show_native_filters: false
-  //     }
-  //   }));
-  //   return <DashboardPage idOrSlug={"overview"}/>;
-  // }
+      if (vizType === 'deck_multi') {
+        // For deck_multi visualizations, use explore_json endpoint
+        chartDataResponse = await SupersetClient.post({
+          endpoint: `/superset/explore_json/?form_data=${JSON.stringify({"slice_id": SLICE_ID})}`,
+          jsonPayload: formDataResponse,
+        });
+      } else {
+        // For other visualizations, use the chart/data endpoint
+        chartDataResponse = await SupersetClient.post({
+          endpoint: `/api/v1/chart/data?form_data=${JSON.stringify({"slice_id": SLICE_ID})}`,
+          jsonPayload: {
+            datasource: formDataResponse.datasource,
+            force: false,
+            queries: [
+              {
+                filters: [],
+                extras: {
+                  having: '',
+                  where: '',
+                },
+                applied_time_extras: {},
+                columns: [],
+                metrics: formDataResponse.metrics || [],
+                annotation_layers: [],
+                series_limit: 0,
+                order_desc: true,
+                url_params: {
+                  slice_id: SLICE_ID.toString(),
+                },
+                custom_params: {},
+                custom_form_data: {},
+              },
+            ],
+            form_data: formDataResponse,
+            result_format: 'json',
+            result_type: 'results',
+          },
+        });
+      }
 
+      logInfo('Received chart data:', chartDataResponse.json);
+      setQueriesResponse([chartDataResponse.json]);
+      setChartStatus('rendered');
+    } catch (error) {
+      logError('Failed to fetch chart data:', error);
+      setChartStatus('failed');
+      addDangerToast(t('Failed to fetch chart data'));
+    }
+  }, [SLICE_ID, addDangerToast]);
 
-  // const params = rison.encode({ page_size: 6 });
-  // const recent = `/api/v1/log/recent_activity/?q=${params}`;
-  // const [activeChild, setActiveChild] = useState('Loading');
-  // const userKey = dangerouslyGetItemDoNotUse(id, null);
-  // let defaultChecked = false;
-  // const isThumbnailsEnabled = isFeatureEnabled(FeatureFlag.Thumbnails);
-  // if (isThumbnailsEnabled) {
-  //   defaultChecked =
-  //     userKey?.thumbnails === undefined ? true : userKey?.thumbnails;
-  // }
-  // const [checked, setChecked] = useState(defaultChecked);
-  // const [activityData, setActivityData] = useState<ActivityData | null>(null);
-  // const [chartData, setChartData] = useState<Array<object> | null>(null);
-  // const [queryData, setQueryData] = useState<Array<object> | null>(null);
-  // const [dashboardData, setDashboardData] = useState<Array<object> | null>(
-  //   null,
-  // );
-  // const [isFetchingActivityData, setIsFetchingActivityData] = useState(true);
+  const fetchFormData = useCallback(async () => {
+    logInfo('Fetching form data for slice:', SLICE_ID);
+    try {
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/form_data/?slice_id=${SLICE_ID}`,
+      });
 
-  // const collapseState = getItem(LocalStorageKeys.HomepageCollapseState, []);
-  // const [activeState, setActiveState] = useState<Array<string>>(collapseState);
+      // Format the form data with proper datasource structure
+      const [datasourceId, datasourceType] = (response.json.datasource as string).split('__');
+      const formattedFormData = {
+        ...response.json,
+        datasource: {
+          id: parseInt(datasourceId, 10),
+          type: datasourceType,
+        },
+      };
+      
+      logInfo('Received form data:', formattedFormData);
+      setFormData(formattedFormData);
+      
+      // After getting form data, fetch the chart data
+      await fetchChartData(formattedFormData);
+      setIsLoading(false);
+    } catch (error) {
+      logError('Failed to fetch form data:', error);
+      setChartStatus('failed');
+      addDangerToast(t('Failed to fetch form data'));
+      setIsLoading(false);
+    }
+  }, [SLICE_ID, addDangerToast, fetchChartData]);
 
-  // const handleCollapse = (state: Array<string>) => {
-  //   setActiveState(state);
-  //   setItem(LocalStorageKeys.HomepageCollapseState, state);
-  // };
+  useEffect(() => {
+    if (showFullChart) {
+      fetchFormData();
+    }
 
-  // const SubmenuExtension = extensionsRegistry.get('home.submenu');
-  // const WelcomeMessageExtension = extensionsRegistry.get('welcome.message');
-  // const WelcomeTopExtension = extensionsRegistry.get('welcome.banner');
-  // const WelcomeMainExtension = extensionsRegistry.get(
-  //   'welcome.main.replacement',
-  // );
+    return () => {
+      logInfo('Cleaning up chart component');
+    };
+  }, [showFullChart, fetchFormData]);
 
-  // const [otherTabTitle, otherTabFilters] = useMemo(() => {
-  //   const lastTab = bootstrapData.common?.conf
-  //     .WELCOME_PAGE_LAST_TAB as WelcomePageLastTab;
-  //   const [customTitle, customFilter] = Array.isArray(lastTab)
-  //     ? lastTab
-  //     : [undefined, undefined];
-  //   if (customTitle && customFilter) {
-  //     return [t(customTitle), customFilter];
-  //   }
-  //   if (lastTab === 'all') {
-  //     return [t('All'), []];
-  //   }
-  //   return [
-  //     t('Examples'),
-  //     [
-  //       {
-  //         col: 'created_by',
-  //         opr: 'rel_o_m',
-  //         value: 0,
-  //       },
-  //     ],
-  //   ];
-  // }, []);
+  const handleQuery = () => {
+    logInfo('Chart query triggered');
+    setChartStatus('loading');
+    if (formData) {
+      fetchChartData(formData);
+    }
+  };
 
-  // useEffect(() => {
-  //   if (!otherTabFilters || WelcomeMainExtension) {
-  //     return;
-  //   }
-  //   const activeTab = getItem(LocalStorageKeys.HomepageActivityFilter, null);
-  //   setActiveState(collapseState.length > 0 ? collapseState : DEFAULT_TAB_ARR);
-  //   getRecentActivityObjs(user.userId!, recent, addDangerToast, otherTabFilters)
-  //     .then(res => {
-  //       const data: ActivityData | null = {};
-  //       data[TableTab.Other] = res.other;
-  //       if (res.viewed) {
-  //         const filtered = reject(res.viewed, ['item_url', null]).map(r => r);
-  //         data[TableTab.Viewed] = filtered;
-  //         if (!activeTab && data[TableTab.Viewed]) {
-  //           setActiveChild(TableTab.Viewed);
-  //         } else if (!activeTab && !data[TableTab.Viewed]) {
-  //           setActiveChild(TableTab.Created);
-  //         } else setActiveChild(activeTab || TableTab.Created);
-  //       } else if (!activeTab) setActiveChild(TableTab.Created);
-  //       else setActiveChild(activeTab);
-  //       setActivityData(activityData => ({ ...activityData, ...data }));
-  //     })
-  //     .catch(
-  //       createErrorHandler((errMsg: unknown) => {
-  //         setActivityData(activityData => ({
-  //           ...activityData,
-  //           [TableTab.Viewed]: [],
-  //         }));
-  //         addDangerToast(
-  //           t('There was an issue fetching your recent activity: %s', errMsg),
-  //         );
-  //       }),
-  //     );
+  const toggleView = useCallback(() => {
+    // First update the state
+    setShowFullChart(prevState => !prevState);
+    
+    // Then handle the state reset if needed
+    if (showFullChart) {
+      // Switching to dashboard
+      resetChartState();
+    } else {
+      // Switching to chart, set loading state
+      setIsLoading(true);
+    }
+  }, [showFullChart, resetChartState]);
 
-  //   // Sets other activity data in parallel with recents api call
-  //   const ownSavedQueryFilters = [
-  //     {
-  //       col: 'created_by',
-  //       opr: 'rel_o_m',
-  //       value: `${id}`,
-  //     },
-  //   ];
-  //   Promise.all([
-  //     getUserOwnedObjects(id, 'dashboard')
-  //       .then(r => {
-  //         setDashboardData(r);
-  //         return Promise.resolve();
-  //       })
-  //       .catch((err: unknown) => {
-  //         setDashboardData([]);
-  //         addDangerToast(
-  //           t('There was an issue fetching your dashboards: %s', err),
-  //         );
-  //         return Promise.resolve();
-  //       }),
-  //     getUserOwnedObjects(id, 'chart')
-  //       .then(r => {
-  //         setChartData(r);
-  //         return Promise.resolve();
-  //       })
-  //       .catch((err: unknown) => {
-  //         setChartData([]);
-  //         addDangerToast(t('There was an issue fetching your chart: %s', err));
-  //         return Promise.resolve();
-  //       }),
-  //     canReadSavedQueries
-  //       ? getUserOwnedObjects(id, 'saved_query', ownSavedQueryFilters)
-  //           .then(r => {
-  //             setQueryData(r);
-  //             return Promise.resolve();
-  //           })
-  //           .catch((err: unknown) => {
-  //             setQueryData([]);
-  //             addDangerToast(
-  //               t('There was an issue fetching your saved queries: %s', err),
-  //             );
-  //             return Promise.resolve();
-  //           })
-  //       : Promise.resolve(),
-  //   ]).then(() => {
-  //     setIsFetchingActivityData(false);
-  //   });
-  // }, [otherTabFilters]);
+  // Get the height of the window
+  const windowHeight = window.innerHeight - 50;
 
-  // const handleToggle = () => {
-  //   setChecked(!checked);
-  //   dangerouslySetItemDoNotUse(id, { thumbnails: !checked });
-  // };
-
-  // useEffect(() => {
-  //   if (!collapseState && queryData?.length) {
-  //     setActiveState(activeState => [...activeState, '4']);
-  //   }
-  //   setActivityData(activityData => ({
-  //     ...activityData,
-  //     Created: [
-  //       ...(chartData?.slice(0, 3) || []),
-  //       ...(dashboardData?.slice(0, 3) || []),
-  //       ...(queryData?.slice(0, 3) || []),
-  //     ],
-  //   }));
-  // }, [chartData, queryData, dashboardData]);
-
-  // useEffect(() => {
-  //   if (!collapseState && activityData?.[TableTab.Viewed]?.length) {
-  //     setActiveState(activeState => ['1', ...activeState]);
-  //   }
-  // }, [activityData]);
-
-  // const isRecentActivityLoading =
-  //   !activityData?.[TableTab.Other] && !activityData?.[TableTab.Viewed];
-
-  // const menuData: SubMenuProps = {
-  //   activeChild: 'Home',
-  //   name: t('Home'),
-  // };
-
-  // if (isThumbnailsEnabled) {
-  //   menuData.buttons = [
-  //     {
-  //       name: (
-  //         <WelcomeNav>
-  //           <div className="switch">
-  //             <Switch checked={checked} onClick={handleToggle} />
-  //             <span>{t('Thumbnails')}</span>
-  //           </div>
-  //         </WelcomeNav>
-  //       ),
-  //       onClick: handleToggle,
-  //       buttonStyle: 'link',
-  //     },
-  //   ];
-  // }
-
-  // return (
-  //   <>
-  //     {SubmenuExtension ? (
-  //       <SubmenuExtension {...menuData} />
-  //     ) : (
-  //       <SubMenu {...menuData} />
-  //     )}
-  //     <WelcomeContainer>
-  //       {WelcomeMessageExtension && <WelcomeMessageExtension />}
-  //       {WelcomeTopExtension && <WelcomeTopExtension />}
-  //       {WelcomeMainExtension && <WelcomeMainExtension />}
-  //       {(!WelcomeTopExtension || !WelcomeMainExtension) && (
-  //         <>
-  //           <Collapse
-  //             activeKey={activeState}
-  //             onChange={handleCollapse}
-  //             ghost
-  //             bigger
-  //           >
-  //             <Collapse.Panel header={t('Recents')} key="1">
-  //               {activityData &&
-  //               (activityData[TableTab.Viewed] ||
-  //                 activityData[TableTab.Other] ||
-  //                 activityData[TableTab.Created]) &&
-  //               activeChild !== 'Loading' ? (
-  //                 <ActivityTable
-  //                   user={{ userId: user.userId! }} // user is definitely not a guest user on this page
-  //                   activeChild={activeChild}
-  //                   setActiveChild={setActiveChild}
-  //                   activityData={activityData}
-  //                   isFetchingActivityData={isFetchingActivityData}
-  //                 />
-  //               ) : (
-  //                 <LoadingCards />
-  //               )}
-  //             </Collapse.Panel>
-  //             <Collapse.Panel header={t('Dashboards')} key="2">
-  //               {!dashboardData || isRecentActivityLoading ? (
-  //                 <LoadingCards cover={checked} />
-  //               ) : (
-  //                 <DashboardTable
-  //                   user={user}
-  //                   mine={dashboardData}
-  //                   showThumbnails={checked}
-  //                   otherTabData={activityData?.[TableTab.Other]}
-  //                   otherTabFilters={otherTabFilters}
-  //                   otherTabTitle={otherTabTitle}
-  //                 />
-  //               )}
-  //             </Collapse.Panel>
-  //             <Collapse.Panel header={t('Charts')} key="3">
-  //               {!chartData || isRecentActivityLoading ? (
-  //                 <LoadingCards cover={checked} />
-  //               ) : (
-  //                 <ChartTable
-  //                   showThumbnails={checked}
-  //                   user={user}
-  //                   mine={chartData}
-  //                   otherTabData={activityData?.[TableTab.Other]}
-  //                   otherTabFilters={otherTabFilters}
-  //                   otherTabTitle={otherTabTitle}
-  //                 />
-  //               )}
-  //             </Collapse.Panel>
-  //             {canReadSavedQueries && (
-  //               <Collapse.Panel header={t('Saved queries')} key="4">
-  //                 {!queryData ? (
-  //                   <LoadingCards cover={checked} />
-  //                 ) : (
-  //                   <SavedQueries
-  //                     showThumbnails={checked}
-  //                     user={user}
-  //                     mine={queryData}
-  //                     featureFlag={isThumbnailsEnabled}
-  //                   />
-  //                 )}
-  //               </Collapse.Panel>
-  //             )}
-  //           </Collapse>
-  //         </>
-  //       )}
-  //     </WelcomeContainer>
-  //   </>
-  // );
+  return (
+    <>
+      <FloatingToggle onClick={toggleView}>
+        {showFullChart ? 'Show Dashboard' : 'Show Full Chart'}
+      </FloatingToggle>
+      
+      <div style={{ width: '100%', height: '100%', display: showFullChart ? 'block' : 'none' }}>
+        {isLoading ? (
+          <div>Loading...</div>
+        ) : !formData ? (
+          <div>No chart data found</div>
+        ) : (
+          <ChartContainer
+            key={`chart-${SLICE_ID}`}
+            chartId={SLICE_ID}
+            formData={formData}
+            width="100%"
+            height={windowHeight}
+            chartType={formData.viz_type}
+            datasource={formData.datasource}
+            ownState={null}
+            filterState={null}
+            behaviors={[]}
+            queriesResponse={queriesResponse}
+            chartStatus={chartStatus}
+            onQuery={handleQuery}
+            chartIsStale={false}
+            onChartRender={() => {
+              logInfo('Chart rendered successfully');
+              setChartStatus('rendered');
+            }}
+            onChartError={(error) => {
+              logError('Chart render error:', error);
+              setChartStatus('failed');
+            }}
+          />
+        )}
+      </div>
+      
+      <div style={{ width: '100%', height: '100%', display: showFullChart ? 'none' : 'block' }}>
+        <DashboardPageWrapper idOrSlug="overview" />
+      </div>
+    </>
+  );
 }
 
 export default withToasts(Welcome);

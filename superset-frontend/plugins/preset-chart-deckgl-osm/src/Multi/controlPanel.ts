@@ -37,7 +37,7 @@ export default {
               validators: [validateNonEmpty],
               default: [],
               description: t(
-                'Pick a set of deck.gl charts to layer on top of one another',
+                'Pick a set of deck.gl charts to layer on top of one another. The order here determines the initial rendering order.',
               ),
               dataEndpoint:
                 'api/v1/chart/?q=(filters:!((col:viz_type,opr:sw,value:deck)))',
