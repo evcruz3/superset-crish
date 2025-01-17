@@ -69,8 +69,14 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   const [chartStatus, setChartStatus] = useState<'loading' | 'rendered' | 'failed'>('loading');
   const [queriesResponse, setQueriesResponse] = useState<any[]>([]);
   const [showFullChart, setShowFullChart] = useState(true);
-  // Get slice_id from .env, default to 8
-  const SLICE_ID = process.env.REACT_APP_SLICE_ID || 8;
+  
+  // Get slice_id from environment variable with fallback
+  const SLICE_ID = Number(process.env.REACT_APP_SLICE_ID || '8');
+  
+  // Log the slice ID for debugging
+  useEffect(() => {
+    console.debug('Using SLICE_ID:', SLICE_ID);
+  }, [SLICE_ID]);
 
   const resetChartState = useCallback(() => {
     setFormData(null);
