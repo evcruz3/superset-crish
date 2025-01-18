@@ -32,6 +32,7 @@ import {
   styled,
 } from '@superset-ui/core';
 import { scaleLinear, ScaleLinear } from 'd3-scale';
+import { Slider } from 'antd';
 
 import {
   DeckGLContainerHandle,
@@ -267,18 +268,57 @@ interface ExtendedGeoJsonLayer extends GeoJsonLayer {
   metricValues?: number[];
 }
 
+const StyledTimeSlider = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1;
+  width: 300px;
+
+  .time-label {
+    text-align: center;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+
+  .ant-slider {
+    margin: 10px 0;
+  }
+`;
+
+interface DeckGLContainerHandleExtended extends DeckGLContainerHandle {
+  setViewState: (viewState: any) => void;
+}
+
+export type DeckGLCountryProps = {
+  formData: QueryFormData;
+  payload: JsonObject;
+  setControlValue: (control: string, value: JsonValue) => void;
+  viewport: Viewport;
+  onAddFilter: HandlerFunction;
+  height: number;
+  width: number;
+};
+
 export function getLayer(
   formData: QueryFormData,
   payload: JsonObject,
   onAddFilter: HandlerFunction,
   setTooltip: (tooltip: TooltipProps['tooltip']) => void,
   geoJson: JsonObject,
+  currentTime?: Date,
 ): (Layer<{}> | (() => Layer<{}>))[] {
   const fd = formData;
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
   const data = payload.data.data;
   const records = Array.isArray(data) ? data : (data?.records || []);
+
+  console.log(records);
 
   const metricValues = records.map((d: JsonObject) => d.metric).filter((v: number) => v !== undefined && v !== null);
   const extent: [number, number] = [Math.min(...metricValues), Math.max(...metricValues)];
@@ -288,7 +328,15 @@ export function getLayer(
   const valueMap: { [key: string]: number } = {};
   records.forEach((d: JsonObject) => {
     if (d.metric !== undefined && d.metric !== null) {
-      valueMap[d.country_id] = d.metric;
+      // If we have temporal data, only include values up to the current time
+      if (currentTime && fd.temporal_column) {
+        const recordTime = new Date(d[fd.temporal_column]);
+        if (recordTime <= currentTime) {
+          valueMap[d.country_id] = d.metric;
+        }
+      } else {
+        valueMap[d.country_id] = d.metric;
+      }
     }
   });
 
@@ -311,6 +359,8 @@ export function getLayer(
     processedFeatures = jsFnMutator(processedFeatures);
   }
 
+ 
+  
   function setTooltipContent(o: JsonObject) {
     if (!o.object?.extraProps) {
       const areaName = o.object.properties.ADM1 || o.object.properties.name || o.object.properties.NAME || o.object.properties.ISO;
@@ -318,12 +368,28 @@ export function getLayer(
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
 
+      const tooltipRows = [
+        <TooltipRow
+          key="area"
+          label={`${areaName} `}
+          value={o.object.properties.metric !== undefined ? `${prefix}${formatter(o.object.properties.metric)}${unit}` : 'No data'}
+        />
+      ];
+
+      // Add temporal information if available
+      if (fd.temporal_column && currentTime) {
+        tooltipRows.push(
+          <TooltipRow
+            key="date"
+            label="Date "
+            value={currentTime.toLocaleDateString()}
+          />
+        );
+      }
+
       return (
         <div className="deckgl-tooltip">
-          <TooltipRow
-            label={`${areaName} `}
-            value={o.object.properties.metric !== undefined ? `${prefix}${formatter(o.object.properties.metric)}${unit}` : 'No data'}
-          />
+          {tooltipRows}
         </div>
       );
     }
@@ -421,21 +487,15 @@ export function getLayer(
   return iconLayer ? [geoJsonLayer, iconLayer] : [geoJsonLayer];
 }
 
-export type DeckGLCountryProps = {
-  formData: QueryFormData;
-  payload: JsonObject;
-  setControlValue: (control: string, value: JsonValue) => void;
-  viewport: Viewport;
-  onAddFilter: HandlerFunction;
-  height: number;
-  width: number;
-};
-
-const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
-  const containerRef = useRef<DeckGLContainerHandle>();
+export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
+  const containerRef = useRef<DeckGLContainerHandleExtended>();
   const [geoJson, setGeoJson] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [iconUrls, setIconUrls] = useState<string[]>([]);
+  const [currentTime, setCurrentTime] = useState<Date | undefined>();
+  const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
+  
+  const { formData, payload, setControlValue, viewport: initialViewport, onAddFilter, height, width } = props;
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef;
@@ -444,8 +504,7 @@ const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
     }
   }, []);
 
-  const { formData, payload, setControlValue, onAddFilter, height, width } = props;
-
+  // Load GeoJSON data
   useEffect(() => {
     const country = formData.select_country;
     if (!country) {
@@ -477,8 +536,24 @@ const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
       });
   }, [formData.select_country]);
 
-  const viewport: Viewport = useMemo(() => {
-    if (!geoJson || !formData.autozoom) return props.viewport;
+  // Get time range from data
+  useEffect(() => {
+    if (formData.temporal_column && payload.data.data?.length > 0) {
+      const times = payload.data.data
+        .map((d: JsonObject) => new Date(d[formData.temporal_column]))
+        .filter((d: Date) => !isNaN(d.getTime()));
+      if (times.length > 0) {
+        const minTime = new Date(Math.min(...times.map((d: Date) => d.getTime())));
+        const maxTime = new Date(Math.max(...times.map((d: Date) => d.getTime())));
+        setTimeRange([minTime, maxTime]);
+        setCurrentTime(maxTime);
+      }
+    }
+  }, [formData.temporal_column, payload.data.data]);
+
+  // Calculate viewport
+  const viewport = useMemo(() => {
+    if (!geoJson || !formData.autozoom) return initialViewport;
 
     const points = geoJson.features.reduce(
       (acc: [number, number, number, number][], feature: any) => {
@@ -492,20 +567,44 @@ const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
     );
 
     if (points.length) {
-      return fitViewport(props.viewport, {
+      return fitViewport(initialViewport, {
         width,
         height,
         points,
       });
     }
-    return props.viewport;
-  }, [formData.autozoom, height, geoJson, props.viewport, width]);
+    return initialViewport;
+  }, [formData.autozoom, height, geoJson, initialViewport, width]);
 
+  // Cleanup icon URLs
   useEffect(() => {
     return () => {
       iconUrls.forEach(url => cleanupIconUrl(url));
     };
   }, [iconUrls]);
+
+  // Calculate layers
+  const layers = useMemo(
+    () => geoJson ? getLayer(formData, payload, onAddFilter, setTooltip, geoJson, currentTime) : [],
+    [formData, payload, onAddFilter, setTooltip, geoJson, currentTime],
+  );
+
+  // Get formatter and layer metadata
+  const formatter = useMemo(
+    () => getNumberFormatter(formData.number_format || 'SMART_NUMBER'),
+    [formData.number_format]
+  );
+
+  const geoJsonLayer = layers[0] as ExtendedGeoJsonLayer;
+  const colorScale = geoJsonLayer?.colorScale;
+  const extent = geoJsonLayer?.extent;
+  const metricValues = geoJsonLayer?.metricValues || [];
+
+  const onViewStateChange = useCallback(({ viewState }) => {
+    if (containerRef.current) {
+      containerRef.current.setViewState(viewState);
+    }
+  }, []);
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -515,45 +614,53 @@ const DeckGLCountry: React.FC<DeckGLCountryProps> = props => {
     return <div>Loading...</div>;
   }
 
-  const layers = getLayer(formData, payload, onAddFilter, setTooltip, geoJson);
-  const formatter = getNumberFormatter(formData.number_format || 'SMART_NUMBER');
-  
-  // Extract metadata from the GeoJsonLayer
-  const geoJsonLayer = layers[0] as ExtendedGeoJsonLayer;
-  const colorScale = geoJsonLayer.colorScale;
-  const extent = geoJsonLayer.extent;
-  const metricValues = geoJsonLayer.metricValues || [];
+  console.log(currentTime);
+  console.log(timeRange);
 
   return (
     <>
       <DeckGLContainerStyledWrapper
         ref={containerRef}
-        mapboxApiAccessToken={payload.data.mapboxApiKey}
+        mapboxApiAccessToken={payload.data?.mapboxApiKey}
         viewport={viewport}
         layers={layers}
         mapStyle={formData.mapbox_style}
-        setControlValue={setControlValue}
-        height={height}
         width={width}
+        height={height}
+        setControlValue={setControlValue}
       >
-      {colorScale && extent && (
-        <ColorLegend 
-          colorScale={colorScale} 
-          extent={extent} 
-          format={formatter}
-          metricPrefix={formData.metric_prefix ? `${formData.metric_prefix} ` : ''}
-          metricUnit={formData.metric_unit ? ` ${formData.metric_unit}` : ''}
-          values={metricValues}
-          metricName={
-            typeof formData.metric === 'object' 
-              ? (formData.metric.label || formData.metric_label || 'Metric Range')
-              : (formData.metric || formData.metric_label || 'Metric Range')
-          }
-        />
-      )}
+        {timeRange && formData.temporal_column && (
+          <StyledTimeSlider>
+            <div className="time-label">
+              {currentTime?.toLocaleDateString()}
+            </div>
+            <Slider
+              min={timeRange[0].getTime()}
+              max={timeRange[1].getTime()}
+              value={currentTime?.getTime() ?? timeRange[1].getTime()}
+              onChange={(value: number) => setCurrentTime(new Date(value))}
+              tipFormatter={(value: number) => new Date(value).toLocaleDateString()}
+            />
+          </StyledTimeSlider>
+        )}
+        {colorScale && extent && (
+          <ColorLegend 
+            colorScale={colorScale} 
+            extent={extent} 
+            format={formatter}
+            metricPrefix={formData.metric_prefix ? `${formData.metric_prefix} ` : ''}
+            metricUnit={formData.metric_unit ? ` ${formData.metric_unit}` : ''}
+            values={metricValues}
+            metricName={
+              typeof formData.metric === 'object' 
+                ? (formData.metric.label || formData.metric_label || 'Metric Range')
+                : (formData.metric || formData.metric_label || 'Metric Range')
+            }
+          />
+        )}
       </DeckGLContainerStyledWrapper>
     </>
   );
-};
+});
 
-export default memo(DeckGLCountry);
+export default DeckGLCountry;

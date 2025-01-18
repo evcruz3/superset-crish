@@ -57,6 +57,22 @@ const config: ControlPanelConfig = {
         ],
         ['entity'],
         ['metric'],
+        [
+          {
+            name: 'temporal_column',
+            config: {
+              type: 'SelectControl',
+              label: t('Time Column'),
+              description: t('Column containing datetime information for temporal filtering'),
+              mapStateToProps: state => ({
+                choices: state.datasource?.columns
+                  .filter(c => c.is_dttm)
+                  .map(c => [c.column_name, c.verbose_name || c.column_name]) ?? [],
+              }),
+              default: null,
+            },
+          },
+        ],
         ['adhoc_filters'],
         [filterNulls],
         ['row_limit'],

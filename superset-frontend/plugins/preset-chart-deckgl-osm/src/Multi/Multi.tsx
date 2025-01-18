@@ -11,8 +11,10 @@ import {
   QueryFormData,
   SupersetClient,
   usePrevious,
+  styled,
 } from '@superset-ui/core'
 import { Layer } from '@deck.gl/core'
+import { Slider } from 'antd'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
@@ -82,6 +84,28 @@ export type DeckMultiProps = {
   onSelect: () => void
 }
 
+const StyledTimeSlider = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 10;
+  width: 300px;
+
+  .time-label {
+    text-align: center;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+
+  .ant-slider {
+    margin: 10px 0;
+  }
+`
+
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
 
@@ -89,6 +113,9 @@ const DeckMulti = (props: DeckMultiProps) => {
   const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer>>({})
   const [visibleLayers, setVisibleLayers] = useState<Record<number, boolean>>({})
   const [layerOrder, setLayerOrder] = useState<number[]>([])
+  const [currentTime, setCurrentTime] = useState<Date>()
+  const [timeRange, setTimeRange] = useState<[Date, Date] | null>(null)
+  const [temporalData, setTemporalData] = useState<Record<number, { column: string, dates: Date[], data: JsonObject }>>({})
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef
@@ -96,6 +123,81 @@ const DeckMulti = (props: DeckMultiProps) => {
       current.setTooltip(tooltip)
     }
   }, [])
+
+  // Function to create layer based on filtered data
+  const createLayer = useCallback((
+    subslice: JsonObject,
+    json: JsonObject,
+    filteredData: JsonObject[],
+  ) => {
+    const jsonWithFilteredData = {
+      ...json,
+      data: {
+        ...json.data,
+        data: filteredData,
+      },
+    }
+
+    if (subslice.form_data.viz_type === 'deck_country') {
+      const country = subslice.form_data.select_country;
+      
+      const createAndSetLayer = (geoJsonData: JsonObject) => {
+        const layer = layerGenerators[subslice.form_data.viz_type](
+          subslice.form_data,
+          jsonWithFilteredData,
+          props.onAddFilter,
+          setTooltip,
+          geoJsonData,
+          currentTime
+        );
+
+        setSubSlicesLayers((prevLayers) => ({
+          ...prevLayers,
+          [subslice.slice_id]: layer,
+        }));
+      };
+
+      if (geoJsonCache[country]) {
+        createAndSetLayer(geoJsonCache[country]);
+      } else {
+        const url = countries[country];
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            geoJsonCache[country] = data;
+            createAndSetLayer(data);
+          });
+      }
+    } else {
+      const layer = layerGenerators[subslice.form_data.viz_type](
+        subslice.form_data,
+        jsonWithFilteredData,
+        props.onAddFilter,
+        setTooltip,
+        props.datasource,
+        [],
+        props.onSelect,
+        currentTime
+      );
+
+      setSubSlicesLayers((prevLayers) => ({
+        ...prevLayers,
+        [subslice.slice_id]: layer,
+      }));
+    }
+  }, [props.onAddFilter, props.onSelect, props.datasource, setTooltip, currentTime]);
+
+  // Function to filter data based on current time
+  const filterDataByTime = useCallback((
+    data: JsonObject[],
+    temporalColumn: string,
+    time: Date
+  ) => {
+    return data.filter(row => {
+      const rowDate = new Date(row[temporalColumn]);
+      return rowDate <= time;
+    });
+  }, []);
 
   const loadLayer = useCallback(
     (subslice, filters) => {
@@ -114,69 +216,39 @@ const DeckMulti = (props: DeckMultiProps) => {
           endpoint: url,
         })
           .then(({ json }) => {
-            // if viz_type is country, fetch the geojson from the url
-            if (subsliceCopy.form_data.viz_type === 'deck_country') {
-              const country = subsliceCopy.form_data.select_country;
-              
-              const createAndSetLayer = (geoJsonData: JsonObject) => {
-                const layer = layerGenerators[subsliceCopy.form_data.viz_type](
-                  subsliceCopy.form_data,
-                  json,
-                  props.onAddFilter,
-                  setTooltip,
-                  geoJsonData
-                );
+            // Store temporal data if available
+            const temporalColumn = subsliceCopy.form_data.temporal_column
+            if (temporalColumn && json.data?.data?.length > 0) {
+              const dates = json.data.data
+                .map((d: JsonObject) => new Date(d[temporalColumn]))
+                .filter((d: Date) => !isNaN(d.getTime()))
 
-                setSubSlicesLayers((prevLayers) => ({
-                  ...prevLayers,
-                  [subsliceCopy.slice_id]: layer,
-                }));
-
-                setLayerOrder((prevOrder) =>
-                  prevOrder.includes(subslice.slice_id)
-                    ? prevOrder
-                    : [...prevOrder, subslice.slice_id],
-                );
-              };
-
-              if (geoJsonCache[country]) {
-                createAndSetLayer(geoJsonCache[country]);
-              } else {
-                const url = countries[country];
-                fetch(url)
-                  .then(response => response.json())
-                  .then(data => {
-                    geoJsonCache[country] = data;
-                    createAndSetLayer(data);
-                  });
+              if (dates.length > 0) {
+                setTemporalData(prev => ({
+                  ...prev,
+                  [subsliceCopy.slice_id]: {
+                    column: temporalColumn,
+                    dates,
+                    data: json,
+                  }
+                }))
               }
-            } else {
-              const layer = layerGenerators[subsliceCopy.form_data.viz_type](
-                subsliceCopy.form_data,
-                json,
-                props.onAddFilter,
-                setTooltip,
-                props.datasource,
-                [],
-                props.onSelect,
-              );
-
-              setSubSlicesLayers((prevLayers) => ({
-                ...prevLayers,
-                [subsliceCopy.slice_id]: layer,
-              }));
-
-              setLayerOrder((prevOrder) =>
-                prevOrder.includes(subslice.slice_id)
-                  ? prevOrder
-                  : [...prevOrder, subslice.slice_id],
-              );
             }
+
+            // Create initial layer with all data
+            createLayer(subsliceCopy, json, json.data.data);
+
+            // Set initial layer order if needed
+            setLayerOrder((prevOrder) =>
+              prevOrder.includes(subslice.slice_id)
+                ? prevOrder
+                : [...prevOrder, subslice.slice_id],
+            );
           })
           .catch(() => {});
       }
     },
-    [props.datasource, props.onAddFilter, props.onSelect, setTooltip],
+    [createLayer],
   );
 
   const loadLayers = useCallback(
@@ -273,6 +345,39 @@ const DeckMulti = (props: DeckMultiProps) => {
     .map((id) => subSlicesLayers[id])
     .reverse()
 
+  // Effect to update time range when temporal data changes
+  useEffect(() => {
+    if (Object.keys(temporalData).length > 0) {
+      const allDates = Object.values(temporalData).flatMap(({ dates }) => dates)
+      if (allDates.length > 0) {
+        const minDate = new Date(Math.min(...allDates.map(d => d.getTime())))
+        const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())))
+        setTimeRange([minDate, maxDate])
+        if (!currentTime) {
+          setCurrentTime(maxDate)
+        }
+      }
+    }
+  }, [temporalData])
+
+  // Effect to update layers when time changes
+  useEffect(() => {
+    if (currentTime && Object.keys(temporalData).length > 0) {
+      Object.entries(temporalData).forEach(([sliceId, { column, data }]) => {
+        const numericSliceId = Number(sliceId)
+        if (visibleLayers[numericSliceId]) {
+          const subslice = props.payload.data.slices.find(
+            (slice: any) => slice.slice_id === numericSliceId
+          )
+          if (subslice) {
+            const filteredData = filterDataByTime(data.data.data, column, currentTime)
+            createLayer(subslice, data, filteredData)
+          }
+        }
+      })
+    }
+  }, [currentTime, temporalData, visibleLayers, filterDataByTime, createLayer, props.payload.data.slices])
+
   return (
     <DeckGLContainerStyledWrapper
       ref={containerRef}
@@ -285,6 +390,20 @@ const DeckMulti = (props: DeckMultiProps) => {
       height={height}
       width={width}
     >
+      {timeRange && Object.keys(temporalData).length > 0 && (
+        <StyledTimeSlider>
+          <div className="time-label">
+            {currentTime?.toLocaleDateString()}
+          </div>
+          <Slider
+            min={timeRange[0].getTime()}
+            max={timeRange[1].getTime()}
+            value={currentTime?.getTime() ?? timeRange[1].getTime()}
+            onChange={(value: number) => setCurrentTime(new Date(value))}
+            tipFormatter={(value: number) => new Date(value).toLocaleDateString()}
+          />
+        </StyledTimeSlider>
+      )}
       <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', zIndex: 10 }}>
         <CardHeader>
           <CardTitle>Layers</CardTitle>

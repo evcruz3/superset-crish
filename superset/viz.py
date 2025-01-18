@@ -2300,6 +2300,16 @@ class DeckCountry(BaseDeckGLViz):
         query_obj = super().query_obj()
         query_obj["metrics"] = [metric]
         query_obj["columns"] = [entity]
+
+        # Add temporal column to groupby if specified
+        temporal_column = self.form_data.get("temporal_column")
+        if temporal_column:
+            # self.is_timeseries = True
+            if temporal_column not in query_obj["columns"]:
+                query_obj["columns"].append(temporal_column)
+        else:
+            # self.is_timeseries = False
+            pass
         
         if self.form_data.get("js_columns"):
             query_obj["columns"].extend(self.form_data.get("js_columns") or [])
@@ -2320,10 +2330,15 @@ class DeckCountry(BaseDeckGLViz):
 
         entity = self.form_data.get("entity")
         metric = utils.get_metric_name(self.form_data["metric"])
+        temporal_column = self.form_data.get("temporal_column")
         
         # Prepare the data for the visualization
-        df = df[[entity, metric]]
-        df.columns = ["country_id", "metric"]
+        columns_to_use = [entity, metric]
+        if temporal_column:
+            columns_to_use.append(temporal_column)
+            
+        df = df[columns_to_use]
+        df.columns = ["country_id", "metric"] if len(columns_to_use) == 2 else ["country_id", "metric", temporal_column]
         
         # Apply any custom data mutator if specified
         data = df.to_dict(orient="records")
@@ -2344,10 +2359,14 @@ class DeckCountry(BaseDeckGLViz):
         }
 
     def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
-        return {
+        temporal_column = self.form_data.get("temporal_column")
+        properties = {
             "metric": data.get("metric"),
             "country_id": data.get("country_id"),
         }
+        if temporal_column and temporal_column in data:
+            properties[temporal_column] = data.get(temporal_column)
+        return properties
 
 class DeckGeoJson(BaseDeckGLViz):
     """deck.gl's GeoJSONLayer"""
