@@ -320,11 +320,15 @@ export function getLayer(
 
   console.log(records);
 
-  const metricValues = records.map((d: JsonObject) => d.metric).filter((v: number) => v !== undefined && v !== null);
-  const extent: [number, number] = [Math.min(...metricValues), Math.max(...metricValues)];
+  // Calculate extent and color scale from all metric values, regardless of time
+  const allMetricValues = records
+    .map((d: JsonObject) => d.metric)
+    .filter((v: number) => v !== undefined && v !== null);
+  const extent: [number, number] = [Math.min(...allMetricValues), Math.max(...allMetricValues)];
   const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || '');
   const colorScale = scheme ? scheme.createLinearScale(extent) : scaleLinear<string>().range(['#ccc', '#343434']);
 
+  // Filter records based on current time for display
   const valueMap: { [key: string]: number } = {};
   records.forEach((d: JsonObject) => {
     if (d.metric !== undefined && d.metric !== null) {
@@ -447,7 +451,7 @@ export function getLayer(
   // Attach metadata to the layer instance
   geoJsonLayer.colorScale = colorScale;
   geoJsonLayer.extent = extent;
-  geoJsonLayer.metricValues = metricValues;
+  geoJsonLayer.metricValues = allMetricValues;
 
   let iconLayer = null;
 

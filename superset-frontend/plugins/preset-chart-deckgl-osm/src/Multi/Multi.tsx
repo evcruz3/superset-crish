@@ -12,9 +12,12 @@ import {
   SupersetClient,
   usePrevious,
   styled,
+  getNumberFormatter,
 } from '@superset-ui/core'
 import { Layer } from '@deck.gl/core'
 import { Slider } from 'antd'
+import Icons from 'src/components/Icons'
+import { scaleLinear, ScaleLinear } from 'd3-scale'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
@@ -37,10 +40,34 @@ const CardHeader: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
 )
 
 const CardTitle: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
-  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937' }}>
+  <h3 style={{ 
+    fontSize: '0.875rem', 
+    fontWeight: '600', 
+    color: '#1f2937', 
+    marginBottom: '0.5rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em'
+  }}>
     {children}
   </h3>
 )
+
+const GuideText = styled.p`
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+  font-style: italic;
+
+  span {
+    display: block;
+    margin-bottom: 0.35rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+`
 
 // const CardContent: React.FC<React.PropsWithChildren> = ({ children }) => (
 //   <div style={{ padding: '1rem' }}>
@@ -106,6 +133,243 @@ const StyledTimeSlider = styled.div`
   }
 `
 
+interface DraggableItemProps {
+  $isVisible: boolean;
+  isDragging?: boolean;
+}
+
+const DraggableItem = styled.div<DraggableItemProps>`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 1rem;
+  cursor: grab;
+  border-radius: 4px;
+  background-color: white;
+  transition: color 0.2s, background-color 0.2s;
+  
+  /* Only apply box-shadow when not being dragged */
+  box-shadow: ${({ theme, isDragging }) => 
+    !isDragging && theme.gridUnit >= 4 ? '0 1px 3px rgba(0,0,0,0.12)' : 'none'};
+
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.grayscale.light4};
+  }
+
+  /* Remove transition during drag to prevent animation on drop */
+  ${({ isDragging }) => isDragging && `
+    transition: none;
+    /* Stronger shadow while dragging */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  `}
+
+  .drag-handle {
+    color: ${({ theme }) => theme.colors.grayscale.light1};
+    margin-right: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .layer-name {
+    transition: color 0.2s;
+    color: ${({ $isVisible, theme }) => 
+      $isVisible ? theme.colors.grayscale.dark1 : theme.colors.grayscale.light1};
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .visibility-toggle {
+    margin-left: auto;
+    cursor: pointer;
+    transition: color 0.2s;
+    color: ${({ $isVisible, theme }) => 
+      $isVisible ? theme.colors.primary.base : theme.colors.grayscale.light1};
+    font-size: 0.875rem;
+
+    &:hover {
+      color: ${({ $isVisible, theme }) => 
+        $isVisible ? theme.colors.primary.dark1 : theme.colors.grayscale.base};
+    }
+  }
+`
+
+const StyledLegendsContainer = styled.div<{ hasOverflow: boolean }>`
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 12px;
+  max-width: 50%;
+  overflow-x: auto;
+  padding: 4px;
+  
+  /* Apply fade only when content overflows */
+  mask-image: ${({ hasOverflow }) => hasOverflow ? `linear-gradient(
+    to right,
+    black 0%,
+    black calc(100% - 40px),
+    transparent 100%
+  )` : 'none'};
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+`
+
+const LegendsContainer: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (containerRef.current) {
+        const { scrollWidth, clientWidth } = containerRef.current;
+        setHasOverflow(scrollWidth > clientWidth);
+      }
+    };
+
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [children]);
+
+  return (
+    <StyledLegendsContainer ref={containerRef} hasOverflow={hasOverflow}>
+      {children}
+    </StyledLegendsContainer>
+  );
+};
+
+const LegendCard = styled.div`
+  background: white;
+  border-radius: 4px;
+  padding: 12px;
+  min-width: 150px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  .layer-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: ${({ theme }) => theme.colors.grayscale.dark2};
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .legend-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: ${({ theme }) => theme.colors.grayscale.dark1};
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .color-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    
+    .label {
+      font-size: 10px;
+      color: ${({ theme }) => theme.colors.grayscale.dark1};
+      white-space: nowrap;
+    }
+  }
+`
+
+interface ColorLegendProps {
+  colorScale: ScaleLinear<string, string>;
+  extent: [number, number];
+  format: (value: number) => string;
+  metricPrefix?: string;
+  metricUnit?: string;
+  values: number[];
+  metricName?: string;
+  layerName: string;
+}
+
+const ColorLegend: React.FC<ColorLegendProps> = ({ 
+  colorScale, 
+  extent, 
+  format, 
+  metricPrefix = '', 
+  metricUnit = '', 
+  values,
+  metricName = 'Metric Range',
+  layerName
+}) => {
+  // Get unique values and sort them in descending order
+  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  
+  // If we have more than 5 values, we need to select a subset
+  let displayValues = uniqueValues;
+  if (uniqueValues.length > 5) {
+    // Always include min and max
+    const min = uniqueValues[uniqueValues.length - 1];
+    const max = uniqueValues[0];
+    
+    // For the middle values, take evenly spaced indices
+    const middleIndices = [
+      Math.floor(uniqueValues.length * 0.25),
+      Math.floor(uniqueValues.length * 0.5),
+      Math.floor(uniqueValues.length * 0.75),
+    ];
+    
+    const middleValues = middleIndices.map(i => uniqueValues[i]);
+    displayValues = [max, ...middleValues, min];
+  }
+
+  return (
+    <LegendCard>
+      <div className="layer-name">{layerName}</div>
+      <div className="legend-title">{metricName}</div>
+      <div className="legend-items">
+        {displayValues.map((value, i) => (
+          <div key={i} className="legend-item">
+            <div 
+              className="color-box" 
+              style={{ backgroundColor: colorScale(value) || '#fff' }}
+            />
+            <span className="label">{`${metricPrefix}${format(value)}${metricUnit}`}</span>
+          </div>
+        ))}
+      </div>
+    </LegendCard>
+  );
+};
+
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
 
@@ -123,6 +387,8 @@ const DeckMulti = (props: DeckMultiProps) => {
       current.setTooltip(tooltip)
     }
   }, [])
+
+  console.log("payload", props.payload)
 
   // Function to create layer based on filtered data
   const createLayer = useCallback((
@@ -265,6 +531,20 @@ const DeckMulti = (props: DeckMultiProps) => {
         return aIndex - bIndex
       })
       
+      // Set all layers to invisible initially
+      const initialVisibility: Record<number, boolean> = {}
+      orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
+        initialVisibility[subslice.slice_id] = false
+      })
+      
+      // Make only the first layer visible if there are any layers
+      if (orderedSlices.length > 0) {
+        initialVisibility[orderedSlices[0].slice_id] = true
+      }
+      
+      setVisibleLayers(initialVisibility)
+      
+      // Load all layers but only the visible ones will be rendered
       orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
         const filters = [
           ...(subslice.form_data.filters || []),
@@ -272,10 +552,6 @@ const DeckMulti = (props: DeckMultiProps) => {
           ...(formData.extra_filters || []),
         ]
         loadLayer(subslice, filters)
-        setVisibleLayers((prevVisible) => ({
-          ...prevVisible,
-          [subslice.slice_id]: true,
-        }))
       })
     },
     [loadLayer],
@@ -404,52 +680,107 @@ const DeckMulti = (props: DeckMultiProps) => {
           />
         </StyledTimeSlider>
       )}
-      <Card style={{ position: 'absolute', top: '1rem', left: '1rem', width: '16rem', zIndex: 10 }}>
+      <Card style={{ 
+        position: 'absolute', 
+        top: '1rem', 
+        left: '1rem', 
+        width: '18rem', 
+        zIndex: 10
+      }}>
         <CardHeader>
           <CardTitle>Layers</CardTitle>
+          <GuideText>
+            <span>ⓘ Toggle visibility using eye icon</span>
+            <span>ⓘ Drag and drop to reorder layers</span>
+          </GuideText>
         </CardHeader>
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="layers">
-            {(provided: any) => (
-              <div style={{marginTop: "1rem"}} ref={provided.innerRef} {...provided.droppableProps}>
-                {layerOrder.map((id, index) => {
-                  const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === id)
-                  return (
-                    <Draggable key={id} draggableId={id.toString()} index={index}>
-                      {(draggableProvided: any) => (
-                        <div
-                          ref={draggableProvided.innerRef}
-                          {...draggableProvided.draggableProps}
-                          {...draggableProvided.dragHandleProps}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            alignItems: 'flex-start',
-                            gap: '0.5rem',
-                            marginBottom: '0.5rem',
-                            paddingLeft: '1rem',
-                            paddingRight: '1rem',
-                            ...draggableProvided.draggableProps.style,
-                          }}
-                        >
-                          <Checkbox
-                            id={`layer-${id}`}
-                            checked={!!visibleLayers[id]}
-                            onCheckedChange={() => toggleLayerVisibility(id)}
-                          />
-                          <Label htmlFor={`layer-${id}`}>{subslice?.slice_name}</Label>
-                          <span style={{ cursor: 'grab', fontSize: '1rem', marginLeft: 'auto' }}>☰</span>
-                        </div>
-                      )}
-                    </Draggable>
-                  )
-                })}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+        <div style={{ padding: '0.5rem 0' }}>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="layers">
+              {(provided: any) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {layerOrder.map((id, index) => {
+                    const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === id)
+                    return (
+                      <Draggable key={id} draggableId={id.toString()} index={index}>
+                        {(draggableProvided: any, draggableSnapshot: any) => (
+                          <DraggableItem
+                            ref={draggableProvided.innerRef}
+                            {...draggableProvided.draggableProps}
+                            {...draggableProvided.dragHandleProps}
+                            $isVisible={!!visibleLayers[id]}
+                            isDragging={draggableSnapshot.isDragging}
+                          >
+                            <span className="drag-handle">
+                              ☰
+                            </span>
+                            <span className="layer-name">{subslice?.slice_name}</span>
+                            <span 
+                              className="visibility-toggle"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleLayerVisibility(id);
+                              }}
+                              role="button"
+                              tabIndex={0}
+                            >
+                              {visibleLayers[id] ? (
+                                <Icons.EyeOutlined iconSize="m" />
+                              ) : (
+                                <Icons.EyeInvisibleOutlined iconSize="m" />
+                              )}
+                            </span>
+                          </DraggableItem>
+                        )}
+                      </Draggable>
+                    )
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </div>
       </Card>
+      <LegendsContainer>
+        {layerOrder
+          .filter(id => visibleLayers[id])
+          .map(id => {
+            const subslice = props.payload.data.slices.find(slice => slice.slice_id === id);
+            const layer = subSlicesLayers[id];
+            
+            if (!subslice || !layer) return null;
+
+            // Get color scale and values from the layer
+            const colorScale = layer[0]?.colorScale;
+            const extent = layer[0]?.extent;
+            const metricValues = layer[0]?.metricValues || [];
+            
+            if (!colorScale || !extent) return null;
+
+            // Get formatter and metric info from form data
+            const formatter = getNumberFormatter(subslice.form_data.number_format || 'SMART_NUMBER');
+            const metricPrefix = subslice.form_data.metric_prefix ? `${subslice.form_data.metric_prefix} ` : '';
+            const metricUnit = subslice.form_data.metric_unit ? ` ${subslice.form_data.metric_unit}` : '';
+            const metricName = typeof subslice.form_data.metric === 'object' 
+              ? (subslice.form_data.metric.label || subslice.form_data.metric_label || 'Metric Range')
+              : (subslice.form_data.metric || subslice.form_data.metric_label || 'Metric Range');
+
+            return (
+              <ColorLegend
+                key={id}
+                colorScale={colorScale}
+                extent={extent}
+                format={formatter}
+                metricPrefix={metricPrefix}
+                metricUnit={metricUnit}
+                values={metricValues}
+                metricName={metricName}
+                layerName={subslice.slice_name}
+              />
+            );
+          })}
+      </LegendsContainer>
     </DeckGLContainerStyledWrapper>
   )
 }

@@ -421,3 +421,824 @@ Error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed
 
 
 2025-01-16 07:46:57,359 - INFO - Pipeline completed successfully in 52.89 seconds
+2025-01-18 17:19:53,000 - INFO - Pipeline scheduled to run weekly on Monday at 01:00
+2025-01-18 17:19:53,152 - INFO - Next pipeline run scheduled for: 2025-01-20 01:00:00
+2025-01-18 17:19:53,174 - INFO - Running pipeline immediately as configured
+2025-01-18 17:19:53,239 - INFO - Starting disease prediction pipeline
+2025-01-18 17:19:53,243 - INFO - Running visual_crossing_puller.py
+2025-01-18 17:20:38,328 - INFO - visual_crossing_puller.py output:
+Pulling data from 2024-12-21 to 2025-01-18
+
+Processing Aileu
+Saved historical data for Aileu to weather_data/Aileu_historical_20250118.json
+
+Processing Ainaro
+Saved historical data for Ainaro to weather_data/Ainaro_historical_20250118.json
+
+Processing Atauro
+Saved historical data for Atauro to weather_data/Atauro_historical_20250118.json
+
+Processing Baucau
+Saved historical data for Baucau to weather_data/Baucau_historical_20250118.json
+
+Processing Bobonaro
+Saved historical data for Bobonaro to weather_data/Bobonaro_historical_20250118.json
+
+Processing Covalima
+Saved historical data for Covalima to weather_data/Covalima_historical_20250118.json
+
+Processing Dili
+Saved historical data for Dili to weather_data/Dili_historical_20250118.json
+
+Processing Ermera
+Saved historical data for Ermera to weather_data/Ermera_historical_20250118.json
+
+Processing Manatuto
+Saved historical data for Manatuto to weather_data/Manatuto_historical_20250118.json
+
+Processing Manufahi
+Saved historical data for Manufahi to weather_data/Manufahi_historical_20250118.json
+
+Processing Lautem
+Saved historical data for Lautem to weather_data/Lautem_historical_20250118.json
+
+Processing Liquica
+Saved historical data for Liquica to weather_data/Liquica_historical_20250118.json
+
+Processing Raeoa
+Saved historical data for Raeoa to weather_data/Raeoa_historical_20250118.json
+
+Processing Viqueque
+Saved historical data for Viqueque to weather_data/Viqueque_historical_20250118.json
+
+Saved weekly averages for all municipalities to weather_data/all_municipalities_weekly_averages_20250118.json
+
+2025-01-18 17:20:39,370 - INFO - Running dengue_predictor.py
+2025-01-18 17:20:59,307 - INFO - dengue_predictor.py output:
+Connected to the database successfully
+Loaded model and scaler for Aileu
+Loaded model and scaler for Ainaro
+Skipping Atauro: Model or scaler not found
+Loaded model and scaler for Baucau
+Loaded model and scaler for Bobonaro
+Loaded model and scaler for Covalima
+Loaded model and scaler for Dili
+Loaded model and scaler for Ermera
+Loaded model and scaler for Manatuto
+Skipping Manufahi: Model or scaler not found
+Skipping Lautem: Model or scaler not found
+Loaded model and scaler for Liquica
+Skipping Raeoa: Model or scaler not found
+Loaded model and scaler for Viqueque
+Available municipalities:  ['Aileu', 'Ainaro', 'Baucau', 'Bobonaro', 'Covalima', 'Dili', 'Ermera', 'Manatuto', 'Liquica', 'Viqueque']
+
+Processing predictions for 10 municipalities with available models
+
+Processing Aileu
+Input sequence:  [[ 0.         26.15714286 22.98571429 21.17142857 20.48571429 90.45714286
+  90.45714286 90.45714286]
+ [ 0.         26.9        23.04285714 20.72857143 14.51428571 89.75714286
+  89.75714286 89.75714286]
+ [ 0.         26.35714286 22.92857143 20.41428571 13.82857143 89.45714286
+  89.45714286 89.45714286]
+ [ 0.         24.2        20.53333333 18.48333333 10.78333333 89.43333333
+  89.43333333 89.43333333]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.16°C / 22.99°C / 21.17°C
+  Precipitation: 20.49mm
+  Humidity (max/mean/min): 90.46% / 90.46% / 90.46%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.90°C / 23.04°C / 20.73°C
+  Precipitation: 14.51mm
+  Humidity (max/mean/min): 89.76% / 89.76% / 89.76%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.36°C / 22.93°C / 20.41°C
+  Precipitation: 13.83mm
+  Humidity (max/mean/min): 89.46% / 89.46% / 89.46%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 24.20°C / 20.53°C / 18.48°C
+  Precipitation: 10.78mm
+  Humidity (max/mean/min): 89.43% / 89.43% / 89.43%
+
+Processing Ainaro
+Input sequence:  [[ 0.         26.91428571 23.84285714 22.12857143 23.37142857 90.4
+  90.4        90.4       ]
+ [ 0.         27.58571429 24.         21.75714286 14.1        88.42857143
+  88.42857143 88.42857143]
+ [ 0.         27.45714286 23.98571429 21.51428571 14.82857143 87.18571429
+  87.18571429 87.18571429]
+ [ 0.         26.18333333 22.03333333 19.76666667 10.73333333 85.65
+  85.65       85.65      ]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.91°C / 23.84°C / 22.13°C
+  Precipitation: 23.37mm
+  Humidity (max/mean/min): 90.40% / 90.40% / 90.40%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.59°C / 24.00°C / 21.76°C
+  Precipitation: 14.10mm
+  Humidity (max/mean/min): 88.43% / 88.43% / 88.43%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.46°C / 23.99°C / 21.51°C
+  Precipitation: 14.83mm
+  Humidity (max/mean/min): 87.19% / 87.19% / 87.19%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.18°C / 22.03°C / 19.77°C
+  Precipitation: 10.73mm
+  Humidity (max/mean/min): 85.65% / 85.65% / 85.65%
+
+Processing Baucau
+Input sequence:  [[ 0.         28.74285714 26.18571429 24.42857143 16.24285714 88.18571429
+  88.18571429 88.18571429]
+ [ 0.         29.4        26.32857143 24.24285714 10.21428571 86.8
+  86.8        86.8       ]
+ [ 0.         28.82857143 26.25714286 24.24285714  8.28571429 87.04285714
+  87.04285714 87.04285714]
+ [ 0.         27.88333333 26.6        25.33333333  7.85       82.65
+  82.65       82.65      ]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.74°C / 26.19°C / 24.43°C
+  Precipitation: 16.24mm
+  Humidity (max/mean/min): 88.19% / 88.19% / 88.19%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.40°C / 26.33°C / 24.24°C
+  Precipitation: 10.21mm
+  Humidity (max/mean/min): 86.80% / 86.80% / 86.80%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.83°C / 26.26°C / 24.24°C
+  Precipitation: 8.29mm
+  Humidity (max/mean/min): 87.04% / 87.04% / 87.04%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.88°C / 26.60°C / 25.33°C
+  Precipitation: 7.85mm
+  Humidity (max/mean/min): 82.65% / 82.65% / 82.65%
+
+Processing Bobonaro
+Input sequence:  [[ 0.         27.05714286 23.45714286 21.41428571 24.51428571 91.57142857
+  91.57142857 91.57142857]
+ [ 0.         27.64285714 23.6        21.05714286 14.4        90.12857143
+  90.12857143 90.12857143]
+ [ 0.         27.84285714 23.75714286 20.88571429 13.04285714 88.77142857
+  88.77142857 88.77142857]
+ [ 0.         27.85       23.78333333 21.56666667  8.15       86.
+  86.         86.        ]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.06°C / 23.46°C / 21.41°C
+  Precipitation: 24.51mm
+  Humidity (max/mean/min): 91.57% / 91.57% / 91.57%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.64°C / 23.60°C / 21.06°C
+  Precipitation: 14.40mm
+  Humidity (max/mean/min): 90.13% / 90.13% / 90.13%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.84°C / 23.76°C / 20.89°C
+  Precipitation: 13.04mm
+  Humidity (max/mean/min): 88.77% / 88.77% / 88.77%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.85°C / 23.78°C / 21.57°C
+  Precipitation: 8.15mm
+  Humidity (max/mean/min): 86.00% / 86.00% / 86.00%
+
+Processing Covalima
+Input sequence:  [[ 0.         28.71428571 25.75714286 24.1        20.11428571 87.72857143
+  87.72857143 87.72857143]
+ [ 0.         29.15714286 26.01428571 23.9         8.58571429 85.11428571
+  85.11428571 85.11428571]
+ [ 0.         29.62857143 26.14285714 23.81428571 11.42857143 83.9
+  83.9        83.9       ]
+ [ 0.         30.96666667 25.56666667 22.83333333 11.05       81.95
+  81.95       81.95      ]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.71°C / 25.76°C / 24.10°C
+  Precipitation: 20.11mm
+  Humidity (max/mean/min): 87.73% / 87.73% / 87.73%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.16°C / 26.01°C / 23.90°C
+  Precipitation: 8.59mm
+  Humidity (max/mean/min): 85.11% / 85.11% / 85.11%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.63°C / 26.14°C / 23.81°C
+  Precipitation: 11.43mm
+  Humidity (max/mean/min): 83.90% / 83.90% / 83.90%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 30.97°C / 25.57°C / 22.83°C
+  Precipitation: 11.05mm
+  Humidity (max/mean/min): 81.95% / 81.95% / 81.95%
+
+Processing Dili
+Input sequence:  [[ 0.         28.15714286 26.17142857 24.75714286 10.51428571 85.78571429
+  85.78571429 85.78571429]
+ [ 0.         28.54285714 26.25714286 24.45714286  6.44285714 85.35714286
+  85.35714286 85.35714286]
+ [ 0.         28.4        26.35714286 24.55714286 10.41428571 85.35714286
+  85.35714286 85.35714286]
+ [ 0.         28.83333333 27.78333333 26.76666667 10.38333333 76.28333333
+  76.28333333 76.28333333]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.16°C / 26.17°C / 24.76°C
+  Precipitation: 10.51mm
+  Humidity (max/mean/min): 85.79% / 85.79% / 85.79%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.54°C / 26.26°C / 24.46°C
+  Precipitation: 6.44mm
+  Humidity (max/mean/min): 85.36% / 85.36% / 85.36%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.40°C / 26.36°C / 24.56°C
+  Precipitation: 10.41mm
+  Humidity (max/mean/min): 85.36% / 85.36% / 85.36%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.83°C / 27.78°C / 26.77°C
+  Precipitation: 10.38mm
+  Humidity (max/mean/min): 76.28% / 76.28% / 76.28%
+
+Processing Ermera
+Input sequence:  [[ 0.         26.15714286 22.98571429 21.17142857 20.48571429 90.45714286
+  90.45714286 90.45714286]
+ [ 0.         26.9        23.04285714 20.72857143 14.51428571 89.75714286
+  89.75714286 89.75714286]
+ [ 0.         26.35714286 22.92857143 20.41428571 13.82857143 89.45714286
+  89.45714286 89.45714286]
+ [ 0.         24.2        20.53333333 18.48333333 10.78333333 89.43333333
+  89.43333333 89.43333333]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.16°C / 22.99°C / 21.17°C
+  Precipitation: 20.49mm
+  Humidity (max/mean/min): 90.46% / 90.46% / 90.46%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.90°C / 23.04°C / 20.73°C
+  Precipitation: 14.51mm
+  Humidity (max/mean/min): 89.76% / 89.76% / 89.76%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.36°C / 22.93°C / 20.41°C
+  Precipitation: 13.83mm
+  Humidity (max/mean/min): 89.46% / 89.46% / 89.46%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 24.20°C / 20.53°C / 18.48°C
+  Precipitation: 10.78mm
+  Humidity (max/mean/min): 89.43% / 89.43% / 89.43%
+
+Processing Manatuto
+Input sequence:  [[ 0.         28.47142857 26.47142857 24.88571429 11.82857143 87.84285714
+  87.84285714 87.84285714]
+ [ 0.         29.17142857 26.7        24.75714286  4.77142857 86.04285714
+  86.04285714 86.04285714]
+ [ 0.         28.84285714 26.7        24.62857143  6.65714286 84.81428571
+  84.81428571 84.81428571]
+ [ 0.         28.93333333 27.         25.48333333 10.3        80.78333333
+  80.78333333 80.78333333]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.47°C / 26.47°C / 24.89°C
+  Precipitation: 11.83mm
+  Humidity (max/mean/min): 87.84% / 87.84% / 87.84%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.17°C / 26.70°C / 24.76°C
+  Precipitation: 4.77mm
+  Humidity (max/mean/min): 86.04% / 86.04% / 86.04%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.84°C / 26.70°C / 24.63°C
+  Precipitation: 6.66mm
+  Humidity (max/mean/min): 84.81% / 84.81% / 84.81%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.93°C / 27.00°C / 25.48°C
+  Precipitation: 10.30mm
+  Humidity (max/mean/min): 80.78% / 80.78% / 80.78%
+
+Processing Liquica
+Input sequence:  [[ 0.         26.95714286 24.88571429 23.62857143 15.04285714 87.88571429
+  87.88571429 87.88571429]
+ [ 0.         27.45714286 25.01428571 23.38571429 12.3        86.72857143
+  86.72857143 86.72857143]
+ [ 0.         27.77142857 25.25714286 23.52857143  9.27142857 84.85714286
+  84.85714286 84.85714286]
+ [ 0.         29.1        24.73333333 22.28333333  7.83333333 84.48333333
+  84.48333333 84.48333333]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.96°C / 24.89°C / 23.63°C
+  Precipitation: 15.04mm
+  Humidity (max/mean/min): 87.89% / 87.89% / 87.89%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.46°C / 25.01°C / 23.39°C
+  Precipitation: 12.30mm
+  Humidity (max/mean/min): 86.73% / 86.73% / 86.73%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.77°C / 25.26°C / 23.53°C
+  Precipitation: 9.27mm
+  Humidity (max/mean/min): 84.86% / 84.86% / 84.86%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.10°C / 24.73°C / 22.28°C
+  Precipitation: 7.83mm
+  Humidity (max/mean/min): 84.48% / 84.48% / 84.48%
+
+Processing Viqueque
+Input sequence:  [[ 0.         29.51428571 25.95714286 23.74285714 16.77142857 89.77142857
+  89.77142857 89.77142857]
+ [ 0.         29.97142857 26.12857143 23.32857143 10.41428571 88.81428571
+  88.81428571 88.81428571]
+ [ 0.         30.02857143 26.         23.17142857  9.3        87.9
+  87.9        87.9       ]
+ [ 0.         29.3        24.88333333 22.46666667  8.48333333 86.85
+  86.85       86.85      ]]
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.51°C / 25.96°C / 23.74°C
+  Precipitation: 16.77mm
+  Humidity (max/mean/min): 89.77% / 89.77% / 89.77%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.97°C / 26.13°C / 23.33°C
+  Precipitation: 10.41mm
+  Humidity (max/mean/min): 88.81% / 88.81% / 88.81%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 30.03°C / 26.00°C / 23.17°C
+  Precipitation: 9.30mm
+  Humidity (max/mean/min): 87.90% / 87.90% / 87.90%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.30°C / 24.88°C / 22.47°C
+  Precipitation: 8.48mm
+  Humidity (max/mean/min): 86.85% / 86.85% / 86.85%
+
+Predictions saved to predictions/dengue_predictions_20250118.json
+
+Predicted dengue cases for each municipality:
+Aileu: 0 cases
+Ainaro: 1 cases
+Baucau: 0 cases
+Bobonaro: 55 cases
+Covalima: 2 cases
+Dili: 0 cases
+Ermera: 551 cases
+Manatuto: 0 cases
+Liquica: 0 cases
+Viqueque: 12 cases
+Database connection closed
+
+2025-01-18 17:20:59,311 - WARNING - dengue_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.2.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+WARNING:tensorflow:5 out of the last 5 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff5831e160> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+WARNING:tensorflow:5 out of the last 5 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff5831e160> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+WARNING:tensorflow:6 out of the last 6 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff5831ee50> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+WARNING:tensorflow:6 out of the last 6 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff5831ee50> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+
+2025-01-18 17:21:00,316 - INFO - Running diarrhea_predictor.py
+2025-01-18 17:21:04,696 - INFO - diarrhea_predictor.py output:
+Connected to the database successfully
+Loaded model and scaler for Aileu
+Loaded model and scaler for Ainaro
+Skipping Atauro: Model or scaler not found
+Loaded model and scaler for Baucau
+Loaded model and scaler for Bobonaro
+Loaded model and scaler for Covalima
+Loaded model and scaler for Dili
+Loaded model and scaler for Ermera
+Loaded model and scaler for Manatuto
+Skipping Manufahi: Model or scaler not found
+Skipping Lautem: Model or scaler not found
+Loaded model and scaler for Liquica
+Skipping Raeoa: Model or scaler not found
+Skipping Viqueque: Model or scaler not found
+
+Processing predictions for 9 municipalities with available models
+
+Processing Aileu
+
+Input data for Aileu:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.16°C / 22.99°C / 21.17°C
+  Precipitation: 20.49mm
+  Humidity (max/mean/min): 90.46% / 90.46% / 90.46%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.90°C / 23.04°C / 20.73°C
+  Precipitation: 14.51mm
+  Humidity (max/mean/min): 89.76% / 89.76% / 89.76%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.36°C / 22.93°C / 20.41°C
+  Precipitation: 13.83mm
+  Humidity (max/mean/min): 89.46% / 89.46% / 89.46%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 24.20°C / 20.53°C / 18.48°C
+  Precipitation: 10.78mm
+  Humidity (max/mean/min): 89.43% / 89.43% / 89.43%
+
+Processing Ainaro
+
+Input data for Ainaro:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.91°C / 23.84°C / 22.13°C
+  Precipitation: 23.37mm
+  Humidity (max/mean/min): 90.40% / 90.40% / 90.40%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.59°C / 24.00°C / 21.76°C
+  Precipitation: 14.10mm
+  Humidity (max/mean/min): 88.43% / 88.43% / 88.43%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.46°C / 23.99°C / 21.51°C
+  Precipitation: 14.83mm
+  Humidity (max/mean/min): 87.19% / 87.19% / 87.19%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.18°C / 22.03°C / 19.77°C
+  Precipitation: 10.73mm
+  Humidity (max/mean/min): 85.65% / 85.65% / 85.65%
+
+Processing Baucau
+
+Input data for Baucau:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.74°C / 26.19°C / 24.43°C
+  Precipitation: 16.24mm
+  Humidity (max/mean/min): 88.19% / 88.19% / 88.19%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.40°C / 26.33°C / 24.24°C
+  Precipitation: 10.21mm
+  Humidity (max/mean/min): 86.80% / 86.80% / 86.80%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.83°C / 26.26°C / 24.24°C
+  Precipitation: 8.29mm
+  Humidity (max/mean/min): 87.04% / 87.04% / 87.04%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.88°C / 26.60°C / 25.33°C
+  Precipitation: 7.85mm
+  Humidity (max/mean/min): 82.65% / 82.65% / 82.65%
+
+Processing Bobonaro
+
+Input data for Bobonaro:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.06°C / 23.46°C / 21.41°C
+  Precipitation: 24.51mm
+  Humidity (max/mean/min): 91.57% / 91.57% / 91.57%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.64°C / 23.60°C / 21.06°C
+  Precipitation: 14.40mm
+  Humidity (max/mean/min): 90.13% / 90.13% / 90.13%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.84°C / 23.76°C / 20.89°C
+  Precipitation: 13.04mm
+  Humidity (max/mean/min): 88.77% / 88.77% / 88.77%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.85°C / 23.78°C / 21.57°C
+  Precipitation: 8.15mm
+  Humidity (max/mean/min): 86.00% / 86.00% / 86.00%
+
+Processing Covalima
+
+Input data for Covalima:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.71°C / 25.76°C / 24.10°C
+  Precipitation: 20.11mm
+  Humidity (max/mean/min): 87.73% / 87.73% / 87.73%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.16°C / 26.01°C / 23.90°C
+  Precipitation: 8.59mm
+  Humidity (max/mean/min): 85.11% / 85.11% / 85.11%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.63°C / 26.14°C / 23.81°C
+  Precipitation: 11.43mm
+  Humidity (max/mean/min): 83.90% / 83.90% / 83.90%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 30.97°C / 25.57°C / 22.83°C
+  Precipitation: 11.05mm
+  Humidity (max/mean/min): 81.95% / 81.95% / 81.95%
+
+Processing Dili
+
+Input data for Dili:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.16°C / 26.17°C / 24.76°C
+  Precipitation: 10.51mm
+  Humidity (max/mean/min): 85.79% / 85.79% / 85.79%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.54°C / 26.26°C / 24.46°C
+  Precipitation: 6.44mm
+  Humidity (max/mean/min): 85.36% / 85.36% / 85.36%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.40°C / 26.36°C / 24.56°C
+  Precipitation: 10.41mm
+  Humidity (max/mean/min): 85.36% / 85.36% / 85.36%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.83°C / 27.78°C / 26.77°C
+  Precipitation: 10.38mm
+  Humidity (max/mean/min): 76.28% / 76.28% / 76.28%
+
+Processing Ermera
+
+Input data for Ermera:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.16°C / 22.99°C / 21.17°C
+  Precipitation: 20.49mm
+  Humidity (max/mean/min): 90.46% / 90.46% / 90.46%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.90°C / 23.04°C / 20.73°C
+  Precipitation: 14.51mm
+  Humidity (max/mean/min): 89.76% / 89.76% / 89.76%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.36°C / 22.93°C / 20.41°C
+  Precipitation: 13.83mm
+  Humidity (max/mean/min): 89.46% / 89.46% / 89.46%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 24.20°C / 20.53°C / 18.48°C
+  Precipitation: 10.78mm
+  Humidity (max/mean/min): 89.43% / 89.43% / 89.43%
+
+Processing Manatuto
+
+Input data for Manatuto:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.47°C / 26.47°C / 24.89°C
+  Precipitation: 11.83mm
+  Humidity (max/mean/min): 87.84% / 87.84% / 87.84%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.17°C / 26.70°C / 24.76°C
+  Precipitation: 4.77mm
+  Humidity (max/mean/min): 86.04% / 86.04% / 86.04%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.84°C / 26.70°C / 24.63°C
+  Precipitation: 6.66mm
+  Humidity (max/mean/min): 84.81% / 84.81% / 84.81%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 28.93°C / 27.00°C / 25.48°C
+  Precipitation: 10.30mm
+  Humidity (max/mean/min): 80.78% / 80.78% / 80.78%
+
+Processing Liquica
+
+Input data for Liquica:
+
+Week 1:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 26.96°C / 24.89°C / 23.63°C
+  Precipitation: 15.04mm
+  Humidity (max/mean/min): 87.89% / 87.89% / 87.89%
+
+Week 2:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.46°C / 25.01°C / 23.39°C
+  Precipitation: 12.30mm
+  Humidity (max/mean/min): 86.73% / 86.73% / 86.73%
+
+Week 3:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 27.77°C / 25.26°C / 23.53°C
+  Precipitation: 9.27mm
+  Humidity (max/mean/min): 84.86% / 84.86% / 84.86%
+
+Week 4:
+  Previous cases: 0.0
+  Temperature (max/avg/min): 29.10°C / 24.73°C / 22.28°C
+  Precipitation: 7.83mm
+  Humidity (max/mean/min): 84.48% / 84.48% / 84.48%
+
+Predictions saved to predictions/diarrhea_predictions_20250118.json
+
+Predicted diarrhea cases for each municipality:
+Aileu: 509 cases
+Ainaro: 3533 cases
+Baucau: 599 cases
+Bobonaro: 1294 cases
+Covalima: 0 cases
+Dili: 1424 cases
+Ermera: 0 cases
+Manatuto: 566 cases
+Liquica: 531 cases
+Database connection closed
+
+2025-01-18 17:21:04,697 - WARNING - diarrhea_predictor.py warnings:
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.2.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+WARNING:tensorflow:5 out of the last 5 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff344d2f70> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+WARNING:tensorflow:5 out of the last 5 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff344d2f70> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+WARNING:tensorflow:6 out of the last 6 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff3428c790> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+WARNING:tensorflow:6 out of the last 6 calls to <function TensorFlowTrainer.make_predict_function.<locals>.one_step_on_data_distributed at 0xffff3428c790> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
+  warnings.warn(
+
+2025-01-18 17:21:05,702 - INFO - Running upload_predictions.py
+2025-01-18 17:21:05,799 - INFO - upload_predictions.py output:
+Connected to the database successfully
+Table is ready
+Directory:  predictions
+Dengue file:  predictions/dengue_predictions_20250118.json
+Diarrhea file:  predictions/diarrhea_predictions_20250118.json
+{'Aileu': {'predicted_cases': 0, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Ainaro': {'predicted_cases': 1, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Baucau': {'predicted_cases': 0, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Bobonaro': {'predicted_cases': 55, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Covalima': {'predicted_cases': 2, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Dili': {'predicted_cases': 0, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Ermera': {'predicted_cases': 551, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Manatuto': {'predicted_cases': 0, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Liquica': {'predicted_cases': 0, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}, 'Viqueque': {'predicted_cases': 12, 'prediction_date': '2025-01-18', 'weeks_used': [{'start': '2024-12-23', 'end': '2024-12-29'}, {'start': '2024-12-30', 'end': '2025-01-05'}, {'start': '2025-01-06', 'end': '2025-01-12'}, {'start': '2025-01-13', 'end': '2025-01-19'}]}}
+Uploaded prediction for Aileu (dengue, Week 3/2025)
+Uploaded prediction for Ainaro (dengue, Week 3/2025)
+Uploaded prediction for Baucau (dengue, Week 3/2025)
+Uploaded prediction for Bobonaro (dengue, Week 3/2025)
+Uploaded prediction for Covalima (dengue, Week 3/2025)
+Uploaded prediction for Dili (dengue, Week 3/2025)
+Uploaded prediction for Ermera (dengue, Week 3/2025)
+Uploaded prediction for Manatuto (dengue, Week 3/2025)
+Uploaded prediction for Liquica (dengue, Week 3/2025)
+Uploaded prediction for Viqueque (dengue, Week 3/2025)
+All dengue predictions uploaded successfully
+Uploaded prediction for Aileu (diarrhea, Week 3/2025)
+Uploaded prediction for Ainaro (diarrhea, Week 3/2025)
+Uploaded prediction for Baucau (diarrhea, Week 3/2025)
+Uploaded prediction for Bobonaro (diarrhea, Week 3/2025)
+Uploaded prediction for Covalima (diarrhea, Week 3/2025)
+Uploaded prediction for Dili (diarrhea, Week 3/2025)
+Uploaded prediction for Ermera (diarrhea, Week 3/2025)
+Uploaded prediction for Manatuto (diarrhea, Week 3/2025)
+Uploaded prediction for Liquica (diarrhea, Week 3/2025)
+All diarrhea predictions uploaded successfully
+Database connection closed
+
+2025-01-18 17:21:06,806 - INFO - Pipeline completed successfully in 73.56 seconds
