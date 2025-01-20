@@ -39,4 +39,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
 
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["pixi", "run", "python", "scripts/scheduled_pull.py"]
+CMD ["python", "scripts/scheduled_pull.py"]
