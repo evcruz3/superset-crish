@@ -149,13 +149,25 @@ const DraggableItem = styled.div<DraggableItemProps>`
   border-radius: 4px;
   background-color: white;
   transition: color 0.2s, background-color 0.2s;
+  position: relative;
   
   /* Only apply box-shadow when not being dragged */
   box-shadow: ${({ theme, isDragging }) => 
     !isDragging && theme.gridUnit >= 4 ? '0 1px 3px rgba(0,0,0,0.12)' : 'none'};
 
-  &:hover {
+  &:hover, &[data-dragging="true"] {
     background-color: ${({ theme }) => theme.colors.grayscale.light4};
+
+    .color-scale-preview {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .layer-name {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+    }
   }
 
   /* Remove transition during drag to prevent animation on drop */
@@ -169,18 +181,43 @@ const DraggableItem = styled.div<DraggableItemProps>`
     color: ${({ theme }) => theme.colors.grayscale.light1};
     margin-right: 0.5rem;
     font-size: 0.875rem;
+    flex-shrink: 0;
   }
 
   .layer-name {
-    transition: color 0.2s;
+    transition: all 0.2s ease-in-out;
     color: ${({ $isVisible, theme }) => 
       $isVisible ? theme.colors.grayscale.dark1 : theme.colors.grayscale.light1};
     font-size: 0.8125rem;
     font-weight: 500;
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: calc(60px + 1rem); /* Width of color preview + its margin */
+  }
+
+  .color-scale-preview {
+    position: absolute;
+    right: 2.5rem; /* Space for visibility toggle */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px;
+    height: 8px;
+    border-radius: 4px;
+    background: ${({ $isVisible }) => 
+      $isVisible ? 'linear-gradient(to right, #ccc, #343434)' : '#e5e7eb'};
+    border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+    visibility: visible;
   }
 
   .visibility-toggle {
-    margin-left: auto;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
     cursor: pointer;
     transition: color 0.2s;
     color: ${({ $isVisible, theme }) => 
@@ -388,8 +425,6 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, [])
 
-  console.log("payload", props.payload)
-
   // Function to create layer based on filtered data
   const createLayer = useCallback((
     subslice: JsonObject,
@@ -402,7 +437,16 @@ const DeckMulti = (props: DeckMultiProps) => {
         ...json.data,
         data: filteredData,
       },
-    }
+    };
+
+    // Store original data for color scale calculation
+    const jsonWithAllData = {
+      ...json,
+      data: {
+        ...json.data,
+        data: json.data.data,
+      },
+    };
 
     if (subslice.form_data.viz_type === 'deck_country') {
       const country = subslice.form_data.select_country;
@@ -414,7 +458,8 @@ const DeckMulti = (props: DeckMultiProps) => {
           props.onAddFilter,
           setTooltip,
           geoJsonData,
-          currentTime
+          currentTime,
+          jsonWithAllData.data.data // Pass all data for color scale calculation
         );
 
         setSubSlicesLayers((prevLayers) => ({
@@ -443,7 +488,8 @@ const DeckMulti = (props: DeckMultiProps) => {
         props.datasource,
         [],
         props.onSelect,
-        currentTime
+        currentTime,
+        jsonWithAllData.data.data // Pass all data for color scale calculation
       );
 
       setSubSlicesLayers((prevLayers) => ({
@@ -621,21 +667,6 @@ const DeckMulti = (props: DeckMultiProps) => {
     .map((id) => subSlicesLayers[id])
     .reverse()
 
-  // Effect to update time range when temporal data changes
-  useEffect(() => {
-    if (Object.keys(temporalData).length > 0) {
-      const allDates = Object.values(temporalData).flatMap(({ dates }) => dates)
-      if (allDates.length > 0) {
-        const minDate = new Date(Math.min(...allDates.map(d => d.getTime())))
-        const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())))
-        setTimeRange([minDate, maxDate])
-        if (!currentTime) {
-          setCurrentTime(maxDate)
-        }
-      }
-    }
-  }, [temporalData])
-
   // Effect to update layers when time changes
   useEffect(() => {
     if (currentTime && Object.keys(temporalData).length > 0) {
@@ -646,6 +677,7 @@ const DeckMulti = (props: DeckMultiProps) => {
             (slice: any) => slice.slice_id === numericSliceId
           )
           if (subslice) {
+            // Filter data for current time but keep original data for color scale
             const filteredData = filterDataByTime(data.data.data, column, currentTime)
             createLayer(subslice, data, filteredData)
           }
@@ -653,6 +685,21 @@ const DeckMulti = (props: DeckMultiProps) => {
       })
     }
   }, [currentTime, temporalData, visibleLayers, filterDataByTime, createLayer, props.payload.data.slices])
+
+  // Effect to update time range when temporal data changes
+  useEffect(() => {
+    if (Object.keys(temporalData).length > 0) {
+      const allDates = Object.values(temporalData).flatMap(({ dates }) => dates)
+      if (allDates.length > 0) {
+        const minDate = new Date(Math.min(...allDates.map(d => d.getTime())))
+        const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())))
+        setTimeRange([minDate, maxDate])
+        if (!currentTime) {
+          setCurrentTime(minDate)
+        }
+      }
+    }
+  }, [temporalData])
 
   return (
     <DeckGLContainerStyledWrapper
@@ -674,7 +721,7 @@ const DeckMulti = (props: DeckMultiProps) => {
           <Slider
             min={timeRange[0].getTime()}
             max={timeRange[1].getTime()}
-            value={currentTime?.getTime() ?? timeRange[1].getTime()}
+            value={currentTime?.getTime() ?? timeRange[0].getTime()}
             onChange={(value: number) => setCurrentTime(new Date(value))}
             tipFormatter={(value: number) => new Date(value).toLocaleDateString()}
           />
@@ -710,11 +757,20 @@ const DeckMulti = (props: DeckMultiProps) => {
                             {...draggableProvided.dragHandleProps}
                             $isVisible={!!visibleLayers[id]}
                             isDragging={draggableSnapshot.isDragging}
+                            data-dragging={draggableSnapshot.isDragging}
                           >
                             <span className="drag-handle">
                               ☰
                             </span>
                             <span className="layer-name">{subslice?.slice_name}</span>
+                            <div 
+                              className="color-scale-preview"
+                              style={{
+                                background: visibleLayers[id] && subSlicesLayers[id]?.[0]?.colorScale
+                                  ? `linear-gradient(to right, ${subSlicesLayers[id][0].colorScale(subSlicesLayers[id][0].extent[0])}, ${subSlicesLayers[id][0].colorScale(subSlicesLayers[id][0].extent[1])})`
+                                  : undefined
+                              }}
+                            />
                             <span 
                               className="visibility-toggle"
                               onClick={(e) => {

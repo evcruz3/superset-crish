@@ -311,6 +311,7 @@ export function getLayer(
   setTooltip: (tooltip: TooltipProps['tooltip']) => void,
   geoJson: JsonObject,
   currentTime?: Date,
+  allData?: JsonObject[],
 ): (Layer<{}> | (() => Layer<{}>))[] {
   const fd = formData;
   const sc = fd.stroke_color_picker;
@@ -318,10 +319,9 @@ export function getLayer(
   const data = payload.data.data;
   const records = Array.isArray(data) ? data : (data?.records || []);
 
-  console.log(records);
-
-  // Calculate extent and color scale from all metric values, regardless of time
-  const allMetricValues = records
+  // Use allData for color scale calculation if provided, otherwise use current records
+  const dataForColorScale = allData || records;
+  const allMetricValues = dataForColorScale
     .map((d: JsonObject) => d.metric)
     .filter((v: number) => v !== undefined && v !== null);
   const extent: [number, number] = [Math.min(...allMetricValues), Math.max(...allMetricValues)];
@@ -550,7 +550,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
         const minTime = new Date(Math.min(...times.map((d: Date) => d.getTime())));
         const maxTime = new Date(Math.max(...times.map((d: Date) => d.getTime())));
         setTimeRange([minTime, maxTime]);
-        setCurrentTime(maxTime);
+        setCurrentTime(minTime);
       }
     }
   }, [formData.temporal_column, payload.data.data]);
@@ -618,9 +618,6 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     return <div>Loading...</div>;
   }
 
-  console.log(currentTime);
-  console.log(timeRange);
-
   return (
     <>
       <DeckGLContainerStyledWrapper
@@ -641,7 +638,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
             <Slider
               min={timeRange[0].getTime()}
               max={timeRange[1].getTime()}
-              value={currentTime?.getTime() ?? timeRange[1].getTime()}
+              value={currentTime?.getTime() ?? timeRange[0].getTime()}
               onChange={(value: number) => setCurrentTime(new Date(value))}
               tipFormatter={(value: number) => new Date(value).toLocaleDateString()}
             />

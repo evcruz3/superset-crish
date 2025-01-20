@@ -30,6 +30,7 @@ import {
   ScreengridChartPlugin,
   ContourChartPlugin,
   HeatmapChartPlugin,
+  FeedChartPlugin,
 } from '.';
 
 export default class DeckGLOSMChartPreset extends Preset {
@@ -50,6 +51,7 @@ export default class DeckGLOSMChartPreset extends Preset {
         new ScatterChartPlugin().configure({ key: 'deck_scatter' }),
         new ScreengridChartPlugin().configure({ key: 'deck_screengrid' }),
         new ContourChartPlugin().configure({ key: 'deck_contour' }),
+        new FeedChartPlugin().configure({ key: 'deck_feed' }),
       ],
     });
   }

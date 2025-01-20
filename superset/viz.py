@@ -2368,6 +2368,73 @@ class DeckCountry(BaseDeckGLViz):
             properties[temporal_column] = data.get(temporal_column)
         return properties
 
+
+class DeckFeed(DeckCountry):
+    """deck.gl's Feed Layer"""
+
+    viz_type = "deck_feed"
+    verbose_name = _("Deck.gl - Feed")
+    spatial_control_keys: list[str] = []
+    is_timeseries = False
+
+    def query_obj(self) -> QueryObjectDict:
+        # Get base query object from parent
+        query_obj = super().query_obj()
+
+        # Add title and message columns
+        title_column = self.form_data.get("title_column")
+        message_column = self.form_data.get("message_column")
+
+        if not title_column:
+            raise QueryObjectValidationError(_("Must specify a title column"))
+        if not message_column:
+            raise QueryObjectValidationError(_("Must specify a message column"))
+
+        query_obj["columns"].extend([title_column, message_column])
+        return query_obj
+
+    def get_data(self, df: pd.DataFrame) -> VizData:
+        if df.empty:
+            return None
+
+        entity = self.form_data.get("entity")
+        metric = utils.get_metric_name(self.form_data["metric"])
+        title_column = self.form_data.get("title_column")
+        message_column = self.form_data.get("message_column")
+        
+        # Prepare the data for the visualization
+        columns_to_use = [entity, metric, title_column, message_column]
+            
+        df = df[columns_to_use]
+        df.columns = ["country_id", "metric", "title", "message"]
+        
+        # Apply any custom data mutator if specified
+        data = df.to_dict(orient="records")
+        if self.form_data.get("js_data_mutator"):
+            data = self.get_js_fn(self.form_data.get("js_data_mutator"))(data)
+
+        return {
+            "data": data,
+            "mapboxApiKey": config["MAPBOX_API_KEY"],
+            "mapStyle": self.form_data.get("mapbox_style"),
+            "aggregatorName": self.form_data.get("pandas_aggfunc"),
+            "clusteringRadius": self.form_data.get("clustering_radius"),
+            "pointRadiusUnit": self.form_data.get("point_radius_unit"),
+            "globalOpacity": self.form_data.get("global_opacity"),
+            "renderWhileDragging": self.form_data.get("render_while_dragging"),
+            "tooltip": self.form_data.get("rich_tooltip"),
+            "color": self.form_data.get("mapbox_color"),
+        }
+
+    def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
+        properties = super().get_properties(data)
+        properties.update({
+            "title": data.get("title"),
+            "message": data.get("message"),
+        })
+        return properties
+
+
 class DeckGeoJson(BaseDeckGLViz):
     """deck.gl's GeoJSONLayer"""
 

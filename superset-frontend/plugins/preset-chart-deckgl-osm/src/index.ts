@@ -29,3 +29,4 @@ export { default as ScatterChartPlugin } from './layers/Scatter';
 export { default as ScreengridChartPlugin } from './layers/Screengrid';
 export { default as ContourChartPlugin } from './layers/Contour';
 export { default as HeatmapChartPlugin } from './layers/Heatmap';
+export { default as FeedChartPlugin } from './layers/Feed';

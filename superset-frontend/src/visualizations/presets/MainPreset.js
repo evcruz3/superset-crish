@@ -101,6 +101,7 @@ import {
   PolygonChartPlugin as PolygonChartOsmPlugin, 
   ScreengridChartPlugin as ScreengridChartOsmPlugin, 
   ContourChartPlugin as ContourChartOsmPlugin, 
+  FeedChartPlugin as FeedChartOsmPlugin,
 } from '@superset-ui/preset-chart-deckgl-osm';
 
 export default class MainPreset extends Preset {
@@ -217,6 +218,7 @@ export default class MainPreset extends Preset {
         new ScatterChartOsmPlugin().configure({ key: 'deck_scatter' }),
         new ScreengridChartOsmPlugin().configure({ key: 'deck_screengrid' }),
         new ContourChartOsmPlugin().configure({ key: 'deck_contour' }),
+        new FeedChartOsmPlugin().configure({ key: 'deck_feed' }),
       ],
     });
   }
