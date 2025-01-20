@@ -34,12 +34,6 @@ def pull_data():
         data_dir.mkdir(parents=True, exist_ok=True)
         logging.info(f"Using data directory: {data_dir}")
         
-        # Check for required credentials
-        if not os.getenv('DATAEX_USERNAME') or not os.getenv('DATAEX_PASSWORD'):
-            logging.error("DATAEX credentials not set. Skipping data pull.")
-            logging.error("Please set DATAEX_USERNAME and DATAEX_PASSWORD in your environment.")
-            return False
-        
         # Log all relevant environment variables (without sensitive values)
         env_vars = {
             'DATAEX_USERNAME': os.getenv('DATAEX_USERNAME'),
@@ -129,9 +123,6 @@ def pull_data():
     except Exception as e:
         logging.error(f"Failed to pull data: {str(e)}")
         logging.exception("Full error traceback:")
-        return False
-    
-    return True
 
 def main():
     # Handle graceful shutdown
@@ -144,10 +135,9 @@ def main():
     schedule.every().day.at("00:00").do(pull_data)
     logging.info("Scheduled daily pull at midnight")
     
-    # Run once at startup but don't exit if it fails
+    # Run once at startup
     pull_data()
     
-    # Keep running even if initial pull fails
     while True:
         schedule.run_pending()
         time.sleep(60)

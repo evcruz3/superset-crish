@@ -1,33 +1,26 @@
 #!/bin/bash
-set -e
+set -e  # Exit on error
 
 echo "Starting docker-entrypoint.sh"
 
-# Source bashrc to get pixi environment
-echo "Sourcing bashrc for pixi environment..."
-source ~/.bashrc
-
-# Set up environment
-export PATH="/usr/local/bin:/app/.pixi/env/bin:$PATH"
-export PIXI_ROOT=/app/.pixi
-
-# Verify pixi is available
-echo "Checking pixi installation..."
-which pixi || echo "Warning: pixi not found in PATH"
-echo "PIXI_ROOT: $PIXI_ROOT"
-echo "PATH: $PATH"
-
-# Verify pixi environment
-echo "Verifying pixi environment..."
-pixi info || echo "Warning: pixi environment not properly activated"
-
 # Run setup_env.sh to create auth file
-echo "Running setup_env.sh..."
-source scripts/setup_env.sh
-echo "setup_env.sh completed"
+if ! source scripts/setup_env.sh; then
+    echo "Error: setup_env.sh failed"
+    exit 1
+fi
 
-# Log the command that will be executed
-echo "Executing command: $@"
+# Verify DATAEX credentials are set
+if [ -z "$DATAEX_USERNAME" ] || [ -z "$DATAEX_PASSWORD" ]; then
+    echo "Error: DATAEX_USERNAME and DATAEX_PASSWORD must be set"
+    exit 1
+fi
 
-# Execute the CMD
-exec "$@"
+# Verify database variables are set
+if [ -z "$DATABASE_HOST" ] || [ -z "$DATABASE_PORT" ] || [ -z "$DATABASE_DB" ] || [ -z "$DATABASE_USER" ] || [ -z "$DATABASE_PASSWORD" ]; then
+    echo "Error: Database environment variables are not properly set"
+    env | grep -E 'DATABASE_'
+    exit 1
+fi
+
+# Run the command through debug wrapper
+exec ./debug-wrapper.sh "$@"

@@ -22,22 +22,22 @@ RUN chmod +x scripts/setup_env.sh && \
 
 # Switch to non-root user and set up environment
 USER datauser
-
-# Set up pixi environment
 ENV PYTHONUNBUFFERED=1 \
     HOME=/home/datauser \
-    DOCKER_ENV=true \
-    PIXI_ROOT=/app/.pixi \
-    PATH="/usr/local/bin:/app/.pixi/env/bin:${PATH}"
+    DOCKER_ENV=true
 
-# Create fresh pixi environment and make it accessible
+# Create fresh pixi environment and verify installation
 RUN pixi install && \
-    echo 'export PATH="/usr/local/bin:/app/.pixi/env/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PIXI_ROOT=/app/.pixi' >> ~/.bashrc && \
-    pixi shell --print-shell-activation >> ~/.bashrc
+    echo "Verifying pixi environment..." && \
+    pixi run python --version && \
+    pixi list
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
 
+# Add debug wrapper script
+COPY --chown=datauser:datauser scripts/debug-wrapper.sh ./
+RUN chmod +x debug-wrapper.sh
+
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["/bin/bash", "-c", "source ~/.bashrc && pixi run python scripts/scheduled_pull.py"]
+CMD ["pixi", "run", "python", "scripts/scheduled_pull.py"]
