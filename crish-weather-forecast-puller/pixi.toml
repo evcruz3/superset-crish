@@ -1,0 +1,29 @@
+[project]
+name = "forecast-data-puller"
+version = "0.1.0"
+description = "A tool for pulling forecast data using dataex-client"
+authors = []
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64", "linux-aarch64"]
+
+[dependencies]
+python = ">=3.9"
+python-dotenv = "*"
+schedule = ">=1.2.2,<2"
+polars = ">=1.17.1,<2"
+psycopg2-binary = ">=2.9.9,<3"
+pyarrow = ">=18.1.0,<19"
+adbc-driver-manager = ">=1.2.0"
+adbc-driver-postgresql = ">=1.2.0"
+
+[pypi-dependencies]
+dataex-client  = { git = "https://github.com/nzahasan/dataex-client.git", rev = "8516eea9000bf2b3637caecca31b703b4dcef737" }
+
+[tasks]
+setup = "mkdir -p data"
+pull-data = "python scripts/pull_data.py"
+scheduled-pull = """
+    bash -c 'source scripts/setup_env.sh &&
+    python scripts/scheduled_pull.py'
+"""
+test = "python -m pytest tests/"

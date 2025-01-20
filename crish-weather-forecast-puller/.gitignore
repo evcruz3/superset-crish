@@ -1,0 +1,26 @@
+# pixi environments
+.pixi
+*.egg-info
+
+# Secrets
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VS Code settings
+#.vscode/
+
+# Large files
+data
+*.log
+*.csv
+*.json
+*.txt
+*.zip
+*.tar
+*.gz
+*.bz2
+

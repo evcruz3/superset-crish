@@ -133,6 +133,21 @@ services:
     restart: unless-stopped
     user: "root"
 
+  weather-forecast-puller:
+    build: ./crish-weather-forecast-puller
+    container_name: superset_weather_forecast_puller
+    volumes:
+      - ./crish-weather-forecast-puller/data:/app/data
+    env_file:
+      - path: docker/.env # default
+        required: true
+      - path: docker/.env-local # optional override
+        required: false
+    depends_on:
+      - db
+    restart: unless-stopped
+    user: "root"
+
 volumes:
   superset_home:
     external: false
