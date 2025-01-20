@@ -28,15 +28,16 @@ ENV PYTHONUNBUFFERED=1 \
     HOME=/home/datauser \
     DOCKER_ENV=true \
     PIXI_ROOT=/app/.pixi \
-    PATH="/app/.pixi/env/bin:${PATH}"
+    PATH="/usr/local/bin:/app/.pixi/env/bin:${PATH}"
 
 # Create fresh pixi environment and make it accessible
 RUN pixi install && \
-    echo 'export PATH="/app/.pixi/env/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PIXI_ROOT=/app/.pixi' >> ~/.bashrc
+    echo 'export PATH="/usr/local/bin:/app/.pixi/env/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PIXI_ROOT=/app/.pixi' >> ~/.bashrc && \
+    pixi shell --print-shell-activation >> ~/.bashrc
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
 
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-CMD ["python", "scripts/scheduled_pull.py"]
+CMD ["/bin/bash", "-c", "source ~/.bashrc && pixi run python scripts/scheduled_pull.py"]
