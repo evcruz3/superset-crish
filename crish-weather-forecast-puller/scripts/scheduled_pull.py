@@ -74,18 +74,7 @@ def pull_data():
             else:
                 base_dir = os.getcwd()
                 
-            # Get the path to dataex_region_data_analysis.py
-            dataex_cmd = subprocess.run(
-                ["pixi", "run", "which", "dataex_region_data_analysis.py"],
-                capture_output=True,
-                text=True,
-                check=True
-            ).stdout.strip()
-            
-            if not dataex_cmd:
-                raise RuntimeError("Could not find dataex_region_data_analysis.py in PATH")
-                
-            cmd = f"{dataex_cmd} -mt ecmwf_hres -r {param} -ai 9b4f37e1-00f4-4296-8c3a-914ee19989a6 -uf ADM1 -of json -o {output_file.absolute()}"
+            cmd = f"dataex_region_data_analysis.py -mt ecmwf_hres -r {param} -ai 9b4f37e1-00f4-4296-8c3a-914ee19989a6 -uf ADM1 -of json -o {output_file.absolute()}"
             logging.info(f"Running command: {cmd}")
             
             # Run with shell=True and capture all output
