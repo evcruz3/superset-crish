@@ -30,7 +30,11 @@ ENV PYTHONUNBUFFERED=1 \
 RUN pixi install && \
     echo "Verifying pixi environment..." && \
     pixi run python --version && \
-    pixi list
+    pixi list && \
+    echo "Installing dataex-client scripts..." && \
+    pixi run pip install --no-deps git+https://github.com/nzahasan/dataex-client.git@8516eea9000bf2b3637caecca31b703b4dcef737 && \
+    echo "Verifying dataex-client installation..." && \
+    pixi run which dataex_region_data_analysis.py
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
