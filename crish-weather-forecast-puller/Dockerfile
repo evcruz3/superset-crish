@@ -22,12 +22,18 @@ RUN chmod +x scripts/setup_env.sh && \
 
 # Switch to non-root user and set up environment
 USER datauser
+
+# Set up pixi environment
 ENV PYTHONUNBUFFERED=1 \
     HOME=/home/datauser \
-    DOCKER_ENV=true
+    DOCKER_ENV=true \
+    PIXI_ROOT=/app/.pixi \
+    PATH="/app/.pixi/env/bin:${PATH}"
 
-# Create fresh pixi environment
-RUN pixi install
+# Create fresh pixi environment and make it accessible
+RUN pixi install && \
+    echo 'export PATH="/app/.pixi/env/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PIXI_ROOT=/app/.pixi' >> ~/.bashrc
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
