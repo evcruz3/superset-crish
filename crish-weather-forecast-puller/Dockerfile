@@ -33,7 +33,7 @@ COPY --chown=datauser:datauser scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER || exit 1
+    CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["pixi", "run", "python", "scripts/scheduled_pull.py"]

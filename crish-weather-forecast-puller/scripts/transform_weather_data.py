@@ -115,19 +115,15 @@ def ingest_to_postgresql(dataframes):
     except Exception as e:
         print(f"Error ingesting data to PostgreSQL: {str(e)}")
 
-def main():
-    # Process all weather files and get DataFrames
-    dataframes = process_weather_files()
-    
-    # Print DataFrame information
-    for table_name, df in dataframes.items():
-        print(f"\nDataFrame for {table_name}:")
-        print(df.head())
-        print(f"Shape: {df.shape}")
-        print(f"Schema:\n{df.schema}")
-    
-    # Ingest data to PostgreSQL
-    ingest_to_postgresql(dataframes)
+# Process all weather files and get DataFrames
+dataframes = process_weather_files()
 
-if __name__ == '__main__':
-    main() 
+# Print DataFrame information
+for table_name, df in dataframes.items():
+    print(f"\nDataFrame for {table_name}:")
+    print(df.head())
+    print(f"Shape: {df.shape}")
+    print(f"Schema:\n{df.schema}")
+
+# Ingest data to PostgreSQL
+ingest_to_postgresql(dataframes) 

@@ -1,0 +1,9 @@
+.pixi/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log 
+.env
+data
