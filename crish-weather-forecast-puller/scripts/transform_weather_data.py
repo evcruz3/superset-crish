@@ -20,6 +20,47 @@ def get_table_name(json_file):
     # Remove _data.json and return the base name
     return os.path.basename(json_file).replace('_data.json', '')
 
+def calculate_heat_index(tmax_df, rh_df):
+    """Calculate heat index using temperature and relative humidity data."""
+    # Merge temperature and humidity data
+    merged_df = tmax_df.join(
+        rh_df,
+        on=['forecast_date', 'municipality_code'],
+        how='inner',
+        suffix='_rh'
+    )
+    
+    # Calculate heat index using the formula
+    heat_index_df = merged_df.with_columns([
+        # Convert Celsius to Fahrenheit for the formula
+        (pl.col('value') * 9 / 5 + 32).alias('t_fahrenheit'),
+        pl.col('value_rh').alias('rh_value')
+    ]).with_columns([
+        # Heat Index formula
+        (-42.379 +
+         2.04901523 * pl.col('t_fahrenheit') +
+         10.14333127 * pl.col('rh_value') -
+         0.22475541 * pl.col('t_fahrenheit') * pl.col('rh_value') -
+         0.00683783 * pl.col('t_fahrenheit').pow(2) -
+         0.05481717 * pl.col('rh_value').pow(2) +
+         0.00122874 * pl.col('t_fahrenheit').pow(2) * pl.col('rh_value') +
+         0.00085282 * pl.col('t_fahrenheit') * pl.col('rh_value').pow(2) -
+         0.00000199 * pl.col('t_fahrenheit').pow(2) * pl.col('rh_value').pow(2)
+        ).alias('heat_index_f')
+    ]).with_columns([
+        # Convert back to Celsius
+        ((pl.col('heat_index_f') - 32) * 5 / 9).alias('value')
+    ])
+    
+    # Select and rename columns to match schema
+    return heat_index_df.select([
+        'forecast_date',
+        'day_name',
+        'value',
+        'municipality_code',
+        'municipality_name'
+    ])
+
 def transform_weather_data(input_file):
     """Transform weather JSON data into database-friendly format using Polars."""
     # Read JSON file
@@ -87,6 +128,14 @@ def process_weather_files():
             table_name = get_table_name(filename)
             dataframes[table_name] = df
     
+    # Calculate heat index if we have both temperature and humidity data
+    if 'tmax_daily_tmax_region' in dataframes and 'rh_daily_avg_region' in dataframes:
+        heat_index_df = calculate_heat_index(
+            dataframes['tmax_daily_tmax_region'],
+            dataframes['rh_daily_avg_region']
+        )
+        dataframes['heat_index_daily_region'] = heat_index_df
+    
     return dataframes
 
 def ingest_to_postgresql(dataframes):
@@ -115,15 +164,19 @@ def ingest_to_postgresql(dataframes):
     except Exception as e:
         print(f"Error ingesting data to PostgreSQL: {str(e)}")
 
-# Process all weather files and get DataFrames
-dataframes = process_weather_files()
+def main():
+    # Process all weather files and get DataFrames
+    dataframes = process_weather_files()
+    
+    # Print DataFrame information
+    for table_name, df in dataframes.items():
+        print(f"\nDataFrame for {table_name}:")
+        print(df.head())
+        print(f"Shape: {df.shape}")
+        print(f"Schema:\n{df.schema}")
+    
+    # Ingest data to PostgreSQL
+    ingest_to_postgresql(dataframes)
 
-# Print DataFrame information
-for table_name, df in dataframes.items():
-    print(f"\nDataFrame for {table_name}:")
-    print(df.head())
-    print(f"Shape: {df.shape}")
-    print(f"Schema:\n{df.schema}")
-
-# Ingest data to PostgreSQL
-ingest_to_postgresql(dataframes) 
+if __name__ == '__main__':
+    main() 

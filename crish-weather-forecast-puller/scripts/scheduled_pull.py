@@ -20,6 +20,9 @@ logging.basicConfig(
 
 def pull_data():
     try:
+        # Load environment variables
+        load_dotenv()
+        
         # Determine data directory based on environment
         if os.getenv('DOCKER_ENV'):
             # When running in Docker
@@ -121,32 +124,23 @@ def pull_data():
         logging.error(f"Failed to pull data: {str(e)}")
         logging.exception("Full error traceback:")
 
-# Load environment variables
-load_dotenv()
-
-# Handle graceful shutdown
-signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
-signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
-
-logging.info("Starting scheduled data puller...")
-logging.info(f"Running as user: {os.getuid()}:{os.getgid()}")
-logging.info(f"Current working directory: {os.getcwd()}")
-logging.info(f"Directory contents: {os.listdir('.')}")
-
-# Schedule job for midnight
-schedule.every().day.at("08:00").do(pull_data)
-logging.info("Scheduled daily pull at midnight")
-
-# Run once at startup
-pull_data()
-
-logging.info("Entering main loop...")
-while True:
-    try:
+def main():
+    # Handle graceful shutdown
+    signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
+    signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
+    
+    logging.info("Starting scheduled data puller...")
+    
+    # Schedule job for midnight
+    schedule.every().day.at("08:00").do(pull_data)
+    logging.info("Scheduled daily pull at midnight")
+    
+    # Run once at startup
+    pull_data()
+    
+    while True:
         schedule.run_pending()
         time.sleep(60)
-        logging.debug("Main loop iteration completed")
-    except Exception as e:
-        logging.error(f"Error in main loop: {str(e)}")
-        logging.exception("Full error traceback:")
-        time.sleep(60)  # Still sleep to prevent rapid error loops 
+
+if __name__ == "__main__":
+    main() 
