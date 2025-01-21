@@ -5,16 +5,15 @@ FROM ghcr.io/prefix-dev/pixi:0.39.2-jammy
 WORKDIR /app
 RUN useradd -m -s /bin/bash datauser
 
-# Install git, postgresql-client and clean up in one layer
+# Install git and clean up in one layer
 RUN apt-get update && \
-    apt-get install -y git postgresql-client && \
+    apt-get install -y git && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy only necessary files and set permissions
 COPY pixi.toml pixi.lock ./
 COPY scripts ./scripts
 RUN chmod +x scripts/setup_env.sh && \
-    chmod +x scripts/docker-entrypoint.sh && \
     mkdir -p data && \
     chown -R datauser:datauser /app data && \
     chmod 777 data && \
@@ -29,8 +28,12 @@ ENV PYTHONUNBUFFERED=1 \
 # Create fresh pixi environment
 RUN pixi install
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
+# Create an entrypoint script
+COPY --chown=datauser:datauser scripts/docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
-ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER || exit 1
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["pixi", "run", "python", "scripts/scheduled_pull.py"]
