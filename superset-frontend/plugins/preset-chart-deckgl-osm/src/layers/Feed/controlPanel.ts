@@ -17,7 +17,7 @@
  * under the License.
  */
 import { ControlPanelConfig, getStandardizedControls } from '@superset-ui/chart-controls';
-import { t, validateNonEmpty } from '@superset-ui/core';
+import { t, validateNonEmpty, GenericDataType } from '@superset-ui/core';
 import { countryOptions } from '../Country/countries';
 import {
   filterNulls,
@@ -83,6 +83,23 @@ const config: ControlPanelConfig = {
               mapStateToProps: state => ({
                 choices: state.datasource?.columns
                   .map(c => [c.column_name, c.verbose_name || c.column_name]) ?? [],
+              }),
+              default: null,
+              validators: [validateNonEmpty],
+            },
+          },
+        ],
+        [
+          {
+            name: 'date_column',
+            config: {
+              type: 'SelectControl',
+              label: t('Date Column'),
+              description: t('Column containing timestamps for feed entries'),
+              mapStateToProps: state => ({
+                choices: (state.datasource?.columns || [])
+                  .filter(c => c.type_generic === GenericDataType.Temporal)
+                  .map(c => [c.column_name, c.column_name]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
