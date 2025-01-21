@@ -2384,13 +2384,16 @@ class DeckFeed(DeckCountry):
         # Add title and message columns
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
+        date_column = self.form_data.get("date_column")
 
         if not title_column:
             raise QueryObjectValidationError(_("Must specify a title column"))
         if not message_column:
             raise QueryObjectValidationError(_("Must specify a message column"))
+        if not date_column:
+            raise QueryObjectValidationError(_("Must specify a date column"))
 
-        query_obj["columns"].extend([title_column, message_column])
+        query_obj["columns"].extend([title_column, message_column, date_column])
         return query_obj
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -2401,20 +2404,38 @@ class DeckFeed(DeckCountry):
         metric = utils.get_metric_name(self.form_data["metric"])
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
+        date_column = self.form_data.get("date_column")
         
         # Prepare the data for the visualization
-        columns_to_use = [entity, metric, title_column, message_column]
+        columns_to_use = [entity, metric, title_column, message_column, date_column]
             
         df = df[columns_to_use]
-        df.columns = ["country_id", "metric", "title", "message"]
+        df.columns = ["country_id", "metric", "title", "message", "date"]
+
+        # Convert date column to ISO format string for JSON serialization
+        df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         
-        # Apply any custom data mutator if specified
-        data = df.to_dict(orient="records")
-        if self.form_data.get("js_data_mutator"):
-            data = self.get_js_fn(self.form_data.get("js_data_mutator"))(data)
+        # Group by country_id to create regionEntries
+        grouped = df.groupby("country_id")
+        
+        region_counts = grouped.size().to_dict()
+        region_metrics = grouped["metric"].sum().to_dict()
+        region_entries = {
+            country_id: [
+                {
+                    "title": row["title"],
+                    "message": row["message"],
+                    "date": row["date"]  # Include date in each entry
+                }
+                for _, row in group.iterrows()
+            ]
+            for country_id, group in grouped
+        }
 
         return {
-            "data": data,
+            "regionCounts": region_counts,
+            "regionMetrics": region_metrics,
+            "regionEntries": region_entries,
             "mapboxApiKey": config["MAPBOX_API_KEY"],
             "mapStyle": self.form_data.get("mapbox_style"),
             "aggregatorName": self.form_data.get("pandas_aggfunc"),
@@ -2431,6 +2452,7 @@ class DeckFeed(DeckCountry):
         properties.update({
             "title": data.get("title"),
             "message": data.get("message"),
+            "date": data.get("date"),
         })
         return properties
 
