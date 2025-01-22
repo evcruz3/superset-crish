@@ -18,9 +18,12 @@ data
 *.log
 *.csv
 *.json
+# except requirements.txt
+!requirements.txt
 *.txt
 *.zip
 *.tar
 *.gz
 *.bz2
+
 
