@@ -17,7 +17,7 @@
  * under the License.
  */
 import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { GeoJsonLayer, IconLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, IconLayer, TextLayer } from '@deck.gl/layers';
 import { CompositeLayer, Layer } from '@deck.gl/core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { geoCentroid } from 'd3-geo';
@@ -66,6 +66,20 @@ interface IconInfo {
   object: IconData;
   x: number;
   y: number;
+}
+
+interface TextData {
+  coordinates: [number, number];
+  text: string;
+  value: number;
+}
+
+interface ViewState extends Viewport {
+  zoom: number;
+  bearing: number;
+  pitch: number;
+  latitude: number;
+  longitude: number;
 }
 
 // Helper function to process conditional icons
@@ -312,6 +326,7 @@ export function getLayer(
   geoJson: JsonObject,
   currentTime?: Date,
   allData?: JsonObject[],
+  viewState?: ViewState
 ): (Layer<{}> | (() => Layer<{}>))[] {
   const fd = formData;
   const sc = fd.stroke_color_picker;
@@ -488,7 +503,107 @@ export function getLayer(
     });
   }
 
-  return iconLayer ? [geoJsonLayer, iconLayer] : [geoJsonLayer];
+  // Calculate text data for labels
+  console.log('Processing features for text labels:', processedFeatures);
+  
+  // First, create a map of icon positions for quick lookup
+  const iconPositions = new Map<string, boolean>();
+  if (fd.show_icons && fd.icon_threshold !== '') {
+    const iconData = processConditionalIcons(processedFeatures, fd);
+    iconData.forEach(icon => {
+      const key = `${icon.coordinates[0]},${icon.coordinates[1]}`;
+      iconPositions.set(key, true);
+    });
+  }
+
+  const textData = processedFeatures.map((feature: JsonObject) => {
+    let coordinates: [number, number] | undefined;
+    
+    // Calculate center point for the text
+    if (feature.geometry.type === 'Polygon') {
+      const ring = feature.geometry.coordinates[0];
+      coordinates = ring.reduce(
+        (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
+        [0, 0]
+      ).map((sum: number) => sum / ring.length) as [number, number];
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      const areas = feature.geometry.coordinates.map((poly: [number, number][][]) => {
+        const ring = poly[0];
+        return {
+          area: Math.abs(ring.reduce((area: number, point: [number, number], i: number) => {
+            const next = ring[(i + 1) % ring.length];
+            return area + (point[0] * next[1] - next[0] * point[1]);
+          }, 0)) / 2,
+          ring
+        } as PolygonRing;
+      });
+      const largestRing = areas.sort((a: PolygonRing, b: PolygonRing) => b.area - a.area)[0].ring;
+      coordinates = largestRing.reduce(
+        (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
+        [0, 0]
+      ).map((sum: number) => sum / largestRing.length) as [number, number];
+    }
+
+    if (!coordinates) {
+      console.log('No coordinates found for feature:', feature);
+      return null;
+    }
+
+    // Check if there's an icon at these coordinates
+    const key = `${coordinates[0]},${coordinates[1]}`;
+    const hasIcon = iconPositions.get(key);
+    
+    // If there's an icon, offset the text position upward with a smaller offset
+    if (hasIcon) {
+      coordinates = [coordinates[0], coordinates[1] + 0.02]; // Reduced offset from 0.1 to 0.02 degrees
+    }
+
+    const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
+    const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
+    const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
+    const value = feature.properties.metric;
+    const text = value !== undefined ? `${prefix}${formatter(value)}${unit}` : '';
+
+    const result = {
+      coordinates,
+      text,
+      value,
+      hasIcon
+    };
+    console.log('Generated text data for feature:', result);
+    return result;
+  }).filter((d: TextData | null): d is TextData => d !== null);
+
+  console.log('Final text data array:', textData);
+  console.log('Current view state:', viewState);
+
+  // Create text layer with adjusted positioning
+  const textLayer = new TextLayer({
+    id: `text-layer-${fd.slice_id}`,
+    data: textData,
+    getPosition: (d: TextData) => d.coordinates,
+    getText: (d: TextData) => d.text,
+    getSize: 14,
+    getAngle: 0,
+    getTextAnchor: 'middle',
+    getAlignmentBaseline: d => d.hasIcon ? 'bottom' : 'center',
+    getPixelOffset: d => d.hasIcon ? [0, -10] : [0, 0], // Add 10 pixel upward offset when there's an icon
+    pickable: false,
+    billboard: true,
+    background: true,
+    backgroundPadding: [2, 2],
+    getBackgroundColor: [255, 255, 255, 196],
+    fontFamily: 'Arial',
+    characterSet: 'auto',
+    sizeScale: 1,
+    sizeUnits: 'pixels',
+    sizeMinPixels: 10,
+    sizeMaxPixels: 24,
+  });
+
+  console.log('Created text layer:', textLayer);
+
+  return iconLayer ? [geoJsonLayer, iconLayer, textLayer] : [geoJsonLayer, textLayer];
 }
 
 export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
@@ -498,6 +613,14 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const [iconUrls, setIconUrls] = useState<string[]>([]);
   const [currentTime, setCurrentTime] = useState<Date | undefined>();
   const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
+  const [viewState, setViewState] = useState<ViewState>({
+    ...props.viewport,
+    zoom: props.viewport.zoom || 0,
+    bearing: 0,
+    pitch: 0,
+    latitude: props.viewport.latitude,
+    longitude: props.viewport.longitude,
+  });
   
   const { formData, payload, setControlValue, viewport: initialViewport, onAddFilter, height, width } = props;
 
@@ -587,10 +710,40 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     };
   }, [iconUrls]);
 
-  // Calculate layers
+  // Update viewState when viewport changes
+  useEffect(() => {
+    console.log('Viewport prop changed:', props.viewport);
+    setViewState(currentViewState => ({
+      ...currentViewState,
+      ...props.viewport,
+      zoom: props.viewport.zoom || currentViewState.zoom || 0,
+      bearing: 0,
+      pitch: 0,
+    }));
+  }, [props.viewport]);
+
+  // Handle viewport changes from user interaction
+  const onViewportChange = useCallback((viewport: Viewport) => {
+    console.log('Viewport changed:', viewport);
+    const newViewState = {
+      ...viewport,
+      zoom: viewport.zoom || viewState.zoom || 0,
+      bearing: 0,
+      pitch: 0,
+    };
+    setViewState(newViewState);
+    if (props.setControlValue) {
+      props.setControlValue('viewport', newViewState);
+    }
+  }, [props.setControlValue, viewState.zoom]);
+
+  // Calculate layers with viewState
   const layers = useMemo(
-    () => geoJson ? getLayer(formData, payload, onAddFilter, setTooltip, geoJson, currentTime) : [],
-    [formData, payload, onAddFilter, setTooltip, geoJson, currentTime],
+    () => {
+      console.log('Recalculating layers with viewState:', viewState);
+      return geoJson ? getLayer(formData, payload, onAddFilter, setTooltip, geoJson, currentTime, undefined, viewState) : [];
+    },
+    [formData, payload, onAddFilter, setTooltip, geoJson, currentTime, viewState],
   );
 
   // Get formatter and layer metadata
@@ -603,12 +756,6 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const colorScale = geoJsonLayer?.colorScale;
   const extent = geoJsonLayer?.extent;
   const metricValues = geoJsonLayer?.metricValues || [];
-
-  const onViewStateChange = useCallback(({ viewState }) => {
-    if (containerRef.current) {
-      containerRef.current.setViewState(viewState);
-    }
-  }, []);
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -629,6 +776,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
         width={width}
         height={height}
         setControlValue={setControlValue}
+        onViewportChange={onViewportChange}
       >
         {timeRange && formData.temporal_column && (
           <StyledTimeSlider>
