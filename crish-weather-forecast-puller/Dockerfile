@@ -1,39 +1,37 @@
-# Use official pixi image
-FROM ghcr.io/prefix-dev/pixi:0.39.2-jammy
+FROM python:3.9-slim
 
-# Set working directory and create non-root user
 WORKDIR /app
-RUN useradd -m -s /bin/bash datauser
 
-# Install git and clean up in one layer
-RUN apt-get update && \
-    apt-get install -y git && \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy only necessary files and set permissions
-COPY pixi.toml pixi.lock ./
-COPY scripts ./scripts
-RUN chmod +x scripts/setup_env.sh && \
-    mkdir -p data && \
-    chown -R datauser:datauser /app data && \
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create data directory for persistence and make scripts executable
+RUN mkdir -p data && \
     chmod 777 data && \
-    rm -rf .pixi
+    chmod +x scripts/setup_env.sh
 
-# Switch to non-root user and set up environment
-USER datauser
+# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    HOME=/home/datauser \
-    DOCKER_ENV=true
+    DOCKER_ENV=true \
+    HOME=/root
 
-# Create fresh pixi environment
-RUN pixi install
-
-# Create an entrypoint script
-COPY --chown=datauser:datauser scripts/docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
-
+# Add healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER || exit 1
 
+# Create an entrypoint script to run setup and then the main script
+COPY scripts/docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["pixi", "run", "python", "scripts/scheduled_pull.py"]
