@@ -1,6 +1,6 @@
 python-dotenv
 schedule>=1.2.2,<2
-polars>=1.17.1,<2
+polars-lts-cpu>=1.17.1,<2
 psycopg2-binary>=2.9.9,<3
 pyarrow>=18.1.0,<19
 adbc-driver-manager>=1.2.0

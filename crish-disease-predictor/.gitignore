@@ -1,2 +1,10 @@
 predictions
 weather_data
+*.log
+*.csv
+*.json
+*.txt
+*.zip
+*.tar
+*.gz
+*.bz2
