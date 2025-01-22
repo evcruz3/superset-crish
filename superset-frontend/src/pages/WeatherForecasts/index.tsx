@@ -1,9 +1,8 @@
 import React from 'react';
-import withToasts from "src/components/MessageToasts/withToasts";
-import DashboardPageWrapper from "src/components/DashboardPageWrapper";
+import DashboardTabs from './DashboardTabs';
 
 function WeatherForecasts() {
-    return <DashboardPageWrapper idOrSlug="weather_forecast" />;
+    return <DashboardTabs idOrSlug="weather_forecast" selectedTabIndex={0} />;
 }
 
-export default withToasts(WeatherForecasts);
+export default WeatherForecasts;
