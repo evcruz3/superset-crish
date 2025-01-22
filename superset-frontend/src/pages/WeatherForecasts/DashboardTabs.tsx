@@ -72,9 +72,9 @@ function findTabsComponent(layout: any) {
 }
 
 function calculateDimensions(windowWidth: number) {
-    const gutterWidth = 10; // Default gutter width in Superset
+    const gutterWidth = 12; // Default gutter width in Superset
     const minColumnWidth = 100; // Minimum width per column
-    const numColumns = 10; // Standard grid system
+    const numColumns = 12; // Standard grid system
 
     // Calculate the available width after accounting for gutters
     const availableWidth = windowWidth - (gutterWidth * (numColumns - 1));
