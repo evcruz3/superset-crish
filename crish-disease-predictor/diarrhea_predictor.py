@@ -20,6 +20,9 @@ class DiarrheaPredictor:
         self.predictions_dir = os.getenv('PREDICTIONS_DIR', 'predictions')
         self.weather_data_dir = os.getenv('WEATHER_DATA_DIR', 'weather_data')
         self.default_prev_cases = int(os.getenv('DEFAULT_PREV_CASES', '1'))
+        # Initialize TensorFlow session
+        self.session = tf.Session()
+        tf.keras.backend.set_session(self.session)
         self.keras = tf.keras
         self.models = {}
         self.scalers = {}
@@ -52,6 +55,11 @@ class DiarrheaPredictor:
             'Raeoa': 'TL-OE',
             'Viqueque': 'TL-VI'
         }
+
+    def __del__(self):
+        """Cleanup TensorFlow session on object destruction."""
+        if hasattr(self, 'session'):
+            self.session.close()
 
     def connect_db(self):
         """Connect to the PostgreSQL database."""
@@ -118,7 +126,9 @@ class DiarrheaPredictor:
                 scaler_path = f'{self.models_dir}/{municipality}_minmax_scaler.pkl'
                 
                 if os.path.exists(model_path) and os.path.exists(scaler_path):
-                    self.models[municipality] = self.keras.models.load_model(model_path)
+                    with self.session.as_default():
+                        with self.session.graph.as_default():
+                            self.models[municipality] = self.keras.models.load_model(model_path)
                     self.scalers[municipality] = joblib.load(scaler_path)
                     print(f"Loaded model and scaler for {municipality}")
                     available_municipalities.append(municipality)
@@ -162,6 +172,7 @@ class DiarrheaPredictor:
             return None
 
         # Log input data
+        print("Input sequence: ", input_sequence)
         self.log_input_data(municipality, input_sequence)
 
         model = self.models[municipality]
@@ -173,8 +184,10 @@ class DiarrheaPredictor:
         # Reshape for LSTM input (samples, time steps, features)
         input_reshaped = input_scaled.reshape(1, 4, input_sequence.shape[1])
         
-        # Make prediction
-        scaled_prediction = model.predict(input_reshaped, verbose=0)
+        # Make prediction with TensorFlow 1.15 session
+        with self.session.as_default():
+            with self.session.graph.as_default():
+                scaled_prediction = model.predict(input_reshaped, verbose=0)
         
         # Inverse transform the prediction
         predicted_cases = scaler.inverse_transform(
