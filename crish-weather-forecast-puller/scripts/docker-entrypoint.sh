@@ -1,7 +1,8 @@
 #!/bin/bash
+set -e
 
-# Run setup_env.sh to create auth file
+# Run setup script first
 source scripts/setup_env.sh
 
-# Execute the CMD
-exec "$@"
+# Then run the main script
+exec python scripts/scheduled_pull.py
