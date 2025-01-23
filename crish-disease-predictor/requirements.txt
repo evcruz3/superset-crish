@@ -1,5 +1,5 @@
 numpy
-tensorflow-cpu
+tensorflow
 python-dotenv
 requests
 psycopg2-binary
@@ -7,4 +7,4 @@ joblib
 schedule
 isoweek
 scikit-learn
-pandas<2.1.0 
+pandas 
