@@ -111,27 +111,70 @@ export type DeckMultiProps = {
   onSelect: () => void
 }
 
-const StyledTimeSlider = styled.div`
+const StyledTimelineSlider = styled.div`
   position: absolute;
   top: 10px;
   right: 10px;
   background: white;
-  padding: 10px;
-  border-radius: 4px;
+  padding: 12px 16px;
+  border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   z-index: 10;
-  width: 300px;
+  width: 500px;
 
-  .time-label {
-    text-align: center;
-    margin-bottom: 5px;
+  .date-indicator {
     font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+    text-align: center;
   }
 
-  .ant-slider {
-    margin: 10px 0;
+  .progress-bar {
+    height: 4px;
+    background: #f0f0f0;
+    border-radius: 2px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
   }
-`
+
+  .progress-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #ffc107;
+    transition: width 0.3s ease;
+  }
+
+  .timeline-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .day-label {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    padding: 4px 8px;
+    min-width: 40px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #f0f0f0;
+    }
+
+    &.active {
+      background: #ffc107;
+      color: #000;
+      font-weight: 500;
+    }
+  }
+`;
 
 interface DraggableItemProps {
   $isVisible: boolean;
@@ -714,18 +757,40 @@ const DeckMulti = (props: DeckMultiProps) => {
       width={width}
     >
       {timeRange && Object.keys(temporalData).length > 0 && (
-        <StyledTimeSlider>
-          <div className="time-label">
-            {currentTime?.toLocaleDateString()}
+        <StyledTimelineSlider>
+          <div className="date-indicator">
+            {currentTime?.toLocaleDateString()} ({currentTime?.toLocaleDateString('en-US', { weekday: 'long' })})
           </div>
-          <Slider
-            min={timeRange[0].getTime()}
-            max={timeRange[1].getTime()}
-            value={currentTime?.getTime() ?? timeRange[0].getTime()}
-            onChange={(value: number) => setCurrentTime(new Date(value))}
-            tipFormatter={(value: number) => new Date(value).toLocaleDateString()}
-          />
-        </StyledTimeSlider>
+          <div className="progress-bar">
+            <div 
+              className="progress-indicator"
+              style={{ 
+                width: `${((currentTime?.getTime() ?? timeRange[0].getTime()) - timeRange[0].getTime()) / 
+                  (timeRange[1].getTime() - timeRange[0].getTime()) * 100}%`
+              }}
+            />
+          </div>
+          <div className="timeline-container">
+            {['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, index) => (
+              <div 
+                key={index} 
+                className={`day-label ${
+                  currentTime && 
+                  new Date(timeRange[0].getTime() + index * 24 * 60 * 60 * 1000).toDateString() === currentTime.toDateString() 
+                    ? 'active' 
+                    : ''
+                }`}
+                onClick={() => {
+                  const date = new Date(timeRange[0].getTime());
+                  date.setDate(date.getDate() + index);
+                  setCurrentTime(date);
+                }}
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+        </StyledTimelineSlider>
       )}
       <Card style={{ 
         position: 'absolute', 
