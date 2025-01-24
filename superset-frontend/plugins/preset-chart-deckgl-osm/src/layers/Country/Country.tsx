@@ -598,7 +598,7 @@ export function getLayer(
     
     // If there's an icon, offset the text position upward with a smaller offset
     if (hasIcon) {
-      coordinates = [coordinates[0], coordinates[1] + 0.02]; // Reduced offset from 0.1 to 0.02 degrees
+      coordinates = [coordinates[0], coordinates[1] + 0.02];
     }
 
     const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
@@ -607,30 +607,38 @@ export function getLayer(
     const value = feature.properties.metric;
     const text = value !== undefined ? `${prefix}${formatter(value)}${unit}` : '';
 
-    const result = {
+    // Include region properties in the text data
+    return {
       coordinates,
       text,
       value,
-      hasIcon
+      hasIcon,
+      object: {
+        properties: {
+          ...feature.properties,
+          // Ensure we have all possible region identifiers
+          ADM1: feature.properties.ADM1,
+          name: feature.properties.name,
+          NAME: feature.properties.NAME,
+          ISO: feature.properties.ISO
+        }
+      }
     };
-    console.log('Generated text data for feature:', result);
-    return result;
   }).filter((d: TextData | null): d is TextData => d !== null);
 
-  console.log('Final text data array:', textData);
-  console.log('Current view state:', viewState);
+  console.log('Generated text data with region properties:', textData);
 
   // Create text layer with adjusted positioning
   const textLayer = new TextLayer({
     id: `text-layer-${fd.slice_id}`,
     data: textData,
-    getPosition: (d: TextData) => d.coordinates,
-    getText: (d: TextData) => d.text,
+    getPosition: (d: any) => d.coordinates,
+    getText: (d: any) => d.text,
     getSize: 14,
     getAngle: 0,
     getTextAnchor: 'middle',
     getAlignmentBaseline: d => d.hasIcon ? 'bottom' : 'center',
-    getPixelOffset: d => d.hasIcon ? [0, -10] : [0, 0], // Add 10 pixel upward offset when there's an icon
+    getPixelOffset: d => d.hasIcon ? [0, -10] : [0, 0],
     pickable: false,
     billboard: true,
     background: true,

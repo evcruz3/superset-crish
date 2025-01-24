@@ -1,6 +1,6 @@
 'use client'
 
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
+import React, { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
 import { isEqual } from 'lodash'
 import {
@@ -18,6 +18,7 @@ import { Layer } from '@deck.gl/core'
 import { Slider } from 'antd'
 import Icons from 'src/components/Icons'
 import { scaleLinear, ScaleLinear } from 'd3-scale'
+import { TextLayer } from '@deck.gl/layers'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
@@ -454,7 +455,7 @@ const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
 
   const [viewport, setViewport] = useState<Viewport>()
-  const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer>>({})
+  const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer[]>>({})
   const [visibleLayers, setVisibleLayers] = useState<Record<number, boolean>>({})
   const [layerOrder, setLayerOrder] = useState<number[]>([])
   const [currentTime, setCurrentTime] = useState<Date>()
@@ -495,19 +496,19 @@ const DeckMulti = (props: DeckMultiProps) => {
       const country = subslice.form_data.select_country;
       
       const createAndSetLayer = (geoJsonData: JsonObject) => {
-        const layer = layerGenerators[subslice.form_data.viz_type](
+        const layers = layerGenerators[subslice.form_data.viz_type](
           subslice.form_data,
           jsonWithFilteredData,
           props.onAddFilter,
           setTooltip,
           geoJsonData,
           currentTime,
-          jsonWithAllData.data.data // Pass all data for color scale calculation
+          jsonWithAllData.data.data
         );
 
         setSubSlicesLayers((prevLayers) => ({
           ...prevLayers,
-          [subslice.slice_id]: layer,
+          [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
         }));
       };
 
@@ -532,12 +533,12 @@ const DeckMulti = (props: DeckMultiProps) => {
         [],
         props.onSelect,
         currentTime,
-        jsonWithAllData.data.data // Pass all data for color scale calculation
+        jsonWithAllData.data.data
       );
 
       setSubSlicesLayers((prevLayers) => ({
         ...prevLayers,
-        [subslice.slice_id]: layer,
+        [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
       }));
     }
   }, [props.onAddFilter, props.onSelect, props.datasource, setTooltip, currentTime]);
@@ -705,10 +706,146 @@ const DeckMulti = (props: DeckMultiProps) => {
   }
 
   const { payload, formData, setControlValue, height, width } = props
-  const layers = layerOrder
-    .filter((id) => visibleLayers[id])
-    .map((id) => subSlicesLayers[id])
-    .reverse()
+
+  // Separate text layers from other layers and reorder them
+  const orderedLayers = useMemo(() => {
+    const nonTextLayers: Layer[] = [];
+    const iconLayers: Layer[] = [];
+    const textLayers: Layer[] = [];
+
+    // Helper function to get region key from text data
+    const getRegionKey = (d: any) => {
+      // Try different possible administrative region properties
+      const regionId = d.object?.properties?.ADM1 || 
+                      d.object?.properties?.name || 
+                      d.object?.properties?.NAME || 
+                      d.object?.properties?.ISO;
+      
+      console.log('Getting region key for data:', {
+        data: d,
+        foundRegionId: regionId,
+        properties: d.object?.properties,
+        rawObject: d.object,
+        coordinates: d.coordinates,
+        text: d.text
+      });
+      
+      if (!regionId) {
+        console.warn('No region identifier found for data:', d);
+      }
+      
+      return regionId;
+    };
+
+    // First, collect all text data from all text layers
+    const combinedTextData = new Map<string, { coordinates: number[], texts: string[] }>();
+    
+    console.log('Processing layers:', {
+      visibleLayerIds: layerOrder.filter(id => visibleLayers[id]),
+      allLayers: subSlicesLayers,
+      layerOrder,
+      visibleLayers
+    });
+
+    layerOrder
+      .filter((id) => visibleLayers[id])
+      .forEach((id) => {
+        const layerGroup = subSlicesLayers[id];
+        console.log('Processing layer group:', {
+          id,
+          layerGroup,
+          isArray: Array.isArray(layerGroup)
+        });
+
+        if (Array.isArray(layerGroup)) {
+          layerGroup.forEach(layer => {
+            console.log('Processing individual layer:', {
+              layerId: layer.props.id,
+              type: layer.constructor.name,
+              data: layer.props.data
+            });
+
+            if (layer.constructor.name === 'TextLayer') {
+              const data = layer.props.data || [];
+              data.forEach((d: any) => {
+                const regionKey = getRegionKey(d);
+                console.log('Processing text data:', {
+                  regionKey,
+                  text: d.text,
+                  coordinates: d.coordinates
+                });
+
+                if (regionKey) {
+                  if (!combinedTextData.has(regionKey)) {
+                    combinedTextData.set(regionKey, {
+                      coordinates: d.coordinates, // Use first occurrence's coordinates
+                      texts: []
+                    });
+                  }
+                  combinedTextData.get(regionKey)?.texts.push(d.text);
+                } else {
+                  console.warn('No region key found for text data:', d);
+                }
+              });
+            } else if (layer.constructor.name === 'IconLayer') {
+              console.log('Found IconLayer:', {
+                id: layer.props.id,
+                dataLength: layer.props.data?.length
+              });
+              iconLayers.push(layer);
+            } else {
+              nonTextLayers.push(layer);
+            }
+          });
+        } else if (layerGroup) {
+          nonTextLayers.push(layerGroup);
+        }
+      });
+
+    console.log('Combined text data:', {
+      regions: Array.from(combinedTextData.keys()),
+      textsByRegion: Object.fromEntries(Array.from(combinedTextData.entries()).map(
+        ([key, value]) => [key, value.texts]
+      ))
+    });
+
+    // Create a single text layer with combined texts
+    if (combinedTextData.size > 0) {
+      const combinedData = Array.from(combinedTextData.values()).map(({ coordinates, texts }) => ({
+        coordinates,
+        text: texts.join('\n')
+      }));
+
+      console.log('Creating combined text layer with data:', combinedData);
+
+      const combinedTextLayer = new TextLayer({
+        id: 'combined-text-layer',
+        data: combinedData,
+        getPosition: (d: any) => d.coordinates,
+        getText: (d: any) => d.text,
+        getSize: 12,
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'center',
+        background: true,
+        backgroundPadding: [4, 4],
+        getBackgroundColor: [255, 255, 255, 230],
+        fontFamily: 'Arial',
+        characterSet: 'auto',
+        sizeScale: 1,
+        sizeUnits: 'pixels',
+        sizeMinPixels: 12,
+        sizeMaxPixels: 12,
+        pickable: true,
+        billboard: true,
+        lineHeight: 1.2,
+      });
+
+      textLayers.push(combinedTextLayer);
+    }
+
+    // Return layers in correct order: base layers, icon layers, and text layer on top
+    return [...nonTextLayers.reverse(), ...iconLayers.reverse(), ...textLayers];
+  }, [layerOrder, visibleLayers, subSlicesLayers]);
 
   // Effect to update layers when time changes
   useEffect(() => {
@@ -749,7 +886,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       ref={containerRef}
       mapboxApiAccessToken={payload.data.mapboxApiKey}
       viewport={viewport || props.viewport}
-      layers={layers}
+      layers={orderedLayers}
       mapStyle={formData.mapbox_style}
       setControlValue={setControlValue}
       onViewportChange={setViewport}

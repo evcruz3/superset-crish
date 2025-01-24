@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  disease-predictor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: disease-predictor
+    env_file:
+      - path: .env # default
+        required: true
+      - path: .env-local # optional override
+        required: false
+    volumes:
+      - .:/app
+    restart: unless-stopped 
