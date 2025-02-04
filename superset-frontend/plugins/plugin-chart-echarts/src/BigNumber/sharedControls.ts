@@ -20,6 +20,7 @@
 // These are control configurations that are shared ONLY within the BigNumberWithTrendline viz plugin repo.
 import { t } from '@superset-ui/core';
 import { CustomControlItem } from '@superset-ui/chart-controls';
+import { ICON_NAMES } from './icons';
 
 export const headerFontSize: CustomControlItem = {
   name: 'header_font_size',
@@ -98,21 +99,7 @@ export const backgroundIconControl: CustomControlItem = {
     default: null,
     choices: [
       [null, t('None')],
-      // Weather Parameters
-      ['cloud-rain', t('Rainfall')],
-      ['droplet', t('Humidity')],
-      ['temperature-high', t('Temperature High')],
-      ['temperature-low', t('Temperature Low')],
-      ['wind', t('Wind')],
-      ['sun', t('Sun')],
-      ['cloud', t('Cloud')],
-      // Diseases
-      ['virus', t('Dengue')],
-      ['head-side-cough', t('ARI')],
-      ['toilet', t('Diarrhea')],
-      ['hospital', t('Hospital')],
-      ['syringe', t('Vaccination')],
-      ['prescription-bottle-medical', t('Medicine')],
+      ...Object.entries(ICON_NAMES).map(([key, { label }]) => [key, t(label)]),
     ],
     description: t('Icon to display in the background'),
   },
