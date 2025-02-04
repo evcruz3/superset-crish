@@ -16,8 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ControlPanelConfig, getStandardizedControls } from '@superset-ui/chart-controls';
-import { t, validateNonEmpty } from '@superset-ui/core';
+import { ControlPanelConfig, getStandardizedControls, sharedControls } from '@superset-ui/chart-controls';
+import {
+  t,
+  validateNonEmpty,
+  getCategoricalSchemeRegistry,
+  getSequentialSchemeRegistry,
+  SequentialScheme,
+} from '@superset-ui/core';
 import { countryOptions } from './countries';
 import {
   filterNulls,
@@ -35,6 +41,40 @@ import {
   autozoom,
   lineWidth,
 } from '../../utilities/Shared_DeckGL';
+
+interface MetricValue {
+  column_name?: string;
+  [key: string]: any;
+}
+
+const isMetricValue = (value: any): value is MetricValue => {
+  return typeof value === 'object' && value !== null && 'column_name' in value;
+};
+
+// Initialize color scheme registries
+const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
+const sequentialSchemeRegistry = getSequentialSchemeRegistry();
+
+// Get the scheme maps as functions
+const getCategoricalSchemeMap = () => categoricalSchemeRegistry.getMap();
+const getSequentialSchemeMap = () => sequentialSchemeRegistry.getMap();
+
+// Get the scheme keys as functions
+const getCategoricalSchemeKeys = () => categoricalSchemeRegistry.keys();
+const getSequentialSchemeKeys = () => sequentialSchemeRegistry.keys();
+
+// Debug helper
+const debugLog = (context: string, value: any) => {
+  console.log(`[Country Chart Debug] ${context}:`, value);
+};
+
+// Helper to safely get a color scheme
+const getColorScheme = (schemeMap: Record<string, any>, schemeName: string | undefined, defaultSchemeName: string) => {
+  if (!schemeName || !schemeMap[schemeName]) {
+    return schemeMap[defaultSchemeName];
+  }
+  return schemeMap[schemeName];
+};
 
 const config: ControlPanelConfig = {
   controlPanelSections: [
@@ -65,9 +105,9 @@ const config: ControlPanelConfig = {
               label: t('Time Column'),
               description: t('Column containing datetime information for temporal filtering'),
               mapStateToProps: state => ({
-                choices: state.datasource?.columns
+                choices: (state.datasource?.columns || [])
                   .filter(c => c.is_dttm)
-                  .map(c => [c.column_name, c.verbose_name || c.column_name]) ?? [],
+                  .map(c => [c.column_name, c.column_name]) ?? [],
               }),
               default: null,
             },
@@ -128,7 +168,143 @@ const config: ControlPanelConfig = {
             },
           },
         ],
-        ['linear_color_scheme'],
+      ],
+    },
+    {
+      label: t('Color Scheme'),
+      expanded: true,
+      controlSetRows: [
+        [
+          {
+            name: 'color_scheme_type',
+            config: {
+              type: 'SelectControl',
+              label: t('Color Scheme Type'),
+              description: t('Choose between linear and categorical color schemes'),
+              default: 'linear',
+              choices: [
+                ['linear', t('Linear')],
+                ['categorical', t('Categorical')],
+              ],
+              renderTrigger: true,
+              mapStateToProps: (state) => {
+                debugLog('Color Scheme Type State', state);
+                return {};
+              },
+            },
+          },
+        ],
+        [
+          {
+            name: 'linear_color_scheme',
+            config: {
+              type: 'ColorSchemeControl',
+              label: t('Linear Color Scheme'),
+              description: t('Color scheme for continuous values'),
+              renderTrigger: true,
+              visibility: ({ controls }) => {
+                const isVisible = controls?.color_scheme_type?.value === 'linear';
+                debugLog('Linear Color Scheme Visibility', isVisible);
+                return isVisible;
+              },
+              default: 'blue_white_yellow',
+              schemes: getSequentialSchemeMap,
+              choices: () => {
+                const choices = getSequentialSchemeKeys().map(s => [s, s]);
+                debugLog('Linear Color Scheme Choices', choices);
+                return choices;
+              },
+              isLinear: true,
+            },
+          },
+        ],
+        [
+          {
+            name: 'categorical_color_scheme',
+            config: {
+              type: 'ColorSchemeControl',
+              label: t('Categorical Color Scheme'),
+              description: t('Color scheme for categorical values'),
+              renderTrigger: true,
+              visibility: ({ controls }) => {
+                const isVisible = controls?.color_scheme_type?.value === 'categorical';
+                debugLog('Categorical Color Scheme Visibility', isVisible);
+                return isVisible;
+              },
+              default: 'supersetColors',
+              schemes: getCategoricalSchemeMap,
+              choices: () => {
+                const choices = getCategoricalSchemeKeys().map(s => [s, s]);
+                debugLog('Categorical Color Scheme Choices', choices);
+                return choices;
+              },
+              isLinear: false,
+              mapStateToProps: (state) => {
+                debugLog('Categorical Color Scheme State', state);
+                return {};
+              },
+            },
+          },
+        ],
+        [
+          {
+            name: 'value_map',
+            config: {
+              type: 'ValueMappedControl',
+              label: t('Value to Color Mapping'),
+              description: t('Map specific metric values to colors. Click "+ Add Value" to add a new mapping.'),
+              default: {},
+              renderTrigger: true,
+              visibility: ({ controls }) => {
+                const isVisible = controls?.color_scheme_type?.value === 'categorical';
+                debugLog('Value Map Control Visibility', isVisible);
+                return isVisible;
+              },
+              mapStateToProps: (state) => {
+                const metricValue = state.controls?.metric?.value;
+                const metricColumn = isMetricValue(metricValue) ? metricValue.column_name : undefined;
+                const metricLabel = state.form_data?.metric?.label;
+                const currentColorScheme = state.controls?.categorical_color_scheme?.value as string | undefined;
+                
+                debugLog('Value Map State', {
+                  metricValue,
+                  metricColumn,
+                  metricLabel,
+                  currentColorScheme,
+                  state
+                });
+
+                const schemeMap = getCategoricalSchemeMap();
+                const currentScheme = getColorScheme(schemeMap, currentColorScheme, 'supersetColors');
+                
+                return {
+                  valueLabel: t('Metric Value'),
+                  colorLabel: t('Color'),
+                  scheme: currentScheme,
+                  addValuePlaceholder: t('Enter a metric value'),
+                  addValueLabel: t('+ Add Value'),
+                };
+              },
+            },
+          },
+        ],
+        [
+          {
+            name: 'categorical_fallback_color',
+            config: {
+              type: 'ColorPickerControl',
+              label: t('Default Color'),
+              description: t('Color for values not specified in the color mapping'),
+              default: { r: 88, g: 88, b: 88, a: 1 },
+              renderTrigger: true,
+              visibility: ({ controls }) => {
+                const isVisible = controls?.color_scheme_type?.value === 'categorical';
+                debugLog('Fallback Color Visibility', isVisible);
+                return isVisible;
+              },
+            },
+          },
+        ],
       ],
     },
     {
@@ -173,107 +349,6 @@ const config: ControlPanelConfig = {
         [jsOnclickHref],
       ],
     },
-    {
-      label: t('Conditional Icons'),
-      expanded: true,
-      controlSetRows: [
-        [
-          {
-            name: 'show_icons',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Show Icons'),
-              default: false,
-              description: t('Show icons on regions based on conditions'),
-            },
-          },
-        ],
-        [
-          {
-            name: 'icon_threshold',
-            config: {
-              type: 'TextControl',
-              label: t('Threshold Value'),
-              default: '',
-              description: t('Show icon when metric value exceeds this threshold'),
-              visibility: ({ controls }) => controls.show_icons.value,
-            },
-          },
-          {
-            name: 'icon_threshold_operator',
-            config: {
-              type: 'SelectControl',
-              label: t('Threshold Operator'),
-              default: '>',
-              choices: [
-                ['>', t('Greater than')],
-                ['>=', t('Greater than or equal')],
-                ['<', t('Less than')],
-                ['<=', t('Less than or equal')],
-                ['==', t('Equal to')],
-                ['!=', t('Not equal to')],
-              ],
-              visibility: ({ controls }) => controls.show_icons.value,
-            },
-          },
-        ],
-        [
-          {
-            name: 'icon_type',
-            config: {
-              type: 'SelectControl',
-              label: t('Icon'),
-              default: 'fa-exclamation-circle',
-              choices: [
-                ['fa-exclamation-circle', t('Exclamation Circle')],
-                ['fa-warning', t('Warning')],
-                ['fa-info-circle', t('Info Circle')],
-                ['fa-check-circle', t('Check Circle')],
-                ['fa-times-circle', t('Times Circle')],
-                ['fa-question-circle', t('Question Circle')],
-                ['fa-flag', t('Flag')],
-                ['fa-bell', t('Bell')],
-              ],
-              visibility: ({ controls }) => controls.show_icons.value,
-            },
-          },
-        ],
-        [
-          {
-            name: 'icon_color',
-            config: {
-              type: 'ColorPickerControl',
-              label: t('Icon Color'),
-              default: { r: 255, g: 0, b: 0, a: 1 },
-              visibility: ({ controls }) => controls.show_icons.value,
-            },
-          },
-          {
-            name: 'icon_size',
-            config: {
-              type: 'SliderControl',
-              label: t('Icon Size'),
-              default: 20,
-              min: 10,
-              max: 100,
-              visibility: ({ controls }) => controls.show_icons.value,
-            },
-          },
-        ],
-        [
-          {
-            name: 'icon_hover_message',
-            config: {
-              type: 'TextControl',
-              label: t('Icon Hover Message'),
-              description: t('Message to display when hovering over the icon. Use {metric} to include the metric value.'),
-              default: 'Value: {metric}',
-              visibility: ({ controls }) => controls.show_icons.value,
-            },
-          },
-        ],
-      ],
-    },
   ],
   controlOverrides: {
     entity: {
@@ -285,9 +360,6 @@ const config: ControlPanelConfig = {
     metric: {
       label: t('Metric'),
       description: t('Metric to display in the map'),
-    },
-    linear_color_scheme: {
-      renderTrigger: false,
     },
   },
   formDataOverrides: formData => ({
