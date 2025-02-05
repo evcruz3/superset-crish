@@ -99,6 +99,21 @@ const config: ControlPanelConfig = {
         ['metric'],
         [
           {
+            name: 'categorical_column',
+            config: {
+              type: 'SelectControl',
+              label: t('Categorical Column'),
+              description: t('Column to display in the text layer and tooltip instead of metric value'),
+              mapStateToProps: state => ({
+                choices: (state.datasource?.columns || [])
+                  .map(c => [c.column_name, c.column_name]) ?? [],
+              }),
+              default: null,
+            },
+          },
+        ],
+        [
+          {
             name: 'temporal_column',
             config: {
               type: 'SelectControl',
@@ -141,6 +156,7 @@ const config: ControlPanelConfig = {
                 [',.2r', ',.2r (12,300)'],
               ],
               description: t('D3 format syntax: https://github.com/d3/d3-format'),
+              visibility: ({ controls }) => !controls?.categorical_column?.value,
             },
           },
         ],
@@ -153,6 +169,7 @@ const config: ControlPanelConfig = {
               description: t('Text to be displayed before the metric value'),
               default: '',
               renderTrigger: true,
+              visibility: ({ controls }) => !controls?.categorical_column?.value,
             },
           },
         ],
@@ -165,6 +182,7 @@ const config: ControlPanelConfig = {
               description: t('Unit to be displayed after the metric value'),
               default: '',
               renderTrigger: true,
+              visibility: ({ controls }) => !controls?.categorical_column?.value,
             },
           },
         ],
@@ -176,37 +194,13 @@ const config: ControlPanelConfig = {
       controlSetRows: [
         [
           {
-            name: 'color_scheme_type',
-            config: {
-              type: 'SelectControl',
-              label: t('Color Scheme Type'),
-              description: t('Choose between linear and categorical color schemes'),
-              default: 'linear',
-              choices: [
-                ['linear', t('Linear')],
-                ['categorical', t('Categorical')],
-              ],
-              renderTrigger: true,
-              mapStateToProps: (state) => {
-                debugLog('Color Scheme Type State', state);
-                return {};
-              },
-            },
-          },
-        ],
-        [
-          {
             name: 'linear_color_scheme',
             config: {
               type: 'ColorSchemeControl',
               label: t('Linear Color Scheme'),
               description: t('Color scheme for continuous values'),
               renderTrigger: true,
-              visibility: ({ controls }) => {
-                const isVisible = controls?.color_scheme_type?.value === 'linear';
-                debugLog('Linear Color Scheme Visibility', isVisible);
-                return isVisible;
-              },
+              visibility: ({ controls }) => !controls?.categorical_column?.value,
               default: 'blue_white_yellow',
               schemes: getSequentialSchemeMap,
               choices: () => {
@@ -215,6 +209,7 @@ const config: ControlPanelConfig = {
                 return choices;
               },
               isLinear: true,
+              
             },
           },
         ],
@@ -226,11 +221,7 @@ const config: ControlPanelConfig = {
               label: t('Categorical Color Scheme'),
               description: t('Color scheme for categorical values'),
               renderTrigger: true,
-              visibility: ({ controls }) => {
-                const isVisible = controls?.color_scheme_type?.value === 'categorical';
-                debugLog('Categorical Color Scheme Visibility', isVisible);
-                return isVisible;
-              },
+              visibility: ({ controls }) => !!controls?.categorical_column?.value,
               default: 'supersetColors',
               schemes: getCategoricalSchemeMap,
               choices: () => {
@@ -244,7 +235,7 @@ const config: ControlPanelConfig = {
                 return {};
               },
             },
-          },
+          }
         ],
         [
           {
@@ -252,14 +243,9 @@ const config: ControlPanelConfig = {
             config: {
               type: 'ValueMappedControl',
               label: t('Value to Color Mapping'),
-              description: t('Map specific metric values to colors. Click "+ Add Value" to add a new mapping.'),
+              description: t('Map specific values to colors. Click "+ Add Value" to add a new mapping.'),
               default: {},
               renderTrigger: true,
-              visibility: ({ controls }) => {
-                const isVisible = controls?.color_scheme_type?.value === 'categorical';
-                debugLog('Value Map Control Visibility', isVisible);
-                return isVisible;
-              },
               mapStateToProps: (state) => {
                 const metricValue = state.controls?.metric?.value;
                 const metricColumn = isMetricValue(metricValue) ? metricValue.column_name : undefined;
@@ -278,33 +264,28 @@ const config: ControlPanelConfig = {
                 const currentScheme = getColorScheme(schemeMap, currentColorScheme, 'supersetColors');
                 
                 return {
-                  valueLabel: t('Metric Value'),
+                  valueLabel: t('Value'),
                   colorLabel: t('Color'),
                   scheme: currentScheme,
-                  addValuePlaceholder: t('Enter a metric value'),
+                  addValuePlaceholder: t('Enter a value'),
                   addValueLabel: t('+ Add Value'),
                 };
               },
             },
           },
         ],
-        [
-          {
-            name: 'categorical_fallback_color',
-            config: {
-              type: 'ColorPickerControl',
-              label: t('Default Color'),
-              description: t('Color for values not specified in the color mapping'),
-              default: { r: 88, g: 88, b: 88, a: 1 },
-              renderTrigger: true,
-              visibility: ({ controls }) => {
-                const isVisible = controls?.color_scheme_type?.value === 'categorical';
-                debugLog('Fallback Color Visibility', isVisible);
-                return isVisible;
-              },
-            },
-          },
-        ],
+        // [
+        //   {
+        //     name: 'categorical_fallback_color',
+        //     config: {
+        //       type: 'ColorPickerControl',
+        //       label: t('Default Color'),
+        //       description: t('Color for values not specified in the color mapping'),
+        //       default: { r: 88, g: 88, b: 88, a: 1 },
+        //       renderTrigger: true,
+        //     },
+        //   },
+        // ],
       ],
     },
     {
@@ -321,7 +302,7 @@ const config: ControlPanelConfig = {
       controlSetRows: [
         [fillColorPicker, strokeColorPicker],
         [filled, stroked],
-        [extruded],
+        // [extruded],
         [lineWidth],
         [
           {

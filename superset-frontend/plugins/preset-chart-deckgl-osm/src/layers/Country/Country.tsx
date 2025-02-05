@@ -30,6 +30,7 @@ import {
   getNumberFormatter,
   getSequentialSchemeRegistry,
   styled,
+  getCategoricalSchemeRegistry,
 } from '@superset-ui/core';
 import { scaleLinear, ScaleLinear } from 'd3-scale';
 import { Slider } from 'antd';
@@ -81,6 +82,14 @@ interface ViewState extends Viewport {
   pitch: number;
   latitude: number;
   longitude: number;
+}
+
+// Update the DataRecord interface to include temporal_column
+interface DataRecord {
+  metric?: number;
+  categorical_value?: string;
+  country_id: string;
+  [key: string]: any; // Allow for dynamic temporal column access
 }
 
 // Helper function to process conditional icons
@@ -219,13 +228,14 @@ const StyledLegend = styled.div`
 `;
 
 interface ColorLegendProps {
-  colorScale: ScaleLinear<string, string>;
-  extent: [number, number];
-  format: (value: number) => string;
+  colorScale: (value: any) => string;
+  extent?: [number, number];
+  format?: (value: number) => string;
   metricPrefix?: string;
   metricUnit?: string;
-  values: number[];
+  values: (number | string)[];
   metricName?: string;
+  isCategorical?: boolean;
 }
 
 const ColorLegend = ({ 
@@ -235,25 +245,22 @@ const ColorLegend = ({
   metricPrefix = '', 
   metricUnit = '', 
   values,
-  metricName = 'Metric Range' 
+  metricName = 'Values',
+  isCategorical = false
 }: ColorLegendProps) => {
-  // Get unique values and sort them in descending order
-  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  // Get unique values and sort them
+  const uniqueValues = [...new Set(values)];
   
-  // If we have more than 5 values, we need to select a subset
+  // If we have more than 5 values and not categorical, select a subset
   let displayValues = uniqueValues;
-  if (uniqueValues.length > 5) {
-    // Always include min and max
-    const min = uniqueValues[uniqueValues.length - 1];
-    const max = uniqueValues[0];
-    
-    // For the middle values, take evenly spaced indices
+  if (!isCategorical && uniqueValues.length > 5) {
+    const min = Math.min(...uniqueValues.map(v => Number(v)));
+    const max = Math.max(...uniqueValues.map(v => Number(v)));
     const middleIndices = [
       Math.floor(uniqueValues.length * 0.25),
       Math.floor(uniqueValues.length * 0.5),
       Math.floor(uniqueValues.length * 0.75),
     ];
-    
     const middleValues = middleIndices.map(i => uniqueValues[i]);
     displayValues = [max, ...middleValues, min];
   }
@@ -268,7 +275,12 @@ const ColorLegend = ({
               className="color-box" 
               style={{ backgroundColor: colorScale(value) || '#fff' }}
             />
-            <span className="label">{`${metricPrefix}${format(value)}${metricUnit}`}</span>
+            <span className="label">
+              {isCategorical 
+                ? String(value)
+                : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`
+              }
+            </span>
           </div>
         ))}
       </div>
@@ -278,9 +290,10 @@ const ColorLegend = ({
 
 // Add custom properties to GeoJsonLayer
 interface ExtendedGeoJsonLayer extends GeoJsonLayer {
-  colorScale?: ScaleLinear<string, string>;
+  colorScale?: (value: any) => string;
   extent?: [number, number];
   metricValues?: number[];
+  categoricalValues?: string[];
 }
 
 const StyledTimelineSlider = styled.div`
@@ -385,35 +398,75 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
 
   // Use temporalData for color scale calculation if provided, otherwise use current records
   const dataForColorScale = temporalData.length > 0 ? temporalData : records;
-  const allMetricValues = dataForColorScale
-    .map((d: JsonObject) => d.metric)
-    .filter((v: number) => v !== undefined && v !== null);
+  
+  // Handle color scale based on whether we have categorical or metric values
+  let colorScale: (value: any) => string;
+  let extent: [number, number] | undefined;
+  let metricValues: number[] = [];
+  let categoricalValues: string[] = [];
 
-  // Ensure we have valid metric values for the color scale
-  const extent: [number, number] = allMetricValues.length > 0 
-    ? [Math.min(...allMetricValues), Math.max(...allMetricValues)]
-    : [0, 100]; // Default range if no metrics available
+  if (fd.categorical_column) {
+    // For categorical values, first create a mapping of categorical values to their metrics
+    const valueToMetricMap = new Map<string, number>();
+    const uniqueValues = new Set<string>();
+    
+    dataForColorScale.forEach((d: DataRecord) => {
+      if (d.categorical_value !== undefined && d.metric !== undefined) {
+        // If we have multiple metrics for the same categorical value, use the highest one
+        const currentMetric = valueToMetricMap.get(d.categorical_value);
+        if (currentMetric === undefined || d.metric > currentMetric) {
+          valueToMetricMap.set(d.categorical_value, d.metric);
+        }
+        uniqueValues.add(d.categorical_value);
+      }
+    });
 
-  // Get color scheme from registry or use default
-  const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
-  const colorScale = scheme 
-    ? scheme.createLinearScale(extent) 
-    : scaleLinear<string>()
-        .domain(extent)
-        .range(['#ccc', '#343434']);
+    // Sort categorical values based on their corresponding metric values
+    categoricalValues = Array.from(uniqueValues).sort((a, b) => {
+      const metricA = valueToMetricMap.get(a) ?? 0;
+      const metricB = valueToMetricMap.get(b) ?? 0;
+      return metricA - metricB; // Sort in ascending order (lowest metric gets first color)
+    });
+
+    // Get the color scheme and create the color scale
+    const scheme = getCategoricalSchemeRegistry().get(fd.categorical_color_scheme || 'supersetColors');
+    const colors = scheme?.colors || ['#ccc'];
+    colorScale = (value: any) => {
+      const index = categoricalValues.indexOf(String(value));
+      return index >= 0 ? colors[index % colors.length] : '#ccc';
+    };
+  } else {
+    // For metric values, use the linear color scheme
+    const allMetricValues = dataForColorScale
+      .map((d: DataRecord) => d.metric)
+      .filter((v: number) => v !== undefined && v !== null);
+    metricValues = allMetricValues;
+    extent = allMetricValues.length > 0 
+      ? [Math.min(...allMetricValues), Math.max(...allMetricValues)]
+      : [0, 100]; // Default range if no metrics available
+
+    const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
+    const linearScale = scheme 
+      ? scheme.createLinearScale(extent) 
+      : scaleLinear<string>()
+          .domain(extent)
+          .range(['#ccc', '#343434']);
+    colorScale = (value: any) => linearScale(Number(value)) || '#ccc';
+  }
 
   // Filter records based on current time for display
-  const valueMap: { [key: string]: number } = {};
-  records.forEach((d: JsonObject) => {
-    if (d.metric !== undefined && d.metric !== null) {
+  const valueMap: { [key: string]: number | string } = {};
+  records.forEach((d: DataRecord) => {
+    const value = fd.categorical_column ? d.categorical_value : d.metric;
+    if (value !== undefined && value !== null) {
       // If we have temporal data, only include values up to the current time
       if (currentTime && fd.temporal_column) {
         const recordTime = new Date(d[fd.temporal_column]);
         if (recordTime <= currentTime) {
-          valueMap[d.country_id] = d.metric;
+          valueMap[d.country_id] = value;
         }
       } else {
-        valueMap[d.country_id] = d.metric;
+        valueMap[d.country_id] = value;
       }
     }
   });
@@ -421,12 +474,27 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   // Ensure geoJson has features array
   const features = (geoJson.features || []).map((feature: JsonObject) => {
     const value = valueMap[feature.properties?.ISO];
+    let fillColor: [number, number, number, number];
+    
+    if (fd.categorical_column) {
+      // For categorical values, convert hex color to RGB
+      const hexColor = value !== undefined ? colorScale(value) : '#ccc';
+      const rgbColor = hexToRGB(hexColor);
+      fillColor = [rgbColor[0], rgbColor[1], rgbColor[2], 220];
+    } else {
+      // For metric values, use the existing fillColor logic
+      const hexColor = value !== undefined ? colorScale(value) : '#ccc';
+      const rgbColor = hexToRGB(hexColor);
+      fillColor = [rgbColor[0], rgbColor[1], rgbColor[2], 220];
+    }
+
     return {
       ...feature,
       properties: {
         ...feature.properties,
         metric: value,
-        fillColor: value !== undefined ? hexToRGB(colorScale(value)) : [200, 200, 200, 100], // Light gray for undefined
+        categorical_value: fd.categorical_column ? value : undefined,
+        fillColor,
         strokeColor,
       },
     };
@@ -451,7 +519,13 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
         <TooltipRow
           key="area"
           label={`${areaName} `}
-          value={o.object.properties.metric !== undefined ? `${prefix}${formatter(o.object.properties.metric)}${unit}` : 'No data'}
+          value={
+            fd.categorical_column && o.object.properties.categorical_value !== undefined
+              ? o.object.properties.categorical_value
+              : o.object.properties.metric !== undefined
+              ? `${prefix}${formatter(o.object.properties.metric)}${unit}`
+              : 'No data'
+          }
         />
       ];
 
@@ -492,7 +566,9 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
-      const formattedValue = `${prefix}${formatter(info.object.metric)}${unit}`;
+      const formattedValue = fd.categorical_column && info.object.categorical_value !== undefined
+        ? info.object.categorical_value
+        : `${prefix}${formatter(info.object.metric)}${unit}`;
       const message = (fd.icon_hover_message || 'Value: {metric}')
         .replace('{metric}', formattedValue);
       
@@ -526,7 +602,8 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   // Attach metadata to the layer instance
   geoJsonLayer.colorScale = colorScale;
   geoJsonLayer.extent = extent;
-  geoJsonLayer.metricValues = allMetricValues;
+  geoJsonLayer.metricValues = metricValues;
+  geoJsonLayer.categoricalValues = categoricalValues;
 
   let iconLayer = null;
 
@@ -623,7 +700,11 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
     const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
     const value = feature.properties.metric;
-    const text = value !== undefined ? `${prefix}${formatter(value)}${unit}` : '';
+    const text = fd.categorical_column && feature.properties.categorical_value !== undefined
+      ? feature.properties.categorical_value
+      : value !== undefined
+      ? `${prefix}${formatter(value)}${unit}`
+      : '';
 
     // Include region properties in the text data
     return {
@@ -838,6 +919,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const colorScale = geoJsonLayer?.colorScale;
   const extent = geoJsonLayer?.extent;
   const metricValues = geoJsonLayer?.metricValues || [];
+  const categoricalValues = geoJsonLayer?.categoricalValues || [];
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -896,19 +978,22 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
             </div>
           </StyledTimelineSlider>
         )}
-        {colorScale && extent && (
+        {colorScale && (
           <ColorLegend 
             colorScale={colorScale} 
-            extent={extent} 
+            extent={extent}
             format={formatter}
             metricPrefix={formData.metric_prefix ? `${formData.metric_prefix} ` : ''}
             metricUnit={formData.metric_unit ? ` ${formData.metric_unit}` : ''}
-            values={metricValues}
+            values={formData.categorical_column ? (geoJsonLayer?.categoricalValues || []) : metricValues}
             metricName={
-              typeof formData.metric === 'object' 
-                ? (formData.metric.label || formData.metric_label || 'Metric Range')
-                : (formData.metric || formData.metric_label || 'Metric Range')
+              formData.categorical_column
+                ? (formData.categorical_column || 'Categories')
+                : (typeof formData.metric === 'object' 
+                  ? (formData.metric.label || formData.metric_label || 'Metric Range')
+                  : (formData.metric || formData.metric_label || 'Metric Range'))
             }
+            isCategorical={!!formData.categorical_column}
           />
         )}
       </DeckGLContainerStyledWrapper>
