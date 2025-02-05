@@ -443,8 +443,6 @@ interface ColorLegendProps {
   metricName?: string;
   layerName: string;
   isCategorical?: boolean;
-  metricValues?: number[];
-  categoricalToMetricMap?: Map<string, number>;
 }
 
 const ColorLegend: React.FC<ColorLegendProps> = ({ 
@@ -456,36 +454,27 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
   values,
   metricName = 'Values',
   layerName,
-  isCategorical = false,
-  metricValues = [],
-  categoricalToMetricMap
+  isCategorical = false
 }) => {
-  // Get unique values
-  const uniqueValues = [...new Set(values)];
-  
-  // Sort values based on metric values
-  const sortedValues = uniqueValues.sort((a, b) => {
-    if (isCategorical && categoricalToMetricMap) {
-      // For categorical values, sort by their corresponding metric values
-      const metricA = categoricalToMetricMap.get(String(a)) ?? 0;
-      const metricB = categoricalToMetricMap.get(String(b)) ?? 0;
-      return metricB - metricA;
+  // Get unique values and sort them
+  const uniqueValues = [...new Set(values)].sort((a, b) => {
+    if (isCategorical) {
+      return String(a).localeCompare(String(b));
     }
-    // For metric values, sort numerically in descending order
     return Number(b) - Number(a);
   });
   
   // If we have more than 5 values and not categorical, select a subset
-  let displayValues = sortedValues;
-  if (!isCategorical && sortedValues.length > 5) {
-    const min = sortedValues[sortedValues.length - 1];
-    const max = sortedValues[0];
+  let displayValues = uniqueValues;
+  if (!isCategorical && uniqueValues.length > 5) {
+    const min = uniqueValues[uniqueValues.length - 1];
+    const max = uniqueValues[0];
     const middleIndices = [
-      Math.floor(sortedValues.length * 0.25),
-      Math.floor(sortedValues.length * 0.5),
-      Math.floor(sortedValues.length * 0.75),
+      Math.floor(uniqueValues.length * 0.25),
+      Math.floor(uniqueValues.length * 0.5),
+      Math.floor(uniqueValues.length * 0.75),
     ];
-    const middleValues = middleIndices.map(i => sortedValues[i]);
+    const middleValues = middleIndices.map(i => uniqueValues[i]);
     displayValues = [max, ...middleValues, min];
   }
 
@@ -1134,9 +1123,11 @@ const DeckMulti = (props: DeckMultiProps) => {
                                     className="color-scale-preview"
                                     style={{
                                       background: isVisible && (layer as ExtendedLayer).colorScale
-                                        ? (layer as ExtendedLayer).extent
-                                          ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![0])}, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![1])})`
-                                          : '#e5e7eb'
+                                        ? subslice?.form_data.categorical_column
+                                          ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[0])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(1, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(2, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])})`
+                                          : (layer as ExtendedLayer).extent
+                                            ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![0])}, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![1])})`
+                                            : '#e5e7eb'
                                         : '#e5e7eb',
                                       border: '1px solid #e5e7eb'
                                     }}
@@ -1203,17 +1194,6 @@ const DeckMulti = (props: DeckMultiProps) => {
             
             if (!colorScale) return null;
 
-            // Create a map of categorical values to their corresponding metric values
-            const categoricalToMetricMap = new Map<string, number>();
-            if (isCategorical) {
-              const data = layer.props.data?.data || [];
-              data.forEach((d: any) => {
-                if (d.categorical_value !== undefined && d.metric !== undefined) {
-                  categoricalToMetricMap.set(String(d.categorical_value), Number(d.metric));
-                }
-              });
-            }
-
             const formatter = getNumberFormatter(subslice.form_data.number_format || 'SMART_NUMBER');
             const metricPrefix = subslice.form_data.metric_prefix ? `${subslice.form_data.metric_prefix} ` : '';
             const metricUnit = subslice.form_data.metric_unit ? ` ${subslice.form_data.metric_unit}` : '';
@@ -1235,8 +1215,6 @@ const DeckMulti = (props: DeckMultiProps) => {
                 metricName={metricName}
                 layerName={subslice.slice_name}
                 isCategorical={isCategorical}
-                metricValues={metricValues}
-                categoricalToMetricMap={categoricalToMetricMap}
               />
             );
           })}
