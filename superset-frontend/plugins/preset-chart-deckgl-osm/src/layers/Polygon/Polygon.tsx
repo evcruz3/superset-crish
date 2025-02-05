@@ -31,6 +31,7 @@ import {
 } from '@superset-ui/core';
 
 import { PolygonLayer } from '@deck.gl/layers';
+import { Layer } from '@deck.gl/core';
 
 import Legend from '../../components/Legend';
 import TooltipRow from '../../TooltipRow';
@@ -45,6 +46,7 @@ import {
   DeckGLContainerStyledWrapper,
 } from '../../DeckGLContainer';
 import { TooltipProps } from '../../components/Tooltip';
+import { LayerOptions } from '../../types/layers';
 
 const DOUBLE_CLICK_THRESHOLD = 250; // milliseconds
 
@@ -90,15 +92,20 @@ function setTooltipContent(formData: PolygonFormData) {
   };
 }
 
-export function getLayer(
-  formData: PolygonFormData,
-  payload: JsonObject,
-  onAddFilter: HandlerFunction,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
-  selected: JsonObject[],
-  onSelect: (value: JsonValue) => void,
-) {
-  const fd = formData;
+export function getLayer(options: LayerOptions): Layer<{}> {
+  const { 
+    formData: formDataRaw, 
+    payload, 
+    onAddFilter, 
+    setTooltip,
+    selectionOptions = {}
+  } = options;
+
+  // Cast formData to the correct type
+  const fd = formDataRaw as PolygonFormData;
+
+  const { selected = [], onSelect = () => {} } = selectionOptions;
+
   const fc = fd.fill_color_picker;
   const sc = fd.stroke_color_picker;
   let data = [...payload.data.features];
@@ -115,7 +122,7 @@ export function getLayer(
   const baseColorScaler =
     fd.metric === null
       ? () => [fc.r, fc.g, fc.b, 255 * fc.a]
-      : getBreakPointColorScaler(fd, data, accessor);
+      : getBreakPointColorScaler(fd as any, data, accessor);
 
   // when polygons are selected, reduce the opacity of non-selected polygons
   const colorScaler = (d: JsonObject): [number, number, number, number] => {
@@ -251,14 +258,16 @@ const DeckGLPolygon = (props: DeckGLPolygonProps) => {
       return [];
     }
 
-    const layer = getLayer(
-      props.formData,
-      props.payload,
-      props.onAddFilter,
+    const layer = getLayer({
+      formData: props.formData,
+      payload: props.payload,
+      onAddFilter: props.onAddFilter,
       setTooltip,
-      selected,
-      onSelect,
-    );
+      selectionOptions: {
+        selected,
+        onSelect,
+      },
+    });
 
     return [layer];
   }, [

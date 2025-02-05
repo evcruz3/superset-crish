@@ -49,6 +49,7 @@ import TooltipRow from '../../TooltipRow';
 import fitViewport, { Viewport } from '../../utils/fitViewport';
 import { TooltipProps } from '../../components/Tooltip';
 import { countries } from '../Country/countries';
+import { LayerOptions, LayerReturn } from '../../types/layers';
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
@@ -240,15 +241,18 @@ export type DeckGLFeedProps = {
   datasource: Datasource;
 };
 
-export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: HandlerFunction,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
-  geoJson: JsonObject,
-  setSelectedRegion: (region: SelectedRegion | null) => void,
-  selectedRegion: SelectedRegion | null,
-): any[] {
+export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))[] {
+  const { 
+    formData, 
+    payload, 
+    onAddFilter, 
+    setTooltip = () => {},
+    geoJson = {},
+    selectionOptions = {}
+  } = options;
+
+  const { setSelectedRegion, selectedRegion } = selectionOptions;
+
   console.log('getLayer called with formData:', formData);
   console.log('payload:', payload);
 
@@ -330,6 +334,24 @@ export function getLayer(
     });
   }
 
+  function handleClick(info: JsonObject) {
+    if (!setSelectedRegion) return;  // Early return if no handler
+
+    const regionId = info.object?.properties?.ISO;
+    const regionName = info.object?.properties?.ADM1 || 
+                      info.object?.properties?.name || 
+                      info.object?.properties?.NAME;
+
+    if (!regionName) return;  // Early return if no region name
+
+    const entries = payload.data.entries[regionId] || [];
+    setSelectedRegion({
+      name: regionName,
+      entries,
+      id: regionId,
+    });
+  }
+
   const geoJsonLayer = new GeoJsonLayer({
     id: `geojson-layer-${fd.slice_id}`,
     data: processedFeatures,
@@ -346,24 +368,7 @@ export function getLayer(
     autoHighlight: true,
     pickable: true,
     onHover: setTooltipContent,
-    onClick: (info: { object?: { properties?: { ADM1?: string; name?: string; NAME?: string; ISO?: string; entries?: FeedEntry[] } } } | null) => {
-      console.log('Layer clicked:', info);
-      if (info?.object?.properties) {
-        const name = info.object.properties.ADM1 || 
-                    info.object.properties.name || 
-                    info.object.properties.NAME || 
-                    info.object.properties.ISO;
-        if (name && info.object.properties.entries) {
-          const newSelectedRegion: SelectedRegion = {
-            name,
-            entries: info.object.properties.entries,
-            id: info.object.properties.ISO,
-          };
-          console.log('Setting selected region:', newSelectedRegion);
-          setSelectedRegion(newSelectedRegion);
-        }
-      }
-    },
+    onClick: handleClick,
   });
 
   // Create centroids for circle overlays
@@ -462,6 +467,7 @@ export function getLayer(
     getColor: [255, 255, 255, 255], // White text color
   });
 
+  // Return the layers array directly
   return [geoJsonLayer, circleLayer, textLayer];
 }
 
@@ -605,13 +611,10 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
 
   // Update getLayer to include panToFeature
   const layers = useMemo(
-    () => geoJson ? getLayer(
-      formData,
-      payload,
-      onAddFilter,
-      setTooltip,
-      geoJson,
-      (region: SelectedRegion | null) => {
+    () => {
+      if (!geoJson) return [];
+      
+      const handleRegionSelection = (region: SelectedRegion | null) => {
         if (region) {
           // Find the feature for the selected region
           const feature = geoJson.features.find(
@@ -620,15 +623,28 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                        f.properties.name === region.name ||
                        f.properties.NAME === region.name
           );
-          if (feature) {
+          if (feature && panToFeature) {
             panToFeature(feature);
           }
         }
-        setSelectedRegion(region);
-      },
-      selectedRegion
-    ) : [],
-    [formData, payload, onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature],
+        if (setSelectedRegion) {
+          setSelectedRegion(region);
+        }
+      };
+
+      return getLayer({
+        formData,
+        payload,
+        onAddFilter,
+        setTooltip,
+        geoJson,
+        selectionOptions: {
+          setSelectedRegion: handleRegionSelection,
+          selectedRegion,
+        },
+      });
+    },
+    [formData, payload, onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature, setSelectedRegion],
   );
 
   if (error) {

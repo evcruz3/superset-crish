@@ -17,7 +17,7 @@ import {
 import { Layer } from '@deck.gl/core'
 import { Slider } from 'antd'
 import Icons from 'src/components/Icons'
-import { scaleLinear, ScaleLinear } from 'd3-scale'
+import { ScaleLinear } from 'd3-scale'
 import { TextLayer } from '@deck.gl/layers'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
@@ -184,11 +184,10 @@ interface DraggableItemProps {
 
 const DraggableItem = styled.div<DraggableItemProps>`
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   cursor: grab;
   border-radius: 4px;
   background-color: white;
@@ -201,17 +200,6 @@ const DraggableItem = styled.div<DraggableItemProps>`
 
   &:hover, &[data-dragging="true"] {
     background-color: ${({ theme }) => theme.colors.grayscale.light4};
-
-    .color-scale-preview {
-      opacity: 0;
-      visibility: hidden;
-    }
-
-    .layer-name {
-      white-space: normal;
-      overflow: visible;
-      text-overflow: unset;
-    }
   }
 
   /* Remove transition during drag to prevent animation on drop */
@@ -220,6 +208,19 @@ const DraggableItem = styled.div<DraggableItemProps>`
     /* Stronger shadow while dragging */
     box-shadow: 0 4px 8px rgba(0,0,0,0.08);
   `}
+
+  .layer-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
 
   .drag-handle {
     color: ${({ theme }) => theme.colors.grayscale.light1};
@@ -239,38 +240,71 @@ const DraggableItem = styled.div<DraggableItemProps>`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-right: calc(60px + 1rem); /* Width of color preview + its margin */
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
   }
 
   .color-scale-preview {
-    position: absolute;
-    right: 2.5rem; /* Space for visibility toggle */
-    top: 50%;
-    transform: translateY(-50%);
     width: 60px;
     height: 8px;
     border-radius: 4px;
-    background: ${({ $isVisible }) => 
-      $isVisible ? 'linear-gradient(to right, #ccc, #343434)' : '#e5e7eb'};
-    border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-    visibility: visible;
+    flex-shrink: 0;
   }
 
   .visibility-toggle {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
     cursor: pointer;
     transition: color 0.2s;
     color: ${({ $isVisible, theme }) => 
       $isVisible ? theme.colors.primary.base : theme.colors.grayscale.light1};
-    font-size: 0.875rem;
+    flex-shrink: 0;
 
     &:hover {
       color: ${({ $isVisible, theme }) => 
         $isVisible ? theme.colors.primary.dark1 : theme.colors.grayscale.base};
+    }
+  }
+
+  .layer-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-left: 2rem;
+  }
+
+  .opacity-control {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: default;
+    padding-top: 0.25rem;
+
+    &:active {
+      cursor: default;
+    }
+  }
+
+  .opacity-label {
+    font-size: 0.75rem;
+    color: ${({ theme }) => theme.colors.grayscale.dark1};
+    flex-shrink: 0;
+    min-width: 48px;
+  }
+
+  .opacity-slider {
+    flex-grow: 1;
+    max-width: 140px;
+
+    /* Override ant-design slider handle styles when dragging */
+    .ant-slider-handle {
+      &:active {
+        cursor: ew-resize !important;
+      }
     }
   }
 `
@@ -451,12 +485,39 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
   );
 };
 
+// Add this styled component near the other styled components
+const LayersCardContent = styled.div`
+  padding: 1rem;
+  max-height: 50vh;
+  overflow-y: auto;
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.colors.grayscale.light2};
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.colors.grayscale.light1};
+    border-radius: 3px;
+
+    &:hover {
+      background: ${({ theme }) => theme.colors.grayscale.base};
+    }
+  }
+`
+
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
 
   const [viewport, setViewport] = useState<Viewport>()
   const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer[]>>({})
-  const [visibleLayers, setVisibleLayers] = useState<Record<number, boolean>>({})
+  const [visibleLayers, setVisibleLayers] = useState<{ [key: number]: boolean }>({})
+  const [layerOpacities, setLayerOpacities] = useState<{ [key: number]: number }>({})
   const [layerOrder, setLayerOrder] = useState<number[]>([])
   const [currentTime, setCurrentTime] = useState<Date>()
   const [timeRange, setTimeRange] = useState<[Date, Date] | null>(null)
@@ -496,15 +557,18 @@ const DeckMulti = (props: DeckMultiProps) => {
       const country = subslice.form_data.select_country;
       
       const createAndSetLayer = (geoJsonData: JsonObject) => {
-        const layers = layerGenerators[subslice.form_data.viz_type](
-          subslice.form_data,
-          jsonWithFilteredData,
-          props.onAddFilter,
+        const layers = layerGenerators[subslice.form_data.viz_type]({
+          formData: subslice.form_data,
+          payload: jsonWithFilteredData,
+          onAddFilter: props.onAddFilter,
           setTooltip,
-          geoJsonData,
-          currentTime,
-          jsonWithAllData.data.data
-        );
+          geoJson: geoJsonData,
+          temporalOptions: {
+            currentTime,
+            allData: jsonWithAllData.data.data,
+          },
+          opacity: layerOpacities[subslice.slice_id] ?? 1.0,
+        });
 
         setSubSlicesLayers((prevLayers) => ({
           ...prevLayers,
@@ -524,24 +588,25 @@ const DeckMulti = (props: DeckMultiProps) => {
           });
       }
     } else {
-      const layer = layerGenerators[subslice.form_data.viz_type](
-        subslice.form_data,
-        jsonWithFilteredData,
-        props.onAddFilter,
+      const layer = layerGenerators[subslice.form_data.viz_type]({
+        formData: subslice.form_data,
+        payload: jsonWithFilteredData,
+        onAddFilter: props.onAddFilter,
         setTooltip,
-        props.datasource,
-        [],
-        props.onSelect,
-        currentTime,
-        jsonWithAllData.data.data
-      );
+        datasource: props.datasource,
+        temporalOptions: {
+          currentTime,
+          allData: jsonWithAllData.data.data,
+        },
+        opacity: layerOpacities[subslice.slice_id] ?? 1.0,
+      });
 
       setSubSlicesLayers((prevLayers) => ({
         ...prevLayers,
         [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
       }));
     }
-  }, [props.onAddFilter, props.onSelect, props.datasource, setTooltip, currentTime]);
+  }, [props.onAddFilter, props.onSelect, props.datasource, setTooltip, currentTime, layerOpacities]);
 
   // Function to filter data based on current time
   const filterDataByTime = useCallback((
@@ -622,9 +687,11 @@ const DeckMulti = (props: DeckMultiProps) => {
       })
       
       // Set all layers to invisible initially
-      const initialVisibility: Record<number, boolean> = {}
+      const initialVisibility: { [key: number]: boolean } = {}
+      const initialOpacities: { [key: number]: number } = {}
       orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
         initialVisibility[subslice.slice_id] = false
+        initialOpacities[subslice.slice_id] = 1.0
       })
       
       // Make only the first layer visible if there are any layers
@@ -633,6 +700,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       }
       
       setVisibleLayers(initialVisibility)
+      setLayerOpacities(initialOpacities)
       
       // Load all layers but only the visible ones will be rendered
       orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
@@ -881,6 +949,25 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, [temporalData])
 
+  useEffect(() => {
+    const initialVisibility: { [key: number]: boolean } = {}
+    const initialOpacities: { [key: number]: number } = {}
+    props.payload.data.slices.forEach((slice: any, index: number) => {
+      // Only make the first layer visible initially
+      initialVisibility[slice.slice_id] = index === 0
+      initialOpacities[slice.slice_id] = 1.0
+    })
+    setVisibleLayers(initialVisibility)
+    setLayerOpacities(initialOpacities)
+  }, [props.payload.data.slices])
+
+  const handleOpacityChange = (layerId: number, value: number) => {
+    setLayerOpacities(prev => ({
+      ...prev,
+      [layerId]: value
+    }))
+  }
+
   return (
     <DeckGLContainerStyledWrapper
       ref={containerRef}
@@ -931,63 +1018,98 @@ const DeckMulti = (props: DeckMultiProps) => {
       )}
       <Card style={{ 
         position: 'absolute', 
-        top: '1rem', 
-        left: '1rem', 
-        width: '18rem', 
-        zIndex: 10
+        top: '10px', 
+        left: '10px', 
+        width: '300px', 
+        zIndex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: '80vh' // This ensures the card itself doesn't exceed viewport
       }}>
         <CardHeader>
           <CardTitle>Layers</CardTitle>
           <GuideText>
-            <span>ⓘ Toggle visibility using eye icon</span>
-            <span>ⓘ Drag and drop to reorder layers</span>
+            <span>• Drag layers to reorder</span>
+            <span>• Toggle visibility using the eye icon</span>
+            <span>• Adjust opacity using the slider</span>
           </GuideText>
         </CardHeader>
-        <div style={{ padding: '0.5rem 0' }}>
+        <LayersCardContent>
           <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="layers">
-              {(provided: any) => (
-                <div ref={provided.innerRef} {...provided.droppableProps}>
+            <Droppable droppableId="droppable">
+              {(provided, snapshot) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                >
                   {layerOrder.map((id, index) => {
                     const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === id)
+                    const layer = subSlicesLayers[id]?.[0]
+                    const isVisible = visibleLayers[id]
+                    
                     return (
-                      <Draggable key={id} draggableId={id.toString()} index={index}>
-                        {(draggableProvided: any, draggableSnapshot: any) => (
+                      <Draggable
+                        key={id}
+                        draggableId={String(id)}
+                        index={index}
+                      >
+                        {(provided, draggableSnapshot) => (
                           <DraggableItem
-                            ref={draggableProvided.innerRef}
-                            {...draggableProvided.draggableProps}
-                            {...draggableProvided.dragHandleProps}
-                            $isVisible={!!visibleLayers[id]}
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            $isVisible={isVisible}
                             isDragging={draggableSnapshot.isDragging}
                             data-dragging={draggableSnapshot.isDragging}
                           >
-                            <span className="drag-handle">
-                              ☰
-                            </span>
-                            <span className="layer-name">{subslice?.slice_name}</span>
-                            <div 
-                              className="color-scale-preview"
-                              style={{
-                                background: visibleLayers[id] && subSlicesLayers[id]?.[0]?.colorScale
-                                  ? `linear-gradient(to right, ${subSlicesLayers[id][0].colorScale(subSlicesLayers[id][0].extent[0])}, ${subSlicesLayers[id][0].colorScale(subSlicesLayers[id][0].extent[1])})`
-                                  : undefined
-                              }}
-                            />
-                            <span 
-                              className="visibility-toggle"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleLayerVisibility(id);
-                              }}
-                              role="button"
-                              tabIndex={0}
-                            >
-                              {visibleLayers[id] ? (
-                                <Icons.EyeOutlined iconSize="m" />
-                              ) : (
-                                <Icons.EyeInvisibleOutlined iconSize="m" />
-                              )}
-                            </span>
+                            <div className="layer-header" {...provided.dragHandleProps}>
+                              <span className="drag-handle">
+                                ☰
+                              </span>
+                              <span className="layer-name">{subslice?.slice_name}</span>
+                              <div className="header-controls">
+                                {layer && (
+                                  <div 
+                                    className="color-scale-preview"
+                                    style={{
+                                      background: isVisible && layer.colorScale && layer.extent
+                                        ? `linear-gradient(to right, ${layer.colorScale(layer.extent[0])}, ${layer.colorScale(layer.extent[1])})`
+                                      : '#e5e7eb',
+                                      border: '1px solid #e5e7eb'
+                                    }}
+                                  />
+                                )}
+                                <span 
+                                  className="visibility-toggle"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    toggleLayerVisibility(id);
+                                  }}
+                                >
+                                  {isVisible ? (
+                                    <Icons.Eye iconSize="m" />
+                                  ) : (
+                                    <Icons.EyeSlash iconSize="m" />
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                            {isVisible && (
+                              <div className="layer-controls" onClick={(e) => e.stopPropagation()}>
+                                <div className="opacity-control">
+                                  <span className="opacity-label">Opacity</span>
+                                  <Slider
+                                    className="opacity-slider"
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={(layerOpacities[id] || 0) * 100}
+                                    onChange={(value: number) => handleOpacityChange(id, value / 100)}
+                                    tipFormatter={value => `${value}%`}
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </DraggableItem>
                         )}
                       </Draggable>
@@ -998,7 +1120,7 @@ const DeckMulti = (props: DeckMultiProps) => {
               )}
             </Droppable>
           </DragDropContext>
-        </div>
+        </LayersCardContent>
       </Card>
       <LegendsContainer>
         {layerOrder
