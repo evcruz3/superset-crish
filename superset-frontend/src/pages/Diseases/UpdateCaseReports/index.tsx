@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { t, styled } from '@superset-ui/core';
-import { Upload, message, Button, Space, Card, Typography, Select, InputNumber } from 'antd';
-import { InboxOutlined, UploadOutlined, DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Upload, message, Button, Space, Card, Typography, InputNumber, Table, Tag, Tooltip } from 'antd';
+import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
+import { InboxOutlined, UploadOutlined, DownloadOutlined, InfoCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { SupersetClient } from '@superset-ui/core';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import { useHistory } from 'react-router-dom';
 
 const { Dragger } = Upload;
 const { Title, Paragraph, Text } = Typography;
-const { Option } = Select;
 
 const UploadContainer = styled.div`
   padding: 24px;
@@ -52,8 +52,11 @@ const FormItem = styled.div`
   margin-bottom: 16px;
 `;
 
+type MunicipalityCode = 'TL-AL' | 'TL-AN' | 'TL-AT' | 'TL-BA' | 'TL-BO' | 'TL-CO' | 'TL-DI' | 
+                        'TL-ER' | 'TL-LA' | 'TL-LI' | 'TL-MT' | 'TL-MF' | 'TL-OE' | 'TL-VI';
+
 // Municipality codes mapping
-const MUNICIPALITY_CODES = {
+const MUNICIPALITY_CODES: Record<MunicipalityCode, string> = {
   'TL-AL': 'Aileu',
   'TL-AN': 'Ainaro',
   'TL-AT': 'Atauro',
@@ -70,22 +73,61 @@ const MUNICIPALITY_CODES = {
   'TL-VI': 'Viqueque'
 };
 
+// Reverse mapping for name to code lookup
+const MUNICIPALITY_NAMES_TO_CODES: Record<string, MunicipalityCode> = Object.entries(MUNICIPALITY_CODES).reduce(
+  (acc, [code, name]) => ({
+    ...acc,
+    [name.toLowerCase()]: code as MunicipalityCode,
+  }),
+  {} as Record<string, MunicipalityCode>
+);
+
+interface FileWithMunicipality extends Omit<UploadFile, 'status'> {
+  file: File;
+  municipalityCode: MunicipalityCode | null;
+  status?: 'pending' | 'uploading' | 'success' | 'error';
+  error?: string;
+}
+
 function UpdateCaseReports() {
   const history = useHistory();
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [fileList, setFileList] = useState<any[]>([]);
-  const [municipalityCode, setMunicipalityCode] = useState<string>('');
+  const [fileList, setFileList] = useState<FileWithMunicipality[]>([]);
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [week, setWeek] = useState<number>(() => {
-    // Calculate current week number
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 1);
     const diff = now.getTime() - start.getTime();
     const oneWeek = 1000 * 60 * 60 * 24 * 7;
     const currentWeek = Math.ceil(diff / oneWeek);
-    return Math.min(Math.max(1, currentWeek), 53); // Ensure week is between 1 and 53
+    return Math.min(Math.max(1, currentWeek), 53);
   });
+
+  // Function to detect municipality code from filename
+  const detectMunicipalityCode = (filename: string): MunicipalityCode | null => {
+    const normalizedFilename = filename.toLowerCase();
+    
+    // Try to find a municipality name in the filename
+    const municipalityName = Object.values(MUNICIPALITY_CODES)
+      .find(name => normalizedFilename.includes(name.toLowerCase()));
+    
+    if (municipalityName) {
+      return MUNICIPALITY_NAMES_TO_CODES[municipalityName.toLowerCase()];
+    }
+    
+    // Fallback to code detection if name not found
+    return (Object.keys(MUNICIPALITY_CODES) as MunicipalityCode[])
+      .find(code => normalizedFilename.includes(code.toLowerCase())) || null;
+  };
+
+  // Calculate missing municipalities
+  const missingMunicipalities = useMemo(() => {
+    const selectedMunicipalities = new Set(fileList.map(f => f.municipalityCode));
+    return (Object.entries(MUNICIPALITY_CODES) as [MunicipalityCode, string][])
+      .filter(([code]) => !selectedMunicipalities.has(code))
+      .map(([code, name]) => ({ code, name }));
+  }, [fileList]);
 
   const handleDownloadTemplate = async () => {
     setDownloading(true);
@@ -121,14 +163,40 @@ function UpdateCaseReports() {
     }
   };
 
-  const handleUpload = async () => {
-    if (fileList.length === 0) {
-      message.warning(t('Please select a file first'));
-      return;
-    }
+  const uploadSingleFile = async (fileInfo: FileWithMunicipality) => {
+    const formData = new FormData();
+    formData.append('file', fileInfo.file);
+    formData.append('municipality_code', fileInfo.municipalityCode || '');
+    formData.append('year', year.toString());
+    formData.append('week', week.toString());
 
-    if (!municipalityCode) {
-      message.warning(t('Please select a municipality'));
+    try {
+      await SupersetClient.post({
+        endpoint: '/api/v1/update_case_reports/upload',
+        postPayload: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      let errorMessage = t('Error processing file');
+      if (error.response) {
+        try {
+          const responseData = error.response.json();
+          errorMessage = responseData.error || errorMessage;
+        } catch (e) {
+          errorMessage = error.response.text || errorMessage;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (fileList.length === 0) {
+      message.warning(t('Please select files first'));
       return;
     }
 
@@ -142,64 +210,126 @@ function UpdateCaseReports() {
       return;
     }
 
-    const formData = new FormData();
-    const file = fileList[0];
-    formData.append('file', file);
-    formData.append('municipality_code', municipalityCode);
-    formData.append('year', year.toString());
-    formData.append('week', week.toString());
-    
     setUploading(true);
-    try {
-      await SupersetClient.post({
-        endpoint: '/api/v1/update_case_reports/upload',
-        postPayload: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-      message.success(t('Case reports uploaded successfully'));
-      setFileList([]); // Clear the file list after successful upload
-      setMunicipalityCode(''); // Reset municipality selection
-      setYear(new Date().getFullYear()); // Reset year to current year
-      
-      // Reset week to current week
-      const now = new Date();
-      const start = new Date(now.getFullYear(), 0, 1);
-      const diff = now.getTime() - start.getTime();
-      const oneWeek = 1000 * 60 * 60 * 24 * 7;
-      const currentWeek = Math.ceil(diff / oneWeek);
-      setWeek(Math.min(Math.max(1, currentWeek), 53));
-      
-    //   history.push('/diseases/'); // Redirect to diseases overview
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      let errorMessage = t('Error processing file');
-      if (error.response) {
-        try {
-          const responseData = error.response.json();
-          errorMessage = responseData.error || errorMessage;
-        } catch (e) {
-          errorMessage = error.response.text || errorMessage;
-        }
+    const updatedFiles = [...fileList];
+
+    for (let i = 0; i < updatedFiles.length; i++) {
+      const fileInfo = updatedFiles[i];
+      if (!fileInfo.municipalityCode) {
+        continue;
       }
-      message.error(errorMessage);
-    } finally {
-      setUploading(false);
+
+      fileInfo.status = 'uploading';
+      setFileList([...updatedFiles]);
+
+      try {
+        await uploadSingleFile(fileInfo);
+        fileInfo.status = 'success';
+      } catch (error: any) {
+        fileInfo.status = 'error';
+        fileInfo.error = error.message;
+        message.error(`Failed to upload ${fileInfo.name}: ${error.message}`);
+      }
+      setFileList([...updatedFiles]);
+    }
+
+    setUploading(false);
+    const successCount = updatedFiles.filter(f => f.status === 'success').length;
+    if (successCount > 0) {
+      message.success(`Successfully uploaded ${successCount} files`);
     }
   };
 
-  const uploadProps = {
-    name: 'file',
-    multiple: false,
-    accept: '.xlsx, .xls',
-    fileList,
-    beforeUpload: (file: any) => {
-      setFileList([file]);
-      return false; // Prevent automatic upload
+  const columns = [
+    {
+      title: t('Municipality'),
+      key: 'municipality',
+      render: (_: any, record: FileWithMunicipality) => (
+        <span>
+          {record.municipalityCode ? (
+            <Tag color="blue">{MUNICIPALITY_CODES[record.municipalityCode]}</Tag>
+          ) : (
+            <Tag color="red">{t('Unknown')}</Tag>
+          )}
+        </span>
+      ),
     },
-    onRemove: () => {
-      setFileList([]);
+    {
+      title: t('Filename'),
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: t('Status'),
+      key: 'status',
+      render: (_: any, record: FileWithMunicipality) => (
+        <Tag color={
+          record.status === 'success' ? 'success' :
+          record.status === 'error' ? 'error' :
+          record.status === 'uploading' ? 'processing' :
+          'default'
+        }>
+          {record.status || 'pending'}
+        </Tag>
+      ),
+    },
+    {
+      title: t('Actions'),
+      key: 'actions',
+      render: (_: any, record: FileWithMunicipality) => {
+        const canDelete = record.status !== 'success' && record.status !== 'uploading';
+        return (
+          <Tooltip title={!canDelete ? t('Cannot remove files that are uploading or already uploaded') : ''}>
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              disabled={!canDelete}
+              onClick={() => {
+                if (canDelete) {
+                  setFileList(prev => prev.filter(f => f.uid !== record.uid));
+                }
+              }}
+            />
+          </Tooltip>
+        );
+      },
+    },
+  ];
+
+  const uploadProps: UploadProps = {
+    name: 'file',
+    multiple: true,
+    accept: '.xlsx, .xls',
+    showUploadList: false, // Hide the default upload list since we're using our own table
+    fileList: fileList.map(f => ({
+      ...f,
+      status: f.status === 'pending' ? 'done' : f.status === 'uploading' ? 'uploading' : f.status === 'success' ? 'done' : 'error',
+      originFileObj: f.file,
+      type: f.file.type,
+      size: f.file.size,
+    })),
+    beforeUpload: (file: File) => {
+      const municipalityCode = detectMunicipalityCode(file.name);
+      const newFile: FileWithMunicipality = {
+        uid: `${Date.now()}-${file.name}`,
+        name: file.name,
+        file,
+        type: file.type,
+        size: file.size,
+        municipalityCode,
+        status: 'pending',
+      };
+
+      if (!municipalityCode) {
+        message.warning(`Could not detect municipality code in filename: ${file.name}`);
+      } else if (fileList.some(f => f.municipalityCode === municipalityCode)) {
+        message.warning(`A file for ${MUNICIPALITY_CODES[municipalityCode]} has already been selected`);
+        return false;
+      }
+
+      setFileList(prev => [...prev, newFile]);
+      return false;
     },
   };
 
@@ -211,10 +341,10 @@ function UpdateCaseReports() {
         <Typography>
           <Title level={5}>
             <InfoCircleOutlined style={{ marginRight: '8px' }} />
-            {t('Guide to Updating Case Reports')}
+            {t('Guide to Uploading Case Reports')}
           </Title>
           <Paragraph>
-            {t('Please ensure your file follows the TLHIS/22:Weekly surveillance Excel format.')}
+            {t('Please ensure your files follow the TLHIS/22:Weekly surveillance Excel format and include the municipality name (e.g., Dili) or code (e.g., TL-DI) in the filename.')}
           </Paragraph>
           <Paragraph type="secondary">
             {t('Both .xls and .xlsx file formats are supported.')}
@@ -222,23 +352,7 @@ function UpdateCaseReports() {
         </Typography>
       </GuideCard>
 
-      <SelectContainer>
-        <FormItem>
-          <FormLabel>{t('Municipality')}</FormLabel>
-          <Select
-            placeholder={t('Select Municipality')}
-            style={{ width: '100%' }}
-            value={municipalityCode || undefined}
-            onChange={(value: string) => setMunicipalityCode(value)}
-          >
-            {Object.entries(MUNICIPALITY_CODES).map(([code, name]) => (
-              <Option key={code} value={code}>
-                {name} ({code})
-              </Option>
-            ))}
-          </Select>
-        </FormItem>
-        
+      <Space direction="vertical" style={{ width: '100%', marginBottom: '24px' }}>
         <FormItem>
           <FormLabel>{t('Year')}</FormLabel>
           <InputNumber
@@ -262,9 +376,7 @@ function UpdateCaseReports() {
             placeholder={t('Select Week (1-53)')}
           />
         </FormItem>
-      </SelectContainer>
 
-      <Space direction="vertical" style={{ width: '100%', marginBottom: '24px', maxWidth: '500px' }}>
         <FormItem>
           <FormLabel>{t('Template')}</FormLabel>
           <Button
@@ -282,31 +394,57 @@ function UpdateCaseReports() {
 
       <div style={{ maxWidth: '800px', marginBottom: '24px' }}>
         <FormItem>
-          <FormLabel>{t('Upload File')}</FormLabel>
+          <FormLabel>{t('Upload Files')}</FormLabel>
           <Dragger {...uploadProps}>
             <p className="ant-upload-drag-icon">
               <InboxOutlined />
             </p>
             <p className="ant-upload-text">
-              {t('Click or drag file to this area to upload')}
+              {t('Click or drag files to this area to upload')}
             </p>
             <p className="ant-upload-hint">
-              {t('Please upload your TLHIS/22:Weekly surveillance Excel file (.xls or .xlsx)')}
+              {t('Please include municipality name (e.g., Dili) or code (e.g., TL-DI) in filenames')}
             </p>
           </Dragger>
         </FormItem>
       </div>
 
+      {fileList.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <Title level={5}>{t('Selected Files')}</Title>
+          <Table
+            dataSource={fileList}
+            columns={columns}
+            rowKey="uid"
+            pagination={false}
+            size="small"
+          />
+        </div>
+      )}
+
+      {missingMunicipalities.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <Title level={5}>{t('Missing Municipalities')}</Title>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {missingMunicipalities.map(({ code, name }) => (
+              <Tag color="warning" key={code}>
+                {name} ({code})
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
       <ButtonContainer>
         <Button
           type="primary"
-          onClick={handleUpload}
+          onClick={handleBulkUpload}
           loading={uploading}
           icon={<UploadOutlined />}
-          disabled={fileList.length === 0 || !municipalityCode || !year || !week || week < 1 || week > 53}
+          disabled={fileList.length === 0 || !year || !week || week < 1 || week > 53}
           style={{ width: '200px' }}
         >
-          {uploading ? t('Uploading') : t('Start Upload')}
+          {uploading ? t('Uploading') : t('Start Bulk Upload')}
         </Button>
       </ButtonContainer>
     </UploadContainer>

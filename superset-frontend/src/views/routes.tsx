@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import React, { lazy } from 'react';
 import { FeatureFlag, isFeatureEnabled, t } from '@superset-ui/core';
-import { lazy, ComponentType, ComponentProps } from 'react';
+import { ComponentType, ComponentProps } from 'react';
 import Diseases from 'src/pages/Diseases';
 import Dengue from 'src/pages/Diseases/Dengue';
 import Diarrhea from 'src/pages/Diseases/Diarrhea';
@@ -158,6 +159,10 @@ const UpdateCaseReports = lazy(
 import BulletinsAndAdvisories from 'src/pages/BulletinsAndAdvisories';
 import PublicEducationList from 'src/pages/PublicEducation/PublicEducationList';
 
+const DiseaseForecasts = lazy(
+  () => import('src/pages/DiseaseForecasts'),
+);
+
 type Routes = {
   path: string;
   Component: ComponentType;
@@ -169,6 +174,10 @@ export const routes: Routes = [
   {
     path: '/weather/',
     Component: WeatherForecasts
+  },
+  {
+    path: '/disease-forecasts',
+    Component: DiseaseForecasts,
   },
   {
     path: '/facilities/update/',
@@ -300,6 +309,7 @@ export const routes: Routes = [
     path: '/public_education/',
     Component: PublicEducationList,
   },
+
 ];
 
 if (isFeatureEnabled(FeatureFlag.TaggingSystem)) {
