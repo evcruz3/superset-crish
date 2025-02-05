@@ -689,15 +689,11 @@ const DeckMulti = (props: DeckMultiProps) => {
       // Set all layers to invisible initially
       const initialVisibility: { [key: number]: boolean } = {}
       const initialOpacities: { [key: number]: number } = {}
-      orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
-        initialVisibility[subslice.slice_id] = false
+      orderedSlices.forEach((subslice: { slice_id: number } & JsonObject, index: number) => {
+        // Make the first layer (index 0) visible, all others invisible
+        initialVisibility[subslice.slice_id] = index === 0
         initialOpacities[subslice.slice_id] = 1.0
       })
-      
-      // Make only the first layer visible if there are any layers
-      if (orderedSlices.length > 0) {
-        initialVisibility[orderedSlices[0].slice_id] = true
-      }
       
       setVisibleLayers(initialVisibility)
       setLayerOpacities(initialOpacities)
@@ -789,18 +785,18 @@ const DeckMulti = (props: DeckMultiProps) => {
                       d.object?.properties?.NAME || 
                       d.object?.properties?.ISO;
       
-      console.log('Getting region key for data:', {
-        data: d,
-        foundRegionId: regionId,
-        properties: d.object?.properties,
-        rawObject: d.object,
-        coordinates: d.coordinates,
-        text: d.text
-      });
+      // console.log('Getting region key for data:', {
+      //   data: d,
+      //   foundRegionId: regionId,
+      //   properties: d.object?.properties,
+      //   rawObject: d.object,
+      //   coordinates: d.coordinates,
+      //   text: d.text
+      // });
       
-      if (!regionId) {
-        console.warn('No region identifier found for data:', d);
-      }
+      // if (!regionId) {
+      //   console.warn('No region identifier found for data:', d);
+      // }
       
       return regionId;
     };
@@ -808,40 +804,40 @@ const DeckMulti = (props: DeckMultiProps) => {
     // First, collect all text data from all text layers
     const combinedTextData = new Map<string, { coordinates: number[], texts: string[] }>();
     
-    console.log('Processing layers:', {
-      visibleLayerIds: layerOrder.filter(id => visibleLayers[id]),
-      allLayers: subSlicesLayers,
-      layerOrder,
-      visibleLayers
-    });
+    // console.log('Processing layers:', {
+    //   visibleLayerIds: layerOrder.filter(id => visibleLayers[id]),
+    //   allLayers: subSlicesLayers,
+    //   layerOrder,
+    //   visibleLayers
+    // });
 
     layerOrder
       .filter((id) => visibleLayers[id])
       .forEach((id) => {
         const layerGroup = subSlicesLayers[id];
-        console.log('Processing layer group:', {
-          id,
-          layerGroup,
-          isArray: Array.isArray(layerGroup)
-        });
+        // console.log('Processing layer group:', {
+        //   id,
+        //   layerGroup,
+        //   isArray: Array.isArray(layerGroup)
+        // });
 
         if (Array.isArray(layerGroup)) {
           layerGroup.forEach(layer => {
-            console.log('Processing individual layer:', {
-              layerId: layer.props.id,
-              type: layer.constructor.name,
-              data: layer.props.data
-            });
+            // console.log('Processing individual layer:', {
+            //   layerId: layer.props.id,
+            //   type: layer.constructor.name,
+            //   data: layer.props.data
+            // });
 
             if (layer.constructor.name === 'TextLayer') {
               const data = layer.props.data || [];
               data.forEach((d: any) => {
                 const regionKey = getRegionKey(d);
-                console.log('Processing text data:', {
-                  regionKey,
-                  text: d.text,
-                  coordinates: d.coordinates
-                });
+                // console.log('Processing text data:', {
+                //   regionKey,
+                //   text: d.text,
+                //   coordinates: d.coordinates
+                // });
 
                 if (regionKey) {
                   if (!combinedTextData.has(regionKey)) {
@@ -856,10 +852,10 @@ const DeckMulti = (props: DeckMultiProps) => {
                 }
               });
             } else if (layer.constructor.name === 'IconLayer') {
-              console.log('Found IconLayer:', {
-                id: layer.props.id,
-                dataLength: layer.props.data?.length
-              });
+              // console.log('Found IconLayer:', {
+              //   id: layer.props.id,
+              //   dataLength: layer.props.data?.length
+              // });
               iconLayers.push(layer);
             } else {
               nonTextLayers.push(layer);
@@ -870,12 +866,12 @@ const DeckMulti = (props: DeckMultiProps) => {
         }
       });
 
-    console.log('Combined text data:', {
-      regions: Array.from(combinedTextData.keys()),
-      textsByRegion: Object.fromEntries(Array.from(combinedTextData.entries()).map(
-        ([key, value]) => [key, value.texts]
-      ))
-    });
+    // console.log('Combined text data:', {
+    //   regions: Array.from(combinedTextData.keys()),
+    //   textsByRegion: Object.fromEntries(Array.from(combinedTextData.entries()).map(
+    //     ([key, value]) => [key, value.texts]
+    //   ))
+    // });
 
     // Create a single text layer with combined texts
     if (combinedTextData.size > 0) {
@@ -884,7 +880,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         text: texts.join('\n')
       }));
 
-      console.log('Creating combined text layer with data:', combinedData);
+      // console.log('Creating combined text layer with data:', combinedData);
 
       const combinedTextLayer = new TextLayer({
         id: 'combined-text-layer',
@@ -953,7 +949,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     const initialVisibility: { [key: number]: boolean } = {}
     const initialOpacities: { [key: number]: number } = {}
     props.payload.data.slices.forEach((slice: any, index: number) => {
-      // Only make the first layer visible initially
+      // Make the first layer (index 0) visible, all others invisible
       initialVisibility[slice.slice_id] = index === 0
       initialOpacities[slice.slice_id] = 1.0
     })
@@ -966,6 +962,17 @@ const DeckMulti = (props: DeckMultiProps) => {
       ...prev,
       [layerId]: value
     }))
+
+    // Force layer recreation with new opacity
+    const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === layerId)
+    if (subslice && visibleLayers[layerId]) {
+      const filters = [
+        ...(subslice.form_data.filters || []),
+        ...(props.formData.filters || []),
+        ...(props.formData.extra_filters || []),
+      ]
+      loadLayer(subslice, filters)
+    }
   }
 
   return (

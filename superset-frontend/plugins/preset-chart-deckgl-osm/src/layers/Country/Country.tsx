@@ -565,7 +565,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   }
 
   // Calculate text data for labels
-  console.log('Processing features for text labels:', processedFeatures);
+  // console.log('Processing features for text labels:', processedFeatures);
   
   // First, create a map of icon positions for quick lookup
   const iconPositions = new Map<string, boolean>();
@@ -606,7 +606,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     }
 
     if (!coordinates) {
-      console.log('No coordinates found for feature:', feature);
+      // console.log('No coordinates found for feature:', feature);
       return null;
     }
 
@@ -644,7 +644,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     };
   }).filter((d: TextData | null): d is TextData => d !== null);
 
-  console.log('Generated text data with region properties:', textData);
+  // console.log('Generated text data with region properties:', textData);
 
   // Create text layer with adjusted positioning
   const textLayer = new TextLayer({
@@ -671,7 +671,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     opacity: opacity,
   });
 
-  console.log('Created text layer:', textLayer);
+  // console.log('Created text layer:', textLayer);
 
   return iconLayer ? [geoJsonLayer, iconLayer, textLayer] : [geoJsonLayer, textLayer];
 }
@@ -782,7 +782,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
 
   // Update viewState when viewport changes
   useEffect(() => {
-    console.log('Viewport prop changed:', props.viewport);
+    // console.log('Viewport prop changed:', props.viewport);
     setViewState(currentViewState => ({
       ...currentViewState,
       ...props.viewport,
@@ -794,7 +794,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
 
   // Handle viewport changes from user interaction
   const onViewportChange = useCallback((viewport: Viewport) => {
-    console.log('Viewport changed:', viewport);
+    // console.log('Viewport changed:', viewport);
     const newViewState = {
       ...viewport,
       zoom: viewport.zoom || viewState.zoom || 0,
@@ -810,7 +810,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   // Calculate layers with viewState
   const layers = useMemo(
     () => {
-      console.log('Recalculating layers with viewState:', viewState);
+      // console.log('Recalculating layers with viewState:', viewState);
       return geoJson ? getLayer({
         formData,
         payload,
