@@ -1,7 +1,15 @@
 'use client'
 
 import React, { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
+import { 
+  DragDropContext, 
+  Droppable, 
+  Draggable, 
+  DroppableProvided, 
+  DraggableProvided,
+  DroppableStateSnapshot,
+  DraggableStateSnapshot 
+} from 'react-beautiful-dnd'
 import { isEqual } from 'lodash'
 import {
   Datasource,
@@ -18,14 +26,15 @@ import { Layer } from '@deck.gl/core'
 import { Slider } from 'antd'
 import Icons from 'src/components/Icons'
 import { ScaleLinear } from 'd3-scale'
-import { TextLayer } from '@deck.gl/layers'
+import { TextLayer, IconLayer } from '@deck.gl/layers'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
 import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
-import countries from '../layers/Country/countries'
+import { countries } from '../layers/Country/countries'
+import { LayerOptions } from '../types/layers'
 
 // Custom Card component
 const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style = {} }) => (
@@ -425,14 +434,17 @@ const LegendCard = styled.div`
 `
 
 interface ColorLegendProps {
-  colorScale: ScaleLinear<string, string>;
-  extent: [number, number];
-  format: (value: number) => string;
+  colorScale: (value: any) => string;
+  extent?: [number, number];
+  format?: (value: number) => string;
   metricPrefix?: string;
   metricUnit?: string;
-  values: number[];
+  values: (number | string)[];
   metricName?: string;
   layerName: string;
+  isCategorical?: boolean;
+  metricValues?: number[];
+  categoricalToMetricMap?: Map<string, number>;
 }
 
 const ColorLegend: React.FC<ColorLegendProps> = ({ 
@@ -442,27 +454,38 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
   metricPrefix = '', 
   metricUnit = '', 
   values,
-  metricName = 'Metric Range',
-  layerName
+  metricName = 'Values',
+  layerName,
+  isCategorical = false,
+  metricValues = [],
+  categoricalToMetricMap
 }) => {
-  // Get unique values and sort them in descending order
-  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  // Get unique values
+  const uniqueValues = [...new Set(values)];
   
-  // If we have more than 5 values, we need to select a subset
-  let displayValues = uniqueValues;
-  if (uniqueValues.length > 5) {
-    // Always include min and max
-    const min = uniqueValues[uniqueValues.length - 1];
-    const max = uniqueValues[0];
-    
-    // For the middle values, take evenly spaced indices
+  // Sort values based on metric values
+  const sortedValues = uniqueValues.sort((a, b) => {
+    if (isCategorical && categoricalToMetricMap) {
+      // For categorical values, sort by their corresponding metric values
+      const metricA = categoricalToMetricMap.get(String(a)) ?? 0;
+      const metricB = categoricalToMetricMap.get(String(b)) ?? 0;
+      return metricB - metricA;
+    }
+    // For metric values, sort numerically in descending order
+    return Number(b) - Number(a);
+  });
+  
+  // If we have more than 5 values and not categorical, select a subset
+  let displayValues = sortedValues;
+  if (!isCategorical && sortedValues.length > 5) {
+    const min = sortedValues[sortedValues.length - 1];
+    const max = sortedValues[0];
     const middleIndices = [
-      Math.floor(uniqueValues.length * 0.25),
-      Math.floor(uniqueValues.length * 0.5),
-      Math.floor(uniqueValues.length * 0.75),
+      Math.floor(sortedValues.length * 0.25),
+      Math.floor(sortedValues.length * 0.5),
+      Math.floor(sortedValues.length * 0.75),
     ];
-    
-    const middleValues = middleIndices.map(i => uniqueValues[i]);
+    const middleValues = middleIndices.map(i => sortedValues[i]);
     displayValues = [max, ...middleValues, min];
   }
 
@@ -477,7 +500,12 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
               className="color-box" 
               style={{ backgroundColor: colorScale(value) || '#fff' }}
             />
-            <span className="label">{`${metricPrefix}${format(value)}${metricUnit}`}</span>
+            <span className="label">
+              {isCategorical 
+                ? String(value)
+                : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`
+              }
+            </span>
           </div>
         ))}
       </div>
@@ -511,6 +539,28 @@ const LayersCardContent = styled.div`
   }
 `
 
+// Update the layer interface to include new properties
+interface ExtendedLayer extends Layer {
+  colorScale?: (value: any) => string;
+  extent?: [number, number];
+  metricValues?: number[];
+  categoricalValues?: string[];
+}
+
+// Add type definitions for the form data
+interface SubsliceFormData {
+  viz_type: string;
+  filters?: any[];
+  temporal_column?: string;
+  [key: string]: any;
+}
+
+interface Subslice {
+  slice_id: number;
+  slice_name: string;
+  form_data: SubsliceFormData;
+}
+
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
 
@@ -532,7 +582,7 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   // Function to create layer based on filtered data
   const createLayer = useCallback((
-    subslice: JsonObject,
+    subslice: Subslice,
     json: JsonObject,
     filteredData: JsonObject[],
   ) => {
@@ -544,7 +594,6 @@ const DeckMulti = (props: DeckMultiProps) => {
       },
     };
 
-    // Store original data for color scale calculation
     const jsonWithAllData = {
       ...json,
       data: {
@@ -557,37 +606,41 @@ const DeckMulti = (props: DeckMultiProps) => {
       const country = subslice.form_data.select_country;
       
       const createAndSetLayer = (geoJsonData: JsonObject) => {
-        const layers = layerGenerators[subslice.form_data.viz_type]({
-          formData: subslice.form_data,
-          payload: jsonWithFilteredData,
-          onAddFilter: props.onAddFilter,
-          setTooltip,
-          geoJson: geoJsonData,
-          temporalOptions: {
-            currentTime,
-            allData: jsonWithAllData.data.data,
-          },
-          opacity: layerOpacities[subslice.slice_id] ?? 1.0,
-        });
+        if (typeof layerGenerators.deck_country === 'function') {
+          const layers = layerGenerators.deck_country({
+            formData: subslice.form_data,
+            payload: jsonWithFilteredData,
+            onAddFilter: props.onAddFilter,
+            setTooltip,
+            geoJson: geoJsonData,
+            temporalOptions: {
+              currentTime,
+              allData: jsonWithAllData.data.data,
+            },
+            opacity: layerOpacities[subslice.slice_id] ?? 1.0,
+          });
 
-        setSubSlicesLayers((prevLayers) => ({
-          ...prevLayers,
-          [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
-        }));
+          setSubSlicesLayers((prevLayers) => ({
+            ...prevLayers,
+            [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
+          }));
+        }
       };
 
-      if (geoJsonCache[country]) {
-        createAndSetLayer(geoJsonCache[country]);
-      } else {
-        const url = countries[country];
-        fetch(url)
-          .then(response => response.json())
-          .then(data => {
-            geoJsonCache[country] = data;
-            createAndSetLayer(data);
-          });
+      if (country && typeof countries[country] === 'string') {
+        if (geoJsonCache[country]) {
+          createAndSetLayer(geoJsonCache[country]);
+        } else {
+          const url = countries[country];
+          fetch(url)
+            .then(response => response.json())
+            .then(data => {
+              geoJsonCache[country] = data;
+              createAndSetLayer(data);
+            });
+        }
       }
-    } else {
+    } else if (typeof layerGenerators[subslice.form_data.viz_type] === 'function') {
       const layer = layerGenerators[subslice.form_data.viz_type]({
         formData: subslice.form_data,
         payload: jsonWithFilteredData,
@@ -606,7 +659,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
       }));
     }
-  }, [props.onAddFilter, props.onSelect, props.datasource, setTooltip, currentTime, layerOpacities]);
+  }, [props.onAddFilter, props.datasource, setTooltip, currentTime, layerOpacities]);
 
   // Function to filter data based on current time
   const filterDataByTime = useCallback((
@@ -728,7 +781,7 @@ const DeckMulti = (props: DeckMultiProps) => {
   
     // If layer is being toggled back to visible, reinitialize it
     if (!visibleLayers[layerId]) {
-      const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === layerId)
+      const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === layerId)
       if (subslice) {
         const filters = [
           ...(subslice.form_data.filters || []),
@@ -757,7 +810,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     // Reinitialize the moved layer to avoid reusing a finalized layer
     const movedLayerId = parseInt(result.draggableId, 10)
     if (!visibleLayers[movedLayerId]) {
-      const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === movedLayerId)
+      const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === movedLayerId)
       if (subslice) {
         const filters = [
           ...(subslice.form_data.filters || []),
@@ -829,29 +882,31 @@ const DeckMulti = (props: DeckMultiProps) => {
             //   data: layer.props.data
             // });
 
-            if (layer.constructor.name === 'TextLayer') {
+            if (layer instanceof TextLayer) {
               const data = layer.props.data || [];
-              data.forEach((d: any) => {
-                const regionKey = getRegionKey(d);
-                // console.log('Processing text data:', {
-                //   regionKey,
-                //   text: d.text,
-                //   coordinates: d.coordinates
-                // });
+              if (Array.isArray(data)) {
+                data.forEach((d: any) => {
+                  const regionKey = getRegionKey(d);
+                  // console.log('Processing text data:', {
+                  //   regionKey,
+                  //   text: d.text,
+                  //   coordinates: d.coordinates
+                  // });
 
-                if (regionKey) {
-                  if (!combinedTextData.has(regionKey)) {
-                    combinedTextData.set(regionKey, {
-                      coordinates: d.coordinates, // Use first occurrence's coordinates
-                      texts: []
-                    });
+                  if (regionKey) {
+                    if (!combinedTextData.has(regionKey)) {
+                      combinedTextData.set(regionKey, {
+                        coordinates: d.coordinates,
+                        texts: []
+                      });
+                    }
+                    combinedTextData.get(regionKey)?.texts.push(d.text);
+                  } else {
+                    console.warn('No region key found for text data:', d);
                   }
-                  combinedTextData.get(regionKey)?.texts.push(d.text);
-                } else {
-                  console.warn('No region key found for text data:', d);
-                }
-              });
-            } else if (layer.constructor.name === 'IconLayer') {
+                });
+              }
+            } else if (layer instanceof IconLayer) {
               // console.log('Found IconLayer:', {
               //   id: layer.props.id,
               //   dataLength: layer.props.data?.length
@@ -964,7 +1019,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     }))
 
     // Force layer recreation with new opacity
-    const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === layerId)
+    const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === layerId)
     if (subslice && visibleLayers[layerId]) {
       const filters = [
         ...(subslice.form_data.filters || []),
@@ -1044,14 +1099,14 @@ const DeckMulti = (props: DeckMultiProps) => {
         <LayersCardContent>
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="droppable">
-              {(provided, snapshot) => (
+              {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
                 <div
                   {...provided.droppableProps}
                   ref={provided.innerRef}
                 >
                   {layerOrder.map((id, index) => {
-                    const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === id)
-                    const layer = subSlicesLayers[id]?.[0]
+                    const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === id)
+                    const layer = subSlicesLayers[id]?.[0] as ExtendedLayer
                     const isVisible = visibleLayers[id]
                     
                     return (
@@ -1060,7 +1115,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                         draggableId={String(id)}
                         index={index}
                       >
-                        {(provided, draggableSnapshot) => (
+                        {(provided: DraggableProvided, draggableSnapshot: DraggableStateSnapshot) => (
                           <DraggableItem
                             ref={provided.innerRef}
                             {...provided.draggableProps}
@@ -1078,9 +1133,11 @@ const DeckMulti = (props: DeckMultiProps) => {
                                   <div 
                                     className="color-scale-preview"
                                     style={{
-                                      background: isVisible && layer.colorScale && layer.extent
-                                        ? `linear-gradient(to right, ${layer.colorScale(layer.extent[0])}, ${layer.colorScale(layer.extent[1])})`
-                                      : '#e5e7eb',
+                                      background: isVisible && (layer as ExtendedLayer).colorScale
+                                        ? (layer as ExtendedLayer).extent
+                                          ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![0])}, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![1])})`
+                                          : '#e5e7eb'
+                                        : '#e5e7eb',
                                       border: '1px solid #e5e7eb'
                                     }}
                                   />
@@ -1134,24 +1191,37 @@ const DeckMulti = (props: DeckMultiProps) => {
           .filter(id => visibleLayers[id])
           .map(id => {
             const subslice = props.payload.data.slices.find(slice => slice.slice_id === id);
-            const layer = subSlicesLayers[id];
+            const layer = subSlicesLayers[id]?.[0] as ExtendedLayer;
             
             if (!subslice || !layer) return null;
 
-            // Get color scale and values from the layer
-            const colorScale = layer[0]?.colorScale;
-            const extent = layer[0]?.extent;
-            const metricValues = layer[0]?.metricValues || [];
+            const colorScale = layer.colorScale;
+            const extent = layer.extent;
+            const metricValues = layer.metricValues || [];
+            const categoricalValues = layer.categoricalValues || [];
+            const isCategorical = !!subslice.form_data.categorical_column;
             
-            if (!colorScale || !extent) return null;
+            if (!colorScale) return null;
 
-            // Get formatter and metric info from form data
+            // Create a map of categorical values to their corresponding metric values
+            const categoricalToMetricMap = new Map<string, number>();
+            if (isCategorical) {
+              const data = layer.props.data?.data || [];
+              data.forEach((d: any) => {
+                if (d.categorical_value !== undefined && d.metric !== undefined) {
+                  categoricalToMetricMap.set(String(d.categorical_value), Number(d.metric));
+                }
+              });
+            }
+
             const formatter = getNumberFormatter(subslice.form_data.number_format || 'SMART_NUMBER');
             const metricPrefix = subslice.form_data.metric_prefix ? `${subslice.form_data.metric_prefix} ` : '';
             const metricUnit = subslice.form_data.metric_unit ? ` ${subslice.form_data.metric_unit}` : '';
-            const metricName = typeof subslice.form_data.metric === 'object' 
-              ? (subslice.form_data.metric.label || subslice.form_data.metric_label || 'Metric Range')
-              : (subslice.form_data.metric || subslice.form_data.metric_label || 'Metric Range');
+            const metricName = isCategorical
+              ? (subslice.form_data.categorical_column || 'Categories')
+              : (typeof subslice.form_data.metric === 'object' 
+                ? (subslice.form_data.metric.label || subslice.form_data.metric_label || 'Values')
+                : (subslice.form_data.metric || subslice.form_data.metric_label || 'Values'));
 
             return (
               <ColorLegend
@@ -1161,9 +1231,12 @@ const DeckMulti = (props: DeckMultiProps) => {
                 format={formatter}
                 metricPrefix={metricPrefix}
                 metricUnit={metricUnit}
-                values={metricValues}
+                values={isCategorical ? categoricalValues : metricValues}
                 metricName={metricName}
                 layerName={subslice.slice_name}
+                isCategorical={isCategorical}
+                metricValues={metricValues}
+                categoricalToMetricMap={categoricalToMetricMap}
               />
             );
           })}
