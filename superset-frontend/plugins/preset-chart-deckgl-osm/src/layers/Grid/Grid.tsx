@@ -22,7 +22,6 @@ import {
   t,
   CategoricalColorNamespace,
   JsonObject,
-  QueryFormData,
 } from '@superset-ui/core';
 
 import { commonLayerProps, getAggFunc } from '../common';
@@ -30,7 +29,7 @@ import sandboxedEval from '../../utils/sandbox';
 import { hexToRGB } from '../../utils/colors';
 import { createDeckGLComponent } from '../../factory';
 import TooltipRow from '../../TooltipRow';
-import { TooltipProps } from '../../components/Tooltip';
+import { LayerOptions, LayerReturn, LayerWithColorScale } from '../../types/layers';
 
 function setTooltipContent(o: JsonObject) {
   return (
@@ -49,13 +48,8 @@ function setTooltipContent(o: JsonObject) {
   );
 }
 
-export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: () => void,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
-) {
-  const fd = formData;
+export function getLayer(options: LayerOptions): LayerReturn {
+  const { formData: fd, payload, onAddFilter, setTooltip } = options;
   const colorScale = CategoricalColorNamespace.getScale(fd.color_scheme);
   const colorRange = colorScale
     .range()
@@ -70,7 +64,7 @@ export function getLayer(
 
   const aggFunc = getAggFunc(fd.js_agg_function, p => p.weight);
 
-  return new GridLayer({
+  const layer = new GridLayer({
     id: `grid-layer-${fd.slice_id}` as const,
     data,
     cellSize: fd.grid_size,
@@ -83,6 +77,14 @@ export function getLayer(
     getColorValue: aggFunc,
     ...commonLayerProps(fd, setTooltip, setTooltipContent),
   });
+
+  // Add color scale properties for legend support
+  const layerWithScale = layer as LayerWithColorScale;
+  layerWithScale.colorScale = colorScale;
+  layerWithScale.extent = [0, 100]; // TODO: Calculate actual extent from data
+  layerWithScale.metricValues = data.map((d: JsonObject) => d.weight || 0);
+
+  return layerWithScale;
 }
 
 function getPoints(data: JsonObject[]) {

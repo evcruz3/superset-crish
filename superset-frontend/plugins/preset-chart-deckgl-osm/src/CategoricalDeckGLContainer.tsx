@@ -46,6 +46,7 @@ import {
 import { Point } from './types';
 import { getLayerType } from './factory';
 import { TooltipProps } from './components/Tooltip';
+import { LayerOptions } from './types/layers';
 
 const { getScale } = CategoricalColorNamespace;
 
@@ -174,12 +175,14 @@ const CategoricalDeckGLContainer = (props: CategoricalDeckGLContainerProps) => {
 
     return [
       getLayer(
-        fd,
-        filteredPayload,
-        onAddFilter,
-        setTooltip,
-        props.datasource,
-      ) as Layer,
+        {
+          formData: fd,
+          payload: filteredPayload,
+          onAddFilter,
+          setTooltip,
+          datasource: props.datasource,
+        } as LayerOptions) as Layer,
+  
     ];
   }, [addColor, categories, props, setTooltip]);
 

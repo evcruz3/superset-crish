@@ -2133,7 +2133,6 @@ msgstr "Tag barak"
 msgid "Bullet Chart"
 msgstr "Gráfiku Bala"
 
-#, fuzzy
 msgid "Bulletin"
 msgstr "Hili barak"
 
@@ -4366,9 +4365,8 @@ msgstr "Dezativa funsaun perfurasaun ba detallu ba baze-dadus ida-ne'e."
 msgid "Discard"
 msgstr "Deskarta"
 
-#, fuzzy
 msgid "Diseases"
-msgstr "Ne'e falsu"
+msgstr "Moras sira"
 
 msgid "Display"
 msgstr "Ezibisaun"
@@ -5298,9 +5296,8 @@ msgstr "FEV"
 msgid "FRI"
 msgstr "SEX"
 
-#, fuzzy
 msgid "Facilities"
-msgstr "Filtru sira"
+msgstr "Fatin sira"
 
 msgid "Factor"
 msgstr "Fatór"
@@ -8582,9 +8579,8 @@ msgstr "Propaga"
 msgid "Proportional"
 msgstr "Proporsionál"
 
-#, fuzzy
 msgid "Public Education"
-msgstr "Empregu no edukasaun"
+msgstr "Edukasaun Publiku"
 
 msgid "Public and privately shared sheets"
 msgstr "Folla sira ne'ebé fahe ba públiku no privadu"
@@ -13384,9 +13380,8 @@ msgstr ""
 "Ami la konsege konekta ba ita-boot nia baze-dadus ho naran \"%(database)s\". "
 "Favor verifika ita-boot nia naran baze-dadus no koko fali."
 
-#, fuzzy
 msgid "Weather Forecasts"
-msgstr "Premiti Preve"
+msgstr "Previsaun Klima"
 
 msgid "Web"
 msgstr "Web"

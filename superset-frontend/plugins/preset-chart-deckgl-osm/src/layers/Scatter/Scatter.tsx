@@ -24,11 +24,13 @@ import {
   QueryFormData,
   t,
 } from '@superset-ui/core';
+import { Layer } from '@deck.gl/core';
 import { commonLayerProps } from '../common';
 import { createCategoricalDeckGLComponent } from '../../factory';
 import TooltipRow from '../../TooltipRow';
 import { unitToRadius } from '../../utils/geo';
 import { TooltipProps } from '../../components/Tooltip';
+import { LayerOptions } from '../../types/layers';
 
 function getPoints(data: JsonObject[]) {
   return data.map(d => d.position);
@@ -45,14 +47,12 @@ function setTooltipContent(
     return (
       <div className="deckgl-tooltip">
         <TooltipRow
-          // eslint-disable-next-line prefer-template
-          label={t('Longitude and Latitude') + ': '}
+          label={`${t('Longitude and Latitude')}: `}
           value={`${o.object?.position?.[0]}, ${o.object?.position?.[1]}`}
         />
         {o.object?.cat_color && (
           <TooltipRow
-            // eslint-disable-next-line prefer-template
-            label={t('Category') + ': '}
+            label={`${t('Category')}: `}
             value={`${o.object?.cat_color}`}
           />
         )}
@@ -64,14 +64,9 @@ function setTooltipContent(
   };
 }
 
-export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: () => void,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
-  datasource: Datasource,
-) {
-  const fd = formData;
+export function getLayer(options: LayerOptions): Layer<{}> {
+  const { formData: fd, payload, setTooltip, datasource } = options;
+
   const dataWithRadius = payload.data.features.map((d: JsonObject) => {
     let radius = unitToRadius(fd.point_unit, d.radius) || 10;
     if (fd.multiplier) {
@@ -85,7 +80,6 @@ export function getLayer(
 
     return { ...d, radius, color };
   });
-  
 
   return new ScatterplotLayer({
     id: `scatter-layer-${fd.slice_id}` as const,

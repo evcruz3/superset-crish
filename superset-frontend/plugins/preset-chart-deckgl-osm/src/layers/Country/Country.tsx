@@ -46,6 +46,7 @@ import fitViewport, { Viewport } from '../../utils/fitViewport';
 import { TooltipProps } from '../../components/Tooltip';
 import { countries } from './countries';
 import { ICON_MAPPING, createSVGIcon, cleanupIconUrl } from './markers';
+import { LayerOptions, LayerReturn } from '../../types/layers';
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
@@ -361,30 +362,45 @@ export type DeckGLCountryProps = {
   width: number;
 };
 
-export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: HandlerFunction,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
-  geoJson: JsonObject,
-  currentTime?: Date,
-  allData?: JsonObject[],
-  viewState?: ViewState
-): (Layer<{}> | (() => Layer<{}>))[] {
+export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))[] {
+  const { 
+    formData, 
+    payload, 
+    onAddFilter, 
+    setTooltip = () => {},
+    geoJson = {},
+    temporalOptions,
+    viewState,
+    opacity = 1.0
+  } = options;
+
+  const currentTime = temporalOptions?.currentTime;
+  const temporalData = temporalOptions?.allData || [];
+
   const fd = formData;
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
-  const data = payload.data.data;
+  const data = payload.data?.data || [];
   const records = Array.isArray(data) ? data : (data?.records || []);
 
-  // Use allData for color scale calculation if provided, otherwise use current records
-  const dataForColorScale = allData || records;
+  // Use temporalData for color scale calculation if provided, otherwise use current records
+  const dataForColorScale = temporalData.length > 0 ? temporalData : records;
   const allMetricValues = dataForColorScale
     .map((d: JsonObject) => d.metric)
     .filter((v: number) => v !== undefined && v !== null);
-  const extent: [number, number] = [Math.min(...allMetricValues), Math.max(...allMetricValues)];
-  const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || '');
-  const colorScale = scheme ? scheme.createLinearScale(extent) : scaleLinear<string>().range(['#ccc', '#343434']);
+
+  // Ensure we have valid metric values for the color scale
+  const extent: [number, number] = allMetricValues.length > 0 
+    ? [Math.min(...allMetricValues), Math.max(...allMetricValues)]
+    : [0, 100]; // Default range if no metrics available
+
+  // Get color scheme from registry or use default
+  const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
+  const colorScale = scheme 
+    ? scheme.createLinearScale(extent) 
+    : scaleLinear<string>()
+        .domain(extent)
+        .range(['#ccc', '#343434']);
 
   // Filter records based on current time for display
   const valueMap: { [key: string]: number } = {};
@@ -402,14 +418,15 @@ export function getLayer(
     }
   });
 
-  const features = geoJson.features.map((feature: JsonObject) => {
-    const value = valueMap[feature.properties.ISO];
+  // Ensure geoJson has features array
+  const features = (geoJson.features || []).map((feature: JsonObject) => {
+    const value = valueMap[feature.properties?.ISO];
     return {
       ...feature,
       properties: {
         ...feature.properties,
         metric: value,
-        fillColor: value !== undefined ? hexToRGB(colorScale(value)) : [0, 0, 0, 0],
+        fillColor: value !== undefined ? hexToRGB(colorScale(value)) : [200, 200, 200, 100], // Light gray for undefined
         strokeColor,
       },
     };
@@ -497,7 +514,7 @@ export function getLayer(
     extruded: fd.extruded,
     filled: fd.filled,
     stroked: fd.stroked,
-    opacity: 0.8,
+    opacity: opacity,
     getFillColor: (f: JsonObject) => f.properties.fillColor,
     getLineColor: (f: JsonObject) => f.properties.strokeColor,
     getLineWidth: fd.line_width || 1,
@@ -528,6 +545,7 @@ export function getLayer(
       sizeScale: 1,
       billboard: true,
       alphaCutoff: 0.05,
+      opacity: opacity,
       parameters: {
         depthTest: false,
       },
@@ -650,6 +668,7 @@ export function getLayer(
     sizeUnits: 'pixels',
     sizeMinPixels: 10,
     sizeMaxPixels: 24,
+    opacity: opacity,
   });
 
   console.log('Created text layer:', textLayer);
@@ -662,13 +681,13 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const [geoJson, setGeoJson] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [iconUrls, setIconUrls] = useState<string[]>([]);
-  const [currentTime, setCurrentTime] = useState<Date | undefined>();
+  const [currentTime, setCurrentTime] = useState<Date | undefined>(undefined);
   const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
   const [viewState, setViewState] = useState<ViewState>({
     ...props.viewport,
     zoom: props.viewport.zoom || 0,
-    bearing: 0,
-    pitch: 0,
+    bearing: props.viewport.bearing || 0,
+    pitch: props.viewport.pitch || 0,
     latitude: props.viewport.latitude,
     longitude: props.viewport.longitude,
   });
@@ -768,8 +787,8 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
       ...currentViewState,
       ...props.viewport,
       zoom: props.viewport.zoom || currentViewState.zoom || 0,
-      bearing: 0,
-      pitch: 0,
+      bearing: props.viewport.bearing || currentViewState.bearing || 0,
+      pitch: props.viewport.pitch || currentViewState.pitch || 0,
     }));
   }, [props.viewport]);
 
@@ -779,8 +798,8 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     const newViewState = {
       ...viewport,
       zoom: viewport.zoom || viewState.zoom || 0,
-      bearing: 0,
-      pitch: 0,
+      bearing: viewport.bearing || viewState.bearing || 0,
+      pitch: viewport.pitch || viewState.pitch || 0,
     };
     setViewState(newViewState);
     if (props.setControlValue) {
@@ -792,7 +811,19 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const layers = useMemo(
     () => {
       console.log('Recalculating layers with viewState:', viewState);
-      return geoJson ? getLayer(formData, payload, onAddFilter, setTooltip, geoJson, currentTime, undefined, viewState) : [];
+      return geoJson ? getLayer({
+        formData,
+        payload,
+        onAddFilter,
+        setTooltip,
+        geoJson,
+        temporalOptions: {
+          currentTime,
+          allData: [],
+        },
+        viewState,
+        opacity: 1.0
+      }) : [];
     },
     [formData, payload, onAddFilter, setTooltip, geoJson, currentTime, viewState],
   );
@@ -817,16 +848,16 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   }
 
   return (
-    <>
+    <div style={{ position: 'relative' }}>
       <DeckGLContainerStyledWrapper
         ref={containerRef}
-        mapboxApiAccessToken={payload.data?.mapboxApiKey}
-        viewport={viewport}
+        mapboxApiAccessToken={payload.data.mapboxApiKey}
+        viewport={viewState}
         layers={layers}
         mapStyle={formData.mapbox_style}
+        setControlValue={setControlValue}
         width={width}
         height={height}
-        setControlValue={setControlValue}
         onViewportChange={onViewportChange}
       >
         {timeRange && formData.temporal_column && (
@@ -881,7 +912,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
           />
         )}
       </DeckGLContainerStyledWrapper>
-    </>
+    </div>
   );
 });
 

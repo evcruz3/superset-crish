@@ -35,6 +35,7 @@ import CategoricalDeckGLContainer from './CategoricalDeckGLContainer';
 import fitViewport, { Viewport } from './utils/fitViewport';
 import { Point } from './types';
 import { TooltipProps } from './components/Tooltip';
+import { LayerOptions, LayerReturn } from './types/layers';
 
 type deckGLComponentProps = {
   datasource: Datasource;
@@ -46,21 +47,15 @@ type deckGLComponentProps = {
   viewport: Viewport;
   width: number;
 };
-export interface getLayerType<T> {
-  (
-    formData: QueryFormData,
-    payload: JsonObject,
-    onAddFilter: HandlerFunction | undefined,
-    setTooltip: (tooltip: TooltipProps['tooltip']) => void,
-    datasource?: Datasource,
-  ): T;
-}
+
+export type getLayerType<T> = (options: LayerOptions) => T;
+
 interface getPointsType {
   (data: JsonObject[]): Point[];
 }
 
 export function createDeckGLComponent(
-  getLayer: getLayerType<unknown>,
+  getLayer: getLayerType<LayerReturn>,
   getPoints: getPointsType,
 ) {
   // Higher order component
@@ -91,9 +86,18 @@ export function createDeckGLComponent(
 
     const computeLayer = useCallback(
       (props: deckGLComponentProps) => {
-        const { formData, payload, onAddFilter } = props;
+        const { formData, payload, onAddFilter, datasource } = props;
 
-        return getLayer(formData, payload, onAddFilter, setTooltip) as Layer;
+        const layer = getLayer({
+          formData,
+          payload,
+          onAddFilter,
+          setTooltip,
+          datasource,
+        });
+
+        // Handle both single layer and array of layers
+        return Array.isArray(layer) ? layer[0] : layer;
       },
       [setTooltip],
     );
@@ -128,7 +132,7 @@ export function createDeckGLComponent(
 }
 
 export function createCategoricalDeckGLComponent(
-  getLayer: getLayerType<Layer>,
+  getLayer: getLayerType<Layer<{}>>,
   getPoints: getPointsType,
 ) {
   return function Component(props: deckGLComponentProps) {
