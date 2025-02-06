@@ -110,7 +110,7 @@ for administrative_post in administrative_posts:
         for disease_name, total_cases in diseases.items():
             # Create base case report object with the new schema
             case_entry = {
-                'week_date': monday.isoformat(),
+                'week_start_date': monday.isoformat(),
                 'year': year,
                 'week_number': week,
                 'disease': disease_name,
