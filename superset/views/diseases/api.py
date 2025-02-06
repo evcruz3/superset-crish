@@ -4,14 +4,15 @@ from flask_appbuilder.security.decorators import has_access_api
 from superset.views.base_api import BaseSupersetApi
 from superset.extensions import event_logger, db
 from superset import app
-from sqlalchemy import Table, Column, Integer, String, Float, MetaData, PrimaryKeyConstraint
+from sqlalchemy import Table, Column, Integer, String, Float, MetaData, PrimaryKeyConstraint, DateTime
 import pandas as pd
 import logging
 from typing import Dict, List, Tuple
 import numpy as np
 from sqlalchemy import create_engine, text
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
+from isoweek import Week
 import os
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class UpdateCaseReportsRestApi(BaseSupersetApi):
             Column('disease', String(255), nullable=False),
             Column('municipality_code', String(10), nullable=False),
             Column('municipality', String(255)),
+            Column('week_start_date', DateTime, nullable=False),
             # Add composite primary key
             PrimaryKeyConstraint('year', 'week_number', 'disease', 'municipality_code', name='pk_tlhis_diseases'),
             extend_existing=True
@@ -285,6 +287,9 @@ class UpdateCaseReportsRestApi(BaseSupersetApi):
                 df['year'] = year
                 df['municipality_code'] = municipality_code
                 df['municipality'] = municipality_codes.get(municipality_code, '')
+                # Calculate the Monday date for this year and week
+                week_obj = Week(year, week)
+                df['week_start_date'] = week_obj.monday()
                 all_data.append(df)
             
             if not all_data:
@@ -311,6 +316,8 @@ class UpdateCaseReportsRestApi(BaseSupersetApi):
                         # Map Python types to PostgreSQL types
                         if col in ['disease', 'municipality_code', 'municipality']:
                             pg_type = 'VARCHAR(255)'
+                        elif col == 'week_start_date':
+                            pg_type = 'TIMESTAMP'
                         else:
                             pg_type = 'DOUBLE PRECISION'  # For numeric values
                             

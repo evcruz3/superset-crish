@@ -148,6 +148,22 @@ services:
     restart: unless-stopped
     user: "root"
 
+  case-reports-initializer:
+    build: ./crish-case-reports-initializer
+    container_name: superset_case_reports_initializer
+    volumes:
+      - ./crish-case-reports-initializer/data:/app/data
+    env_file:
+      - path: docker/.env # default
+        required: true
+      - path: docker/.env-local # optional override
+        required: false
+    depends_on:
+      - db
+      - superset-init
+    restart: "no"
+    user: "root"
+
 volumes:
   superset_home:
     external: false

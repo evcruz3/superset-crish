@@ -17,16 +17,11 @@
  * under the License.
  */
 import React from 'react';
-import { t } from '@superset-ui/core';
-import { Col, Row } from 'src/components';
-import { useTheme } from '@superset-ui/core';
 import DashboardTabs from '../WeatherForecasts/DashboardTabs';
-import DashboardPage from 'src/dashboard/containers/DashboardPage';
 
 export default function DiseaseForecasts() {
-  const theme = useTheme();
 
-  return <DashboardPage idOrSlug="disease_forecasts" />;
+  return <DashboardTabs idOrSlug="disease_forecasts" selectedTabIndex={0} />;
 
 //   return (
 //     <div className="container">
