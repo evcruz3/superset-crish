@@ -296,12 +296,34 @@ interface ExtendedGeoJsonLayer extends GeoJsonLayer {
   categoricalValues?: string[];
 }
 
-const getDatesInRange = (startDate: Date, endDate: Date) => {
+const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
   const dates: Date[] = [];
   const currentDate = new Date(startDate);
+
   while (currentDate <= endDate) {
     dates.push(new Date(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
+    
+    // Increment based on time grain
+    switch (timeGrain) {
+      case 'P1Y':
+        currentDate.setFullYear(currentDate.getFullYear() + 1);
+        break;
+      case 'P1M':
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        break;
+      case 'P1W':
+        currentDate.setDate(currentDate.getDate() + 7);
+        break;
+      case 'P1D':
+        currentDate.setDate(currentDate.getDate() + 1);
+        break;
+      case 'PT1H':
+        currentDate.setHours(currentDate.getHours() + 1);
+        break;
+      default:
+        // Default to daily if no time grain specified
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
   }
   return dates;
 };
@@ -408,6 +430,8 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     viewState,
     opacity = 1.0
   } = options;
+
+  console.log('options', options);
 
   const currentTime = temporalOptions?.currentTime;
   const temporalData = temporalOptions?.allData || [];
@@ -979,19 +1003,40 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
               />
             </div>
             <div className="timeline-container">
-              {getDatesInRange(timeRange[0], timeRange[1]).map((date, index) => (
-                <div 
-                  key={index} 
-                  className={`day-label ${
-                    currentTime && date.toDateString() === currentTime.toDateString() 
-                      ? 'active' 
-                      : ''
-                  }`}
-                  onClick={() => setCurrentTime(date)}
-                >
-                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                </div>
-              ))}
+              {getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla).map((date, index) => {
+                // Format date based on time grain
+                let dateFormat: Intl.DateTimeFormatOptions = {};
+                switch (formData.time_grain_sqla) {
+                  case 'P1Y':
+                    dateFormat = { year: 'numeric' };
+                    break;
+                  case 'P1M':
+                    dateFormat = { month: 'short', year: 'numeric' };
+                    break;
+                  case 'P1W':
+                    dateFormat = { month: 'short', day: 'numeric' };
+                    break;
+                  case 'PT1H':
+                    dateFormat = { hour: 'numeric', hour12: true };
+                    break;
+                  default:
+                    dateFormat = { weekday: 'short' };
+                }
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`day-label ${
+                      currentTime && date.toDateString() === currentTime.toDateString() 
+                        ? 'active' 
+                        : ''
+                    }`}
+                    onClick={() => setCurrentTime(date)}
+                  >
+                    {date.toLocaleDateString('en-US', dateFormat)}
+                  </div>
+                );
+              })}
             </div>
           </StyledTimelineSlider>
         )}

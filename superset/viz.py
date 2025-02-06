@@ -2285,7 +2285,9 @@ class DeckCountry(BaseDeckGLViz):
     is_timeseries = False
 
     def query_obj(self) -> QueryObjectDict:
-        # Get country and entity from form data
+        query_obj = super().query_obj()
+        
+        # Get base requirements
         if not self.form_data.get("select_country"):
             raise QueryObjectValidationError(_("Must specify a country"))
         
@@ -2297,20 +2299,47 @@ class DeckCountry(BaseDeckGLViz):
         if not metric:
             raise QueryObjectValidationError(_("Must specify a metric"))
 
-        query_obj = super().query_obj()
+        # Set up time grain handling
+        temporal_column = self.form_data.get("temporal_column")
+        self.is_timeseries = bool(temporal_column and self.form_data.get("time_grain_sqla"))
+        
+        if self.is_timeseries:
+            # If temporal column is set and time grain is specified, add it to extras
+            query_obj["extras"] = {
+                "time_grain_sqla": self.form_data.get("time_grain_sqla"),
+            }
+            
+            # Set granularity to the temporal column
+            query_obj["granularity"] = temporal_column
+            
+            # Mark as timeseries if using temporal features
+            query_obj["is_timeseries"] = True
+            
+            # Handle time range if specified
+            if self.form_data.get("time_range"):
+                time_range = self.form_data.get("time_range")
+                since, until = get_since_until(
+                    relative_start=relative_start,
+                    relative_end=relative_end,
+                    time_range=time_range,
+                    since=self.form_data.get("since"),
+                    until=self.form_data.get("until"),
+                )
+                query_obj["from_dttm"] = since
+                query_obj["to_dttm"] = until
+
+        # Set up metrics and columns
         query_obj["metrics"] = [metric]
         query_obj["columns"] = [entity]
 
-        # Add categorical column to columns if specified
+        # Add categorical column if specified
         categorical_column = self.form_data.get("categorical_column")
         if categorical_column and categorical_column not in query_obj["columns"]:
             query_obj["columns"].append(categorical_column)
 
-        # Add temporal column to groupby if specified
-        temporal_column = self.form_data.get("temporal_column")
-        if temporal_column:
-            if temporal_column not in query_obj["columns"]:
-                query_obj["columns"].append(temporal_column)
+        # Add temporal column to columns if specified
+        if temporal_column and temporal_column not in query_obj["columns"]:
+            query_obj["columns"].append(temporal_column)
         
         if self.form_data.get("js_columns"):
             query_obj["columns"].extend(self.form_data.get("js_columns") or [])
@@ -2342,6 +2371,8 @@ class DeckCountry(BaseDeckGLViz):
             columns_to_use.append(categorical_column)
             
         df = df[columns_to_use]
+        
+        # Rename columns for consistency
         column_names = ["country_id", "metric"]
         if temporal_column:
             column_names.append(temporal_column)
@@ -2349,6 +2380,16 @@ class DeckCountry(BaseDeckGLViz):
             column_names.append("categorical_value")
         df.columns = column_names
         
+        # If temporal data exists, ensure proper datetime format
+        if temporal_column:
+            df[temporal_column] = pd.to_datetime(df[temporal_column])
+            
+            # Group by time grain if specified
+            if self.form_data.get("time_grain_sqla"):
+                # Note: The actual time grain aggregation should be handled by the database
+                # through the query_obj, this is just for final formatting
+                df = df.sort_values(temporal_column)
+
         # Apply any custom data mutator if specified
         data = df.to_dict(orient="records")
         if self.form_data.get("js_data_mutator"):
@@ -2365,6 +2406,8 @@ class DeckCountry(BaseDeckGLViz):
             "renderWhileDragging": self.form_data.get("render_while_dragging"),
             "tooltip": self.form_data.get("rich_tooltip"),
             "color": self.form_data.get("mapbox_color"),
+            "temporal_column": temporal_column,
+            "time_grain_sqla": self.form_data.get("time_grain_sqla"),
         }
 
     def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
