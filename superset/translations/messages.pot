@@ -25,7 +25,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-04 23:10+0800\n"
+"POT-Creation-Date: 2025-02-07 00:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2152,10 +2152,10 @@ msgstr ""
 msgid "Cannot parse time string [%(human_readable)s]"
 msgstr ""
 
-msgid "CartoDB Voyager"
+msgid "Cannot remove files that are uploading or already uploaded"
 msgstr ""
 
-msgid "Case reports uploaded successfully"
+msgid "CartoDB Voyager"
 msgstr ""
 
 msgid "Catalog"
@@ -2168,6 +2168,9 @@ msgid "Categorical Color"
 msgstr ""
 
 msgid "Categorical Color Scheme"
+msgstr ""
+
+msgid "Categorical Column"
 msgstr ""
 
 msgid "Categories to group by on the x-axis."
@@ -2467,9 +2470,6 @@ msgstr ""
 msgid "Choose already exists"
 msgstr ""
 
-msgid "Choose between linear and categorical color schemes"
-msgstr ""
-
 msgid "Choose chart type"
 msgstr ""
 
@@ -2573,6 +2573,9 @@ msgstr ""
 msgid "Click or drag file to this area to upload"
 msgstr ""
 
+msgid "Click or drag files to this area to upload"
+msgstr ""
+
 msgid "Click the lock to make changes."
 msgstr ""
 
@@ -2668,9 +2671,6 @@ msgstr ""
 msgid "Color Scheme"
 msgstr ""
 
-msgid "Color Scheme Type"
-msgstr ""
-
 msgid "Color Steps"
 msgstr ""
 
@@ -2678,9 +2678,6 @@ msgid "Color bounds"
 msgstr ""
 
 msgid "Color by"
-msgstr ""
-
-msgid "Color for values not specified in the color mapping"
 msgstr ""
 
 msgid "Color metric"
@@ -2771,6 +2768,9 @@ msgid "Column referenced by aggregate is undefined: %(column)s"
 msgstr ""
 
 msgid "Column select"
+msgstr ""
+
+msgid "Column to display in the text layer and tooltip instead of metric value"
 msgstr ""
 
 msgid ""
@@ -3718,9 +3718,6 @@ msgstr ""
 msgid "Default Catalog"
 msgstr ""
 
-msgid "Default Color"
-msgstr ""
-
 msgid "Default Endpoint"
 msgstr ""
 
@@ -4067,6 +4064,9 @@ msgid "Disables the drill to detail feature for this database."
 msgstr ""
 
 msgid "Discard"
+msgstr ""
+
+msgid "Disease Forecasts"
 msgstr ""
 
 msgid "Diseases"
@@ -4618,13 +4618,13 @@ msgstr ""
 msgid "Enter Primary Credentials"
 msgstr ""
 
-msgid "Enter a metric value"
-msgstr ""
-
 msgid "Enter a name for this sheet"
 msgstr ""
 
 msgid "Enter a new title for the tab"
+msgstr ""
+
+msgid "Enter a value"
 msgstr ""
 
 msgid "Enter alert name"
@@ -5074,6 +5074,9 @@ msgstr ""
 msgid "File uploaded and processed successfully"
 msgstr ""
 
+msgid "Filename"
+msgstr ""
+
 msgid "Fill Color"
 msgstr ""
 
@@ -5432,10 +5435,10 @@ msgstr ""
 msgid "Guest user cannot modify chart payload"
 msgstr ""
 
-msgid "Guide to Updating Case Reports"
+msgid "Guide to Updating Facilities Data"
 msgstr ""
 
-msgid "Guide to Updating Facilities Data"
+msgid "Guide to Uploading Case Reports"
 msgstr ""
 
 msgid "HOUR"
@@ -6209,9 +6212,6 @@ msgstr ""
 msgid "Line width unit"
 msgstr ""
 
-msgid "Linear"
-msgstr ""
-
 msgid "Linear Color Scheme"
 msgstr ""
 
@@ -6387,9 +6387,7 @@ msgstr ""
 msgid "Map Style"
 msgstr ""
 
-msgid ""
-"Map specific metric values to colors. Click \"+ Add Value\" to add a new "
-"mapping."
+msgid "Map specific values to colors. Click \"+ Add Value\" to add a new mapping."
 msgstr ""
 
 msgid "MapBox"
@@ -6543,9 +6541,6 @@ msgstr ""
 msgid "Metric Unit"
 msgstr ""
 
-msgid "Metric Value"
-msgstr ""
-
 #, python-format
 msgid "Metric ``%(metric_name)s`` not found in %(dataset_name)s."
 msgstr ""
@@ -6692,6 +6687,9 @@ msgid "Minutes %s"
 msgstr ""
 
 msgid "Minutes value"
+msgstr ""
+
+msgid "Missing Municipalities"
 msgstr ""
 
 msgid "Missing URL parameters"
@@ -7781,14 +7779,20 @@ msgid "Please confirm the overwrite values."
 msgstr ""
 
 msgid ""
-"Please ensure your file follows the TLHIS/22:Weekly surveillance Excel "
-"format."
+"Please ensure your files follow the TLHIS/22:Weekly surveillance Excel "
+"format and include the municipality name (e.g., Dili) or code (e.g., TL-"
+"DI) in the filename."
 msgstr ""
 
 msgid "Please enter a SQLAlchemy URI to test"
 msgstr ""
 
 msgid "Please enter valid text. Spaces alone are not permitted."
+msgstr ""
+
+msgid ""
+"Please include municipality name (e.g., Dili) or code (e.g., TL-DI) in "
+"filenames"
 msgstr ""
 
 msgid "Please re-enter the password."
@@ -7814,9 +7818,6 @@ msgstr ""
 msgid "Please select a file first"
 msgstr ""
 
-msgid "Please select a municipality"
-msgstr ""
-
 msgid "Please select a valid week number (1-53)"
 msgstr ""
 
@@ -7826,13 +7827,13 @@ msgstr ""
 msgid "Please select both a Dataset and a Chart type to proceed"
 msgstr ""
 
+msgid "Please select files first"
+msgstr ""
+
 #, python-format
 msgid ""
 "Please specify the Dataset ID for the ``%(name)s`` metric in the Jinja "
 "macro."
-msgstr ""
-
-msgid "Please upload your TLHIS/22:Weekly surveillance Excel file (.xls or .xlsx)"
 msgstr ""
 
 msgid "Please use 3 different metric labels"
@@ -9017,9 +9018,6 @@ msgstr ""
 msgid "Select Delivery Method"
 msgstr ""
 
-msgid "Select Municipality"
-msgstr ""
-
 msgid "Select Tags"
 msgstr ""
 
@@ -9264,6 +9262,9 @@ msgstr ""
 msgid ""
 "Select values in highlighted field(s) in the control panel. Then run the "
 "query by clicking on the %s button."
+msgstr ""
+
+msgid "Selected Files"
 msgstr ""
 
 msgid "Selecting a database is required"
@@ -9886,6 +9887,9 @@ msgid "Start"
 msgstr ""
 
 msgid "Start (Longitude, Latitude): "
+msgstr ""
+
+msgid "Start Bulk Upload"
 msgstr ""
 
 msgid "Start Longitude & Latitude"
@@ -11944,6 +11948,9 @@ msgid "Upload Excel to database"
 msgstr ""
 
 msgid "Upload File"
+msgstr ""
+
+msgid "Upload Files"
 msgstr ""
 
 msgid "Upload JSON file"
