@@ -562,13 +562,220 @@ interface Subslice {
   form_data: SubsliceFormData;
 }
 
-// Add this helper function to generate dates between timeRange
-const getDatesInRange = (startDate: Date, endDate: Date) => {
+// Add these helper functions before the DeckMulti component
+const TIME_GRAIN_ORDER = {
+  'P1Y': 5,  // Yearly
+  'P1M': 4,  // Monthly
+  'P1W': 3,  // Weekly
+  'P1D': 2,  // Daily
+  'PT1H': 1, // Hourly
+};
+
+const getLargestTimeGrain = (timeGrains: string[]): string => {
+  return timeGrains.reduce((largest, current) => {
+    const largestOrder = TIME_GRAIN_ORDER[largest as keyof typeof TIME_GRAIN_ORDER] || 0;
+    const currentOrder = TIME_GRAIN_ORDER[current as keyof typeof TIME_GRAIN_ORDER] || 0;
+    return currentOrder > largestOrder ? current : largest;
+  }, 'P1D'); // Default to daily if no valid grains found
+};
+
+const aggregateDataToTimeGrain = (
+  data: JsonObject[],
+  sourceColumn: string,
+  sourceGrain: string,
+  targetGrain: string,
+  metricColumns: string[]
+): JsonObject[] => {
+  console.log('Aggregating data:', {
+    sourceGrain,
+    targetGrain,
+    metricColumns,
+    dataLength: data.length,
+    sampleData: data.slice(0, 2),
+  });
+
+  // First convert all dates to Date objects
+  const dataWithDates = data.map(row => ({
+    ...row,
+    __date: new Date(row[sourceColumn]),
+  }));
+
+  // Function to get the period start date based on grain
+  const getPeriodStart = (date: Date, grain: string): Date => {
+    const newDate = new Date(date);
+    switch (grain) {
+      case 'P1Y':
+        return new Date(newDate.getFullYear(), 0, 1, 0, 0, 0, 0);
+      case 'P1M':
+        return new Date(newDate.getFullYear(), newDate.getMonth(), 1, 0, 0, 0, 0);
+      case 'P1W':
+        // Get the first day of the week (Sunday)
+        const dayOfWeek = newDate.getDay();
+        newDate.setDate(newDate.getDate() - dayOfWeek);
+        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 0, 0, 0, 0);
+      case 'P1D':
+        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 0, 0, 0, 0);
+      case 'PT1H':
+        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), newDate.getHours(), 0, 0, 0);
+      default:
+        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 0, 0, 0, 0);
+    }
+  };
+
+  // Function to get the period end date based on grain
+  const getPeriodEnd = (date: Date, grain: string): Date => {
+    const startDate = getPeriodStart(date, grain);
+    const endDate = new Date(startDate);
+    
+    switch (grain) {
+      case 'P1Y':
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        break;
+      case 'P1M':
+        endDate.setMonth(endDate.getMonth() + 1);
+        break;
+      case 'P1W':
+        endDate.setDate(endDate.getDate() + 7);
+        break;
+      case 'P1D':
+        endDate.setDate(endDate.getDate() + 1);
+        break;
+      case 'PT1H':
+        endDate.setHours(endDate.getHours() + 1);
+        break;
+      default:
+        endDate.setDate(endDate.getDate() + 1);
+    }
+    
+    // Subtract 1 millisecond to get the end of the previous period
+    endDate.setMilliseconds(-1);
+    return endDate;
+  };
+
+  // Function to check if a date falls within a target period
+  const isWithinPeriod = (date: Date, periodStart: Date, grain: string): boolean => {
+    const periodEnd = getPeriodEnd(periodStart, grain);
+    return date >= periodStart && date <= periodEnd;
+  };
+
+  // Group data by country_id AND target time grain, ensuring proper period alignment
+  const groupedData = new Map<string, JsonObject[]>();
+  dataWithDates.forEach(row => {
+    const rowDate = row.__date;
+    // Get the aligned period start for the target grain
+    const periodStart = getPeriodStart(rowDate, targetGrain);
+    
+    // Create a composite key using both country_id and aligned period
+    const countryId = row.country_id || 'unknown';
+    const key = `${countryId}|${periodStart.toISOString()}`;
+    
+    // Only include the row if it falls within the target period
+    if (isWithinPeriod(rowDate, periodStart, targetGrain)) {
+      console.log('Grouping row:', {
+        countryId,
+        rowDate: rowDate.toISOString(),
+        periodStart: periodStart.toISOString(),
+        periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
+        key,
+      });
+
+      if (!groupedData.has(key)) {
+        groupedData.set(key, []);
+      }
+      groupedData.get(key)?.push(row);
+    } else {
+      console.warn('Row falls outside target period:', {
+        rowDate: rowDate.toISOString(),
+        periodStart: periodStart.toISOString(),
+        periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
+      });
+    }
+  });
+
+  console.log('Grouped data stats:', {
+    numberOfGroups: groupedData.size,
+    sampleGroup: Array.from(groupedData.entries())[0],
+    allKeys: Array.from(groupedData.keys()),
+    periodBoundaries: Array.from(groupedData.keys()).map(key => {
+      const [countryId, periodStr] = key.split('|');
+      const periodStart = new Date(periodStr);
+      return {
+        countryId,
+        periodStart: periodStart.toISOString(),
+        periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
+      };
+    }),
+  });
+
+  // Rest of the aggregation logic remains the same
+  const result = Array.from(groupedData.entries()).map(([key, rows]) => {
+    const [countryId, periodKey] = key.split('|');
+    const aggregated: JsonObject = {
+      [sourceColumn]: periodKey,
+      country_id: countryId,
+    };
+
+    metricColumns.forEach(metric => {
+      const values = rows.map(row => Number(row[metric])).filter(v => !isNaN(v));
+      if (values.length > 0) {
+        aggregated[metric] = values.reduce((a, b) => a + b, 0) / values.length;
+      }
+    });
+
+    Object.keys(rows[0]).forEach(key => {
+      if (!metricColumns.includes(key) && 
+          key !== sourceColumn && 
+          key !== '__date' && 
+          key !== 'country_id') {
+        aggregated[key] = rows[0][key];
+      }
+    });
+
+    return aggregated;
+  });
+
+  console.log('Aggregation result:', {
+    resultLength: result.length,
+    sampleResult: result.slice(0, 2),
+    uniqueCountries: new Set(result.map(r => r.country_id)).size,
+    periodSummary: result.map(r => ({
+      country: r.country_id,
+      period: r[sourceColumn],
+      periodEnd: getPeriodEnd(new Date(r[sourceColumn]), targetGrain).toISOString(),
+    })),
+  });
+
+  return result;
+};
+
+const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
   const dates: Date[] = [];
   const currentDate = new Date(startDate);
+
   while (currentDate <= endDate) {
     dates.push(new Date(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
+    
+    // Increment based on time grain
+    switch (timeGrain) {
+      case 'P1Y':
+        currentDate.setFullYear(currentDate.getFullYear() + 1);
+        break;
+      case 'P1M':
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        break;
+      case 'P1W':
+        currentDate.setDate(currentDate.getDate() + 7);
+        break;
+      case 'P1D':
+        currentDate.setDate(currentDate.getDate() + 1);
+        break;
+      case 'PT1H':
+        currentDate.setHours(currentDate.getHours() + 1);
+        break;
+      default:
+        // Default to daily if no time grain specified
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
   }
   return dates;
 };
@@ -598,11 +805,66 @@ const DeckMulti = (props: DeckMultiProps) => {
     json: JsonObject,
     filteredData: JsonObject[],
   ) => {
-    const jsonWithFilteredData = {
+    console.log('Creating layer:', {
+      sliceId: subslice.slice_id,
+      vizType: subslice.form_data.viz_type,
+      temporalColumn: subslice.form_data.temporal_column,
+      timeGrain: subslice.form_data.time_grain_sqla,
+      dataLength: filteredData.length,
+    });
+
+    // Get the largest time grain from all temporal layers
+    const timeGrains = Object.values(temporalData)
+      .map(({ column, data }) => {
+        const sliceFormData = props.payload.data.slices.find(
+          (s: any) => s.form_data.temporal_column === column
+        )?.form_data;
+        return sliceFormData?.time_grain_sqla;
+      })
+      .filter(Boolean) as string[];
+
+    console.log('Time grains analysis:', {
+      availableTimeGrains: timeGrains,
+      temporalDataKeys: Object.keys(temporalData),
+    });
+
+    const largestTimeGrain = getLargestTimeGrain(timeGrains);
+    console.log('Selected largest time grain:', largestTimeGrain);
+
+    // If this layer has temporal data and its grain is smaller than the largest,
+    // aggregate its data to match the largest grain
+    let processedData = filteredData;
+    if (subslice.form_data.temporal_column && 
+        subslice.form_data.time_grain_sqla !== largestTimeGrain) {
+      console.log('Need to aggregate data:', {
+        fromGrain: subslice.form_data.time_grain_sqla,
+        toGrain: largestTimeGrain,
+        currentDataLength: filteredData.length,
+      });
+
+      const metrics = Array.isArray(subslice.form_data.metric) 
+        ? subslice.form_data.metric 
+        : [subslice.form_data.metric];
+      
+      processedData = aggregateDataToTimeGrain(
+        filteredData,
+        subslice.form_data.temporal_column,
+        subslice.form_data.time_grain_sqla || 'P1D',
+        largestTimeGrain,
+        metrics
+      );
+
+      console.log('Data after aggregation:', {
+        processedDataLength: processedData.length,
+        sampleProcessedData: processedData.slice(0, 2),
+      });
+    }
+
+    const jsonWithProcessedData = {
       ...json,
       data: {
         ...json.data,
-        data: filteredData,
+        data: processedData,
       },
     };
 
@@ -621,7 +883,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         if (typeof layerGenerators.deck_country === 'function') {
           const layers = layerGenerators.deck_country({
             formData: subslice.form_data,
-            payload: jsonWithFilteredData,
+            payload: jsonWithProcessedData,
             onAddFilter: props.onAddFilter,
             setTooltip,
             geoJson: geoJsonData,
@@ -655,7 +917,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     } else if (typeof layerGenerators[subslice.form_data.viz_type] === 'function') {
       const layer = layerGenerators[subslice.form_data.viz_type]({
         formData: subslice.form_data,
-        payload: jsonWithFilteredData,
+        payload: jsonWithProcessedData,
         onAddFilter: props.onAddFilter,
         setTooltip,
         datasource: props.datasource,
@@ -671,7 +933,14 @@ const DeckMulti = (props: DeckMultiProps) => {
         [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
       }));
     }
-  }, [props.onAddFilter, props.datasource, setTooltip, currentTime, layerOpacities]);
+
+    // Add logging before returning from the function
+    console.log('Layer creation complete:', {
+      sliceId: subslice.slice_id,
+      hasProcessedData: processedData.length > 0,
+      timeGrain: largestTimeGrain,
+    });
+  }, [props.onAddFilter, props.datasource, setTooltip, currentTime, layerOpacities, temporalData]);
 
   // Function to filter data based on current time
   const filterDataByTime = useCallback((
@@ -679,10 +948,23 @@ const DeckMulti = (props: DeckMultiProps) => {
     temporalColumn: string,
     time: Date
   ) => {
-    return data.filter(row => {
+    console.log('Filtering data by time:', {
+      originalDataLength: data.length,
+      temporalColumn,
+      filterTime: time,
+    });
+
+    const filtered = data.filter(row => {
       const rowDate = new Date(row[temporalColumn]);
       return rowDate <= time;
     });
+
+    console.log('Time filtering result:', {
+      filteredDataLength: filtered.length,
+      sampleFilteredData: filtered.slice(0, 2),
+    });
+
+    return filtered;
   }, []);
 
   const loadLayer = useCallback(
@@ -1069,19 +1351,52 @@ const DeckMulti = (props: DeckMultiProps) => {
             />
           </div>
           <div className="timeline-container">
-            {timeRange && getDatesInRange(timeRange[0], timeRange[1]).map((date, index) => (
-              <div 
-                key={index} 
-                className={`day-label ${
-                  currentTime && date.toDateString() === currentTime.toDateString() 
-                    ? 'active' 
-                    : ''
-                }`}
-                onClick={() => setCurrentTime(date)}
-              >
-                {date.toLocaleDateString('en-US', { weekday: 'short' })}
-              </div>
-            ))}
+            {(() => {
+              const timeGrains = Object.values(temporalData)
+                .map(({ column }) => {
+                  const sliceFormData = props.payload.data.slices.find(
+                    (s: any) => s.form_data.temporal_column === column
+                  )?.form_data;
+                  return sliceFormData?.time_grain_sqla;
+                })
+                .filter(Boolean) as string[];
+              
+              const largestTimeGrain = getLargestTimeGrain(timeGrains);
+              
+              return getDatesInRange(timeRange[0], timeRange[1], largestTimeGrain).map((date, index) => {
+                let dateFormat: Intl.DateTimeFormatOptions = {};
+                switch (largestTimeGrain) {
+                  case 'P1Y':
+                    dateFormat = { year: 'numeric' };
+                    break;
+                  case 'P1M':
+                    dateFormat = { month: 'short', year: 'numeric' };
+                    break;
+                  case 'P1W':
+                    dateFormat = { month: 'short', day: 'numeric' };
+                    break;
+                  case 'PT1H':
+                    dateFormat = { hour: 'numeric', hour12: true };
+                    break;
+                  default:
+                    dateFormat = { weekday: 'short' };
+                }
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`day-label ${
+                      currentTime && date.toDateString() === currentTime.toDateString() 
+                        ? 'active' 
+                        : ''
+                    }`}
+                    onClick={() => setCurrentTime(date)}
+                  >
+                    {date.toLocaleDateString('en-US', dateFormat)}
+                  </div>
+                );
+              });
+            })()}
           </div>
         </StyledTimelineSlider>
       )}
