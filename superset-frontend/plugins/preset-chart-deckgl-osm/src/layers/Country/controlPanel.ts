@@ -128,6 +128,7 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        ['time_grain_sqla'],
         ['adhoc_filters'],
         [filterNulls],
         ['row_limit'],
