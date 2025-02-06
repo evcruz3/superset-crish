@@ -296,6 +296,16 @@ interface ExtendedGeoJsonLayer extends GeoJsonLayer {
   categoricalValues?: string[];
 }
 
+const getDatesInRange = (startDate: Date, endDate: Date) => {
+  const dates: Date[] = [];
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  return dates;
+};
+
 const StyledTimelineSlider = styled.div`
   position: absolute;
   top: 10px;
@@ -335,11 +345,22 @@ const StyledTimelineSlider = styled.div`
   .timeline-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    overflow-x: auto;  // Allow horizontal scrolling if many dates
+    gap: 4px;
+    padding-bottom: 4px; // Space for the scrollbar
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   .day-label {
+    flex: 0 0 auto; // Prevent shrinking
     font-size: 12px;
     color: #666;
     text-align: center;
@@ -348,6 +369,7 @@ const StyledTimelineSlider = styled.div`
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap; // Prevent text wrapping
 
     &:hover {
       background: #f0f0f0;
@@ -957,22 +979,17 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
               />
             </div>
             <div className="timeline-container">
-              {['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, index) => (
+              {getDatesInRange(timeRange[0], timeRange[1]).map((date, index) => (
                 <div 
                   key={index} 
                   className={`day-label ${
-                    currentTime && 
-                    new Date(timeRange[0].getTime() + index * 24 * 60 * 60 * 1000).toDateString() === currentTime.toDateString() 
+                    currentTime && date.toDateString() === currentTime.toDateString() 
                       ? 'active' 
                       : ''
                   }`}
-                  onClick={() => {
-                    const date = new Date(timeRange[0].getTime());
-                    date.setDate(date.getDate() + index);
-                    setCurrentTime(date);
-                  }}
+                  onClick={() => setCurrentTime(date)}
                 >
-                  {day}
+                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
               ))}
             </div>
