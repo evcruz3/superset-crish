@@ -131,9 +131,6 @@ COPY --chown=superset:superset superset-frontend/package.json superset-frontend/
 COPY --chown=superset:superset requirements/base.txt requirements/
 COPY --chown=superset:superset scripts/check-env.py scripts/
 
-# Copy the po2json.sh script
-COPY --chown=superset:superset superset-frontend/scripts/po2json.sh superset-frontend/scripts/po2json.sh; \
-
 # Install Python dependencies using docker/pip-install.sh
 RUN --mount=type=bind,source=./docker,target=/docker \
     --mount=type=cache,target=/root/.cache/pip \
