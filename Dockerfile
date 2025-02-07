@@ -133,7 +133,7 @@ COPY --chown=superset:superset scripts/check-env.py scripts/
 
 # If BUILD_TRANSLATIONS is true, copy the po2json.sh script
 RUN if [ "$BUILD_TRANSLATIONS" = "true" ]; then \
-    COPY --chown=superset:superset scripts/po2json.sh scripts/po2json.sh; \
+    COPY --chown=superset:superset superset-frontend/scripts/po2json.sh superset-frontend/scripts/po2json.sh; \
 fi
 
 # Install Python dependencies using docker/pip-install.sh
