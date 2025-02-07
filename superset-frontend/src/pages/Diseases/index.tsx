@@ -1,8 +1,8 @@
 import withToasts from "src/components/MessageToasts/withToasts";
-import DashboardPage from "src/dashboard/containers/DashboardPage";
+import DashboardTabs from "../WeatherForecasts/DashboardTabs";
 
 function Diseases() {
-    return <DashboardPage idOrSlug={"diseases-overview"}/>;
+    return <DashboardTabs idOrSlug={"diseases-overview"} selectedTabIndex={0} />;
 }
 
 export default withToasts(Diseases); 

@@ -1287,12 +1287,28 @@ const DeckMulti = (props: DeckMultiProps) => {
         const minDate = new Date(Math.min(...allDates.map(d => d.getTime())))
         const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())))
         setTimeRange([minDate, maxDate])
+        
         if (!currentTime) {
-          setCurrentTime(minDate)
+          // Find the nearest date to current system time
+          const currentSystemTime = new Date().getTime()
+          const nearestDate = allDates.reduce((prev, curr) => {
+            return Math.abs(curr.getTime() - currentSystemTime) < Math.abs(prev.getTime() - currentSystemTime)
+              ? curr
+              : prev
+          })
+
+          // Set the nearest date as current time, but ensure it's within the time range
+          const boundedTime = new Date(
+            Math.min(
+              Math.max(nearestDate.getTime(), minDate.getTime()),
+              maxDate.getTime()
+            )
+          )
+          setCurrentTime(boundedTime)
         }
       }
     }
-  }, [temporalData])
+  }, [temporalData, currentTime])
 
   useEffect(() => {
     const initialVisibility: { [key: number]: boolean } = {}

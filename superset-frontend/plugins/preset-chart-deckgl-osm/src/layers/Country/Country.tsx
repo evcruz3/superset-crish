@@ -866,11 +866,28 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
       const times = payload.data.data
         .map((d: JsonObject) => new Date(d[formData.temporal_column]))
         .filter((d: Date) => !isNaN(d.getTime()));
+      
       if (times.length > 0) {
         const minTime = new Date(Math.min(...times.map((d: Date) => d.getTime())));
         const maxTime = new Date(Math.max(...times.map((d: Date) => d.getTime())));
         setTimeRange([minTime, maxTime]);
-        setCurrentTime(minTime);
+
+        // Find the nearest date to current system time
+        const currentSystemTime = new Date().getTime();
+        const nearestDate = times.reduce((prev: Date, curr: Date) => {
+          return Math.abs(curr.getTime() - currentSystemTime) < Math.abs(prev.getTime() - currentSystemTime) 
+            ? curr 
+            : prev;
+        });
+
+        // Set the nearest date as current time, but ensure it's within the time range
+        const boundedTime = new Date(
+          Math.min(
+            Math.max(nearestDate.getTime(), minTime.getTime()),
+            maxTime.getTime()
+          )
+        );
+        setCurrentTime(boundedTime);
       }
     }
   }, [formData.temporal_column, payload.data.data]);
