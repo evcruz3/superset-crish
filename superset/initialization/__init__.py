@@ -251,6 +251,12 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             cond=lambda: bool(appbuilder.app.config["LOGO_TARGET_PATH"]),
         )
 
+        appbuilder.add_link(
+            "Overview",
+            label=__("Overview"),
+            href="/superset/welcome/",
+        )
+
         appbuilder.add_view(
             WeatherForecastView,
             "Weather Forecasts",

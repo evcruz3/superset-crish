@@ -25,7 +25,6 @@ import {
 import { Layer } from '@deck.gl/core'
 import { Slider } from 'antd'
 import Icons from 'src/components/Icons'
-import { ScaleLinear } from 'd3-scale'
 import { TextLayer, IconLayer } from '@deck.gl/layers'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
@@ -34,7 +33,6 @@ import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
 import { countries } from '../layers/Country/countries'
-import { LayerOptions } from '../types/layers'
 
 // Custom Card component
 const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style = {} }) => (
@@ -1132,79 +1130,40 @@ const DeckMulti = (props: DeckMultiProps) => {
                       d.object?.properties?.NAME || 
                       d.object?.properties?.ISO;
       
-      // console.log('Getting region key for data:', {
-      //   data: d,
-      //   foundRegionId: regionId,
-      //   properties: d.object?.properties,
-      //   rawObject: d.object,
-      //   coordinates: d.coordinates,
-      //   text: d.text
-      // });
-      
-      // if (!regionId) {
-      //   console.warn('No region identifier found for data:', d);
-      // }
-      
       return regionId;
     };
 
     // First, collect all text data from all text layers
     const combinedTextData = new Map<string, { coordinates: number[], texts: string[] }>();
     
-    // console.log('Processing layers:', {
-    //   visibleLayerIds: layerOrder.filter(id => visibleLayers[id]),
-    //   allLayers: subSlicesLayers,
-    //   layerOrder,
-    //   visibleLayers
-    // });
-
     layerOrder
       .filter((id) => visibleLayers[id])
       .forEach((id) => {
         const layerGroup = subSlicesLayers[id];
-        // console.log('Processing layer group:', {
-        //   id,
-        //   layerGroup,
-        //   isArray: Array.isArray(layerGroup)
-        // });
 
         if (Array.isArray(layerGroup)) {
           layerGroup.forEach(layer => {
-            // console.log('Processing individual layer:', {
-            //   layerId: layer.props.id,
-            //   type: layer.constructor.name,
-            //   data: layer.props.data
-            // });
-
             if (layer instanceof TextLayer) {
-              const data = layer.props.data || [];
-              if (Array.isArray(data)) {
-                data.forEach((d: any) => {
-                  const regionKey = getRegionKey(d);
-                  // console.log('Processing text data:', {
-                  //   regionKey,
-                  //   text: d.text,
-                  //   coordinates: d.coordinates
-                  // });
+              // Only process text layers if show_text_labels is enabled
+              if (formData.show_text_labels) {
+                const data = layer.props.data || [];
+                if (Array.isArray(data)) {
+                  data.forEach((d: any) => {
+                    const regionKey = getRegionKey(d);
 
-                  if (regionKey) {
-                    if (!combinedTextData.has(regionKey)) {
-                      combinedTextData.set(regionKey, {
-                        coordinates: d.coordinates,
-                        texts: []
-                      });
+                    if (regionKey) {
+                      if (!combinedTextData.has(regionKey)) {
+                        combinedTextData.set(regionKey, {
+                          coordinates: d.coordinates,
+                          texts: []
+                        });
+                      }
+                      combinedTextData.get(regionKey)?.texts.push(d.text);
                     }
-                    combinedTextData.get(regionKey)?.texts.push(d.text);
-                  } else {
-                    console.warn('No region key found for text data:', d);
-                  }
-                });
+                  });
+                }
               }
             } else if (layer instanceof IconLayer) {
-              // console.log('Found IconLayer:', {
-              //   id: layer.props.id,
-              //   dataLength: layer.props.data?.length
-              // });
               iconLayers.push(layer);
             } else {
               nonTextLayers.push(layer);
@@ -1215,21 +1174,12 @@ const DeckMulti = (props: DeckMultiProps) => {
         }
       });
 
-    // console.log('Combined text data:', {
-    //   regions: Array.from(combinedTextData.keys()),
-    //   textsByRegion: Object.fromEntries(Array.from(combinedTextData.entries()).map(
-    //     ([key, value]) => [key, value.texts]
-    //   ))
-    // });
-
-    // Create a single text layer with combined texts
-    if (combinedTextData.size > 0) {
+    // Create a single text layer with combined texts only if show_text_labels is enabled
+    if (combinedTextData.size > 0 && formData.show_text_labels) {
       const combinedData = Array.from(combinedTextData.values()).map(({ coordinates, texts }) => ({
         coordinates,
         text: texts.join('\n')
       }));
-
-      // console.log('Creating combined text layer with data:', combinedData);
 
       const combinedTextLayer = new TextLayer({
         id: 'combined-text-layer',
@@ -1258,7 +1208,7 @@ const DeckMulti = (props: DeckMultiProps) => {
 
     // Return layers in correct order: base layers, icon layers, and text layer on top
     return [...nonTextLayers.reverse(), ...iconLayers.reverse(), ...textLayers];
-  }, [layerOrder, visibleLayers, subSlicesLayers]);
+  }, [layerOrder, visibleLayers, subSlicesLayers, formData.show_text_labels]);
 
   // Effect to update layers when time changes
   useEffect(() => {
