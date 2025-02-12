@@ -955,7 +955,9 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const layers = useMemo(
     () => {
       // console.log('Recalculating layers with viewState:', viewState);
-      return geoJson ? getLayer({
+      if (!geoJson) return [];
+
+      const baseLayers = getLayer({
         formData,
         payload,
         onAddFilter,
@@ -967,7 +969,14 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
         },
         viewState,
         opacity: 1.0
-      }) : [];
+      });
+
+      // Filter out text layer if show_text_labels is false
+      if (!formData.show_text_labels) {
+        return baseLayers.filter(layer => !(layer instanceof TextLayer));
+      }
+
+      return baseLayers;
     },
     [formData, payload, onAddFilter, setTooltip, geoJson, currentTime, viewState],
   );

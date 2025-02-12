@@ -320,6 +320,18 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        [
+          {
+            name: 'show_text_labels',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Show Text Labels'),
+              default: true,
+              renderTrigger: true,
+              description: t('Whether to display text labels on the map'),
+            },
+          },
+        ],
       ],
     },
     {
