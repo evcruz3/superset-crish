@@ -61,6 +61,24 @@ export default {
       ],
     },
     {
+      label: t('Map Settings'),
+      expanded: true,
+      controlSetRows: [
+        [
+          {
+            name: 'show_text_labels',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Show Text Labels'),
+              default: true,
+              renderTrigger: true,
+              description: t('Whether to display text labels on the map'),
+            },
+          },
+        ],
+      ],
+    },
+    {
       label: t('Query'),
       expanded: true,
       controlSetRows: [['adhoc_filters']],
