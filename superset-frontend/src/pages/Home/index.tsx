@@ -26,6 +26,7 @@ import { useDispatch } from 'react-redux';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import ChartContainer from 'src/components/Chart/ChartContainer';
 import DashboardPageWrapper from 'src/components/DashboardPageWrapper';
+import DashboardTabs from '../WeatherForecasts/DashboardTabs';
 
 const FloatingToggle = styled.div`
   position: fixed;
@@ -209,7 +210,7 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
   return (
     <>
       <FloatingToggle onClick={toggleView}>
-        {showFullChart ? 'Show Dashboard' : 'Show Full Chart'}
+        {showFullChart ? 'Show Alerts' : 'Show Overview'}
       </FloatingToggle>
       
       <div style={{ width: '100%', height: '100%', display: showFullChart ? 'block' : 'none' }}>
@@ -246,7 +247,8 @@ function Welcome({ user, addDangerToast }: WelcomeProps) {
       </div>
       
       <div style={{ width: '100%', height: '100%', display: showFullChart ? 'none' : 'block' }}>
-        <DashboardPageWrapper idOrSlug="overview" />
+        {/* <DashboardPageWrapper idOrSlug="overview" /> */}
+        <DashboardTabs idOrSlug="overview" />
       </div>
     </>
   );
