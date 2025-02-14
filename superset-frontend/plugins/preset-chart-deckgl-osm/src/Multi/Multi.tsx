@@ -28,6 +28,7 @@ import Icons from 'src/components/Icons'
 import { TextLayer, IconLayer } from '@deck.gl/layers'
 import moment from 'moment'
 import { Moment } from 'moment'
+import locale from 'antd/es/date-picker/locale/en_US'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
@@ -35,6 +36,14 @@ import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
 import { countries } from '../layers/Country/countries'
+
+// Configure moment to use Monday as first day of week
+moment.updateLocale('en', {
+  week: {
+    dow: 1, // Monday is the first day of the week
+    doy: 4  // The week that contains Jan 4th is the first week of the year
+  }
+});
 
 // Custom Card component
 const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style = {} }) => (
@@ -1392,6 +1401,16 @@ const DeckMulti = (props: DeckMultiProps) => {
                 ) : false;
               }}
               style={{ border: 'none', width: 'auto' }}
+              locale={locale}
+              onPanelChange={(value, mode) => {
+                if (mode === 'week' && value) {
+                  // Ensure the selected date is aligned to Monday using ISO week
+                  const monday = value.clone().startOf('isoWeek');
+                  if (!value.isSame(monday, 'day')) {
+                    setCurrentTime(monday.toDate());
+                  }
+                }
+              }}
             />
           </div>
           <div className="progress-bar">
