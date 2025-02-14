@@ -36,6 +36,7 @@ import { scaleLinear, ScaleLinear } from 'd3-scale';
 import { Slider, DatePicker } from 'antd';
 import moment from 'moment';
 import { Moment } from 'moment';
+import locale from 'antd/es/date-picker/locale/en_US';
 
 import {
   DeckGLContainerHandle,
@@ -50,6 +51,14 @@ import { TooltipProps } from '../../components/Tooltip';
 import { countries } from './countries';
 import { ICON_MAPPING, createSVGIcon, cleanupIconUrl } from './markers';
 import { LayerOptions, LayerReturn } from '../../types/layers';
+
+// Configure moment to use Monday as first day of week
+moment.updateLocale('en', {
+  week: {
+    dow: 1, // Monday is the first day of the week
+    doy: 4  // The week that contains Jan 4th is the first week of the year
+  }
+});
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
@@ -1068,6 +1077,16 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                   ) : false;
                 }}
                 style={{ border: 'none', width: 'auto' }}
+                locale={locale}
+                onPanelChange={(value, mode) => {
+                  if (mode === 'week' && value) {
+                    // Ensure the selected date is aligned to Monday using ISO week
+                    const monday = value.clone().startOf('isoWeek');
+                    if (!value.isSame(monday, 'day')) {
+                      setCurrentTime(monday.toDate());
+                    }
+                  }
+                }}
               />
             </div>
             <div className="progress-bar">
