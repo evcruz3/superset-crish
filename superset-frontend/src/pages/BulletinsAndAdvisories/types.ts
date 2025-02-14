@@ -6,7 +6,9 @@ export interface CreatedBy {
 export interface Bulletin {
   id: number;
   title: string;
-  message: string;
+  advisory: string;
+  risks: string;
+  safety_tips: string;
   hashtags: string;
   chart_id: number | null;
   thumbnail_url?: string;
@@ -21,7 +23,9 @@ export interface BulletinApiResponse {
 
 export interface CreateBulletinPayload {
   title: string;
-  message: string;
+  advisory: string;
+  risks: string;
+  safety_tips: string;
   hashtags: string;
   chartId: number | null;
 } 

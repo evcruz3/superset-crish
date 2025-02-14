@@ -21,10 +21,19 @@ const StyledModal = styled(Modal)`
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   }
   
-  .bulletin-content {
+  .bulletin-section {
     font-size: ${({ theme }) => theme.typography.sizes.m}px;
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
     white-space: pre-wrap;
+
+    .section-title {
+      font-weight: ${({ theme }) => theme.typography.weights.bold};
+      margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
+    }
+
+    .section-content {
+      margin-left: ${({ theme }) => theme.gridUnit * 4}px;
+    }
   }
   
   .bulletin-chart {
@@ -107,15 +116,30 @@ export default function BulletinDetailModal({ bulletin, onClose }: BulletinDetai
           </>
         )}
       </div>
-      <div className="bulletin-content">{bulletin.message}</div>
+      <div className="bulletin-section">
+        <div className="section-title">{t('Advisory')}</div>
+        <div className="section-content">{bulletin.advisory}</div>
+      </div>
+      <div className="bulletin-section">
+        <div className="section-title">{t('Risks')}</div>
+        <div className="section-content">{bulletin.risks}</div>
+      </div>
+      <div className="bulletin-section">
+        <div className="section-title">{t('Safety Tips')}</div>
+        <div className="section-content">{bulletin.safety_tips}</div>
+      </div>
       <div className="bulletin-chart">
         {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
-          <BulletinChart chartId={bulletin.chart_id} />
+          bulletin.chart_id ? (
+            <BulletinChart chartId={bulletin.chart_id} />
+          ) : (
+            <div style={{ height: '400px' }}></div>
+          )
         ) : bulletin.chart_id ? (
           <ImageLoader
             src={thumbnailUrl || ''}
             fallback={FALLBACK_THUMBNAIL_URL}
-            isLoading={bulletin.chart_id && !thumbnailUrl}
+            isLoading={!!bulletin.chart_id && !thumbnailUrl}
             position="top"
           />
         ) : (

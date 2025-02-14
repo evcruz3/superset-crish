@@ -23,9 +23,11 @@ import {
   getNumberFormatter,
 } from '@superset-ui/core'
 import { Layer } from '@deck.gl/core'
-import { Slider } from 'antd'
+import { Slider, DatePicker } from 'antd'
 import Icons from 'src/components/Icons'
 import { TextLayer, IconLayer } from '@deck.gl/layers'
+import moment from 'moment'
+import { Moment } from 'moment'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
@@ -1305,7 +1307,92 @@ const DeckMulti = (props: DeckMultiProps) => {
       {timeRange && Object.keys(temporalData).length > 0 && (
         <StyledTimelineSlider>
           <div className="date-indicator">
-            {currentTime?.toLocaleDateString()} ({currentTime?.toLocaleDateString('en-US', { weekday: 'long' })})
+            <DatePicker
+              value={currentTime ? moment(currentTime) : undefined}
+              onChange={(date: Moment | null) => {
+                if (date) {
+                  // Ensure the selected date is within the time range
+                  const selectedTime = date.toDate();
+                  const boundedTime = new Date(
+                    Math.min(
+                      Math.max(selectedTime.getTime(), timeRange[0].getTime()),
+                      timeRange[1].getTime()
+                    )
+                  );
+                  setCurrentTime(boundedTime);
+                }
+              }}
+              showTime={(() => {
+                const timeGrains = Object.values(temporalData)
+                  .map(({ column }) => {
+                    const sliceFormData = props.payload.data.slices.find(
+                      (s: any) => s.form_data.temporal_column === column
+                    )?.form_data;
+                    return sliceFormData?.time_grain_sqla;
+                  })
+                  .filter(Boolean) as string[];
+                
+                const largestTimeGrain = getLargestTimeGrain(timeGrains);
+                return largestTimeGrain === 'PT1H';
+              })()}
+              picker={(() => {
+                const timeGrains = Object.values(temporalData)
+                  .map(({ column }) => {
+                    const sliceFormData = props.payload.data.slices.find(
+                      (s: any) => s.form_data.temporal_column === column
+                    )?.form_data;
+                    return sliceFormData?.time_grain_sqla;
+                  })
+                  .filter(Boolean) as string[];
+                
+                const largestTimeGrain = getLargestTimeGrain(timeGrains);
+                
+                switch (largestTimeGrain) {
+                  case 'P1Y':
+                    return 'year';
+                  case 'P1M':
+                    return 'month';
+                  case 'P1W':
+                    return 'week';
+                  default:
+                    return undefined;
+                }
+              })()}
+              format={(() => {
+                const timeGrains = Object.values(temporalData)
+                  .map(({ column }) => {
+                    const sliceFormData = props.payload.data.slices.find(
+                      (s: any) => s.form_data.temporal_column === column
+                    )?.form_data;
+                    return sliceFormData?.time_grain_sqla;
+                  })
+                  .filter(Boolean) as string[];
+                
+                const largestTimeGrain = getLargestTimeGrain(timeGrains);
+                
+                switch (largestTimeGrain) {
+                  case 'P1Y':
+                    return 'YYYY';
+                  case 'P1M':
+                    return 'YYYY-MM';
+                  case 'P1W':
+                    return 'YYYY-[W]ww';
+                  case 'PT1H':
+                    return 'YYYY-MM-DD HH:mm:ss';
+                  default:
+                    return 'YYYY-MM-DD';
+                }
+              })()}
+              allowClear={false}
+              disabledDate={current => {
+                if (!timeRange) return false;
+                const currentDate = current?.toDate();
+                return currentDate ? (
+                  currentDate < timeRange[0] || currentDate > timeRange[1]
+                ) : false;
+              }}
+              style={{ border: 'none', width: 'auto' }}
+            />
           </div>
           <div className="progress-bar">
             <div 

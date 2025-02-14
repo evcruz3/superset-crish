@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, Form, Input, Select } from 'antd';
+import { Modal, Form, Input } from 'antd';
 import { SupersetClient, t, useTheme, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { AsyncSelect } from 'src/components';
@@ -45,46 +45,43 @@ export default function CreateBulletinModal({
   const { addSuccessToast, addDangerToast } = useToasts();
   const theme = useTheme();
 
-  const loadChartOptions = useMemo(
-    () =>
-      async (search: string, page: number, pageSize: number) => {
-        const query = rison.encode_uri({
-          filters: search ? [{ col: 'slice_name', opr: 'ct', value: search }] : [],
-          page,
-          page_size: pageSize,
-          order_column: 'changed_on_delta_humanized',
-          order_direction: 'desc',
-        });
-        
-        try {
-          const response = await SupersetClient.get({
-            endpoint: `/api/v1/chart/?q=${query}`,
-          });
-          
-          const { result, count } = response.json;
-          const data = result.map((chart: any) => ({
-            value: chart.id,
-            label: chart.slice_name,
-            thumbnail_url: chart.thumbnail_url,
-          }));
-          
-          return {
-            data,
-            totalCount: count,
-          };
-        } catch (error) {
-          addDangerToast(t('Failed to load charts'));
-          return { data: [], totalCount: 0 };
-        }
-      },
-    [addDangerToast],
-  );
-
-  const handleChartSelect = (value: any, option: ChartOption | null) => {
+  const handleChartSelect = (value: SelectValue, option: ChartOption) => {
     setSelectedChart(option);
-    // Extract the numeric value if we received an object
-    const chartId = typeof value === 'object' ? value.value : value;
-    form.setFieldsValue({ chartId: chartId });
+    form.setFieldsValue({ 
+      chartId: typeof value === 'number' ? value : null 
+    });
+  };
+
+  const loadChartOptions = async (search: string, page: number, pageSize: number) => {
+    const query = rison.encode_uri({
+      filters: search ? [{ col: 'slice_name', opr: 'ct', value: search }] : [],
+      order_column: 'changed_on_delta_humanized',
+      order_direction: 'desc',
+      page,
+      page_size: pageSize,
+    });
+    
+    try {
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/chart/?q=${query}`,
+      });
+      
+      const { result, count } = response.json;
+      return {
+        data: result.map((chart: any) => ({
+          value: chart.id,
+          label: chart.slice_name,
+          thumbnail_url: chart.thumbnail_url,
+        })),
+        totalCount: count,
+      };
+    } catch (error) {
+      addDangerToast(t('Failed to load charts'));
+      return {
+        data: [],
+        totalCount: 0,
+      };
+    }
   };
 
   const handleSubmit = async () => {
@@ -99,7 +96,9 @@ export default function CreateBulletinModal({
       const payload = {
         ...values,
         chartId: chartId ? Number(chartId) : null,
-        message: values.message || '',
+        advisory: values.advisory || '',
+        risks: values.risks || '',
+        safety_tips: values.safety_tips || '',
         title: values.title || '',
         hashtags: values.hashtags || ''
       };
@@ -126,11 +125,11 @@ export default function CreateBulletinModal({
       title={t('Create New Bulletin')}
       visible={visible}
       onCancel={onClose}
-      onOk={handleSubmit}
       confirmLoading={loading}
+      onOk={handleSubmit}
       width={800}
     >
-      <Form<CreateBulletinPayload> form={form} layout="vertical">
+      <Form form={form} layout="vertical">
         <Form.Item
           name="title"
           label={t('Title')}
@@ -138,15 +137,31 @@ export default function CreateBulletinModal({
         >
           <Input />
         </Form.Item>
-        
+
         <Form.Item
-          name="message"
-          label={t('Message')}
-          rules={[{ required: true, message: t('Message is required') }]}
+          name="advisory"
+          label={t('Advisory')}
+          rules={[{ required: true, message: t('Advisory is required') }]}
         >
           <Input.TextArea rows={4} />
         </Form.Item>
-        
+
+        <Form.Item
+          name="risks"
+          label={t('Risks')}
+          rules={[{ required: true, message: t('Risks are required') }]}
+        >
+          <Input.TextArea rows={4} />
+        </Form.Item>
+
+        <Form.Item
+          name="safety_tips"
+          label={t('Safety Tips')}
+          rules={[{ required: true, message: t('Safety tips are required') }]}
+        >
+          <Input.TextArea rows={4} />
+        </Form.Item>
+
         <Form.Item
           name="hashtags"
           label={t('Hashtags')}
@@ -155,37 +170,28 @@ export default function CreateBulletinModal({
         >
           <Input />
         </Form.Item>
-        
+
         <Form.Item
           name="chartId"
           label={t('Associated Chart')}
         >
           <AsyncSelect
-            name="chart"
-            value={form.getFieldValue('chartId')}
-            options={loadChartOptions}
-            placeholder={t('Select a chart')}
-            showSearch
-            filterOption={false}
             allowClear
+            showSearch
+            placeholder={t('Select a chart')}
             onChange={handleChartSelect}
-            onClear={() => {
-              setSelectedChart(null);
-              form.setFieldsValue({ chartId: null });
-            }}
+            options={loadChartOptions}
           />
         </Form.Item>
 
-        {selectedChart?.thumbnail_url && isFeatureEnabled(FeatureFlag.Thumbnails) && (
+        {selectedChart?.thumbnail_url && (
           <ThumbnailPreview>
-            <div className="gradient-container">
-              <ImageLoader
-                src={selectedChart.thumbnail_url}
-                fallback="/static/assets/images/chart-card-fallback.svg"
-                isLoading={false}
-                position="top"
-              />
-            </div>
+            <ImageLoader
+              src={selectedChart.thumbnail_url}
+              fallback="/static/assets/images/chart-card-fallback.svg"
+              isLoading={false}
+              position="top"
+            />
           </ThumbnailPreview>
         )}
       </Form>

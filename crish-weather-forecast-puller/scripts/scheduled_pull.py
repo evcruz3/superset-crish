@@ -59,7 +59,8 @@ def pull_data():
             'tmax_daily_tmax_region',
             'rainfall_daily_weighted_average',
             'rh_daily_avg_region',
-            'ws_daily_avg_region'
+            'ws_daily_avg_region',
+            'tmin_daily_tmin_region'
         ]
         
         pull_success = True  # Track if all pulls are successful

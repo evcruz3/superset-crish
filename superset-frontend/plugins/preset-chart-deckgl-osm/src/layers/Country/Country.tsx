@@ -33,7 +33,9 @@ import {
   getCategoricalSchemeRegistry,
 } from '@superset-ui/core';
 import { scaleLinear, ScaleLinear } from 'd3-scale';
-import { Slider } from 'antd';
+import { Slider, DatePicker } from 'antd';
+import moment from 'moment';
+import { Moment } from 'moment';
 
 import {
   DeckGLContainerHandle,
@@ -344,6 +346,10 @@ const StyledTimelineSlider = styled.div`
     color: #666;
     margin-bottom: 8px;
     text-align: center;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .progress-bar {
@@ -1017,7 +1023,52 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
         {timeRange && formData.temporal_column && (
           <StyledTimelineSlider>
             <div className="date-indicator">
-              {currentTime?.toLocaleDateString()} ({currentTime?.toLocaleDateString('en-US', { weekday: 'long' })})
+              <DatePicker
+                value={currentTime ? moment(currentTime) : undefined}
+                onChange={(date: Moment | null) => {
+                  if (date) {
+                    // Ensure the selected date is within the time range
+                    const selectedTime = date.toDate();
+                    const boundedTime = new Date(
+                      Math.min(
+                        Math.max(selectedTime.getTime(), timeRange[0].getTime()),
+                        timeRange[1].getTime()
+                      )
+                    );
+                    setCurrentTime(boundedTime);
+                  }
+                }}
+                showTime={formData.time_grain_sqla === 'PT1H'}
+                picker={
+                  formData.time_grain_sqla === 'P1Y' 
+                    ? 'year'
+                    : formData.time_grain_sqla === 'P1M'
+                    ? 'month'
+                    : formData.time_grain_sqla === 'P1W'
+                    ? 'week'
+                    : undefined
+                }
+                format={
+                  formData.time_grain_sqla === 'P1Y'
+                    ? 'YYYY'
+                    : formData.time_grain_sqla === 'P1M'
+                    ? 'YYYY-MM'
+                    : formData.time_grain_sqla === 'P1W'
+                    ? 'YYYY-[W]ww'
+                    : formData.time_grain_sqla === 'PT1H'
+                    ? 'YYYY-MM-DD HH:mm:ss'
+                    : 'YYYY-MM-DD'
+                }
+                allowClear={false}
+                disabledDate={current => {
+                  if (!timeRange) return false;
+                  const currentDate = current?.toDate();
+                  return currentDate ? (
+                    currentDate < timeRange[0] || currentDate > timeRange[1]
+                  ) : false;
+                }}
+                style={{ border: 'none', width: 'auto' }}
+              />
             </div>
             <div className="progress-bar">
               <div 
