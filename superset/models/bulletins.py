@@ -8,7 +8,9 @@ class Bulletin(Model):
     
     id = Column(Integer, primary_key=True)
     title = Column(String(500), nullable=False)
-    message = Column(Text, nullable=False)
+    advisory = Column(Text, nullable=False)
+    risks = Column(Text, nullable=False)
+    safety_tips = Column(Text, nullable=False)
     hashtags = Column(String(500))
     chart_id = Column(Integer, ForeignKey('slices.id'))
     created_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=False)

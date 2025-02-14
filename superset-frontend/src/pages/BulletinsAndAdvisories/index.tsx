@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { styled, t} from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
-import ListView, { ListViewProps, Filter, Filters } from 'src/components/ListView';
+import ListView, { ListViewProps, Filter, FilterOperator } from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import { Bulletin } from './types';
 import BulletinCard from './BulletinCard';
@@ -22,10 +22,13 @@ interface BulletinsAndAdvisoriesProps {
 const BULLETIN_COLUMNS_TO_FETCH = [
   'id',
   'title',
-  'message',
+  'advisory',
+  'risks',
+  'safety_tips',
   'hashtags',
   'chart_id',
-  'created_by',
+  'created_by.first_name',
+  'created_by.last_name',
   'created_on',
 ];
 
@@ -83,6 +86,9 @@ function BulletinsAndAdvisories({
     t('bulletin'),
     addDangerToast,
     true,
+    [],
+    undefined,
+    true,
     BULLETIN_COLUMNS_TO_FETCH,
   );
 
@@ -96,9 +102,19 @@ function BulletinsAndAdvisories({
         accessor: 'title',
       },
       {
-        Cell: ({ row: { original } }: any) => original.message,
-        Header: t('Message'),
-        accessor: 'message',
+        Cell: ({ row: { original } }: any) => original.advisory,
+        Header: t('Advisory'),
+        accessor: 'advisory',
+      },
+      {
+        Cell: ({ row: { original } }: any) => original.risks,
+        Header: t('Risks'),
+        accessor: 'risks',
+      },
+      {
+        Cell: ({ row: { original } }: any) => original.safety_tips,
+        Header: t('Safety Tips'),
+        accessor: 'safety_tips',
       },
       {
         Cell: ({ row: { original } }: any) => original.hashtags,
@@ -107,7 +123,9 @@ function BulletinsAndAdvisories({
       },
       {
         Cell: ({ row: { original } }: any) => 
-          `${original.created_by.first_name} ${original.created_by.last_name}`,
+          original.created_by ? 
+          `${original.created_by.first_name} ${original.created_by.last_name}` :
+          t('Unknown'),
         Header: t('Created By'),
         accessor: 'created_by',
       },
@@ -120,20 +138,46 @@ function BulletinsAndAdvisories({
     [],
   );
 
-  const filters: Filters = useMemo(
+  const filters: Filter[] = useMemo(
     () => [
       {
         Header: t('Title'),
         id: 'title',
+        key: 'title',
         input: 'search',
-        operator: 'ct',
+        operator: FilterOperator.Contains,
+        debounceTime: 300,
+      },
+      {
+        Header: t('Advisory'),
+        id: 'advisory',
+        key: 'advisory',
+        input: 'search',
+        operator: FilterOperator.Contains,
+        debounceTime: 300,
+      },
+      {
+        Header: t('Risks'),
+        id: 'risks',
+        key: 'risks',
+        input: 'search',
+        operator: FilterOperator.Contains,
+        debounceTime: 300,
+      },
+      {
+        Header: t('Safety Tips'),
+        id: 'safety_tips',
+        key: 'safety_tips',
+        input: 'search',
+        operator: FilterOperator.Contains,
         debounceTime: 300,
       },
       {
         Header: t('Hashtags'),
         id: 'hashtags',
+        key: 'hashtags',
         input: 'search',
-        operator: 'ct',
+        operator: FilterOperator.Contains,
         debounceTime: 300,
       },
     ],
@@ -204,7 +248,7 @@ function BulletinsAndAdvisories({
     <>
       <SubMenu name={t('Bulletins & Advisories')} buttons={subMenuButtons} />
       
-      <StyledListView<Bulletin>
+      <StyledListView
         bulkActions={[]}
         bulkSelectEnabled={bulkSelectEnabled}
         cardSortSelectOptions={cardSortSelectOptions}
@@ -214,6 +258,9 @@ function BulletinsAndAdvisories({
         data={bulletins}
         disableBulkSelect={toggleBulkSelect}
         fetchData={fetchData}
+        refreshData={refreshData}
+        addSuccessToast={addSuccessToast}
+        addDangerToast={addDangerToast}
         filters={filters}
         initialSort={initialSort}
         loading={loading}

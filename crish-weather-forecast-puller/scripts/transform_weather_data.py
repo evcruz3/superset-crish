@@ -115,7 +115,8 @@ def process_weather_files():
         'rainfall_daily_weighted_average_data.json',
         'rh_daily_avg_region_data.json',
         'tmax_daily_tmax_region_data.json',
-        'ws_daily_avg_region_data.json'
+        'ws_daily_avg_region_data.json',
+        'tmin_daily_tmin_region_data.json'
     ]
     
     dataframes = {}  # Store DataFrames for each weather parameter
@@ -149,6 +150,7 @@ def ingest_to_postgresql(dataframes):
     
     try:
         for table_name, df in dataframes.items():
+            print(f"Ingesting data to PostgreSQL for table: {table_name}")
             # Write DataFrame to database using Polars native method with ADBC
             rows_affected = df.write_database(
                 table_name=table_name,

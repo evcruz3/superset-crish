@@ -22,7 +22,9 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
     list_columns = [
         "id",
         "title",
-        "message",
+        "advisory",
+        "risks",
+        "safety_tips",
         "hashtags",
         "chart_id",
         "created_by.first_name",
@@ -32,7 +34,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
     ]
     show_columns = list_columns
     list_select_columns = list_columns
-    add_columns = ["title", "message", "hashtags", "chart_id"]
+    add_columns = ["title", "advisory", "risks", "safety_tips", "hashtags", "chart_id"]
     edit_columns = add_columns
 
     order_columns = [
@@ -65,7 +67,11 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                   properties:
                     title:
                       type: string
-                    message:
+                    advisory:
+                      type: string
+                    risks:
+                      type: string
+                    safety_tips:
                       type: string
                     hashtags:
                       type: string
@@ -99,7 +105,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             data = request.json
             
             # Validate required fields
-            required_fields = ['title', 'message', 'hashtags']
+            required_fields = ['title', 'advisory', 'risks', 'safety_tips', 'hashtags']
             for field in required_fields:
                 if not data.get(field):
                     return self.response_400(message=f"{field} is required")
@@ -120,7 +126,9 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             # Create bulletin with validated data
             bulletin = Bulletin(
                 title=data['title'],
-                message=data['message'],
+                advisory=data['advisory'],
+                risks=data['risks'],
+                safety_tips=data['safety_tips'],
                 hashtags=data['hashtags'],
                 chart_id=chart_id,
                 created_by_fk=g.user.id
