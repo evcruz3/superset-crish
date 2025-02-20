@@ -258,7 +258,7 @@ function BulletinsAndAdvisories({
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
   
-  if (hasPerm('can_create')) {
+  if (hasPerm('can_write')) {
     subMenuButtons.push({
       name: (
         <>
@@ -270,7 +270,7 @@ function BulletinsAndAdvisories({
     });
   }
 
-  if (hasPerm('can_create')) {
+  if (hasPerm('can_write')) {
     subMenuButtons.push({
       name: t('Bulk select'),
       buttonStyle: 'secondary',
