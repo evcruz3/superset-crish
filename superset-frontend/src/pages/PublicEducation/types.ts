@@ -3,6 +3,8 @@ export interface PublicEducationPost {
   title: string;
   message: string;
   hashtags: string;
+  video_url?: string;
+  youtube_embed_url?: string;
   attachments: Array<{
     id: number;
     file_url: string;
@@ -22,5 +24,6 @@ export interface CreatePublicEducationPayload {
   title: string;
   message: string;
   hashtags: string;
+  video_url?: string;
   attachments: File[];
 } 

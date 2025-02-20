@@ -52,6 +52,8 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
         "title",
         "message",
         "hashtags",
+        "video_url",
+        "youtube_embed_url",
         "created_by.first_name",
         "created_by.last_name",
         "created_on",
@@ -60,7 +62,7 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
     ]
     show_columns = list_columns
     list_select_columns = list_columns
-    add_columns = ["title", "message", "hashtags"]
+    add_columns = ["title", "message", "hashtags", "video_url"]
     edit_columns = add_columns
 
     # Add a property to specify how to serialize relationships
@@ -108,8 +110,8 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
         logger.info(f"Form data in request: {request.form}")
         logger.info(f"Content type: {request.content_type}")
         
-        if not request.files or not request.form:
-            logger.error("No data provided - files: %s, form: %s", bool(request.files), bool(request.form))
+        if not request.form:
+            logger.error("No form data provided")
             return self.response(400, message="No data provided")
 
         try:
@@ -122,28 +124,30 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
                 title=request.form["title"],
                 message=request.form["message"],
                 hashtags=request.form["hashtags"],
+                video_url=request.form.get("video_url"),  # Optional video URL
                 created_by=g.user,
             )
             db.session.add(post)
             db.session.flush()  # Get post ID
 
-            # Handle file uploads
-            files = request.files.getlist("attachments")
-            for file in files:
-                if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    file_path = os.path.join(upload_path, f"{post.id}_{filename}")
-                    file.save(file_path)
+            # Handle file uploads if any
+            if request.files:
+                files = request.files.getlist("attachments")
+                for file in files:
+                    if file and allowed_file(file.filename):
+                        filename = secure_filename(file.filename)
+                        file_path = os.path.join(upload_path, f"{post.id}_{filename}")
+                        file.save(file_path)
 
-                    # Create attachment record
-                    file_type = "pdf" if filename.lower().endswith(".pdf") else "image"
-                    attachment = PublicEducationAttachment(
-                        post_id=post.id,
-                        file_name=filename,
-                        file_type=file_type,
-                        file_path=file_path,
-                    )
-                    db.session.add(attachment)
+                        # Create attachment record
+                        file_type = "pdf" if filename.lower().endswith(".pdf") else "image"
+                        attachment = PublicEducationAttachment(
+                            post_id=post.id,
+                            file_name=filename,
+                            file_type=file_type,
+                            file_path=file_path,
+                        )
+                        db.session.add(attachment)
 
             db.session.commit()
             return self.response(201, message="Post created successfully")

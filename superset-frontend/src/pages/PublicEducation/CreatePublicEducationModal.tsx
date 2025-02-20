@@ -22,6 +22,9 @@ const ALLOWED_FILE_TYPES = [
 ];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
+// YouTube URL validation pattern
+const YOUTUBE_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/;
+
 export default function CreatePublicEducationModal({
   visible,
   onClose,
@@ -70,16 +73,12 @@ export default function CreatePublicEducationModal({
       formData.append('title', values.title);
       formData.append('message', values.message);
       formData.append('hashtags', values.hashtags);
+      if (values.video_url) {
+        formData.append('video_url', values.video_url);
+      }
       fileList.forEach(file => {
         formData.append('attachments', file);
       });
-
-      // Debug logging
-      console.log('Form values:', values);
-      console.log('Files:', fileList);
-      for (const pair of formData.entries()) {
-        console.log('FormData entry:', pair[0], pair[1]);
-      }
 
       await SupersetClient.post({
         endpoint: '/api/v1/public_education/create/',
@@ -131,6 +130,20 @@ export default function CreatePublicEducationModal({
           help={t('Separate multiple hashtags with commas')}
         >
           <Input />
+        </Form.Item>
+
+        <Form.Item
+          name="video_url"
+          label={t('YouTube Video URL')}
+          help={t('Optional: Add a YouTube video URL')}
+          rules={[
+            {
+              pattern: YOUTUBE_URL_PATTERN,
+              message: t('Please enter a valid YouTube video URL'),
+            },
+          ]}
+        >
+          <Input placeholder="https://www.youtube.com/watch?v=..." />
         </Form.Item>
         
         <Form.Item
