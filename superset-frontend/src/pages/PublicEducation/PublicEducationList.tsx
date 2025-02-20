@@ -8,6 +8,15 @@ import { PublicEducationPost } from './types';
 import PublicEducationCard from './PublicEducationCard';
 import CreatePublicEducationModal from './CreatePublicEducationModal';
 import PublicEducationDetailModal from './PublicEducationDetailModal';
+import moment from 'moment';
+import { SupersetClient } from '@superset-ui/core';
+import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
+import DeleteModal from 'src/components/DeleteModal';
+import Icons from 'src/components/Icons';
+import rison from 'rison';
+import FacePile from 'src/components/FacePile';
+import { Tooltip } from 'src/components/Tooltip';
+import { FilterOperator } from 'src/components/ListView';
 
 const PAGE_SIZE = 25;
 
@@ -25,12 +34,29 @@ const POST_COLUMNS_TO_FETCH = [
   'message',
   'hashtags',
   'attachments',
-  'created_by',
+  'created_by.first_name',
+  'created_by.last_name',
+  'created_by.id',
   'created_on',
   'changed_on',
 ];
 
-const StyledListView = styled(ListView<PublicEducationPost>)`
+const Actions = styled.div`
+  color: ${({ theme }) => theme.colors.grayscale.base};
+  
+  .action-button {
+    height: 100%;
+    display: inline-block;
+    padding: ${({ theme }) => theme.gridUnit}px;
+    cursor: pointer;
+
+    &:hover {
+      color: ${({ theme }) => theme.colors.primary.base};
+    }
+  }
+`;
+
+const StyledListView = styled(ListView)`
   .card-container {
     .ant-col {
       width: 100% !important;
@@ -57,6 +83,15 @@ const StyledListView = styled(ListView<PublicEducationPost>)`
       }
     }
   }
+
+  // Hide actions by default, show on row hover
+  .actions {
+    visibility: hidden;
+  }
+
+  tr:hover .actions {
+    visibility: visible;
+  }
 `;
 
 function PublicEducationList({ 
@@ -66,6 +101,7 @@ function PublicEducationList({
 }: PublicEducationListProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<PublicEducationPost | null>(null);
+  const [postToDelete, setPostToDelete] = useState<PublicEducationPost | null>(null);
 
   const {
     state: {
@@ -85,6 +121,35 @@ function PublicEducationList({
     true,
     POST_COLUMNS_TO_FETCH,
   );
+
+  const handlePostDelete = async (post: PublicEducationPost) => {
+    try {
+      await SupersetClient.delete({
+        endpoint: `/api/v1/public_education/${post.id}`,
+      });
+      refreshData();
+      setPostToDelete(null);
+      addSuccessToast(t('Deleted: %s', post.title));
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+      addDangerToast(t('There was an issue deleting this post'));
+    }
+  };
+
+  const handleBulkPostDelete = async (postsToDelete: PublicEducationPost[]) => {
+    try {
+      await SupersetClient.delete({
+        endpoint: `/api/v1/public_education/?q=${rison.encode(
+          postsToDelete.map(({ id }) => id)
+        )}`,
+      });
+      refreshData();
+      addSuccessToast(t(`Deleted ${postsToDelete.length} posts`));
+    } catch (err) {
+      console.error('Failed to delete posts:', err);
+      addDangerToast(t('There was an issue deleting the selected posts'));
+    }
+  };
 
   const initialSort = [{ id: 'changed_on', desc: true }];
 
@@ -106,36 +171,73 @@ function PublicEducationList({
         accessor: 'hashtags',
       },
       {
-        Cell: ({ row: { original } }: any) => original.created_by.first_name + ' ' + original.created_by.last_name,
+        Cell: ({ row: { original } }: any) => (
+          <FacePile 
+            users={[{
+              first_name: original.created_by.first_name,
+              last_name: original.created_by.last_name,
+              id: original.created_by.id,
+            }]} 
+          />
+        ),
         Header: t('Created by'),
         accessor: 'created_by',
       },
       {
-        Cell: ({ row: { original } }: any) => {
-          const date = new Date(original.created_on);
-          return date.toLocaleDateString();
-        },
-        Header: t('Created on'),
+        Cell: ({ row: { original } }: any) => <>{moment(original.created_on).fromNow()}</>,
+        Header: t('Created'),
         accessor: 'created_on',
       },
+      {
+        Cell: ({ row: { original } }: any) => {
+          const handleDelete = () => setPostToDelete(original);
+          
+          return (
+            <Actions className="actions">
+              {hasPerm('can_write') && (
+                <Tooltip
+                  id="delete-action-tooltip"
+                  title={t('Delete')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleDelete}
+                    data-test="post-delete-action"
+                  >
+                    <Icons.Trash data-test="post-delete-icon" />
+                  </span>
+                </Tooltip>
+              )}
+            </Actions>
+          );
+        },
+        Header: t('Actions'),
+        id: 'actions',
+        disableSortBy: true,
+      },
     ],
-    [],
+    [hasPerm],
   );
 
-  const filters: Filters = useMemo(
+  const filters: Filter[] = useMemo(
     () => [
       {
         Header: t('Title'),
         id: 'title',
+        key: 'title',
         input: 'search',
-        operator: 'ct',
+        operator: FilterOperator.Contains,
         debounceTime: 300,
       },
       {
         Header: t('Hashtags'),
         id: 'hashtags',
+        key: 'hashtags',
         input: 'search',
-        operator: 'ct',
+        operator: FilterOperator.Contains,
         debounceTime: 300,
       },
     ],
@@ -162,9 +264,6 @@ function PublicEducationList({
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
 
-//   console.log("hasPerm('can_write'): ", hasPerm('can_write'));
-
-
   if (hasPerm('can_create')) {
     subMenuButtons.push({
       name: (
@@ -177,13 +276,13 @@ function PublicEducationList({
     });
   }
 
-//   if (hasPerm('can_write')) {
+  if (hasPerm('can_write')) {
     subMenuButtons.push({
       name: t('Bulk select'),
       buttonStyle: 'secondary',
       onClick: toggleBulkSelect,
     });
-//   }
+  }
 
   const cardSortSelectOptions = [
     {
@@ -210,23 +309,46 @@ function PublicEducationList({
     <>
       <SubMenu name={t('Public Education')} buttons={subMenuButtons} />
       
-      <StyledListView<PublicEducationPost>
-        bulkActions={[]}
-        bulkSelectEnabled={bulkSelectEnabled}
-        cardSortSelectOptions={cardSortSelectOptions}
-        className="public-education-list-view"
-        columns={columns}
-        count={postCount}
-        data={posts}
-        disableBulkSelect={toggleBulkSelect}
-        fetchData={fetchData}
-        filters={filters}
-        initialSort={initialSort}
-        loading={loading}
-        pageSize={PAGE_SIZE}
-        renderCard={renderCard}
-        defaultViewMode="card"
-      />
+      <ConfirmStatusChange
+        title={t('Delete Posts')}
+        description={t(
+          'Are you sure you want to delete the selected posts?',
+        )}
+        onConfirm={handleBulkPostDelete}
+      >
+        {(showConfirm: Function) => (
+          <StyledListView
+            bulkActions={
+              hasPerm('can_write')
+                ? [
+                    {
+                      key: 'delete',
+                      name: t('Delete'),
+                      type: 'danger',
+                      onSelect: (postsToDelete: PublicEducationPost[]) => {
+                        showConfirm(postsToDelete);
+                      },
+                    },
+                  ]
+                : []
+            }
+            bulkSelectEnabled={bulkSelectEnabled}
+            cardSortSelectOptions={cardSortSelectOptions}
+            className="public-education-list-view"
+            columns={columns}
+            count={postCount}
+            data={posts}
+            disableBulkSelect={toggleBulkSelect}
+            fetchData={fetchData}
+            filters={filters}
+            initialSort={initialSort}
+            loading={loading}
+            pageSize={PAGE_SIZE}
+            renderCard={renderCard}
+            defaultViewMode="card"
+          />
+        )}
+      </ConfirmStatusChange>
 
       <CreatePublicEducationModal
         visible={createModalVisible}
@@ -241,6 +363,23 @@ function PublicEducationList({
         post={selectedPost}
         onClose={() => setSelectedPost(null)}
       />
+
+      {/* Delete Modal for single post delete */}
+      {postToDelete && (
+        <DeleteModal
+          description={t(
+            'Are you sure you want to delete this post?',
+          )}
+          onConfirm={() => {
+            if (postToDelete) {
+              handlePostDelete(postToDelete);
+            }
+          }}
+          onHide={() => setPostToDelete(null)}
+          open
+          title={t('Delete Post?')}
+        />
+      )}
     </>
   );
 }

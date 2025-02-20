@@ -8,6 +8,14 @@ import { Bulletin } from './types';
 import BulletinCard from './BulletinCard';
 import CreateBulletinModal from './CreateBulletinModal';
 import moment from 'moment';
+import { createErrorHandler } from 'src/views/CRUD/utils';
+import DeleteModal from 'src/components/DeleteModal';
+import Icons from 'src/components/Icons';
+import { SupersetClient } from '@superset-ui/core';
+import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
+import rison from 'rison';
+import FacePile from 'src/components/FacePile';
+import { Tooltip } from 'src/components/Tooltip';
 
 const PAGE_SIZE = 25;
 
@@ -22,15 +30,27 @@ interface BulletinsAndAdvisoriesProps {
 const BULLETIN_COLUMNS_TO_FETCH = [
   'id',
   'title',
-  'advisory',
-  'risks',
-  'safety_tips',
   'hashtags',
   'chart_id',
   'created_by.first_name',
   'created_by.last_name',
   'created_on',
 ];
+
+const Actions = styled.div`
+  color: ${({ theme }) => theme.colors.grayscale.base};
+  
+  .action-button {
+    height: 100%;
+    display: inline-block;
+    padding: ${({ theme }) => theme.gridUnit}px;
+    cursor: pointer;
+
+    &:hover {
+      color: ${({ theme }) => theme.colors.primary.base};
+    }
+  }
+`;
 
 const StyledListView = styled(ListView<Bulletin>)`
   .card-container {
@@ -61,6 +81,15 @@ const StyledListView = styled(ListView<Bulletin>)`
       }
     }
   }
+
+  // Hide actions by default, show on row hover
+  .actions {
+    visibility: hidden;
+  }
+
+  tr:hover .actions {
+    visibility: visible;
+  }
 `;
 
 function BulletinsAndAdvisories({ 
@@ -69,6 +98,8 @@ function BulletinsAndAdvisories({
   user 
 }: BulletinsAndAdvisoriesProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [bulletinToDelete, setBulletinToDelete] = useState<Bulletin | null>(null);
+  const [bulletinsToDelete, setBulletinsToDelete] = useState<Bulletin[]>([]);
 
   const {
     state: {
@@ -92,6 +123,34 @@ function BulletinsAndAdvisories({
     BULLETIN_COLUMNS_TO_FETCH,
   );
 
+  const handleBulletinDelete = async (bulletin: Bulletin) => {
+    try {
+      await SupersetClient.delete({
+        endpoint: `/api/v1/bulletins_and_advisories/${bulletin.id}`,
+      });
+      refreshData();
+      setBulletinToDelete(null);
+      addSuccessToast(t('Deleted: %s', bulletin.title));
+    } catch (err) {
+      console.error('Failed to delete bulletin:', err);
+      addDangerToast(t('There was an issue deleting this bulletin'));
+    }
+  };
+
+  const handleBulkBulletinDelete = async (bulletinsToDelete: Bulletin[]) => {
+    const bulletinIds = bulletinsToDelete.map(({ id }) => id);
+    try {
+      await SupersetClient.delete({
+        endpoint: `/api/v1/bulletins_and_advisories/?q=${rison.encode(bulletinIds)}`,
+      });
+      refreshData();
+      addSuccessToast(t(`Deleted ${bulletinsToDelete.length} bulletins`));
+    } catch (err) {
+      console.error('Failed to delete bulletins:', err);
+      addDangerToast(t('There was an issue deleting the selected bulletins'));
+    }
+  };
+
   const initialSort = [{ id: 'created_on', desc: true }];
 
   const columns = useMemo(
@@ -102,30 +161,20 @@ function BulletinsAndAdvisories({
         accessor: 'title',
       },
       {
-        Cell: ({ row: { original } }: any) => original.advisory,
-        Header: t('Advisory'),
-        accessor: 'advisory',
-      },
-      {
-        Cell: ({ row: { original } }: any) => original.risks,
-        Header: t('Risks'),
-        accessor: 'risks',
-      },
-      {
-        Cell: ({ row: { original } }: any) => original.safety_tips,
-        Header: t('Safety Tips'),
-        accessor: 'safety_tips',
-      },
-      {
         Cell: ({ row: { original } }: any) => original.hashtags,
         Header: t('Hashtags'),
         accessor: 'hashtags',
       },
       {
-        Cell: ({ row: { original } }: any) => 
-          original.created_by ? 
-          `${original.created_by.first_name} ${original.created_by.last_name}` :
-          t('Unknown'),
+        Cell: ({ row: { original } }: any) => (
+          <FacePile 
+            users={[{
+              first_name: original.created_by.first_name,
+              last_name: original.created_by.last_name,
+              id: original.created_by.id,
+            }]} 
+          />
+        ),
         Header: t('Created By'),
         accessor: 'created_by',
       },
@@ -134,8 +183,38 @@ function BulletinsAndAdvisories({
         Header: t('Created'),
         accessor: 'created_on',
       },
+      {
+        Cell: ({ row: { original } }: any) => {
+          const handleDelete = () => setBulletinToDelete(original);
+          
+          return (
+            <Actions className="actions">
+              {hasPerm('can_write') && (
+                <Tooltip
+                  id="delete-action-tooltip"
+                  title={t('Delete')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleDelete}
+                    data-test="dashboard-delete-action"
+                  >
+                    <Icons.Trash data-test="dashboard-delete-icon" />
+                  </span>
+                </Tooltip>
+              )}
+            </Actions>
+          );
+        },
+        Header: t('Actions'),
+        id: 'actions',
+        disableSortBy: true,
+      },
     ],
-    [],
+    [hasPerm],
   );
 
   const filters: Filter[] = useMemo(
@@ -144,30 +223,6 @@ function BulletinsAndAdvisories({
         Header: t('Title'),
         id: 'title',
         key: 'title',
-        input: 'search',
-        operator: FilterOperator.Contains,
-        debounceTime: 300,
-      },
-      {
-        Header: t('Advisory'),
-        id: 'advisory',
-        key: 'advisory',
-        input: 'search',
-        operator: FilterOperator.Contains,
-        debounceTime: 300,
-      },
-      {
-        Header: t('Risks'),
-        id: 'risks',
-        key: 'risks',
-        input: 'search',
-        operator: FilterOperator.Contains,
-        debounceTime: 300,
-      },
-      {
-        Header: t('Safety Tips'),
-        id: 'safety_tips',
-        key: 'safety_tips',
         input: 'search',
         operator: FilterOperator.Contains,
         debounceTime: 300,
@@ -244,30 +299,66 @@ function BulletinsAndAdvisories({
     },
   ];
 
+  const bulkActions: ListViewProps['bulkActions'] = [];
+  
+  if (hasPerm('can_write')) {
+    bulkActions.push({
+      key: 'delete',
+      name: t('Delete'),
+      type: 'danger',
+      onSelect: (bulletinsToDelete: Bulletin[]) => {
+        handleBulkBulletinDelete(bulletinsToDelete);
+      },
+    });
+  }
+
   return (
     <>
       <SubMenu name={t('Bulletins & Advisories')} buttons={subMenuButtons} />
       
-      <StyledListView
-        bulkActions={[]}
-        bulkSelectEnabled={bulkSelectEnabled}
-        cardSortSelectOptions={cardSortSelectOptions}
-        className="bulletin-list-view"
-        columns={columns}
-        count={bulletinCount}
-        data={bulletins}
-        disableBulkSelect={toggleBulkSelect}
-        fetchData={fetchData}
-        refreshData={refreshData}
-        addSuccessToast={addSuccessToast}
-        addDangerToast={addDangerToast}
-        filters={filters}
-        initialSort={initialSort}
-        loading={loading}
-        pageSize={PAGE_SIZE}
-        renderCard={renderCard}
-        defaultViewMode="card"
-      />
+      <ConfirmStatusChange
+        title={t('Delete Bulletins')}
+        description={t(
+          'Are you sure you want to delete the selected bulletins?',
+        )}
+        onConfirm={handleBulkBulletinDelete}
+      >
+        {(showConfirm: Function) => (
+          <StyledListView
+            bulkActions={
+              hasPerm('can_write')
+                ? [
+                    {
+                      key: 'delete',
+                      name: t('Delete'),
+                      type: 'danger',
+                      onSelect: (bulletinsToDelete: Bulletin[]) => {
+                        showConfirm(bulletinsToDelete);
+                      },
+                    },
+                  ]
+                : []
+            }
+            bulkSelectEnabled={bulkSelectEnabled}
+            cardSortSelectOptions={cardSortSelectOptions}
+            className="bulletin-list-view"
+            columns={columns}
+            count={bulletinCount}
+            data={bulletins}
+            disableBulkSelect={toggleBulkSelect}
+            fetchData={fetchData}
+            refreshData={refreshData}
+            addSuccessToast={addSuccessToast}
+            addDangerToast={addDangerToast}
+            filters={filters}
+            initialSort={initialSort}
+            loading={loading}
+            pageSize={PAGE_SIZE}
+            renderCard={renderCard}
+            defaultViewMode="card"
+          />
+        )}
+      </ConfirmStatusChange>
 
       <CreateBulletinModal
         visible={createModalVisible}
@@ -277,6 +368,23 @@ function BulletinsAndAdvisories({
           refreshData();
         }}
       />
+
+      {/* Delete Modal for single bulletin delete */}
+      {bulletinToDelete && (
+        <DeleteModal
+          description={t(
+            'Are you sure you want to delete this bulletin?',
+          )}
+          onConfirm={() => {
+            if (bulletinToDelete) {
+              handleBulletinDelete(bulletinToDelete);
+            }
+          }}
+          onHide={() => setBulletinToDelete(null)}
+          open
+          title={t('Delete Bulletin?')}
+        />
+      )}
     </>
   );
 }

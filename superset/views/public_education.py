@@ -17,10 +17,11 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from superset.views.base import BaseSupersetView
 from superset.extensions import db
 from superset.models.public_education import PublicEducationPost, PublicEducationAttachment
-from superset.views.base_api import BaseSupersetModelRestApi
+from superset.views.base_api import BaseSupersetModelRestApi, requires_json, statsd_metrics
 from flask_appbuilder import ModelRestApi
-from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP
+from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.utils.urls import get_url_path
+from superset.commands.exceptions import DeleteFailedError
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,11 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
     openapi_spec_tag = "Public Education"
     class_permission_name = "PublicEducation"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
-    include_route_methods = {"get_list", "info", "create", "download_attachment", "get_attachment"}
+    include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
+        "bulk_delete",  # not using RouteMethod since locally defined
+        "download_attachment",
+        "get_attachment"
+    }
     list_columns = [
         "id",
         "title",
@@ -56,6 +61,7 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
         "youtube_embed_url",
         "created_by.first_name",
         "created_by.last_name",
+        "created_by.id",
         "created_on",
         "changed_on",
         "attachments",
@@ -65,14 +71,172 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
     add_columns = ["title", "message", "hashtags", "video_url"]
     edit_columns = add_columns
 
-    # Add a property to specify how to serialize relationships
     order_columns = [
         "changed_on",
         "created_on",
         "title",
     ]
 
-    # Define how to format the attachments in the response
+    def pre_add(self, item: PublicEducationPost) -> None:
+        """Set the created_by user before adding"""
+        item.created_by_fk = g.user.id
+
+    def pre_delete(self, item: PublicEducationPost) -> None:
+        """Check permissions before deleting"""
+        if item.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
+            raise DeleteFailedError("You can only delete posts that you created")
+
+    @expose("/", methods=["DELETE"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @rison(schema={"type": "array", "items": {"type": "integer"}})
+    def bulk_delete(self, **kwargs: Any) -> Response:
+        """Delete bulk posts
+        ---
+        delete:
+          description: >-
+            Deletes multiple posts in a bulk operation.
+          parameters:
+          - in: query
+            name: q
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: integer
+          responses:
+            200:
+              description: Posts deleted
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+            401:
+              $ref: '#/components/responses/401'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        item_ids = kwargs["rison"]
+        try:
+            # Check if user has permission to delete
+            if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
+                return self.response_403()
+
+            # Get posts
+            posts = self.datamodel.session.query(PublicEducationPost).filter(
+                PublicEducationPost.id.in_(item_ids)
+            ).all()
+
+            if not posts:
+                return self.response_404()
+
+            # Check if user has permission to delete each post
+            for post in posts:
+                try:
+                    self.pre_delete(post)
+                except DeleteFailedError as ex:
+                    return self.response_403(message=str(ex))
+
+            # Delete posts and their attachments
+            for post in posts:
+                # Delete attachments first
+                for attachment in post.attachments:
+                    try:
+                        if os.path.exists(attachment.file_path):
+                            os.remove(attachment.file_path)
+                    except Exception as e:
+                        logger.warning(f"Failed to delete attachment file: {e}")
+                    db.session.delete(attachment)
+                
+                self.datamodel.delete(post)
+
+            # Commit the transaction
+            db.session.commit()
+            return self.response(
+                200,
+                message=f"Deleted {len(posts)} posts",
+            )
+        except Exception as ex:
+            db.session.rollback()
+            return self.response_422(message=str(ex))
+
+    @expose("/<pk>", methods=["DELETE"])
+    @protect()
+    @safe
+    def delete(self, pk: int) -> Response:
+        """Delete a post
+        ---
+        delete:
+          description: >-
+            Delete a post
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+            description: The post id
+          responses:
+            200:
+              description: Post deleted
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+            401:
+              $ref: '#/components/responses/401'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            post = self.datamodel.get(pk, self._base_filters)
+            if not post:
+                return self.response_404()
+
+            # Check if user has permission to delete
+            if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
+                return self.response_403()
+
+            # Check if user is the creator or has admin rights
+            if post.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
+                return self.response_403()
+
+            # Delete post and any associated attachments
+            attachments = post.attachments
+            for attachment in attachments:
+                try:
+                    if os.path.exists(attachment.file_path):
+                        os.remove(attachment.file_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete attachment file: {e}")
+                db.session.delete(attachment)
+
+            self.datamodel.delete(post)
+            db.session.commit()
+            return self.response(200, message="OK")
+        except Exception as ex:
+            db.session.rollback()
+            return self.response_422(message=str(ex))
+
     def pre_process_list_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Prepare the result before sending it to the response"""
         for item in result["result"]:
