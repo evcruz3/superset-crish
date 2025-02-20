@@ -13,6 +13,7 @@ class PublicEducationPost(Model):
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
     hashtags = Column(String(255), nullable=False)
+    video_url = Column(String(1000), nullable=True)  # For YouTube video URLs
     created_by_fk = Column(Integer, ForeignKey("ab_user.id"), nullable=False)
     created_by = relationship("User", foreign_keys=[created_by_fk])
     created_on = Column(DateTime, default=func.now(), nullable=False)
@@ -20,6 +21,26 @@ class PublicEducationPost(Model):
 
     def __repr__(self):
         return self.title
+
+    @property
+    def youtube_embed_url(self):
+        """Convert YouTube URL to embed URL if valid"""
+        if not self.video_url:
+            return None
+        
+        # Extract video ID from various YouTube URL formats
+        import re
+        patterns = [
+            r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})',
+        ]
+        
+        for pattern in patterns:
+            match = re.match(pattern, self.video_url)
+            if match:
+                video_id = match.group(1)
+                return f"https://www.youtube.com/embed/{video_id}"
+        
+        return None
 
 class PublicEducationAttachment(Model):
     """A model for public education post attachments"""
@@ -29,7 +50,7 @@ class PublicEducationAttachment(Model):
     post_id = Column(Integer, ForeignKey("public_education_posts.id"), nullable=False)
     post = relationship("PublicEducationPost", backref="attachments")
     file_name = Column(String(255), nullable=False)
-    file_type = Column(String(50), nullable=False)  # 'pdf' or 'image'
+    file_type = Column(String(50), nullable=False)  # 'pdf', 'image', or 'video'
     file_path = Column(String(1000), nullable=False)
     created_on = Column(DateTime, default=func.now(), nullable=False)
 
