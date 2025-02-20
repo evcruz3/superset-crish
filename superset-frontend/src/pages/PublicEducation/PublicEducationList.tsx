@@ -264,7 +264,7 @@ function PublicEducationList({
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
 
-  if (hasPerm('can_create')) {
+  if (hasPerm('can_write')) {
     subMenuButtons.push({
       name: (
         <>
