@@ -1,15 +1,18 @@
 from flask import request, g, Response
-from flask_appbuilder.api import expose, protect, safe
+from flask_appbuilder.api import expose, protect, safe, rison
 from flask_appbuilder.security.decorators import has_access_api
 from superset.views.base_api import BaseSupersetModelRestApi, RelatedFieldFilter
 from superset.extensions import db
 from superset.models.bulletins import Bulletin
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from typing import Any, Dict
-from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP
+from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from werkzeug.wrappers import Response as WerkzeugResponse
 from marshmallow import ValidationError
 from superset.views.filters import BaseFilterRelatedUsers, FilterRelatedOwners
+import json
+from superset.views.base_api import requires_json, statsd_metrics
+from superset.commands.exceptions import DeleteFailedError
 
 class BulletinsRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(Bulletin)
@@ -17,7 +20,9 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
     allow_browser_login = True
     class_permission_name = "BulletinsAndAdvisories"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
-    include_route_methods = {"get_list", "info", "create"}
+    include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
+        "bulk_delete",  # not using RouteMethod since locally defined
+    }
 
     list_columns = [
         "id",
@@ -47,10 +52,89 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         """Set the created_by user before adding"""
         item.created_by_fk = g.user.id
 
+    def pre_delete(self, item: Bulletin) -> None:
+        """Check permissions before deleting"""
+        if item.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
+            raise DeleteFailedError("You can only delete bulletins that you created")
+
+    @expose("/", methods=["DELETE"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @rison(schema={"type": "array", "items": {"type": "integer"}})
+    def bulk_delete(self, **kwargs: Any) -> Response:
+        """Delete bulk bulletins
+        ---
+        delete:
+          description: >-
+            Deletes multiple bulletins in a bulk operation.
+          parameters:
+          - in: query
+            name: q
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: integer
+          responses:
+            200:
+              description: Bulletins deleted
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+            401:
+              $ref: '#/components/responses/401'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        item_ids = kwargs["rison"]
+        try:
+            # Check if user has permission to delete
+            if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
+                return self.response_403()
+
+            # Get bulletins
+            bulletins = self.datamodel.session.query(Bulletin).filter(
+                Bulletin.id.in_(item_ids)
+            ).all()
+
+            if not bulletins:
+                return self.response_404()
+
+            # Check if user has permission to delete each bulletin
+            for bulletin in bulletins:
+                try:
+                    self.pre_delete(bulletin)
+                except DeleteFailedError as ex:
+                    return self.response_403(message=str(ex))
+
+            # Delete bulletins
+            for bulletin in bulletins:
+                self.datamodel.delete(bulletin)
+
+            return self.response(
+                200,
+                message=f"Deleted {len(bulletins)} bulletins",
+            )
+        except Exception as ex:
+            return self.response_422(message=str(ex))
+
     @expose("/create/", methods=["POST"])
     @protect()
     @safe
-    @has_access_api
+    @statsd_metrics
+    @requires_json
     def create(self) -> WerkzeugResponse:
         """Creates a new bulletin
         ---
@@ -142,4 +226,58 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             return self.response_400(message=str(err.messages))
         except Exception as ex:
             db.session.rollback()
+            return self.response_422(message=str(ex))
+
+    @expose("/<pk>", methods=["DELETE"])
+    @protect()
+    @safe
+    def delete(self, pk: int) -> Response:
+        """Delete a bulletin
+        ---
+        delete:
+          description: >-
+            Delete a bulletin
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+            description: The bulletin id
+          responses:
+            200:
+              description: Bulletin deleted
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+            401:
+              $ref: '#/components/responses/401'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            bulletin = self.datamodel.get(pk, self._base_filters)
+            if not bulletin:
+                return self.response_404()
+
+            # Check if user has permission to delete
+            if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
+                return self.response_403()
+
+            # Check if user is the creator or has admin rights
+            if bulletin.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
+                return self.response_403()
+
+            self.datamodel.delete(bulletin)
+            return self.response(200, message="OK")
+        except Exception as ex:
             return self.response_422(message=str(ex)) 
