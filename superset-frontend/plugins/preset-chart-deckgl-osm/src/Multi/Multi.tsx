@@ -1447,7 +1447,7 @@ const DeckMulti = (props: DeckMultiProps) => {
           layerGroup.forEach(layer => {
             if (layer instanceof TextLayer) {
               // Only combine text layers from deck_country layers
-              if (layerType === 'deck_country' && formData.show_text_labels) {
+              if (layerType === 'deck_country') {
                 const data = layer.props.data || [];
                 if (Array.isArray(data)) {
                   data.forEach((d: any) => {
