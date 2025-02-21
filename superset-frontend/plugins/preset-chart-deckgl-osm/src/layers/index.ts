@@ -28,6 +28,9 @@ import { getLayer as deck_arc } from './Arc/Arc';
 import { getLayer as deck_polygon } from './Polygon/Polygon';
 import { getLayer as deck_heatmap } from './Heatmap/Heatmap';
 import { getLayer as deck_contour } from './Contour/Contour';
+import { getLayer as getFeedLayer } from './Feed/Feed';
+import { FeedLayerProps } from '../types/feed';
+import { Layer } from '@deck.gl/core';
 
 const layerGenerators = {
   deck_grid,
@@ -41,6 +44,9 @@ const layerGenerators = {
   deck_polygon,
   deck_heatmap,
   deck_contour,
+  deck_feed: (options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>))[] => {
+    return getFeedLayer(options);
+  },
 };
 
 export default layerGenerators;
