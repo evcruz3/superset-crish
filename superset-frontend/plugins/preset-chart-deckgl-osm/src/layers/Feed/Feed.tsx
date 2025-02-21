@@ -50,6 +50,15 @@ import fitViewport, { Viewport } from '../../utils/fitViewport';
 import { TooltipProps } from '../../components/Tooltip';
 import { countries } from '../Country/countries';
 import { LayerOptions, LayerReturn } from '../../types/layers';
+import {
+  FeedLayerProps,
+  FeedGeoJSON,
+  FeedGeoJSONFeature,
+  FeedCentroid,
+  ProcessedFeedData,
+  FeedFormData,
+  FeedLayerReturn
+} from '../../types/feed';
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
@@ -89,7 +98,7 @@ const fadeIn = keyframes`
 
 const FeedPanel = styled.div<{ isExiting?: boolean }>`
   position: absolute;
-  top: 20px;
+  top: 120px;
   right: 20px;
   width: 350px;
   max-height: calc(60vh);
@@ -195,7 +204,7 @@ interface FeedPanelProps {
   isExiting?: boolean;
 }
 
-const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regionName, isExiting }) => {
+export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regionName, isExiting }) => {
   // Sort entries by date in descending order (newest first)
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) => {
@@ -241,27 +250,34 @@ export type DeckGLFeedProps = {
   datasource: Datasource;
 };
 
-export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))[] {
+export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>))[] {
   const { 
     formData, 
     payload, 
     onAddFilter, 
-    setTooltip = () => {},
-    geoJson = {},
-    selectionOptions = {}
+    setTooltip,
+    geoJson,
+    selectionOptions,
+    opacity = 1
   } = options;
+
+  // Type guard to ensure selectionOptions is present and has required properties
+  if (!selectionOptions || !geoJson) {
+    console.warn('Feed layer requires selectionOptions and geoJson to be provided');
+    return [];
+  }
 
   const { setSelectedRegion, selectedRegion } = selectionOptions;
 
-  console.log('getLayer called with formData:', formData);
-  console.log('payload:', payload);
+  if (!setSelectedRegion) {
+    console.warn('Feed layer requires setSelectedRegion to be provided');
+    return [];
+  }
 
-  const fd = formData;
+  const fd = formData as FeedFormData;
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
-  const data = payload.data as ProcessedData;
-
-  console.log('Processing data:', data);
+  const data = payload.data as ProcessedFeedData;
 
   // Calculate extent and color scale
   const allMetricValues = Object.values(data.regionMetrics);
@@ -270,11 +286,10 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     .domain(extent)
     .range(['#ccc', '#343434']);
 
-  const features = geoJson.features.map((feature: JsonObject) => {
+  const features = (geoJson as FeedGeoJSON).features.map((feature: FeedGeoJSONFeature) => {
     const regionId = feature.properties.ISO;
     const value = data.regionCounts[regionId];
     const metricValue = data.regionMetrics[regionId];
-    // Check if region is selected by either ISO or name
     const isSelected = selectedRegion?.id === regionId || 
                       selectedRegion?.name === feature.properties.ADM1 ||
                       selectedRegion?.name === feature.properties.name ||
@@ -287,68 +302,79 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
         metricValue,
         fillColor: value !== undefined 
           ? isSelected 
-            ? [255, 165, 0, 180] // Orange color for selected region
-            : hexToRGB(colorScale(value)) 
+            ? [255, 165, 0, 180 * opacity] // Orange color for selected region
+            : [...hexToRGB(colorScale(value)), 255 * opacity]
           : [0, 0, 0, 0],
-        strokeColor: isSelected ? [255, 165, 0, 255] : strokeColor,
+        strokeColor: isSelected ? [255, 165, 0, 255 * opacity] : strokeColor.map((v, i) => i === 3 ? v * opacity : v),
         entries: data.regionEntries[regionId] || [],
       },
     };
   });
 
-  let processedFeatures = features.filter((feature: JsonObject) => feature.properties.metric !== undefined);
-  if (fd.js_data_mutator) {
-    const jsFnMutator = sandboxedEval(fd.js_data_mutator);
-    processedFeatures = jsFnMutator(processedFeatures);
-  }
+  let processedFeatures = features.filter((feature: FeedGeoJSONFeature) => 
+    feature.properties.metric !== undefined
+  );
 
-  function setTooltipContent(o: JsonObject) {
-    console.log('setTooltipContent called with:', o);
+  // Create centroids for circle overlays
+  const centroids: FeedCentroid[] = processedFeatures.map((feature: FeedGeoJSONFeature) => {
+    const coordinates = feature.geometry.type === 'Polygon' 
+      ? feature.geometry.coordinates[0]
+      : feature.geometry.coordinates[0][0];
     
-    if (!o.object) {
-      console.log('No object in tooltip data');
-      setTooltip(null);
+    const center = coordinates.reduce(
+      (acc: number[], coord: number[]) => [acc[0] + coord[0], acc[1] + coord[1]],
+      [0, 0]
+    ).map((sum: number) => sum / coordinates.length) as [number, number];
+
+    return {
+      position: center,
+      count: feature.properties.metric || 0,
+      metricValue: feature.properties.metricValue || 0,
+      name: feature.properties.ADM1 || feature.properties.name || feature.properties.NAME || feature.properties.ISO,
+      ISO: feature.properties.ISO,
+      entries: feature.properties.entries || [],
+    };
+  });
+
+  const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
+  const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
+  const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
+
+  function handleClick(info: { object?: FeedGeoJSONFeature }) {
+    if (!info.object || !setSelectedRegion) return;
+
+    const regionName = info.object.properties?.ADM1 || 
+                      info.object.properties?.name || 
+                      info.object.properties?.NAME;
+
+    if (!regionName || !info.object.properties?.entries) return;
+
+    // If clicking the same region, deselect it
+    if (selectedRegion?.id === info.object.properties.ISO) {
+      setSelectedRegion(null);
       return;
     }
-    
-    const areaName = o.object.properties?.ADM1 || o.object.properties?.name || o.object.properties?.NAME || o.object.properties?.ISO;
-    const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
-    const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
-    const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
 
-    const content = (
-      <div className="deckgl-tooltip">
-        <TooltipRow
-          key="area"
-          label={`${areaName} `}
-          value={o.object.properties?.metric !== undefined ? `${prefix}${formatter(o.object.properties.metric)}${unit} entries` : 'No entries'}
-        />
-      </div>
-    );
-
-    console.log('Setting tooltip content:', content);
-    setTooltip({
-      x: o.x,
-      y: o.y,
-      content,
+    setSelectedRegion({
+      name: regionName,
+      entries: info.object.properties.entries,
+      id: info.object.properties.ISO,
     });
   }
 
-  function handleClick(info: JsonObject) {
-    if (!setSelectedRegion) return;  // Early return if no handler
+  function handleCircleClick(info: { object?: FeedCentroid }) {
+    if (!info.object || !setSelectedRegion) return;
 
-    const regionId = info.object?.properties?.ISO;
-    const regionName = info.object?.properties?.ADM1 || 
-                      info.object?.properties?.name || 
-                      info.object?.properties?.NAME;
+    // If clicking the same region, deselect it
+    if (selectedRegion?.id === info.object.ISO) {
+      setSelectedRegion(null);
+      return;
+    }
 
-    if (!regionName) return;  // Early return if no region name
-
-    const entries = payload.data.entries[regionId] || [];
     setSelectedRegion({
-      name: regionName,
-      entries,
-      id: regionId,
+      name: info.object.name,
+      entries: info.object.entries,
+      id: info.object.ISO,
     });
   }
 
@@ -360,95 +386,67 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     extruded: fd.extruded,
     pointRadiusScale: 100,
     lineWidthScale: 1,
-    getFillColor: (f: JsonObject) => f.properties.fillColor,
-    getLineColor: (f: JsonObject) => f.properties.strokeColor,
-    getLineWidth: fd.line_width || 1,
+    getFillColor: (f: FeedGeoJSONFeature) => {
+      const isSelected = selectedRegion?.id === f.properties.ISO;
+      const fillColor = f.properties.fillColor || [0, 0, 0, 0];
+      return isSelected ? [fillColor[0], fillColor[1], fillColor[2], fillColor[3] * 1.5] : fillColor;
+    },
+    getLineColor: (f: FeedGeoJSONFeature) => {
+      const isSelected = selectedRegion?.id === f.properties.ISO;
+      const lineColor = f.properties.strokeColor || strokeColor;
+      return isSelected ? [lineColor[0], lineColor[1], lineColor[2], lineColor[3] * 1.5] : lineColor;
+    },
+    getLineWidth: (f: FeedGeoJSONFeature) => {
+      const isSelected = selectedRegion?.id === f.properties.ISO;
+      return isSelected ? (fd.line_width || 1) * 2 : (fd.line_width || 1);
+    },
     lineWidthUnits: fd.line_width_unit,
-    opacity: 0.8,
-    autoHighlight: true,
+    opacity,
     pickable: true,
+    autoHighlight: true,
+    highlightColor: [255, 255, 255, 40],
     onHover: setTooltipContent,
     onClick: handleClick,
+    updateTriggers: {
+      getFillColor: [selectedRegion?.id],
+      getLineColor: [selectedRegion?.id],
+      getLineWidth: [selectedRegion?.id],
+    },
   });
-
-  // Create centroids for circle overlays
-  const centroids = processedFeatures.map((feature: JsonObject) => {
-    const coordinates = feature.geometry.type === 'Polygon' 
-      ? feature.geometry.coordinates[0]
-      : feature.geometry.coordinates[0][0];
-    
-    const center = coordinates.reduce(
-      (acc: number[], coord: number[]) => [acc[0] + coord[0], acc[1] + coord[1]],
-      [0, 0]
-    ).map((sum: number) => sum / coordinates.length);
-
-    return {
-      position: center,
-      count: feature.properties.metric || 0,
-      metricValue: feature.properties.metricValue,
-      name: feature.properties.ADM1 || feature.properties.name || feature.properties.NAME || feature.properties.ISO,
-      ISO: feature.properties.ISO,
-      entries: feature.properties.entries,
-    };
-  });
-
-  const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
-  const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
-  const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
 
   const circleLayer = new ScatterplotLayer({
     id: `circle-layer-${fd.slice_id}`,
     data: centroids,
-    opacity: 0.8,
+    opacity: 0.8 * opacity,
     stroked: true,
     filled: true,
     radiusScale: 6,
     radiusMinPixels: 5,
     radiusMaxPixels: 30,
     lineWidthMinPixels: 1,
-    getPosition: (d: any) => d.position,
-    getRadius: (d: any) => Math.sqrt(d.count) * 1000,
-    getFillColor: (d: any) => {
-      // Check if this specific circle's region is selected using ISO
+    getPosition: d => d.position,
+    getRadius: d => {
       const isSelected = selectedRegion?.id === d.ISO;
-      return isSelected ? [255, 69, 0, 180] : [255, 140, 0, 180];
+      const baseRadius = Math.sqrt(d.count) * 1000;
+      return isSelected ? baseRadius * 1.2 : baseRadius;
     },
-    getLineColor: (d: any) => {
+    getFillColor: d => {
       const isSelected = selectedRegion?.id === d.ISO;
-      return isSelected ? [255, 69, 0, 255] : [255, 140, 0];
+      return isSelected ? [255, 69, 0, 180 * opacity] : [255, 140, 0, 180 * opacity];
+    },
+    getLineColor: d => {
+      const isSelected = selectedRegion?.id === d.ISO;
+      return isSelected ? [255, 69, 0, 255 * opacity] : [255, 140, 0, 255 * opacity];
     },
     pickable: true,
-    onHover: (o: JsonObject) => {
-      console.log('Circle hover:', o);
-      if (!o.object) {
-        setTooltip(null);
-        return;
-      }
-      setTooltip({
-        x: o.x,
-        y: o.y,
-        content: (
-          <div className="deckgl-tooltip">
-            <TooltipRow
-              key="metric"
-              label={`${o.object.name} `}
-              value={`${prefix}${formatter(o.object.metricValue)}${unit}`}
-            />
-          </div>
-        ),
-      });
-    },
-    onClick: (info: { object?: { name?: string; entries?: FeedEntry[]; ISO?: string } } | null) => {
-      console.log('Circle clicked:', info);
-      if (info?.object?.name && info.object.entries) {
-        const newSelectedRegion: SelectedRegion = {
-          name: info.object.name,
-          entries: info.object.entries,
-          id: info.object.ISO, // Use ISO for consistent identification
-        };
-        console.log('Setting selected region from circle:', newSelectedRegion);
-        setSelectedRegion(newSelectedRegion);
-      }
+    autoHighlight: true,
+    highlightColor: [255, 255, 255, 40],
+    onHover: handleCircleHover,
+    onClick: handleCircleClick,
+    updateTriggers: {
+      getRadius: [selectedRegion?.id],
+      getFillColor: [selectedRegion?.id],
+      getLineColor: [selectedRegion?.id],
     },
   });
 
@@ -464,10 +462,58 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     getPixelOffset: [0, 0],
     fontFamily: 'Arial',
     fontWeight: 'bold',
-    getColor: [255, 255, 255, 255], // White text color
+    getColor: [255, 255, 255, 255 * opacity],
   });
 
-  // Return the layers array directly
+  function setTooltipContent(o: { object?: FeedGeoJSONFeature; x?: number; y?: number }) {
+    if (!o.object || !setTooltip) {
+      setTooltip?.(null);
+      return;
+    }
+
+    const areaName = o.object.properties?.ADM1 || 
+                    o.object.properties?.name || 
+                    o.object.properties?.NAME || 
+                    o.object.properties?.ISO;
+
+    setTooltip({
+      x: o.x,
+      y: o.y,
+      content: (
+        <div className="deckgl-tooltip">
+          <TooltipRow
+            key="area"
+            label={`${areaName} `}
+            value={o.object.properties?.metric !== undefined 
+              ? `${prefix}${formatter(o.object.properties.metric)}${unit} entries` 
+              : 'No entries'}
+          />
+        </div>
+      ),
+    });
+  }
+
+  function handleCircleHover(o: { object?: FeedCentroid; x?: number; y?: number }) {
+    if (!o.object || !setTooltip) {
+      setTooltip?.(null);
+      return;
+    }
+
+    setTooltip({
+      x: o.x,
+      y: o.y,
+      content: (
+        <div className="deckgl-tooltip">
+          <TooltipRow
+            key="metric"
+            label={`${o.object.name} `}
+            value={`${prefix}${formatter(o.object.metricValue)}${unit}`}
+          />
+        </div>
+      ),
+    });
+  }
+
   return [geoJsonLayer, circleLayer, textLayer];
 }
 
