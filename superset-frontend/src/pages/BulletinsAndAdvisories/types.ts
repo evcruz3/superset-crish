@@ -27,5 +27,5 @@ export interface CreateBulletinPayload {
   risks: string;
   safety_tips: string;
   hashtags: string;
-  chartId: number | null;
+  chart_id: number | null;
 } 
