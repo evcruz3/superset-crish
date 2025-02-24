@@ -30,6 +30,9 @@ interface BulletinsAndAdvisoriesProps {
 const BULLETIN_COLUMNS_TO_FETCH = [
   'id',
   'title',
+  'advisory',
+  'risks',
+  'safety_tips',
   'hashtags',
   'chart_id',
   'created_by.first_name',

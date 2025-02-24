@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal, Form, Input } from 'antd';
 import { SupersetClient, t, useTheme, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { AsyncSelect } from 'src/components';
 import { getClientErrorObject } from '@superset-ui/core';
 import rison from 'rison';
-import { SelectValue } from 'antd/lib/select';
+import { SelectValue, LabeledValue as AntLabeledValue } from 'antd/lib/select';
 import { CreateBulletinPayload } from './types';
 import styled from 'styled-components';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
@@ -34,6 +34,12 @@ interface ChartOption {
   thumbnail_url?: string;
 }
 
+// Use Ant Design's types for the select values
+type SelectLabeledValue = AntLabeledValue & {
+  value: number;
+  thumbnail_url?: string;
+};
+
 export default function CreateBulletinModal({
   visible,
   onClose,
@@ -45,14 +51,34 @@ export default function CreateBulletinModal({
   const { addSuccessToast, addDangerToast } = useToasts();
   const theme = useTheme();
 
-  const handleChartSelect = (value: SelectValue, option: ChartOption) => {
-    setSelectedChart(option);
+  const handleChartSelect = (value: SelectValue, option: any) => {
+    console.log('handleChartSelect called with:', { value, option });
+    
+    if (!value || typeof value === 'string') {
+      setSelectedChart(null);
+      form.setFieldsValue({ 
+        chart_id: null
+      });
+      return;
+    }
+
+    const labeledValue = value as SelectLabeledValue;
+    const chartId = Number(labeledValue.value);
+    
+    const selectedValue = {
+      value: chartId,
+      label: labeledValue.label as string,
+      thumbnail_url: option?.thumbnail_url
+    };
+    
+    setSelectedChart(selectedValue);
     form.setFieldsValue({ 
-      chartId: typeof value === 'number' ? value : null 
+      chart_id: chartId
     });
   };
 
-  const loadChartOptions = async (search: string, page: number, pageSize: number) => {
+  const loadChartOptions = useMemo(() => async (search: string, page: number, pageSize: number) => {
+    console.log('loadChartOptions called with:', { search, page, pageSize });
     const query = rison.encode_uri({
       filters: search ? [{ col: 'slice_name', opr: 'ct', value: search }] : [],
       order_column: 'changed_on_delta_humanized',
@@ -67,44 +93,45 @@ export default function CreateBulletinModal({
       });
       
       const { result, count } = response.json;
+      const mappedData = result.map((chart: any) => ({
+        value: String(chart.id),
+        label: chart.slice_name,
+        thumbnail_url: chart.thumbnail_url,
+      }));
+      
       return {
-        data: result.map((chart: any) => ({
-          value: chart.id,
-          label: chart.slice_name,
-          thumbnail_url: chart.thumbnail_url,
-        })),
+        data: mappedData,
         totalCount: count,
       };
     } catch (error) {
+      console.error('Failed to load charts:', error);
       addDangerToast(t('Failed to load charts'));
       return {
         data: [],
         totalCount: 0,
       };
     }
-  };
+  }, [addDangerToast]);
+
+  // Remove the debug effects that might cause unnecessary re-renders
+  const selectRef = useRef(null);
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
       const values = await form.validateFields();
       
-      // Get the current chart ID from the form and ensure it's a number
-      const currentChartId = form.getFieldValue('chartId');
-      const chartId = typeof currentChartId === 'object' ? currentChartId.value : currentChartId;
-      
       const payload = {
-        ...values,
-        chartId: chartId ? Number(chartId) : null,
+        title: values.title || '',
         advisory: values.advisory || '',
         risks: values.risks || '',
         safety_tips: values.safety_tips || '',
-        title: values.title || '',
-        hashtags: values.hashtags || ''
+        hashtags: values.hashtags || '',
+        chart_id: values.chart_id
       };
       
       await SupersetClient.post({
-        endpoint: '/api/v1/bulletins_and_advisories/create/',
+        endpoint: '/api/v1/bulletins_and_advisories/',
         jsonPayload: payload,
       });
       
@@ -113,6 +140,7 @@ export default function CreateBulletinModal({
       setSelectedChart(null);
       onSuccess();
     } catch (error) {
+      console.log(error);
       const errorMessage = await getClientErrorObject(error);
       addDangerToast(errorMessage.message || t('Failed to create bulletin'));
     } finally {
@@ -172,15 +200,27 @@ export default function CreateBulletinModal({
         </Form.Item>
 
         <Form.Item
-          name="chartId"
+          name="chart_id"
           label={t('Associated Chart')}
+          getValueFromEvent={(val: SelectValue) => {
+            if (!val || typeof val === 'string') return null;
+            const labeledValue = val as SelectLabeledValue;
+            return Number(labeledValue.value);
+          }}
         >
           <AsyncSelect
+            ref={selectRef}
             allowClear
             showSearch
+            labelInValue
             placeholder={t('Select a chart')}
             onChange={handleChartSelect}
             options={loadChartOptions}
+            value={selectedChart ? {
+              value: String(selectedChart.value),
+              label: selectedChart.label
+            } : undefined}
+            dropdownRender={menu => menu}
           />
         </Form.Item>
 
