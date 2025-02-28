@@ -122,6 +122,7 @@ owners_name_description = "Name of an owner of the chart."
 certified_by_description = "Person or group that has certified this chart"
 certification_details_description = "Details of the certification"
 tags_description = "Tags to be associated with the chart"
+slug_description = "Unique URL friendly identifier for the chart."
 
 openapi_spec_methods_override = {
     "get": {"get": {"summary": "Get a chart detail information"}},
@@ -173,6 +174,11 @@ class ChartPostSchema(Schema):
         metadata={"description": slice_name_description},
         required=True,
         validate=Length(1, 250),
+    )
+    slug = fields.String(
+        metadata={"description": slug_description},
+        allow_none=True,
+        validate=Length(1, 255),
     )
     description = fields.String(
         metadata={"description": description_description}, allow_none=True
@@ -234,6 +240,11 @@ class ChartPutSchema(Schema):
         metadata={"description": slice_name_description},
         allow_none=True,
         validate=Length(0, 250),
+    )
+    slug = fields.String(
+        metadata={"description": slug_description},
+        allow_none=True,
+        validate=Length(1, 255),
     )
     description = fields.String(
         metadata={"description": description_description}, allow_none=True
