@@ -144,6 +144,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "dashboards.dashboard_title",
         "params",
         "slice_name",
+        "slug",
         "thumbnail_url",
         "url",
         "viz_type",
@@ -192,6 +193,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "dashboards.dashboard_title",
         "params",
         "slice_name",
+        "slug",
         "slice_url",
         "table.default_endpoint",
         "table.table_name",
@@ -213,6 +215,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "last_saved_by.first_name",
         "last_saved_by.last_name",
         "slice_name",
+        "slug",
         "viz_type",
     ]
     search_columns = [
@@ -228,6 +231,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "owners",
         "dashboards",
         "slice_name",
+        "slug",
         "viz_type",
         "tags",
     ]
@@ -1131,3 +1135,49 @@ class ChartRestApi(BaseSupersetModelRestApi):
         )
         command.run()
         return self.response(200, message="OK")
+
+    @expose("/slug/<slug>/", methods=("GET",))
+    @protect()
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_by_slug",
+        log_to_statsd=False,
+    )
+    def get_by_slug(self, slug: str) -> Response:
+        """Gets a chart by slug
+        ---
+        get:
+          description: >-
+            Get a chart by slug
+          parameters:
+          - in: path
+            schema:
+              type: string
+            name: slug
+          responses:
+            200:
+              description: Chart
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/ChartResponseSchema'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            chart = ChartDAO.find_by_slug(slug)
+            if not chart:
+                return self.response_404()
+            return self.response(200, result=chart.data)
+        except ChartNotFoundError:
+            return self.response_404()
+        except ValueError as ex:
+            return self.response_422(message=str(ex))

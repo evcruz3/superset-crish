@@ -73,6 +73,7 @@ class Slice(  # pylint: disable=too-many-public-methods
     __tablename__ = "slices"
     id = Column(Integer, primary_key=True)
     slice_name = Column(String(250))
+    slug = Column(String(255), unique=True)
     datasource_id = Column(Integer)
     datasource_type = Column(String(200))
     datasource_name = Column(String(2000))
@@ -123,6 +124,7 @@ class Slice(  # pylint: disable=too-many-public-methods
 
     export_fields = [
         "slice_name",
+        "slug",
         "description",
         "certified_by",
         "certification_details",
@@ -347,7 +349,12 @@ class Slice(  # pylint: disable=too-many-public-methods
 
     @property
     def url(self) -> str:
-        return f"/explore/?slice_id={self.id}"
+        return f"/superset/chart/{self.slug or self.id}/"
+
+    @staticmethod
+    def get_url(id_: int, slug: str | None = None) -> str:
+        # To be able to generate URL's without instantiating a Slice object
+        return f"/superset/chart/{slug or id_}/"
 
     def get_query_context_factory(self) -> QueryContextFactory:
         if self.query_context_factory is None:
@@ -358,8 +365,16 @@ class Slice(  # pylint: disable=too-many-public-methods
         return self.query_context_factory
 
     @classmethod
-    def get(cls, id_: int) -> Slice:
-        qry = db.session.query(Slice).filter_by(id=id_)
+    def get(cls, id_or_slug: str | int) -> "Slice":
+        if not isinstance(id_or_slug, (str, int)):
+            raise ValueError("Argument id_or_slug must be of type str or int")
+        
+        qry = db.session.query(cls)
+        if isinstance(id_or_slug, str) and not id_or_slug.isdigit():
+            qry = qry.filter_by(slug=id_or_slug)
+        else:
+            qry = qry.filter_by(id=int(id_or_slug))
+        
         return qry.one_or_none()
 
 

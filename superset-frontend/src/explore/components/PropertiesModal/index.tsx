@@ -17,6 +17,7 @@
  * under the License.
  */
 import { ChangeEvent, useMemo, useState, useCallback, useEffect } from 'react';
+import React from 'react';
 
 import Modal from 'src/components/Modal';
 import { Input, TextArea } from 'src/components/Input';
@@ -68,13 +69,22 @@ function PropertiesModal({
 }: PropertiesModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [form] = AntdForm.useForm();
-  // values of form inputs
-  const [name, setName] = useState(slice.slice_name || '');
   const [selectedOwners, setSelectedOwners] = useState<SelectValue | null>(
     null,
   );
 
   const [tags, setTags] = useState<TagType[]>([]);
+  const [completeSliceData, setCompleteSliceData] = useState<any>(slice);
+  
+  // Add a ref to track if the component is mounted
+  const isMounted = React.useRef(true);
+  
+  // Set isMounted to false when the component unmounts
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map((tag: { id: number; name: string }) => ({
@@ -83,6 +93,50 @@ function PropertiesModal({
     }));
     return selectTags;
   }, [tags.length]);
+
+  // Fetch complete chart data if slug is missing
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCompleteChartData = async () => {
+      try {
+        // Only fetch if slice exists and slug is missing
+        if (slice?.slice_id && !slice?.slug) {
+          const response = await SupersetClient.get({
+            endpoint: `/api/v1/chart/${slice.slice_id}`,
+          });
+          
+          if (!isMounted) return;
+          
+          const chartData = response.json.result;
+          setCompleteSliceData({
+            ...slice,
+            ...chartData,
+          });
+          
+          // Update the form with the slug value
+          if (chartData.slug) {
+            form.setFields([
+              {
+                name: 'slug',
+                value: chartData.slug,
+              },
+            ]);
+          }
+        }
+      } catch (error) {
+        // Keep this error log as it's helpful for debugging
+        console.error('Error fetching complete chart data:', error);
+      }
+    };
+    
+    if (show) {
+      fetchCompleteChartData();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [slice?.slice_id, slice?.slug, show, form]);
 
   function showError({ error, statusText, message }: any) {
     let errorText = error || statusText || t('An error has occurred');
@@ -103,6 +157,10 @@ function PropertiesModal({
           endpoint: `/api/v1/chart/${slice.slice_id}`,
         });
         const chart = response.json.result;
+        
+        // Check if component is still mounted before updating state
+        if (!isMounted.current) return;
+        
         setSelectedOwners(
           chart?.owners?.map((owner: any) => ({
             value: owner.id,
@@ -110,11 +168,13 @@ function PropertiesModal({
           })),
         );
       } catch (response) {
+        if (!isMounted.current) return;
+        
         const clientError = await getClientErrorObject(response);
         showError(clientError);
       }
     },
-    [slice.slice_id],
+    [slice.slice_id, isMounted],
   );
 
   const loadOptions = useMemo(
@@ -145,6 +205,8 @@ function PropertiesModal({
     certification_details?: string;
     description?: string;
     cache_timeout?: number;
+    name?: string;
+    slug?: string;
   }) => {
     setSubmitting(true);
     const {
@@ -152,15 +214,20 @@ function PropertiesModal({
       certification_details: certificationDetails,
       description,
       cache_timeout: cacheTimeout,
+      name: formName,
+      slug: formSlug,
     } = values;
+    
     const payload: { [key: string]: any } = {
-      slice_name: name || null,
+      slice_name: formName || null,
+      slug: formSlug || null,
       description: description || null,
       cache_timeout: cacheTimeout || null,
       certified_by: certifiedBy || null,
       certification_details:
         certifiedBy && certificationDetails ? certificationDetails : null,
     };
+    
     if (selectedOwners) {
       payload.owners = (
         selectedOwners as {
@@ -179,10 +246,16 @@ function PropertiesModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      // update the redux state
+      
+      // Check if component is still mounted before updating state
+      if (!isMounted.current) return;
+      
+      // update the redux state, ensuring slug is explicitly included
       const updatedChart = {
         ...payload,
         ...res.json.result,
+        // Use any available slug in this priority: form value, API response, existing value
+        slug: formSlug || res.json.result.slug || completeSliceData.slug || null, 
         tags,
         id: slice.slice_id,
         owners: selectedOwners,
@@ -191,26 +264,39 @@ function PropertiesModal({
       addSuccessToast(t('Chart properties updated'));
       onHide();
     } catch (res) {
+      // Check if component is still mounted before showing error
+      if (!isMounted.current) return;
+      
       const clientError = await getClientErrorObject(res);
       showError(clientError);
+    } finally {
+      // Check if component is still mounted before updating state
+      if (isMounted.current) {
+        setSubmitting(false);
+      }
     }
-    setSubmitting(false);
   };
 
   const ownersLabel = t('Owners');
 
   // get the owners of this slice
   useEffect(() => {
-    fetchChartOwners();
+    let isMounted = true;
+    const fetchOwners = async () => {
+      await fetchChartOwners();
+    };
+    
+    fetchOwners();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [fetchChartOwners]);
-
-  // update name after it's changed in another modal
-  useEffect(() => {
-    setName(slice.slice_name || '');
-  }, [slice.slice_name]);
 
   useEffect(() => {
     if (!isFeatureEnabled(FeatureFlag.TaggingSystem)) return;
+    
+    let isMounted = true;
     try {
       fetchTags(
         {
@@ -218,14 +304,26 @@ function PropertiesModal({
           objectId: slice.slice_id,
           includeTypes: false,
         },
-        (tags: TagType[]) => setTags(tags),
+        (tags: TagType[]) => {
+          if (isMounted) {
+            setTags(tags);
+          }
+        },
         error => {
-          showError(error);
+          if (isMounted) {
+            showError(error);
+          }
         },
       );
     } catch (error) {
-      showError(error);
+      if (isMounted) {
+        showError(error);
+      }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [slice.slice_id]);
 
   const handleChangeTags = (tags: { label: string; value: number }[]) => {
@@ -239,6 +337,25 @@ function PropertiesModal({
   const handleClearTags = () => {
     setTags([]);
   };
+
+  useEffect(() => {
+    // Use completeSliceData if available, otherwise use slice
+    const sliceData = completeSliceData || slice;
+    if (sliceData) {
+      const initialValues = {
+        name: sliceData.slice_name || '',
+        slug: sliceData.slug || '',
+        description: sliceData.description || '',
+        cache_timeout: sliceData.cache_timeout != null ? sliceData.cache_timeout : '',
+        certified_by: sliceData.certified_by || '',
+        certification_details:
+          sliceData.certification_details || '',
+        is_managed_externally: sliceData.is_managed_externally || false,
+        external_url: sliceData.external_url || '',
+      };
+      form.setFieldsValue(initialValues);
+    }
+  }, [form, slice, completeSliceData]);
 
   return (
     <Modal
@@ -262,7 +379,7 @@ function PropertiesModal({
             buttonSize="small"
             buttonStyle="primary"
             onClick={form.submit}
-            disabled={submitting || !name || slice.is_managed_externally}
+            disabled={submitting || slice.is_managed_externally}
             tooltip={
               slice.is_managed_externally
                 ? t(
@@ -292,22 +409,32 @@ function PropertiesModal({
             slice.certified_by && slice.certification_details
               ? slice.certification_details
               : '',
+          slug: slice.slug || '',
         }}
       >
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <h3>{t('Basic information')}</h3>
-            <FormItem label={t('Name')} required>
+            <FormItem label={t('Name')} name="name" required>
               <Input
                 aria-label={t('Name')}
-                name="name"
                 data-test="properties-modal-name-input"
                 type="text"
-                value={name}
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  setName(event.target.value ?? '')
-                }
               />
+            </FormItem>
+            <FormItem>
+              <StyledFormItem label={t('URL Slug')} name="slug">
+                <Input
+                  aria-label={t('Slug')}
+                  data-test="properties-modal-slug-input"
+                  type="text"
+                />
+              </StyledFormItem>
+              <StyledHelpBlock className="help-block">
+                {t(
+                  'A readable URL for your chart.',
+                )}
+              </StyledHelpBlock>
             </FormItem>
             <FormItem>
               <StyledFormItem label={t('Description')} name="description">

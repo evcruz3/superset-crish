@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from superset.charts.filters import ChartFilter
 from superset.daos.base import BaseDAO
@@ -76,3 +76,7 @@ class ChartDAO(BaseDAO[Slice]):
         )
         if fav:
             db.session.delete(fav)
+
+    @staticmethod
+    def find_by_slug(slug: str) -> Optional[Slice]:
+        return db.session.query(Slice).filter_by(slug=slug).one_or_none()
