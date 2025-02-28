@@ -134,14 +134,6 @@ export const ExploreChartHeader = ({
 
   const updateSlice = useCallback(
     slice => {
-      // Make sure to preserve all fields from the slice, especially slug
-      // Create a complete slice object with all properties
-      const completeSlice = {
-        ...slice,
-        slice_id: slice.slice_id || slice.id, // ensure slice_id is set
-        slug: slice.slug || null, // explicitly preserve slug field
-      };
-      
       dispatch(sliceUpdated(completeSlice));
     },
     [dispatch],
