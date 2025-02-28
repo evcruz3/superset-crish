@@ -349,12 +349,12 @@ class Slice(  # pylint: disable=too-many-public-methods
 
     @property
     def url(self) -> str:
-        return f"/superset/chart/{self.slug or self.id}/"
+        return f"/explore/?slice_id={self.id}"
 
     @staticmethod
     def get_url(id_: int, slug: str | None = None) -> str:
         # To be able to generate URL's without instantiating a Slice object
-        return f"/superset/chart/{slug or id_}/"
+        return f"/explore/?slice_id={id_}"
 
     def get_query_context_factory(self) -> QueryContextFactory:
         if self.query_context_factory is None:
