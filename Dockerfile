@@ -157,7 +157,8 @@ RUN set -e && \
         echo "Generating translation files..." && \
         ./scripts/translations/generate_mo_files.sh && \
         chown -R superset:superset superset/translations; \
-    fi && \
+    fi
+    # fi # && \
     # rm -rf superset/translations/messages.pot \
     #       superset/translations/*/LC_MESSAGES/*.po
 
