@@ -30,10 +30,12 @@ export type Locale =
   | 'es'
   | 'fr'
   | 'it'
+  | 'id'
   | 'ja'
   | 'ko'
   | 'pt'
   | 'pt_BR'
+  | 'pt_TL'
   | 'ru'
   | 'zh'; // supported locales in Superset
 
