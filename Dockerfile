@@ -152,12 +152,14 @@ COPY --chown=superset:superset --from=superset-node /app/superset/translations s
 
 # Compile backend translations and clean up
 COPY ./scripts/translations/generate_mo_files.sh ./scripts/translations/
-RUN if [ "$BUILD_TRANSLATIONS" = "true" ]; then \
-        ./scripts/translations/generate_mo_files.sh \
-        && chown -R superset:superset superset/translations; \
-    fi \
-    && rm -rf superset/translations/messages.pot \
-              superset/translations/*/LC_MESSAGES/*.po
+RUN set -e && \
+    if [ "$BUILD_TRANSLATIONS" = "true" ]; then \
+        echo "Generating translation files..." && \
+        ./scripts/translations/generate_mo_files.sh && \
+        chown -R superset:superset superset/translations; \
+    fi && \
+    rm -rf superset/translations/messages.pot \
+          superset/translations/*/LC_MESSAGES/*.po
 
 # Add server run script
 COPY --chmod=755 ./docker/run-server.sh /usr/bin/
