@@ -8378,7 +8378,6 @@ msgstr "Intervalo de tempo de substituição"
 msgid "Override time range"
 msgstr "Intervalo de tempo de substituição"
 
-#, fuzzy
 msgid "Overview"
 msgstr "Ver"
 

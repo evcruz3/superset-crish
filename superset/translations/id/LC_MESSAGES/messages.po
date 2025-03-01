@@ -8165,7 +8165,6 @@ msgstr "Substituisaun tempu"
 msgid "Override time range"
 msgstr "Substituisaun interval tempu"
 
-#, fuzzy
 msgid "Overview"
 msgstr "Haree"
 
