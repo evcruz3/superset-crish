@@ -126,6 +126,13 @@ export interface FeedLayerProps extends LayerOptions {
   geoJson: FeedGeoJSON;
   selectionOptions: FeedSelectionOptions;
   opacity?: number;
+  currentTime?: Date;
+  colorSettings?: {
+    getFeatureColor?: (feature: GeoJSON.Feature) => {
+      fillColor?: [number, number, number, number];
+      strokeColor?: [number, number, number, number];
+    };
+  };
 }
 
 /**

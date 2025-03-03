@@ -37,6 +37,11 @@ import { isEqual } from 'lodash';
 import DeckGL from '@deck.gl/react';
 import { LinearInterpolator } from '@deck.gl/core';
 import { formatDistanceToNow, format } from 'date-fns';
+import { DatePicker } from 'antd';
+import moment from 'moment';
+import { Moment } from 'moment';
+import locale from 'antd/es/date-picker/locale/en_US';
+import { Feature, FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
 
 import {
   DeckGLContainerHandle,
@@ -179,6 +184,119 @@ const FeedItem = styled.div`
   }
 `;
 
+const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
+  const dates: Date[] = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    dates.push(new Date(currentDate));
+    
+    // Increment based on time grain
+    switch (timeGrain) {
+      case 'P1Y':
+        currentDate.setFullYear(currentDate.getFullYear() + 1);
+        break;
+      case 'P1M':
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        break;
+      case 'P1W':
+        currentDate.setDate(currentDate.getDate() + 7);
+        break;
+      case 'P1D':
+        currentDate.setDate(currentDate.getDate() + 1);
+        break;
+      case 'PT1H':
+        currentDate.setHours(currentDate.getHours() + 1);
+        break;
+      default:
+        // Default to daily if no time grain specified
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+  return dates;
+};
+
+const StyledTimelineSlider = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 10;
+  width: 500px;
+
+  .date-indicator {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: #f0f0f0;
+    border-radius: 2px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #ffc107;
+    transition: width 0.3s ease;
+  }
+
+  .timeline-container {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;  // Allow horizontal scrolling if many dates
+    gap: 4px;
+    padding-bottom: 4px; // Space for the scrollbar
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .day-label {
+    flex: 0 0 auto; // Prevent shrinking
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    padding: 4px 8px;
+    min-width: 40px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap; // Prevent text wrapping
+
+    &:hover {
+      background: #f0f0f0;
+    }
+
+    &.active {
+      background: #ffc107;
+      color: #000;
+      font-weight: 500;
+    }
+  }
+`;
+
 interface FeedEntry {
   title: string;
   message: string;
@@ -258,7 +376,8 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     setTooltip,
     geoJson,
     selectionOptions,
-    opacity = 1
+    opacity = 1,
+    currentTime
   } = options;
 
   // Type guard to ensure selectionOptions is present and has required properties
@@ -288,30 +407,54 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
 
   const features = (geoJson as FeedGeoJSON).features.map((feature: FeedGeoJSONFeature) => {
     const regionId = feature.properties.ISO;
-    const value = data.regionCounts[regionId];
-    const metricValue = data.regionMetrics[regionId];
+    const entries = data.regionEntries[regionId] || [];
+    
+    // Filter entries by date first
+    const filteredEntries = currentTime && formData.date_column
+      ? entries.filter(entry => {
+          if (!entry.date) return false; // Don't include entries without dates
+          const entryDate = new Date(entry.date);
+          const entryDateString = entryDate.toDateString();
+          const currentTimeString = currentTime.toDateString();
+          
+          // Only include entries that match the exact date (ignoring time)
+          return entryDateString === currentTimeString;
+        })
+      : entries;
+
+    // Calculate metrics based on filtered entries
+    const value = filteredEntries.length;
+    const metricValue = value;
+
     const isSelected = selectedRegion?.id === regionId || 
                       selectedRegion?.name === feature.properties.ADM1 ||
                       selectedRegion?.name === feature.properties.name ||
                       selectedRegion?.name === feature.properties.NAME;
+
+    const fillColorArray = value !== undefined 
+      ? isSelected 
+        ? [255, 165, 0, 180 * opacity] 
+        : [...hexToRGB(colorScale(value)), 255 * opacity]
+      : [0, 0, 0, 0];
+
+    const strokeColorArray = isSelected 
+      ? [255, 165, 0, 255 * opacity] 
+      : strokeColor.map((v, i) => i === 3 ? v * opacity : v);
+
     return {
       ...feature,
       properties: {
         ...feature.properties,
         metric: value,
         metricValue,
-        fillColor: value !== undefined 
-          ? isSelected 
-            ? [255, 165, 0, 180 * opacity] // Orange color for selected region
-            : [...hexToRGB(colorScale(value)), 255 * opacity]
-          : [0, 0, 0, 0],
-        strokeColor: isSelected ? [255, 165, 0, 255 * opacity] : strokeColor.map((v, i) => i === 3 ? v * opacity : v),
-        entries: data.regionEntries[regionId] || [],
+        fillColor: fillColorArray as [number, number, number, number],
+        strokeColor: strokeColorArray as [number, number, number, number],
+        entries: filteredEntries,
       },
-    };
+    } as FeedGeoJSONFeature;
   });
 
-  let processedFeatures = features.filter((feature: FeedGeoJSONFeature) => 
+  let processedFeatures: FeedGeoJSONFeature[] = features.filter((feature: FeedGeoJSONFeature) => 
     feature.properties.metric !== undefined
   );
 
@@ -322,12 +465,12 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       : feature.geometry.coordinates[0][0];
     
     const center = coordinates.reduce(
-      (acc: number[], coord: number[]) => [acc[0] + coord[0], acc[1] + coord[1]],
-      [0, 0]
-    ).map((sum: number) => sum / coordinates.length) as [number, number];
+      (acc: [number, number], coord: [number, number]) => [acc[0] + coord[0], acc[1] + coord[1]],
+      [0, 0] as [number, number]
+    ).map((sum: number) => sum / coordinates.length);
 
     return {
-      position: center,
+      position: center as [number, number],
       count: feature.properties.metric || 0,
       metricValue: feature.properties.metricValue || 0,
       name: feature.properties.ADM1 || feature.properties.name || feature.properties.NAME || feature.properties.ISO,
@@ -380,27 +523,31 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
 
   const geoJsonLayer = new GeoJsonLayer({
     id: `geojson-layer-${fd.slice_id}`,
-    data: processedFeatures,
+    data: {
+      type: 'FeatureCollection',
+      features: processedFeatures,
+    } as FeatureCollection<Geometry, GeoJsonProperties>,
     filled: fd.filled,
     stroked: fd.stroked,
     extruded: fd.extruded,
     pointRadiusScale: 100,
     lineWidthScale: 1,
-    getFillColor: (f: FeedGeoJSONFeature) => {
-      const isSelected = selectedRegion?.id === f.properties.ISO;
-      const fillColor = f.properties.fillColor || [0, 0, 0, 0];
-      return isSelected ? [fillColor[0], fillColor[1], fillColor[2], fillColor[3] * 1.5] : fillColor;
+    getFillColor: (feature: GeoJSON.Feature) => {
+      const customColors = options.colorSettings?.getFeatureColor?.(feature);
+      if (customColors?.fillColor) {
+        return customColors.fillColor;
+      }
+      return [0, 0, 0, 0] as [number, number, number, number];
     },
-    getLineColor: (f: FeedGeoJSONFeature) => {
-      const isSelected = selectedRegion?.id === f.properties.ISO;
-      const lineColor = f.properties.strokeColor || strokeColor;
-      return isSelected ? [lineColor[0], lineColor[1], lineColor[2], lineColor[3] * 1.5] : lineColor;
+    getLineColor: (feature: GeoJSON.Feature) => {
+      const customColors = options.colorSettings?.getFeatureColor?.(feature);
+      if (customColors?.strokeColor) {
+        return customColors.strokeColor;
+      }
+      return strokeColor as [number, number, number, number];
     },
-    getLineWidth: (f: FeedGeoJSONFeature) => {
-      const isSelected = selectedRegion?.id === f.properties.ISO;
-      return isSelected ? (fd.line_width || 1) * 2 : (fd.line_width || 1);
-    },
-    lineWidthUnits: fd.line_width_unit,
+    getLineWidth: 1,
+    lineWidthUnits: fd.line_width_unit as "meters" | "common" | "pixels" | undefined,
     opacity,
     pickable: true,
     autoHighlight: true,
@@ -408,12 +555,13 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     onHover: setTooltipContent,
     onClick: handleClick,
     updateTriggers: {
-      getFillColor: [selectedRegion?.id],
-      getLineColor: [selectedRegion?.id],
+      getFillColor: [selectedRegion?.id, options.colorSettings],
+      getLineColor: [selectedRegion?.id, options.colorSettings],
       getLineWidth: [selectedRegion?.id],
-    },
+    }
   });
 
+  // Create the circle layer
   const circleLayer = new ScatterplotLayer({
     id: `circle-layer-${fd.slice_id}`,
     data: centroids,
@@ -527,11 +675,11 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   const [selectedRegion, setSelectedRegion] = useState<SelectedRegion | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [currentViewport, setCurrentViewport] = useState(props.viewport);
+  const [currentTime, setCurrentTime] = useState<Date | undefined>(undefined);
+  const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
   const containerRef = useRef<DeckGLContainerHandleExtended>();
   
   const { formData, payload, setControlValue, viewport: initialViewport, onAddFilter, height, width } = props;
-
-  console.log("payload", payload);
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef;
@@ -655,6 +803,84 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     }, 300); // Match animation duration
   }, []);
 
+  // Get time range from data
+  useEffect(() => {
+    if (formData.date_column && payload.data?.regionEntries) {
+      const allDates: Date[] = [];
+      
+      // Collect all dates from all region entries
+      Object.values(payload.data.regionEntries).forEach((entries: any[]) => {
+        entries.forEach(entry => {
+          if (entry.date) {
+            const date = new Date(entry.date);
+            if (!isNaN(date.getTime())) {
+              allDates.push(date);
+            }
+          }
+        });
+      });
+      
+      if (allDates.length > 0) {
+        const minTime = new Date(Math.min(...allDates.map(d => d.getTime())));
+        const maxTime = new Date(Math.max(...allDates.map(d => d.getTime())));
+        setTimeRange([minTime, maxTime]);
+
+        // Find the nearest date to current system time
+        const currentSystemTime = new Date().getTime();
+        const nearestDate = allDates.reduce((prev: Date, curr: Date) => {
+          return Math.abs(curr.getTime() - currentSystemTime) < Math.abs(prev.getTime() - currentSystemTime) 
+            ? curr 
+            : prev;
+        });
+
+        // Set the nearest date as current time, but ensure it's within the time range
+        const boundedTime = new Date(
+          Math.min(
+            Math.max(nearestDate.getTime(), minTime.getTime()),
+            maxTime.getTime()
+          )
+        );
+        setCurrentTime(boundedTime);
+      }
+    }
+  }, [formData.date_column, payload.data?.regionEntries]);
+
+  // Update selected region entries when current time changes
+  useEffect(() => {
+    if (selectedRegion && currentTime && geoJson && payload.data?.regionEntries) {
+      // Find the feature for the selected region
+      const feature = (geoJson as FeedGeoJSON).features.find(
+        f => f.properties.ISO === selectedRegion.id || 
+             f.properties.ADM1 === selectedRegion.name ||
+             f.properties.name === selectedRegion.name ||
+             f.properties.NAME === selectedRegion.name
+      );
+
+      if (feature) {
+        const regionId = feature.properties.ISO;
+        const entries = payload.data.regionEntries[regionId] || [];
+        
+        // Filter entries by the new current time
+        const filteredEntries = entries.filter((entry: FeedEntry) => {
+          if (!entry.date) return false;
+          const entryDate = new Date(entry.date);
+          return entryDate.toDateString() === currentTime.toDateString();
+        });
+
+        // Update the selected region with filtered entries
+        setSelectedRegion({
+          ...selectedRegion,
+          entries: filteredEntries,
+        });
+      }
+    }
+  }, [currentTime, selectedRegion?.id, selectedRegion?.name, geoJson, payload.data?.regionEntries]);
+
+  // Filter entries based on current time
+  const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
+    return entries; // Entries are already filtered by date when stored in the feature properties
+  }, []);
+
   // Update getLayer to include panToFeature
   const layers = useMemo(
     () => {
@@ -662,8 +888,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
       
       const handleRegionSelection = (region: SelectedRegion | null) => {
         if (region) {
-          // Find the feature for the selected region
-          const feature = geoJson.features.find(
+          const feature = (geoJson as FeedGeoJSON).features.find(
             (f: any) => f.properties.ISO === region.id || 
                        f.properties.ADM1 === region.name ||
                        f.properties.name === region.name ||
@@ -683,14 +908,15 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         payload,
         onAddFilter,
         setTooltip,
-        geoJson,
+        geoJson: geoJson as FeedGeoJSON,
         selectionOptions: {
           setSelectedRegion: handleRegionSelection,
           selectedRegion,
         },
+        currentTime,
       });
     },
-    [formData, payload, onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature, setSelectedRegion],
+    [formData, payload, onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature, setSelectedRegion, currentTime],
   );
 
   if (error) {
@@ -714,9 +940,116 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         height={height}
         setControlValue={setControlValue}
       >
+        {timeRange && formData.date_column && (
+          <StyledTimelineSlider>
+            <div className="date-indicator">
+              <DatePicker
+                value={currentTime ? moment(currentTime) : undefined}
+                onChange={(date: Moment | null) => {
+                  if (date) {
+                    // Ensure the selected date is within the time range
+                    const selectedTime = date.toDate();
+                    const boundedTime = new Date(
+                      Math.min(
+                        Math.max(selectedTime.getTime(), timeRange[0].getTime()),
+                        timeRange[1].getTime()
+                      )
+                    );
+                    setCurrentTime(boundedTime);
+                  }
+                }}
+                showTime={formData.time_grain_sqla === 'PT1H'}
+                picker={
+                  formData.time_grain_sqla === 'P1Y' 
+                    ? 'year'
+                    : formData.time_grain_sqla === 'P1M'
+                    ? 'month'
+                    : formData.time_grain_sqla === 'P1W'
+                    ? 'week'
+                    : undefined
+                }
+                format={
+                  formData.time_grain_sqla === 'P1Y'
+                    ? 'YYYY'
+                    : formData.time_grain_sqla === 'P1M'
+                    ? 'YYYY-MM'
+                    : formData.time_grain_sqla === 'P1W'
+                    ? 'YYYY-[W]ww'
+                    : formData.time_grain_sqla === 'PT1H'
+                    ? 'YYYY-MM-DD HH:mm:ss'
+                    : 'YYYY-MM-DD'
+                }
+                allowClear={false}
+                disabledDate={current => {
+                  if (!timeRange) return false;
+                  const currentDate = current?.toDate();
+                  return currentDate ? (
+                    currentDate < timeRange[0] || currentDate > timeRange[1]
+                  ) : false;
+                }}
+                style={{ border: 'none', width: 'auto' }}
+                locale={locale}
+                onPanelChange={(value, mode) => {
+                  if (mode === 'week' && value) {
+                    // Ensure the selected date is aligned to Monday using ISO week
+                    const monday = value.clone().startOf('isoWeek');
+                    if (!value.isSame(monday, 'day')) {
+                      setCurrentTime(monday.toDate());
+                    }
+                  }
+                }}
+              />
+            </div>
+            <div className="progress-bar">
+              <div 
+                className="progress-indicator"
+                style={{ 
+                  width: `${((currentTime?.getTime() ?? timeRange[0].getTime()) - timeRange[0].getTime()) / 
+                    (timeRange[1].getTime() - timeRange[0].getTime()) * 100}%`
+                }}
+              />
+            </div>
+            <div className="timeline-container">
+              {getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla).map((date, index) => {
+                // Format date based on time grain
+                let dateFormat: Intl.DateTimeFormatOptions = {};
+                switch (formData.time_grain_sqla) {
+                  case 'P1Y':
+                    dateFormat = { year: 'numeric' };
+                    break;
+                  case 'P1M':
+                    dateFormat = { month: 'short', year: 'numeric' };
+                    break;
+                  case 'P1W':
+                    dateFormat = { month: 'short', day: 'numeric' };
+                    break;
+                  case 'PT1H':
+                    dateFormat = { hour: 'numeric', hour12: true };
+                    break;
+                  default:
+                    dateFormat = { weekday: 'short' };
+                }
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`day-label ${
+                      currentTime && date.toDateString() === currentTime.toDateString() 
+                        ? 'active' 
+                        : ''
+                    }`}
+                    onClick={() => setCurrentTime(date)}
+                  >
+                    {date.toLocaleDateString('en-US', dateFormat)}
+                  </div>
+                );
+              })}
+            </div>
+          </StyledTimelineSlider>
+        )}
         {selectedRegion && (
           <FeedSidePanel
-            entries={selectedRegion.entries}
+            entries={getFilteredEntries(selectedRegion.entries)}
             onClose={handleCloseFeed}
             regionName={selectedRegion.name}
             isExiting={isExiting}
