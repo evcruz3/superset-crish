@@ -44,6 +44,7 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@mapbox/geojson-extent": "^1.0.1",
     "@math.gl/web-mercator": "^3.2.2",
+    "@turf/bbox": "^7.2.0",
     "@types/d3-array": "^2.0.0",
     "babel-loader": "^9.2.1",
     "babel-plugin-dynamic-import-node": "^2.3.3",
@@ -88,11 +89,11 @@
   },
   "peerDependencies": {
     "@airbnb/config-babel": "^2.0.1",
-    "@superset-ui/chart-controls": "*",
-    "@superset-ui/core": "*",
-    "@deck.gl/layers": "^9.0.28",
     "@deck.gl/aggregation-layers": "^9.0.28",
     "@deck.gl/geo-layers": "^9.0.28",
+    "@deck.gl/layers": "^9.0.28",
+    "@superset-ui/chart-controls": "*",
+    "@superset-ui/core": "*",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-map-gl": "^6.1.21"
