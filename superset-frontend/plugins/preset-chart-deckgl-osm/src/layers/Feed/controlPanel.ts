@@ -91,10 +91,10 @@ const config: ControlPanelConfig = {
         ],
         [
           {
-            name: 'date_column',
+            name: 'temporal_column',
             config: {
               type: 'SelectControl',
-              label: t('Date Column'),
+              label: t('Temporal Column'),
               description: t('Column containing timestamps for feed entries'),
               mapStateToProps: state => ({
                 choices: (state.datasource?.columns || [])

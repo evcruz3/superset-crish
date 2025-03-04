@@ -2439,16 +2439,16 @@ class DeckFeed(DeckCountry):
         # Add title and message columns
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
-        date_column = self.form_data.get("date_column")
+        temporal_column = self.form_data.get("temporal_column")
 
         if not title_column:
             raise QueryObjectValidationError(_("Must specify a title column"))
         if not message_column:
             raise QueryObjectValidationError(_("Must specify a message column"))
-        if not date_column:
-            raise QueryObjectValidationError(_("Must specify a date column"))
+        if not temporal_column:
+            raise QueryObjectValidationError(_("Must specify a temporal column"))
 
-        query_obj["columns"].extend([title_column, message_column, date_column])
+        query_obj["columns"].extend([title_column, message_column, temporal_column])
         return query_obj
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -2459,47 +2459,43 @@ class DeckFeed(DeckCountry):
         metric = utils.get_metric_name(self.form_data["metric"])
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
-        date_column = self.form_data.get("date_column")
+        temporal_column = self.form_data.get("temporal_column")
         
         # Prepare the data for the visualization
-        columns_to_use = [entity, metric, title_column, message_column, date_column]
+        columns_to_use = [entity, metric, title_column, message_column, temporal_column]
             
         df = df[columns_to_use]
-        df.columns = ["country_id", "metric", "title", "message", "date"]
-
-        # Convert date column to ISO format string for JSON serialization
-        df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         
-        # Group by country_id to create regionEntries
+        # Rename columns except temporal_column - keep its original name
+        column_mapping = {
+            entity: "country_id", 
+            metric: "metric", 
+            title_column: "title", 
+            message_column: "message",
+            # Keep temporal_column as-is without renaming to "date"
+        }
+        
+        df = df.rename(columns=column_mapping)
+        
+        # Convert temporal column to ISO format string for JSON serialization
+        df[temporal_column] = pd.to_datetime(df[temporal_column]).dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        
+        # Process entries into standard data format
+        data = df.to_dict('records')
+        
+        # Still maintain region counts and metrics for backward compatibility
+        # but these could be derived from data in the frontend
         grouped = df.groupby("country_id")
-        
         region_counts = grouped.size().to_dict()
         region_metrics = grouped["metric"].sum().to_dict()
-        region_entries = {
-            country_id: [
-                {
-                    "title": row["title"],
-                    "message": row["message"],
-                    "date": row["date"]  # Include date in each entry
-                }
-                for _, row in group.iterrows()
-            ]
-            for country_id, group in grouped
-        }
 
         return {
             "regionCounts": region_counts,
             "regionMetrics": region_metrics,
-            "regionEntries": region_entries,
+            "data": data,  # Use standard 'data' property instead of regionEntries
             "mapboxApiKey": config["MAPBOX_API_KEY"],
             "mapStyle": self.form_data.get("mapbox_style"),
-            "aggregatorName": self.form_data.get("pandas_aggfunc"),
-            "clusteringRadius": self.form_data.get("clustering_radius"),
-            "pointRadiusUnit": self.form_data.get("point_radius_unit"),
-            "globalOpacity": self.form_data.get("global_opacity"),
-            "renderWhileDragging": self.form_data.get("render_while_dragging"),
-            "tooltip": self.form_data.get("rich_tooltip"),
-            "color": self.form_data.get("mapbox_color"),
+            "temporal_column": temporal_column,  # Include the temporal column name for frontend reference
         }
 
     def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -2507,7 +2503,6 @@ class DeckFeed(DeckCountry):
         properties.update({
             "title": data.get("title"),
             "message": data.get("message"),
-            "date": data.get("date"),
         })
         return properties
 
