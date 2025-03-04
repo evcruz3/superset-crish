@@ -907,31 +907,6 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     }
   }, [formData.temporal_column, payload.data.data]);
 
-  // Calculate viewport
-  const viewport = useMemo(() => {
-    if (!geoJson || !formData.autozoom) return initialViewport;
-
-    const points = geoJson.features.reduce(
-      (acc: [number, number, number, number][], feature: any) => {
-        const bounds = geojsonExtent(feature);
-        if (bounds) {
-          return [...acc, [bounds[0], bounds[1]], [bounds[2], bounds[3]]];
-        }
-        return acc;
-      },
-      [],
-    );
-
-    if (points.length) {
-      return fitViewport(initialViewport, {
-        width,
-        height,
-        points,
-      });
-    }
-    return initialViewport;
-  }, [formData.autozoom, height, geoJson, initialViewport, width]);
-
   // Cleanup icon URLs
   useEffect(() => {
     return () => {

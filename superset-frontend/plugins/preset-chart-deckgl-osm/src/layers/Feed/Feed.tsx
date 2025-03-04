@@ -300,7 +300,9 @@ const StyledTimelineSlider = styled.div`
 interface FeedEntry {
   title: string;
   message: string;
-  date?: string;
+  country_id: string;
+  metric: number;
+  [key: string]: any; // Allow for dynamic temporal column
 }
 
 interface SelectedRegion {
@@ -312,7 +314,8 @@ interface SelectedRegion {
 interface ProcessedData {
   regionCounts: { [key: string]: number };
   regionMetrics: { [key: string]: number };
-  regionEntries: { [key: string]: FeedEntry[] };
+  data: FeedEntry[];
+  temporal_column?: string; // Add temporal_column name reference
 }
 
 interface FeedPanelProps {
@@ -320,14 +323,15 @@ interface FeedPanelProps {
   onClose: () => void;
   regionName: string;
   isExiting?: boolean;
+  temporal_column: string;
 }
 
-export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regionName, isExiting }) => {
+export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regionName, isExiting, temporal_column }) => {
   // Sort entries by date in descending order (newest first)
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) => {
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      const dateA = a[temporal_column] ? new Date(a[temporal_column]).getTime() : 0;
+      const dateB = b[temporal_column] ? new Date(b[temporal_column]).getTime() : 0;
       return dateA - dateB;
     });
   }, [entries]);
@@ -342,11 +346,11 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regi
         {sortedEntries.map((entry, index) => (
           <FeedItem key={index} index={index}>
             <h4>{entry.title}</h4>
-            {entry.date && (
+            {entry[temporal_column] && (
               <FeedItemDate>
-                {format(new Date(entry.date), 'MMM d, yyyy h:mm a')}
+                {format(new Date(entry[temporal_column]), 'MMM d, yyyy h:mm a')}
                 {' '}
-                ({formatDistanceToNow(new Date(entry.date), { addSuffix: true })})
+                ({formatDistanceToNow(new Date(entry[temporal_column]), { addSuffix: true })})
               </FeedItemDate>
             )}
             <p>{entry.message}</p>
@@ -393,10 +397,13 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     return [];
   }
 
+  console.log(formData);
+
   const fd = formData as FeedFormData;
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
-  const data = payload.data as ProcessedFeedData;
+  const data = payload.data as ProcessedData;
+  const temporalColumn = data.temporal_column || formData.temporal_column;
 
   // Calculate extent and color scale
   const allMetricValues = Object.values(data.regionMetrics);
@@ -405,15 +412,24 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     .domain(extent)
     .range(['#ccc', '#343434']);
 
+  // Group entries by country_id
+  const entriesByRegion: Record<string, FeedEntry[]> = {};
+  data.data.forEach((entry: FeedEntry) => {
+    if (!entriesByRegion[entry.country_id]) {
+      entriesByRegion[entry.country_id] = [];
+    }
+    entriesByRegion[entry.country_id].push(entry);
+  });
+  
   const features = (geoJson as FeedGeoJSON).features.map((feature: FeedGeoJSONFeature) => {
     const regionId = feature.properties.ISO;
-    const entries = data.regionEntries[regionId] || [];
+    const entries = entriesByRegion[regionId] || [];
     
     // Filter entries by date first
-    const filteredEntries = currentTime && formData.date_column
+    const filteredEntries = currentTime && formData.temporal_column
       ? entries.filter(entry => {
-          if (!entry.date) return false; // Don't include entries without dates
-          const entryDate = new Date(entry.date);
+          if (!entry[temporalColumn]) return false; // Don't include entries without dates
+          const entryDate = new Date(entry[temporalColumn]);
           const entryDateString = entryDate.toDateString();
           const currentTimeString = currentTime.toDateString();
           
@@ -598,11 +614,12 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     },
   });
 
+
   const textLayer = new TextLayer({
     id: `text-layer-${fd.slice_id}`,
     data: centroids,
     getPosition: d => d.position,
-    getText: d => String(d.count || ''),
+    getText: d => String(d.count || '0'),
     getSize: d => 10 + d.count,
     getAngle: 0,
     getTextAnchor: 'middle',
@@ -805,19 +822,18 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
 
   // Get time range from data
   useEffect(() => {
-    if (formData.date_column && payload.data?.regionEntries) {
+    if (formData.temporal_column && payload.data?.data) {
       const allDates: Date[] = [];
+      const date_key = formData.temporal_column;
       
       // Collect all dates from all region entries
-      Object.values(payload.data.regionEntries).forEach((entries: any[]) => {
-        entries.forEach(entry => {
-          if (entry.date) {
-            const date = new Date(entry.date);
-            if (!isNaN(date.getTime())) {
-              allDates.push(date);
-            }
+      payload.data.data.forEach((entry: FeedEntry) => {
+        if (entry[date_key]) {
+          const date = new Date(entry[date_key]);
+          if (!isNaN(date.getTime())) {
+            allDates.push(date);
           }
-        });
+        }
       });
       
       if (allDates.length > 0) {
@@ -843,11 +859,11 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         setCurrentTime(boundedTime);
       }
     }
-  }, [formData.date_column, payload.data?.regionEntries]);
+  }, [formData.temporal_column, payload.data?.data]);
 
   // Update selected region entries when current time changes
   useEffect(() => {
-    if (selectedRegion && currentTime && geoJson && payload.data?.regionEntries) {
+    if (selectedRegion && currentTime && geoJson && payload.data?.data) {
       // Find the feature for the selected region
       const feature = (geoJson as FeedGeoJSON).features.find(
         f => f.properties.ISO === selectedRegion.id || 
@@ -858,28 +874,30 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
 
       if (feature) {
         const regionId = feature.properties.ISO;
-        const entries = payload.data.regionEntries[regionId] || [];
-        
-        // Filter entries by the new current time
-        const filteredEntries = entries.filter((entry: FeedEntry) => {
-          if (!entry.date) return false;
-          const entryDate = new Date(entry.date);
+      const date_key = formData.temporal_column;
+
+        const entries = payload.data.data.filter((entry: FeedEntry) => {
+          if (!entry[date_key]) return false;
+          const entryDate = new Date(entry[date_key]);
           return entryDate.toDateString() === currentTime.toDateString();
         });
 
         // Update the selected region with filtered entries
         setSelectedRegion({
           ...selectedRegion,
-          entries: filteredEntries,
+          entries: entries,
         });
       }
     }
-  }, [currentTime, selectedRegion?.id, selectedRegion?.name, geoJson, payload.data?.regionEntries]);
+  }, [currentTime, selectedRegion?.id, selectedRegion?.name, geoJson, payload.data?.data]);
 
   // Filter entries based on current time
   const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
-    return entries; // Entries are already filtered by date when stored in the feature properties
-  }, []);
+    // filter entries based on selected region
+    return entries.filter((entry: FeedEntry) => {
+      return entry.country_id === selectedRegion?.id;
+    });
+  }, [selectedRegion?.id]);
 
   // Update getLayer to include panToFeature
   const layers = useMemo(
@@ -940,7 +958,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         height={height}
         setControlValue={setControlValue}
       >
-        {timeRange && formData.date_column && (
+        {timeRange && formData.temporal_column && (
           <StyledTimelineSlider>
             <div className="date-indicator">
               <DatePicker
@@ -1053,6 +1071,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
             onClose={handleCloseFeed}
             regionName={selectedRegion.name}
             isExiting={isExiting}
+            temporal_column={formData.temporal_column}
           />
         )}
       </DeckGLContainerStyledWrapper>
