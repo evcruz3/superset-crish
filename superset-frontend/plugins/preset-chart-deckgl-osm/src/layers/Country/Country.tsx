@@ -247,6 +247,7 @@ interface ColorLegendProps {
   values: (number | string)[];
   metricName?: string;
   isCategorical?: boolean;
+  valueMap?: Record<string, string | number>;
 }
 
 const ColorLegend = ({ 
@@ -257,14 +258,29 @@ const ColorLegend = ({
   metricUnit = '', 
   values,
   metricName = 'Values',
-  isCategorical = false
+  isCategorical = false,
+  valueMap = {}
 }: ColorLegendProps) => {
   // Get unique values and sort them
   const uniqueValues = [...new Set(values)];
   
-  // If we have more than 5 values and not categorical, select a subset
+  // If we have a valueMap and are using categorical values, prioritize those values
   let displayValues = uniqueValues;
-  if (!isCategorical && uniqueValues.length > 5) {
+  
+  if (isCategorical) {
+    // Get explicitly mapped values first
+    const mappedValues = Object.keys(valueMap)
+      .filter(value => uniqueValues.includes(value) || uniqueValues.includes(Number(value)));
+    
+    // Get remaining values that aren't explicitly mapped
+    const unmappedValues = uniqueValues.filter(value => 
+      !mappedValues.includes(String(value)) && !mappedValues.includes(String(Number(value)))
+    );
+    
+    // Show mapped values first, then unmapped values
+    displayValues = [...mappedValues, ...unmappedValues];
+  } else if (uniqueValues.length > 5) {
+    // For non-categorical with many values, select a subset
     const min = Math.min(...uniqueValues.map(v => Number(v)));
     const max = Math.max(...uniqueValues.map(v => Number(v)));
     const middleIndices = [
@@ -280,20 +296,28 @@ const ColorLegend = ({
     <StyledLegend>
       <div className="legend-title">{metricName}</div>
       <div className="legend-items">
-        {displayValues.map((value, i) => (
-          <div key={i} className="legend-item">
-            <div 
-              className="color-box" 
-              style={{ backgroundColor: colorScale(value) || '#fff' }}
-            />
-            <span className="label">
-              {isCategorical 
-                ? String(value)
-                : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`
-              }
-            </span>
-          </div>
-        ))}
+        {displayValues.map((value, i) => {
+          const valueStr = String(value);
+          const isExplicitlyMapped = isCategorical && valueMap && 
+            (valueMap[valueStr] !== undefined || valueMap[String(Number(valueStr))] !== undefined);
+          return (
+            <div key={i} className="legend-item">
+              <div 
+                className="color-box" 
+                style={{ 
+                  backgroundColor: colorScale(value) || '#fff',
+                  border: '1px solid'
+                }}
+              />
+              <span className="label">
+                {isCategorical 
+                  ? String(value)
+                  : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`
+                }
+              </span>
+            </div>
+          );
+        })}
       </div>
     </StyledLegend>
   );
@@ -305,6 +329,7 @@ interface ExtendedGeoJsonLayer extends GeoJsonLayer {
   extent?: [number, number];
   metricValues?: number[];
   categoricalValues?: string[];
+  valueMap?: Record<string, string | number>;
 }
 
 const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
@@ -446,8 +471,6 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     opacity = 1.0
   } = options;
 
-  console.log('options', options);
-
   const currentTime = temporalOptions?.currentTime;
   const temporalData = temporalOptions?.allData || [];
 
@@ -482,20 +505,50 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       }
     });
 
-    // Sort categorical values based on their corresponding metric values
-    categoricalValues = Array.from(uniqueValues).sort((a, b) => {
-      const metricA = valueToMetricMap.get(a) ?? 0;
-      const metricB = valueToMetricMap.get(b) ?? 0;
-      return metricA - metricB; // Sort in ascending order (lowest metric gets first color)
-    });
+    // Check if we have a value_map configuration for absolute color mapping
+    const hasValueMap = fd.value_map && Object.keys(fd.value_map).length > 0;
+    
+    if (hasValueMap) {
+      // Use the value_map for absolute color mapping
+      categoricalValues = Array.from(uniqueValues); // No need to sort when using explicit mapping
+      
+      // Get the color scheme for fallback colors for values not in the value_map
+      const scheme = getCategoricalSchemeRegistry().get(fd.categorical_color_scheme || 'supersetColors');
+      const colors = scheme?.colors || ['#ccc'];
+      
+      // Get fallback color from categorical_fallback_color if set
+      const fallbackColor = fd.categorical_fallback_color 
+        ? `rgba(${fd.categorical_fallback_color.r},${fd.categorical_fallback_color.g},${fd.categorical_fallback_color.b},${fd.categorical_fallback_color.a})`
+        : '#ccc';
+      
+      colorScale = (value: any) => {
+        const stringValue = String(value);
+     
+        // If the value is explicitly mapped in value_map, use that color
+        if (fd.value_map && fd.value_map[stringValue]) {
+          return fd.value_map[stringValue];
+        }
+        
+        // Fallback to the categorical_fallback_color for values not in value_map
+        return fallbackColor;
+      };
+    } else {
+      // Use the original approach when no value_map is provided
+      // Sort categorical values based on their corresponding metric values
+      categoricalValues = Array.from(uniqueValues).sort((a, b) => {
+        const metricA = valueToMetricMap.get(a) ?? 0;
+        const metricB = valueToMetricMap.get(b) ?? 0;
+        return metricA - metricB; // Sort in ascending order (lowest metric gets first color)
+      });
 
-    // Get the color scheme and create the color scale
-    const scheme = getCategoricalSchemeRegistry().get(fd.categorical_color_scheme || 'supersetColors');
-    const colors = scheme?.colors || ['#ccc'];
-    colorScale = (value: any) => {
-      const index = categoricalValues.indexOf(String(value));
-      return index >= 0 ? colors[index % colors.length] : '#ccc';
-    };
+      // Get the color scheme and create the color scale
+      const scheme = getCategoricalSchemeRegistry().get(fd.categorical_color_scheme || 'supersetColors');
+      const colors = scheme?.colors || ['#ccc'];
+      colorScale = (value: any) => {
+        const index = categoricalValues.indexOf(String(value));
+        return index >= 0 ? colors[index % colors.length] : '#ccc';
+      };
+    }
   } else {
     // For metric values, use the linear color scheme
     const allMetricValues = dataForColorScale
@@ -515,6 +568,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     colorScale = (value: any) => linearScale(Number(value)) || '#ccc';
   }
 
+  console.log('records', records);
   // Filter records based on current time for display
   const valueMap: { [key: string]: number | string } = {};
   records.forEach((d: DataRecord) => {
@@ -522,8 +576,15 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     if (value !== undefined && value !== null) {
       // If we have temporal data, only include values up to the current time
       if (currentTime && fd.temporal_column) {
+        // recordTime must be in the the level of granularity of currentTime
         const recordTime = new Date(d[fd.temporal_column]);
-        if (recordTime <= currentTime) {
+        // const currentTime = new Date(currentTime);
+        const timeGrain = fd.temporal_column_grain;
+        const recordTimeGrain = timeGrain === 'PT1H' ? recordTime.getHours() : recordTime.getDate();
+        const currentTimeGrain = timeGrain === 'PT1H' ? currentTime.getHours() : currentTime.getDate();
+        console.log('recordTime', d.country_id, recordTime, currentTime, recordTimeGrain, currentTimeGrain);
+        if (recordTimeGrain === currentTimeGrain) {
+          console.log('adding to valueMap', d.country_id, value);
           valueMap[d.country_id] = value;
         }
       } else {
@@ -531,6 +592,9 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       }
     }
   });
+
+  console.log('geojson features', geoJson.features);
+  console.log('valueMap', valueMap);
 
   // Ensure geoJson has features array
   const features = (geoJson.features || []).map((feature: JsonObject) => {
@@ -560,6 +624,8 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       },
     };
   });
+
+  console.log('Processed features:', features);
 
   let processedFeatures = features.filter((feature: JsonObject) => feature.properties.metric !== undefined);
   if (fd.js_data_mutator) {
@@ -665,6 +731,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   geoJsonLayer.extent = extent;
   geoJsonLayer.metricValues = metricValues;
   geoJsonLayer.categoricalValues = categoricalValues;
+  geoJsonLayer.valueMap = fd.value_map || {};
 
   let iconLayer = null;
 
@@ -1127,6 +1194,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                   : (formData.metric || formData.metric_label || 'Metric Range'))
             }
             isCategorical={!!formData.categorical_column}
+            valueMap={formData.value_map}
           />
         )}
       </DeckGLContainerStyledWrapper>

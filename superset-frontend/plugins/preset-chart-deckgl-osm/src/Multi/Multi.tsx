@@ -1,4 +1,5 @@
 'use client'
+
 import React, { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { 
   DragDropContext, 
@@ -28,9 +29,8 @@ import { TextLayer, IconLayer, GeoJsonLayer, ScatterplotLayer } from '@deck.gl/l
 import moment from 'moment'
 import { Moment } from 'moment'
 import locale from 'antd/es/date-picker/locale/en_US'
-import { LinearInterpolator } from '@deck.gl/core'
-import geojsonExtent from '@mapbox/geojson-extent'
 import bbox from '@turf/bbox'
+import * as GeoJSON from 'geojson'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
@@ -43,28 +43,12 @@ import {
   FeedEntry,
   FeedGeoJSON,
   FeedLayerProps,
-  FeedFormData,
-  FeedGeoJSONFeature,
-  FeedGeoJSONProperties,
   SelectedRegion,
   ProcessedFeedData,
+  FeedFormData,
+  FeedGeoJSONFeature
 } from '../types/feed'
 import { FeedSidePanel } from '../layers/Feed/Feed'
-
-/*
- * This component handles multiple layer types in a single visualization.
- * Special handling is provided for Feed layers:
- * 
- * Feed Layer Date Filtering:
- * - Feed layers use temporal_column property in their form_data (same as other layer types)
- * - When a date is selected using the DatePicker, feed entries are filtered
- *   to only show entries matching the selected date
- * - For Feed layers, we extract dates from regionEntries to determine the time range
- * - The date filtering logic compares only the date part (year, month, day) and
- *   ignores the time component
- * - When a date is selected, the Feed layer is rerendered with filtered entries
- *   and updated regionCounts and regionMetrics
- */
 
 // Configure moment to use Monday as first day of week
 moment.updateLocale('en', {
@@ -624,6 +608,14 @@ const aggregateDataToTimeGrain = (
   targetGrain: string,
   metricColumns: string[]
 ): JsonObject[] => {
+  console.log('Aggregating data:', {
+    sourceGrain,
+    targetGrain,
+    metricColumns,
+    dataLength: data.length,
+    sampleData: data.slice(0, 2),
+  });
+
   // First convert all dates to Date objects
   const dataWithDates = data.map(row => ({
     ...row,
@@ -701,6 +693,14 @@ const aggregateDataToTimeGrain = (
     
     // Only include the row if it falls within the target period
     if (isWithinPeriod(rowDate, periodStart, targetGrain)) {
+      // console.log('Grouping row:', {
+      //   countryId,
+      //   rowDate: rowDate.toISOString(),
+      //   periodStart: periodStart.toISOString(),
+      //   periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
+      //   key,
+      // });
+
       if (!groupedData.has(key)) {
         groupedData.set(key, []);
       }
@@ -712,6 +712,21 @@ const aggregateDataToTimeGrain = (
         periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
       });
     }
+  });
+
+  console.log('Grouped data stats:', {
+    numberOfGroups: groupedData.size,
+    sampleGroup: Array.from(groupedData.entries())[0],
+    allKeys: Array.from(groupedData.keys()),
+    periodBoundaries: Array.from(groupedData.keys()).map(key => {
+      const [countryId, periodStr] = key.split('|');
+      const periodStart = new Date(periodStr);
+      return {
+        countryId,
+        periodStart: periodStart.toISOString(),
+        periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
+      };
+    }),
   });
 
   // Rest of the aggregation logic remains the same
@@ -739,6 +754,17 @@ const aggregateDataToTimeGrain = (
     });
 
     return aggregated;
+  });
+
+  console.log('Aggregation result:', {
+    resultLength: result.length,
+    sampleResult: result.slice(0, 2),
+    uniqueCountries: new Set(result.map(r => r.country_id)).size,
+    periodSummary: result.map(r => ({
+      country: r.country_id,
+      period: r[sourceColumn],
+      periodEnd: getPeriodEnd(new Date(r[sourceColumn]), targetGrain).toISOString(),
+    })),
   });
 
   return result;
@@ -794,13 +820,7 @@ interface FeedLayerState {
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
 
-  const [viewport, setViewport] = useState<Viewport>({
-    longitude: props.viewport?.longitude ?? 0,
-    latitude: props.viewport?.latitude ?? 0,
-    zoom: props.viewport?.zoom ?? 1,
-    bearing: props.viewport?.bearing ?? 0,
-    pitch: props.viewport?.pitch ?? 0,
-  })
+  const [viewport, setViewport] = useState<Viewport>()
   const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer[]>>({})
   const [visibleLayers, setVisibleLayers] = useState<{ [key: number]: boolean }>({})
   const [layerOpacities, setLayerOpacities] = useState<{ [key: number]: number }>({})
@@ -813,7 +833,6 @@ const DeckMulti = (props: DeckMultiProps) => {
     selectedRegions: {},
     loadingState: {},
   });
-  const [feedLayerData, setFeedLayerData] = useState<Record<number, any>>({});
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef
@@ -842,9 +861,17 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   // Update loadGeoJson function with better error handling and loading states
   const loadGeoJson = useCallback(async (sliceId: number, country: string) => {
+    console.log('Loading GeoJSON:', {
+      sliceId,
+      country,
+      alreadyLoaded: !!feedLayerState.geoJson[sliceId],
+      currentLoadingState: feedLayerState.loadingState[sliceId]
+    });
+
     // Skip if already loaded or loading
     if (feedLayerState.geoJson[sliceId] || 
         (feedLayerState.loadingState[sliceId]?.loading && !feedLayerState.loadingState[sliceId]?.error)) {
+      console.log('Skipping GeoJSON load - already loaded or loading');
       return;
     }
 
@@ -862,8 +889,14 @@ const DeckMulti = (props: DeckMultiProps) => {
       if (!(country in countries)) {
         throw new Error(`Invalid country key: ${country}`);
       }
-      const countryKey = country as keyof typeof countries;
+      const countryKey = country as CountryKeys;
       const url = countries[countryKey];
+
+      console.log('Fetching GeoJSON:', {
+        sliceId,
+        country,
+        url
+      });
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -876,6 +909,12 @@ const DeckMulti = (props: DeckMultiProps) => {
       if (!isValidFeedGeoJSON(data)) {
         throw new Error('Invalid GeoJSON data structure');
       }
+
+      console.log('GeoJSON loaded successfully:', {
+        sliceId,
+        country,
+        featureCount: data.features.length
+      });
 
       // Update state with validated data
       setFeedLayerState(prev => ({
@@ -908,12 +947,62 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, []);
 
+  const panToFeature = useCallback((feature: FeedGeoJSONFeature) => {
+    console.log('[DEBUG] panToFeature:', feature);
+    
+    try {
+      // Cast the feature to the type expected by @turf/bbox
+      const [minLng, minLat, maxLng, maxLat] = bbox(feature as unknown as GeoJSON.Feature<GeoJSON.Geometry>);
+      
+      // Add some padding to the bounds (10% on each side)
+      const padLng = (maxLng - minLng) * 0.1;
+      const padLat = (maxLat - minLat) * 0.1;
+      
+      // Create the new viewport with padding
+      const newViewport = {
+        ...viewport,
+        longitude: (minLng + maxLng) / 2,
+        latitude: (minLat + maxLat) / 2,
+        zoom: Math.min(
+          // Calculate zoom to fit the width
+          Math.log2((360) / (maxLng - minLng + 2 * padLng)) + 1,
+          // Calculate zoom to fit the height
+          Math.log2((180) / (maxLat - minLat + 2 * padLat)) + 1
+        ),
+        transitionDuration: 1000,
+      };
+      
+      setViewport(newViewport);
+    } catch (error) {
+      console.error('Error calculating feature bounds:', error);
+    }
+  }, [viewport, setViewport]);
+
+  // Add retry function for failed loads
+  const retryGeoJsonLoad = useCallback((sliceId: number, country: string) => {
+    setFeedLayerState(prev => ({
+      ...prev,
+      loadingState: {
+        ...prev.loadingState,
+        [sliceId]: { loading: false }, // Reset error state
+      },
+    }));
+    loadGeoJson(sliceId, country);
+  }, [loadGeoJson]);
+
   // Function to create layer based on filtered data
   const createLayer = useCallback((
     subslice: Subslice,
     json: JsonObject,
     filteredData: JsonObject[],
   ) => {
+    console.log('Creating layer:', {
+      sliceId: subslice.slice_id,
+      vizType: subslice.form_data.viz_type,
+      temporalColumn: subslice.form_data.temporal_column,
+      timeGrain: subslice.form_data.time_grain_sqla,
+      dataLength: filteredData.length,
+    });
 
     // Get the largest time grain from all temporal layers
     const timeGrains = Object.values(temporalData)
@@ -962,50 +1051,15 @@ const DeckMulti = (props: DeckMultiProps) => {
     };
 
     if (subslice.form_data.viz_type === 'deck_feed') {
-      // Special handling for Feed layers
+      console.log('Creating Feed Layer:', {
+        sliceId: subslice.slice_id,
+        hasGeoJson: Boolean(feedLayerState.geoJson[subslice.slice_id]),
+        hasSelection: Boolean(feedLayerState.selectedRegions[subslice.slice_id]),
+        currentSelection: feedLayerState.selectedRegions[subslice.slice_id]
+      });
+
       const feedGeoJson = feedLayerState.geoJson[subslice.slice_id];
-      // For Feed layers, apply date filtering to the data array
-      if (currentTime && Array.isArray(jsonWithProcessedData.data.data)) {
-        const dateColumn = subslice.form_data.temporal_column;
-        if (dateColumn) {
-          // Filter entries based on the selected date
-          const filteredData = jsonWithProcessedData.data.data.filter((entry: FeedEntry) => {
-            if (!entry[dateColumn]) return false;
-            const entryDate = new Date(entry[dateColumn]);
-            // Compare only the date part (year, month, day) ignoring time
-            return entryDate.toDateString() === currentTime.toDateString();
-          });
-
-          // Group filtered entries by country_id to update counts and metrics
-          const entriesByRegion: Record<string, FeedEntry[]> = {};
-          filteredData.forEach((entry: FeedEntry) => {
-            const regionId = entry.country_id;
-            if (!entriesByRegion[regionId]) {
-              entriesByRegion[regionId] = [];
-            }
-            entriesByRegion[regionId].push(entry);
-          });
-          
-          // Update the data with filtered entries
-          jsonWithProcessedData.data = {
-            ...jsonWithProcessedData.data,
-            data: filteredData,
-            // Update region counts based on filtered entries
-            regionCounts: Object.fromEntries(
-              Object.entries(entriesByRegion).map(([regionId, entries]) => 
-                [regionId, entries.length]
-              )
-            ),
-            // Update region metrics too if they're based on entry counts
-            regionMetrics: Object.fromEntries(
-              Object.entries(entriesByRegion).map(([regionId, entries]) => 
-                [regionId, entries.length]
-              )
-            ),
-          };
-        }
-      }
-
+      
       const layerOptions: FeedLayerProps = {
         formData: subslice.form_data as FeedFormData,
         payload: jsonWithProcessedData,
@@ -1014,7 +1068,17 @@ const DeckMulti = (props: DeckMultiProps) => {
         geoJson: feedGeoJson,
         selectionOptions: {
           selectedRegion: feedLayerState.selectedRegions[subslice.slice_id] || null,
-          setSelectedRegion: (region: SelectedRegion | null) => {
+          setSelectedRegion: (region) => {
+            console.log('Feed Layer Selection Callback:', {
+              sliceId: subslice.slice_id,
+              newRegion: region ? {
+                name: region.name,
+                id: region.id,
+                entriesCount: region.entries.length
+              } : null,
+              currentSelection: feedLayerState.selectedRegions[subslice.slice_id]
+            });
+            
             setFeedLayerState(prev => ({
               ...prev,
               selectedRegions: {
@@ -1023,8 +1087,8 @@ const DeckMulti = (props: DeckMultiProps) => {
               },
             }));
 
-            // Add zooming when a region is selected
-            if (region && feedGeoJson) {
+             // Add zooming when a region is selected
+             if (region && feedGeoJson) {
               const feature = feedGeoJson.features.find(
                 (f: FeedGeoJSONFeature) => f.properties.ISO === region.id || 
                        f.properties.ADM1 === region.name ||
@@ -1039,41 +1103,46 @@ const DeckMulti = (props: DeckMultiProps) => {
           },
         },
         opacity: layerOpacities[subslice.slice_id] ?? 1.0,
-        currentTime: currentTime, // Pass the currentTime to the Feed layer
-        colorSettings: {
-          getFeatureColor: (feature: GeoJSON.Feature) => {
-            const props = feature.properties as FeedGeoJSONProperties;
-            const isSelected = feedLayerState.selectedRegions[subslice.slice_id]?.id === props.ISO ||
-                             feedLayerState.selectedRegions[subslice.slice_id]?.name === props.ADM1 ||
-                             feedLayerState.selectedRegions[subslice.slice_id]?.name === props.name ||
-                             feedLayerState.selectedRegions[subslice.slice_id]?.name === props.NAME;
-
-            if (isSelected) {
-              const opacity = layerOpacities[subslice.slice_id] ?? 1.0;
-              return {
-                fillColor: [255, 69, 0, 180 * opacity],
-                strokeColor: [255, 69, 0, 255 * opacity],
-              };
-            }
-            return {};
-          },
-        },
       };
 
       const layers = layerGenerators.deck_feed(layerOptions);
+      console.log('Generated Feed Layers:', {
+        sliceId: subslice.slice_id,
+        layerTypes: Array.isArray(layers) ? layers.map(l => l.constructor.name) : typeof layers,
+        hasClickHandlers: Array.isArray(layers) ? layers.map(l => Boolean(l.props?.onClick)) : 'N/A'
+      });
 
       setSubSlicesLayers(prevLayers => {
         const newLayers = {
           ...prevLayers,
           [subslice.slice_id]: layers,
         };
-       
+        // Log final layer state with text layer info
+        console.log('Updated Feed Layers:', {
+          sliceId: subslice.slice_id,
+          finalLayerCount: newLayers[subslice.slice_id].length,
+          finalLayerTypes: newLayers[subslice.slice_id].map(layer => layer.constructor.name),
+          textLayerInfo: newLayers[subslice.slice_id]
+            .filter(layer => layer.constructor.name === 'TextLayer')
+            .map(layer => ({
+              hasData: Boolean(layer.props?.data?.length),
+              dataLength: layer.props?.data?.length,
+              sampleData: layer.props?.data?.[0]
+            }))
+        });
         return newLayers;
       });
     } else if (subslice.form_data.viz_type === 'deck_country') {
       const country = subslice.form_data.select_country;
       
       const createAndSetLayer = (geoJsonData: JsonObject) => {
+        console.log('Creating Feed Layer:', {
+          sliceId: subslice.slice_id,
+          formData: subslice.form_data,
+          geoJsonFeatures: (geoJsonData as FeedGeoJSON).features?.length,
+          selectedRegion: feedLayerState.selectedRegions[subslice.slice_id],
+          loadingState: feedLayerState.loadingState[subslice.slice_id]
+        });
 
         const layers = layerGenerators.deck_country({
           formData: subslice.form_data,
@@ -1088,12 +1157,25 @@ const DeckMulti = (props: DeckMultiProps) => {
           opacity: layerOpacities[subslice.slice_id] ?? 1.0,
         });
 
+        console.log('Feed Layer Generated:', {
+          layerCount: Array.isArray(layers) ? layers.length : 1,
+          layers: layers.map(layer => ({
+            id: layer.id,
+            type: layer.constructor.name,
+            dataLength: layer.props?.data?.length
+          }))
+        });
+
         setSubSlicesLayers(prevLayers => {
           const newLayers = {
             ...prevLayers,
             [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
           };
-        
+          console.log('Updated SubSlice Layers:', {
+            sliceId: subslice.slice_id,
+            layerCount: newLayers[subslice.slice_id].length,
+            allSlices: Object.keys(newLayers)
+          });
           return newLayers;
         });
       };
@@ -1130,39 +1212,53 @@ const DeckMulti = (props: DeckMultiProps) => {
         [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
       }));
     }
-   
-    // Store feed layer data for time-based filtering
-    setFeedLayerData(prev => ({
-      ...prev,
-      [subslice.slice_id]: json.data,
-    }));
-    
-    if (json.data.data && Array.isArray(json.data.data)) {
-      // For feed layers, extract dates from data array using temporal_column
-      const temporalColumn = json.data.temporal_column || subslice.form_data.temporal_column;
-      
-      if (temporalColumn) {
-        const dates = json.data.data
-          .filter(entry => entry[temporalColumn])
-          .map(entry => new Date(entry[temporalColumn]));
-        
-        if (dates.length > 0) {
-          // Store temporal data and dates for this slice
-          setTemporalData(prev => ({
-            ...prev,
-            [subslice.slice_id]: {
-              column: temporalColumn,
-              timeFormat: 'smart_date',
-              dates,
-            },
-          }));
-        }
-      }
-    }
+
+    // Add logging before returning from the function
+    console.log('Layer creation complete:', {
+      sliceId: subslice.slice_id,
+      hasProcessedData: processedData.length > 0,
+      timeGrain: largestTimeGrain,
+    });
   }, [props.onAddFilter, props.datasource, setTooltip, currentTime, layerOpacities, temporalData, feedLayerState]);
+
+  // Function to filter data based on current time
+  const filterDataByTime = useCallback((
+    data: JsonObject[],
+    temporalColumn: string,
+    time: Date
+  ) => {
+    console.log('Filtering data by time:', {
+      originalDataLength: data.length,
+      temporalColumn,
+      filterTime: time,
+    });
+
+    // filtering must be in the level of granularity of time
+    // const filtered = data.filter(row => {
+    //   const rowDate = new Date(row[temporalColumn]);
+    //   return rowDate <= time;
+    // });
+    const filtered = data.filter(row => {
+      const rowDate = new Date(row[temporalColumn]);
+      return rowDate.getTime() === time.getTime();
+    });
+
+    console.log('Time filtering result:', {
+      filteredDataLength: filtered.length,
+      sampleFilteredData: filtered.slice(0, 2),
+    });
+
+    return filtered;
+  }, []);
 
   const loadLayer = useCallback(
     (subslice, filters) => {
+      console.log('loadLayer called:', {
+        sliceId: subslice.slice_id,
+        vizType: subslice.form_data.viz_type,
+        filters,
+        hasGeoJson: subslice.form_data.viz_type === 'deck_feed' ? !!feedLayerState.geoJson[subslice.slice_id] : 'N/A'
+      });
 
       const subsliceCopy = {
         ...subslice,
@@ -1175,10 +1271,17 @@ const DeckMulti = (props: DeckMultiProps) => {
       const url = getExploreLongUrl(subsliceCopy.form_data, 'json')
   
       if (url) {
+        console.log('Fetching layer data:', { url });
         SupersetClient.get({
           endpoint: url,
         })
           .then(({ json }) => {
+            console.log('Layer data received:', {
+              sliceId: subslice.slice_id,
+              dataLength: json.data?.data?.length || json.data?.length,
+              hasTemporalData: !!subsliceCopy.form_data.temporal_column,
+              sampleData: json.data?.data?.[0] || json.data?.[0]
+            });
 
             // Get the data array from either json.data.data or json.data
             const layerData = Array.isArray(json.data?.data) ? json.data.data :
@@ -1186,29 +1289,10 @@ const DeckMulti = (props: DeckMultiProps) => {
 
             // Store temporal data if available
             const temporalColumn = subsliceCopy.form_data.temporal_column
-            
             if (temporalColumn && layerData.length > 0) {
-              let dates: Date[] = [];
-              
-              if (subsliceCopy.form_data.viz_type === 'deck_feed') {
-                // For Feed layers, extract dates from data array if available
-                if (Array.isArray(json.data?.data)) {
-                  // Collect all dates from the data array
-                  json.data.data.forEach((entry: any) => {
-                    if (entry[temporalColumn]) {
-                      const date = new Date(entry[temporalColumn]);
-                      if (!isNaN(date.getTime())) {
-                        dates.push(date);
-                      }
-                    }
-                  });
-                }
-              } else {
-                // Regular layers
-                dates = layerData
-                  .map((d: JsonObject) => new Date(d[temporalColumn]))
-                  .filter((d: Date) => !isNaN(d.getTime()));
-              }
+              const dates = layerData
+                .map((d: JsonObject) => new Date(d[temporalColumn]))
+                .filter((d: Date) => !isNaN(d.getTime()))
 
               if (dates.length > 0) {
                 setTemporalData(prev => ({
@@ -1218,12 +1302,17 @@ const DeckMulti = (props: DeckMultiProps) => {
                     dates,
                     data: json,
                   }
-                }));
+                }))
               }
             }
 
             // Create initial layer with all data
             try {
+              console.log('Creating layer with data:', {
+                sliceId: subslice.slice_id,
+                vizType: subslice.form_data.viz_type,
+                feedGeoJson: subslice.form_data.viz_type === 'deck_feed' ? !!feedLayerState.geoJson[subslice.slice_id] : 'N/A'
+              });
               createLayer(subsliceCopy, json, layerData);
             } catch (error) {
               console.error('Error loading layer:', {
@@ -1304,19 +1393,29 @@ const DeckMulti = (props: DeckMultiProps) => {
   }, [loadLayers, prevDeckSlices, props])
 
   const toggleLayerVisibility = (layerId: number) => {
+    console.log('Toggling Layer Visibility:', {
+      layerId,
+      currentVisibility: visibleLayers[layerId],
+      layerType: props.payload.data.slices.find(s => s.slice_id === layerId)?.form_data.viz_type,
+      isFeedLayer: props.payload.data.slices.find(s => s.slice_id === layerId)?.form_data.viz_type === 'deck_feed'
+    });
     
     setVisibleLayers(prev => {
       const newState = {
         ...prev,
         [layerId]: !prev[layerId],
       };
+      console.log('New Visibility State:', newState);
       return newState;
     });
   
     // If it's a Feed layer being hidden, clear its selection
     const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === layerId);
     if (subslice?.form_data.viz_type === 'deck_feed' && visibleLayers[layerId]) {
-    
+      console.log('Clearing Feed Layer Selection:', {
+        layerId,
+        currentSelection: feedLayerState.selectedRegions[layerId]
+      });
       setFeedLayerState(prev => ({
         ...prev,
         selectedRegions: {
@@ -1328,6 +1427,12 @@ const DeckMulti = (props: DeckMultiProps) => {
   
     // If layer is being toggled back to visible, reinitialize it
     if (!visibleLayers[layerId] && subslice) {
+      console.log('Reinitializing Layer:', {
+        layerId,
+        vizType: subslice.form_data.viz_type,
+        hasGeoJson: subslice.form_data.viz_type === 'deck_feed' ? !!feedLayerState.geoJson[layerId] : 'N/A'
+      });
+
       // Collect all filters
       const filters = [
         ...(subslice.form_data.filters || []),
@@ -1463,6 +1568,25 @@ const DeckMulti = (props: DeckMultiProps) => {
     return [...nonTextLayers.reverse(), ...iconLayers.reverse(), ...textLayers];
   }, [layerOrder, visibleLayers, subSlicesLayers, formData.show_text_labels, props.payload.data.slices]);
 
+  // Effect to update layers when time changes
+  useEffect(() => {
+    if (currentTime && Object.keys(temporalData).length > 0) {
+      Object.entries(temporalData).forEach(([sliceId, { column, data }]) => {
+        const numericSliceId = Number(sliceId)
+        if (visibleLayers[numericSliceId]) {
+          const subslice = props.payload.data.slices.find(
+            (slice: any) => slice.slice_id === numericSliceId
+          )
+          if (subslice) {
+            // Filter data for current time but keep original data for color scale
+            const filteredData = filterDataByTime(data.data.data, column, currentTime)
+            createLayer(subslice, data, filteredData)
+          }
+        }
+      })
+    }
+  }, [currentTime, temporalData, visibleLayers, filterDataByTime, createLayer, props.payload.data.slices])
+
   // Effect to update time range when temporal data changes
   useEffect(() => {
     if (Object.keys(temporalData).length > 0) {
@@ -1524,7 +1648,36 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }
 
+  // Add selection state management functions
+  const handleFeedLayerSelection = useCallback((sliceId: number, region: SelectedRegion | null) => {
+    console.log('Feed Layer Selection Handler:', {
+      sliceId,
+      region: region ? {
+        name: region.name,
+        id: region.id,
+        entriesCount: region.entries.length
+      } : null,
+      currentState: {
+        hasSelection: Boolean(feedLayerState.selectedRegions[sliceId]),
+        isLayerVisible: visibleLayers[sliceId]
+      }
+    });
+
+    setFeedLayerState(prev => ({
+      ...prev,
+      selectedRegions: {
+        ...prev.selectedRegions,
+        [sliceId]: region,
+      },
+    }));
+  }, [feedLayerState.selectedRegions, visibleLayers]);
+
   const clearFeedLayerSelection = useCallback((sliceId: number) => {
+    console.log('Clearing Feed Layer Selection:', {
+      sliceId,
+      currentSelection: feedLayerState.selectedRegions[sliceId]
+    });
+
     setFeedLayerState(prev => ({
       ...prev,
       selectedRegions: {
@@ -1545,176 +1698,51 @@ const DeckMulti = (props: DeckMultiProps) => {
     };
   }, [clearFeedLayerSelection, setTooltip]);
 
-  // Add viewport update handler
-  const handleViewportUpdate = useCallback((newViewport: Viewport) => {
-    setViewport(newViewport);
-    props.setControlValue('viewport', newViewport);
-  }, [props.setControlValue]);
-
-  // Update panToFeature function
-  const panToFeature = useCallback((feature: any) => {
-    if (!feature) return;
-    
-    const bounds = bbox(feature);
-    const [minLng, minLat, maxLng, maxLat] = bounds;
-    
-    const centerLng = (minLng + maxLng) / 2;
-    const centerLat = (minLat + maxLat) / 2;
-    
-    // Calculate the zoom level based on the bounding box
-    const lngDiff = Math.abs(maxLng - minLng);
-    const latDiff = Math.abs(maxLat - minLat);
-    const maxDiff = Math.max(lngDiff, latDiff);
-    const zoom = Math.floor(8 - Math.log2(maxDiff));
-    
-    // Add a slight longitude offset for better viewing
-    const lngOffset = lngDiff * 0.1;
-    
-    const newViewport = {
-      ...viewport,
-      longitude: centerLng + lngOffset,
-      latitude: centerLat,
-      zoom: Math.min(Math.max(zoom, 4), 12),
-      bearing: 0,
-      pitch: 0,
-      transitionDuration: 1000,
-      transitionInterpolator: new LinearInterpolator(),
-    };
-    
-    handleViewportUpdate(newViewport);
-  }, [viewport, handleViewportUpdate]);
-
-  // Effect for Feed layers
-  useEffect(() => {
-    if (!currentTime) return;
-
-    // Loop through all feed layers with temporal data
-    Object.keys(feedLayerData).forEach(sliceIdStr => {
-      const sliceId = parseInt(sliceIdStr, 10);
-      const subslice = props.payload.data.slices.find(slice => slice.slice_id === sliceId);
-      
-      if (!subslice) return;
-      
-      // Skip if this is not a feed layer
-      if (subslice.form_data.viz_type !== 'deck_feed') return;
-      
-      const data = feedLayerData[sliceId];
-      if (!data || !data.data || !Array.isArray(data.data)) return;
-      
-      // Get temporal column name from payload or form data
-      const temporalColumn = data.temporal_column || subslice.form_data.temporal_column;
-      
-      // Create a copy of data for filtering
-      const jsonWithProcessedData = { data: { ...data } };
-      
-      // Filter entries based on current time if temporal column exists
-      let filteredEntries = [...jsonWithProcessedData.data.data];
-      if (temporalColumn) {
-        filteredEntries = filteredEntries.filter(entry => {
-          if (!entry[temporalColumn]) return true; // Keep entries without date
-          const rowDate = new Date(entry[temporalColumn]);
-          return rowDate.toDateString() === currentTime.toDateString();
-        });
-      }
-      
-      // Group filtered entries by country_id for counts and metrics
-      const regionCounts: Record<string, number> = {};
-      const regionMetrics: Record<string, number> = {};
-      
-      filteredEntries.forEach(entry => {
-        const regionId = entry.country_id;
-        if (!regionCounts[regionId]) {
-          regionCounts[regionId] = 0;
-          regionMetrics[regionId] = 0;
-        }
-        
-        regionCounts[regionId]++;
-        regionMetrics[regionId] += entry.metric || 0;
-      });
-
-      // Update the filtered data
-      jsonWithProcessedData.data = {
-        ...jsonWithProcessedData.data,
-        data: filteredEntries,
-        regionCounts,
-        regionMetrics
-      };
-      
-      // Create new layer with filtered data
-      const layerOptions: FeedLayerProps = {
-        formData: subslice.form_data as FeedFormData,
-        geoJson: feedLayerState.geoJson[sliceId],
-        selectionOptions: {
-          selectedRegion: feedLayerState.selectedRegions[sliceId] || null,
-          setSelectedRegion: (region: SelectedRegion | null) => {
-            setFeedLayerState(prev => ({
-              ...prev,
-              selectedRegions: {
-                ...prev.selectedRegions,
-                [sliceId]: region,
-              },
-            }));
-
-            // Add zooming when a region is selected
-            if (region && feedLayerState.geoJson[sliceId]) {
-              const feature = feedLayerState.geoJson[sliceId].features.find(
-                f => f.properties.ISO === region.id ||
-                    f.properties.ADM1 === region.name ||
-                    f.properties.name === region.name ||
-                    f.properties.NAME === region.name
-              );
-              if (feature) {
-                panToFeature(feature);
-              }
-            }
-          },
-        },
-        payload: jsonWithProcessedData,
-        onAddFilter: props.onAddFilter,
-        setTooltip,
-      };
-
-      // Generate the layer with filtered data
-      const layers = layerGenerators.deck_feed(layerOptions);
-      
-      // Update the layer in state
-      setSubSlicesLayers(prevLayers => ({
-        ...prevLayers,
-        [sliceId]: layers,
-      }));
-    });
-  }, [currentTime, feedLayerData, feedLayerState, props.onAddFilter, props.payload.data.slices, setTooltip]);
-
   return (
     <DeckGLContainerStyledWrapper
       ref={containerRef}
-      mapboxApiAccessToken={props.payload.data.mapboxApiKey}
-      viewport={viewport}
-      onViewportChange={handleViewportUpdate}
+      mapboxApiAccessToken={payload.data.mapboxApiKey}
+      viewport={viewport || props.viewport}
       layers={orderedLayers}
-      mapStyle={props.formData.mapbox_style}
-      width={props.width}
-      height={props.height}
-      setControlValue={props.setControlValue}
+      mapStyle={formData.mapbox_style}
+      setControlValue={setControlValue}
+      onViewportChange={setViewport}
+      height={height}
+      width={width}
     >
       {(() => {
         const activeFeedPanels = Object.entries(feedLayerState.selectedRegions)
           .filter(([sliceId, region]) => region && visibleLayers[Number(sliceId)]);
         
-        return activeFeedPanels.map(([sliceId, region]) => (
-          <FeedSidePanel
-            key={sliceId}
-            entries={region.entries}
-            onClose={() => clearFeedLayerSelection(Number(sliceId))}
-            regionName={region.name}
-            temporal_column={props.payload.data.slices.find((slice: any) => slice.slice_id === Number(sliceId))?.form_data.temporal_column}
-          />
-        ));
+        console.log('Feed Side Panel Render State:', {
+          selectedRegions: Object.keys(feedLayerState.selectedRegions),
+          visibleLayers: Object.keys(visibleLayers).filter(id => visibleLayers[Number(id)]),
+          activePanels: activeFeedPanels.map(([sliceId, region]) => ({
+            sliceId,
+            regionName: region.name,
+            entriesCount: region.entries.length,
+            entries: region.entries
+          }))
+        });
+
+      
+        return activeFeedPanels.map(([sliceId, region]) => {
+          const temporalColumn = props.payload.data.slices.find(
+            (s: any) => s.slice_id === Number(sliceId)
+          )?.form_data.temporal_column;
+
+          return (
+            <FeedSidePanel
+              key={sliceId}
+              entries={region.entries}
+              onClose={() => clearFeedLayerSelection(Number(sliceId))}
+              regionName={region.name}
+              temporal_column={temporalColumn}
+            />
+          );
+        });
       })()}
-      {timeRange && (Object.keys(temporalData).length > 0 || 
-         props.payload.data.slices.some(
-           (slice: any) => slice.form_data.viz_type === 'deck_feed' && slice.form_data.temporal_column
-         )) && (
+      {timeRange && Object.keys(temporalData).length > 0 && (
         <StyledTimelineSlider>
           <div className="date-indicator">
             <DatePicker

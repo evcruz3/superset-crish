@@ -247,6 +247,7 @@ const config: ControlPanelConfig = {
               description: t('Map specific values to colors. Click "+ Add Value" to add a new mapping.'),
               default: {},
               renderTrigger: true,
+              visibility: ({ controls }) => !!controls?.categorical_column?.value,
               mapStateToProps: (state) => {
                 const metricValue = state.controls?.metric?.value;
                 const metricColumn = isMetricValue(metricValue) ? metricValue.column_name : undefined;
