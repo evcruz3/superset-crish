@@ -397,8 +397,6 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     return [];
   }
 
-  console.log(formData);
-
   const fd = formData as FeedFormData;
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];

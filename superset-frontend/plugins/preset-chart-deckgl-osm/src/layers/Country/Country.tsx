@@ -568,7 +568,6 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     colorScale = (value: any) => linearScale(Number(value)) || '#ccc';
   }
 
-  console.log('records', records);
   // Filter records based on current time for display
   const valueMap: { [key: string]: number | string } = {};
   records.forEach((d: DataRecord) => {
@@ -582,9 +581,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
         const timeGrain = fd.temporal_column_grain;
         const recordTimeGrain = timeGrain === 'PT1H' ? recordTime.getHours() : recordTime.getDate();
         const currentTimeGrain = timeGrain === 'PT1H' ? currentTime.getHours() : currentTime.getDate();
-        console.log('recordTime', d.country_id, recordTime, currentTime, recordTimeGrain, currentTimeGrain);
         if (recordTimeGrain === currentTimeGrain) {
-          console.log('adding to valueMap', d.country_id, value);
           valueMap[d.country_id] = value;
         }
       } else {
@@ -592,9 +589,6 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       }
     }
   });
-
-  console.log('geojson features', geoJson.features);
-  console.log('valueMap', valueMap);
 
   // Ensure geoJson has features array
   const features = (geoJson.features || []).map((feature: JsonObject) => {
@@ -624,8 +618,6 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       },
     };
   });
-
-  console.log('Processed features:', features);
 
   let processedFeatures = features.filter((feature: JsonObject) => feature.properties.metric !== undefined);
   if (fd.js_data_mutator) {

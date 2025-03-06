@@ -54,7 +54,7 @@ class PredictionPipeline:
 
     def run_pipeline(self):
         """Run the complete prediction pipeline."""
-        self.logger.info("Starting disease prediction pipeline")
+        self.logger.info("Starting disease prediction pipeline (current week + next week forecasts)")
         start_time = time.time()
 
         for script in self.scripts:
@@ -66,6 +66,7 @@ class PredictionPipeline:
         end_time = time.time()
         duration = end_time - start_time
         self.logger.info(f"Pipeline completed successfully in {duration:.2f} seconds")
+        self.logger.info("Predictions include current week and next week forecasts")
         return True
 
     def schedule_pipeline(self):

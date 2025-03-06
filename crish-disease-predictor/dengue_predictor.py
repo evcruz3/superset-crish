@@ -190,6 +190,31 @@ class DenguePredictor:
         predicted_cases = math.ceil(max(0, float(predicted_cases[0])))
         
         return predicted_cases
+    
+    def predict_next_week_cases(self, municipality, input_sequence, current_prediction, forecast_data):
+        """Predict cases for next week using the current prediction and forecast data."""
+        print(f"\nPredicting next week for {municipality}")
+        
+        if municipality not in self.models or municipality not in self.scalers:
+            print(f"No model available for {municipality}")
+            return None
+            
+        if not forecast_data:
+            print(f"No forecast data available for {municipality}")
+            return None
+            
+        # Create new input sequence for next week prediction
+        # Use the last 3 weeks of historical data + current week prediction
+        next_week_sequence = np.copy(input_sequence[1:])  # Take last 3 weeks
+        
+        # Prepare the forecast week data with predicted cases as "previous cases"
+        forecast_week_data = self.prepare_input_data(forecast_data[0], current_prediction)
+        
+        # Combine previous 3 weeks with forecast week
+        next_week_sequence = np.vstack([next_week_sequence, forecast_week_data.reshape(1, -1)])
+        
+        # Make prediction using the new sequence
+        return self.predict_dengue_cases(municipality, next_week_sequence)
 
 def main():
     predictor = DenguePredictor()
@@ -198,9 +223,10 @@ def main():
         # Connect to database
         predictor.connect_db()
         
-        # Load weekly averages
+        # Load weekly averages and forecast data
         current_date = datetime.now().strftime('%Y%m%d')
         weekly_averages_file = f"{predictor.weather_data_dir}/all_municipalities_weekly_averages_{current_date}.json"
+        forecast_file = f"{predictor.weather_data_dir}/all_municipalities_forecast_{current_date}.json"
         
         try:
             with open(weekly_averages_file, 'r') as f:
@@ -208,6 +234,15 @@ def main():
         except FileNotFoundError:
             print(f"Weekly averages file not found: {weekly_averages_file}")
             return
+            
+        try:
+            with open(forecast_file, 'r') as f:
+                forecast_data = json.load(f)
+            has_forecast = True
+            print("Forecast data loaded successfully")
+        except FileNotFoundError:
+            print(f"Forecast file not found: {forecast_file}")
+            has_forecast = False
 
         # Initialize predictor and get available municipalities
         available_municipalities = predictor.load_models(weekly_data.keys())
@@ -233,19 +268,49 @@ def main():
                 
                 input_sequence = np.array(input_sequences)
 
-                # Make prediction
-                predicted_cases = predictor.predict_dengue_cases(municipality, input_sequence)
+                # Make prediction for current week
+                current_prediction = predictor.predict_dengue_cases(municipality, input_sequence)
                 
-                if predicted_cases is not None:
+                # Initialize next week prediction
+                next_week_prediction = None
+                
+                # If forecast data is available, predict next week
+                if has_forecast and municipality in forecast_data and forecast_data[municipality]:
+                    next_week_prediction = predictor.predict_next_week_cases(
+                        municipality, 
+                        input_sequence, 
+                        current_prediction, 
+                        forecast_data[municipality]
+                    )
+                
+                if current_prediction is not None:
                     predictions[municipality] = {
-                        'predicted_cases': predicted_cases,
-                        'prediction_date': datetime.now().strftime('%Y-%m-%d'),
-                        'weeks_used': [
-                            {'start': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_start'], 
-                             'end': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_end']}
-                            for i in range(int(os.getenv('MAX_WEEKS_HISTORY', '4')))
-                        ]
+                        'current_week': {
+                            'predicted_cases': current_prediction,
+                            'prediction_date': datetime.now().strftime('%Y-%m-%d'),
+                            'weeks_used': [
+                                {'start': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_start'], 
+                                 'end': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_end']}
+                                for i in range(int(os.getenv('MAX_WEEKS_HISTORY', '4')))
+                            ]
+                        }
                     }
+                    
+                    # Add next week prediction if available
+                    if next_week_prediction is not None:
+                        # Calculate next week's date range
+                        current_end = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
+                        next_week_start = current_end + timedelta(days=1)
+                        next_week_end = next_week_start + timedelta(days=6)
+                        
+                        predictions[municipality]['next_week'] = {
+                            'predicted_cases': next_week_prediction,
+                            'prediction_date': datetime.now().strftime('%Y-%m-%d'),
+                            'week_range': {
+                                'start': next_week_start.strftime('%Y-%m-%d'),
+                                'end': next_week_end.strftime('%Y-%m-%d')
+                            }
+                        }
 
         # Save predictions
         os.makedirs(predictor.predictions_dir, exist_ok=True)
@@ -258,7 +323,9 @@ def main():
         # Print predictions
         print("\nPredicted dengue cases for each municipality:")
         for municipality, pred_data in predictions.items():
-            print(f"{municipality}: {pred_data['predicted_cases']} cases")
+            print(f"{municipality}: Current week: {pred_data['current_week']['predicted_cases']} cases")
+            if 'next_week' in pred_data:
+                print(f"             Next week: {pred_data['next_week']['predicted_cases']} cases")
             
     except Exception as e:
         print(f"Error: {str(e)}")
