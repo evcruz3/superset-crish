@@ -134,7 +134,7 @@ export const ExploreChartHeader = ({
 
   const updateSlice = useCallback(
     slice => {
-      dispatch(sliceUpdated(completeSlice));
+      dispatch(sliceUpdated(slice));
     },
     [dispatch],
   );

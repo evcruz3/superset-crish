@@ -2314,20 +2314,12 @@ class DeckCountry(BaseDeckGLViz):
             
             # Mark as timeseries if using temporal features
             query_obj["is_timeseries"] = True
-            
-            # Handle time range if specified
-            if self.form_data.get("time_range"):
-                time_range = self.form_data.get("time_range")
-                since, until = get_since_until(
-                    relative_start=relative_start,
-                    relative_end=relative_end,
-                    time_range=time_range,
-                    since=self.form_data.get("since"),
-                    until=self.form_data.get("until"),
-                )
-                query_obj["from_dttm"] = since
-                query_obj["to_dttm"] = until
 
+        if self.is_timeseries:
+            # Override the to_dttm to include future dates for forecasts
+            # Add a far future date (e.g., 1 year from now)
+            query_obj["to_dttm"] = None
+            
         # Set up metrics and columns
         query_obj["metrics"] = [metric]
         query_obj["columns"] = [entity]

@@ -5,9 +5,9 @@ An automated pipeline for predicting dengue and diarrhea cases in Timor-Leste mu
 ## Overview
 
 This pipeline automates the following steps:
-1. Pulls weather data from Visual Crossing API
-2. Predicts dengue cases using LSTM models
-3. Predicts diarrhea cases using LSTM models
+1. Pulls historical weather data and weather forecasts from Visual Crossing API
+2. Predicts dengue cases for current week and next week using LSTM models
+3. Predicts diarrhea cases for current week and next week using LSTM models
 4. Uploads predictions to a PostgreSQL database
 
 ## Directory Structure
@@ -32,7 +32,8 @@ This pipeline automates the following steps:
 │   ├── dengue_predictions_{date}.json
 │   └── diarrhea_predictions_{date}.json
 └── weather_data/
-    └── all_municipalities_weekly_averages_{date}.json
+    ├── all_municipalities_weekly_averages_{date}.json
+    └── all_municipalities_forecast_{date}.json
 ```
 
 ## Configuration
@@ -92,19 +93,21 @@ The pipeline can be configured to run:
 ## Components
 
 ### 1. Weather Data Puller (`visual_crossing_puller.py`)
-- Fetches weather data from Visual Crossing API
+- Fetches historical weather data from Visual Crossing API
+- Retrieves weather forecast data for the next week
 - Calculates weekly averages for temperature, humidity, and precipitation
 - Saves data to JSON files in the weather_data directory
 
 ### 2. Disease Predictors (`dengue_predictor.py`, `diarrhea_predictor.py`)
 - Load LSTM models and scalers for each municipality
 - Pull historical case data from the database
-- Process weather data and make predictions
+- Process weather data and make predictions for the current week
+- Use current week prediction and forecast data to predict cases for next week
 - Save predictions to JSON files in the predictions directory
 
 ### 3. Prediction Uploader (`upload_predictions.py`)
 - Connects to PostgreSQL database
-- Uploads predictions with proper municipality codes
+- Uploads predictions with proper municipality codes for both current and next week
 - Handles data conflicts with UPSERT operations
 
 ### 4. Pipeline Orchestrator (`prediction_pipeline.py`)
@@ -124,11 +127,63 @@ CREATE TABLE disease_forecast (
     municipality_code CHAR(5) NOT NULL,
     municipality_name VARCHAR(50) NOT NULL,
     predicted_cases INTEGER CHECK (predicted_cases >= 0),
+    forecast_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (year, week_number, disease, municipality_code)
 );
 ```
+
+The table includes:
+- `year` and `week_number`: The ISO year and week number
+- `disease`: Type of disease being predicted ('dengue' or 'diarrhea')
+- `municipality_code`: ISO code for the municipality
+- `municipality_name`: Full name of the municipality
+- `predicted_cases`: The predicted number of cases
+- `forecast_date`: The Monday date of the prediction week (timestamp)
+- `created_at`: When the prediction was first added to the database
+- `updated_at`: When the prediction was last updated
+
+## Prediction Output Format
+
+The prediction output files contain both current week and next week predictions:
+
+```json
+{
+  "Municipality": {
+    "current_week": {
+      "predicted_cases": 5,
+      "prediction_date": "2023-05-15",
+      "weeks_used": [
+        {"start": "2023-04-17", "end": "2023-04-23"},
+        {"start": "2023-04-24", "end": "2023-04-30"},
+        {"start": "2023-05-01", "end": "2023-05-07"},
+        {"start": "2023-05-08", "end": "2023-05-14"}
+      ]
+    },
+    "next_week": {
+      "predicted_cases": 7,
+      "prediction_date": "2023-05-15",
+      "week_range": {
+        "start": "2023-05-15",
+        "end": "2023-05-21"
+      }
+    }
+  }
+}
+```
+
+## Prediction Methodology
+
+### Current Week Prediction
+- Uses 4 weeks of historical weather data and case numbers
+- LSTM model predicts the expected number of cases for the current week
+
+### Next Week Prediction
+- Uses the last 3 weeks of historical data
+- Combines with the current week's prediction
+- Uses weather forecast data for the upcoming week
+- LSTM model provides a forecast for the following week's cases
 
 ## Logging
 

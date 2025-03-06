@@ -35,6 +35,12 @@ class VisualCrossingPuller:
         end_date = datetime.now()
         start_date = end_date - timedelta(weeks=4)
         return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
+    
+    def get_forecast_date_range(self):
+        """Get date range for the next week's forecast."""
+        start_date = datetime.now() + timedelta(days=1)  # Start from tomorrow
+        end_date = start_date + timedelta(days=6)  # Get a full week
+        return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
 
     def get_historical_weather(self, municipality: str, start_date: str, end_date: str) -> Dict:
         lat, lon = self.municipalities[municipality]
@@ -82,14 +88,23 @@ class VisualCrossingPuller:
         except Exception as e:
             print(f"Exception while getting data for {municipality}: {str(e)}")
             return None
+    
+    def get_forecast_weather(self, municipality: str) -> Dict:
+        """Get forecast weather data for the next week."""
+        start_date, end_date = self.get_forecast_date_range()
+        print(f"Getting forecast for {municipality} from {start_date} to {end_date}")
+        
+        # Uses the same endpoint and parameters as historical data
+        # Visual Crossing automatically returns forecast for future dates
+        return self.get_historical_weather(municipality, start_date, end_date)
 
-    def save_data(self, municipality: str, data: Dict):
+    def save_data(self, municipality: str, data: Dict, data_type="historical"):
         os.makedirs('weather_data', exist_ok=True)
-        filename = f"weather_data/{municipality}_historical_{datetime.now().strftime('%Y%m%d')}.json"
+        filename = f"weather_data/{municipality}_{data_type}_{datetime.now().strftime('%Y%m%d')}.json"
         
         with open(filename, 'w') as f:
             json.dump(data, f, indent=2)
-        print(f"Saved historical data for {municipality} to {filename}")
+        print(f"Saved {data_type} data for {municipality} to {filename}")
 
     def compute_weekly_averages(self, data: List[Dict]) -> List[Dict]:
         """Compute weekly averages from daily data."""
@@ -139,10 +154,11 @@ def main():
     puller = VisualCrossingPuller(API_KEY)
     start_date, end_date = puller.get_date_range()
     
-    print(f"Pulling data from {start_date} to {end_date}")
+    print(f"Pulling historical data from {start_date} to {end_date}")
     
     # Dictionary to store weekly averages for all municipalities
     all_weekly_averages = {}
+    all_forecast_data = {}
     
     for municipality in puller.municipalities:
         print(f"\nProcessing {municipality}")
@@ -151,11 +167,21 @@ def main():
         historical_data = puller.get_historical_weather(municipality, start_date, end_date)
         if historical_data:
             # Save raw data
-            puller.save_data(municipality, historical_data)
+            puller.save_data(municipality, historical_data, "historical")
             
             # Compute and store weekly averages
             weekly_averages = puller.compute_weekly_averages(historical_data)
             all_weekly_averages[municipality] = weekly_averages
+        
+        # Get forecast data for next week
+        forecast_data = puller.get_forecast_weather(municipality)
+        if forecast_data:
+            # Save raw forecast data
+            puller.save_data(municipality, forecast_data, "forecast")
+            
+            # Compute and store weekly forecast
+            forecast_weekly = puller.compute_weekly_averages(forecast_data)
+            all_forecast_data[municipality] = forecast_weekly
             
         # Respect API rate limits
         time.sleep(1)
@@ -165,6 +191,12 @@ def main():
     with open(weekly_averages_file, 'w') as f:
         json.dump(all_weekly_averages, f, indent=2)
     print(f"\nSaved weekly averages for all municipalities to {weekly_averages_file}")
+    
+    # Save all forecast data to a single file
+    forecast_file = f"weather_data/all_municipalities_forecast_{datetime.now().strftime('%Y%m%d')}.json"
+    with open(forecast_file, 'w') as f:
+        json.dump(all_forecast_data, f, indent=2)
+    print(f"\nSaved forecast data for all municipalities to {forecast_file}")
 
 if __name__ == "__main__":
     main() 
