@@ -51,6 +51,7 @@ import { TooltipProps } from '../../components/Tooltip';
 import { countries } from './countries';
 import { ICON_MAPPING, createSVGIcon, cleanupIconUrl } from './markers';
 import { LayerOptions, LayerReturn } from '../../types/layers';
+import RegionInfoModal from '../../components/RegionInfoModal';
 
 // Configure moment to use Monday as first day of week
 moment.updateLocale('en', {
@@ -468,7 +469,8 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     geoJson = {},
     temporalOptions,
     viewState,
-    opacity = 1.0
+    opacity = 1.0,
+    onClick,
   } = options;
 
   const currentTime = temporalOptions?.currentTime;
@@ -703,6 +705,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     return null;
   }
 
+
   const geoJsonLayer = new GeoJsonLayer({
     id: `geojson-layer-${fd.slice_id}`,
     data: processedFeatures,
@@ -716,6 +719,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     lineWidthUnits: fd.line_width_unit,
     autoHighlight: true,
     ...commonLayerProps(fd, setTooltip, setTooltipContent),
+    onClick: onClick,
   }) as ExtendedGeoJsonLayer;
 
   // Attach metadata to the layer instance
@@ -892,6 +896,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     latitude: props.viewport.latitude,
     longitude: props.viewport.longitude,
   });
+  const [selectedRegion, setSelectedRegion] = useState<{ properties: any } | null>(null);
   
   const { formData, payload, setControlValue, viewport: initialViewport, onAddFilter, height, width } = props;
 
@@ -1006,11 +1011,20 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
       // console.log('Recalculating layers with viewState:', viewState);
       if (!geoJson) return [];
 
+      const handleClick = (info: { object?: any }) => {
+        console.log('GeoJsonLayer onClick fired:', info);
+        if (info.object && info.object.properties) {
+          console.log('Setting selected region:', info.object);
+          setSelectedRegion(info.object);
+        }
+      };
+
       const baseLayers = getLayer({
         formData,
         payload,
         onAddFilter,
         setTooltip,
+        onClick: handleClick,
         geoJson,
         temporalOptions: {
           currentTime,
@@ -1063,6 +1077,13 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
         height={height}
         onViewportChange={onViewportChange}
       >
+        {selectedRegion && (
+          <RegionInfoModal
+            visible={!!selectedRegion}
+            onClose={() => setSelectedRegion(null)}
+            properties={selectedRegion?.properties}
+          />
+        )}
         {timeRange && formData.temporal_column && (
           <StyledTimelineSlider>
             <div className="date-indicator">
@@ -1190,6 +1211,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
           />
         )}
       </DeckGLContainerStyledWrapper>
+      
     </div>
   );
 });

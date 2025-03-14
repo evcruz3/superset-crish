@@ -49,6 +49,7 @@ import {
   FeedGeoJSONFeature
 } from '../types/feed'
 import { FeedSidePanel } from '../layers/Feed/Feed'
+import RegionInfoModal from '../components/RegionInfoModal'
 
 // Configure moment to use Monday as first day of week
 moment.updateLocale('en', {
@@ -833,6 +834,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     selectedRegions: {},
     loadingState: {},
   });
+  const [selectedRegion, setSelectedRegion] = useState<{ properties: any } | null>(null);
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef
@@ -1144,6 +1146,12 @@ const DeckMulti = (props: DeckMultiProps) => {
           loadingState: feedLayerState.loadingState[subslice.slice_id]
         });
 
+        const handleClick = (info: { object?: any }) => {
+          console.log('GeoJsonLayer onClick fired:', info);
+          // display region info modal
+          setSelectedRegion(info.object);
+        };
+
         const layers = layerGenerators.deck_country({
           formData: subslice.form_data,
           payload: jsonWithProcessedData,
@@ -1155,6 +1163,7 @@ const DeckMulti = (props: DeckMultiProps) => {
             allData: jsonWithAllData.data.data,
           },
           opacity: layerOpacities[subslice.slice_id] ?? 1.0,
+          onClick: handleClick
         });
 
         console.log('Feed Layer Generated:', {
@@ -2058,6 +2067,13 @@ const DeckMulti = (props: DeckMultiProps) => {
             );
           })}
       </LegendsContainer>
+      {selectedRegion && (
+        <RegionInfoModal
+          visible={!!selectedRegion}
+          onClose={() => setSelectedRegion(null)}
+          properties={selectedRegion?.properties}
+        />
+      )}
     </DeckGLContainerStyledWrapper>
   )
 }
