@@ -84,6 +84,7 @@ export interface LayerOptions extends BaseLayerOptions {
   viewState?: Viewport;                   // For Country layer
   selectionOptions?: SelectionOptions;    // For Polygon and Feed layers
   opacity?: number;                       // For controlling layer opacity
+  onClick?: (info: { object?: any }) => void;
 }
 
 /**

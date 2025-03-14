@@ -472,8 +472,13 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     feature.properties.metric !== undefined
   );
 
-  // Create centroids for circle overlays
-  const centroids: FeedCentroid[] = processedFeatures.map((feature: FeedGeoJSONFeature) => {
+  // Create centroids for circle overlays - filter out regions with 0 alerts
+  const centroids: FeedCentroid[] = processedFeatures
+    .filter((feature: FeedGeoJSONFeature) => {
+      const metric = feature.properties?.metric;
+      return typeof metric === 'number' && metric > 0;
+    })
+    .map((feature: FeedGeoJSONFeature) => {
     const coordinates = feature.geometry.type === 'Polygon' 
       ? feature.geometry.coordinates[0]
       : feature.geometry.coordinates[0][0];
@@ -677,7 +682,13 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     });
   }
 
-  return [geoJsonLayer, circleLayer, textLayer];
+  // Only return layers with data - always include geoJsonLayer but include circleLayer and textLayer only when there are centroids with alerts
+  if (centroids.length > 0) {
+    return [geoJsonLayer, circleLayer, textLayer];
+  }
+  
+  // Return just the geoJsonLayer if there are no centroids with alerts
+  return [geoJsonLayer];
 }
 
 interface DeckGLContainerHandleExtended extends DeckGLContainerHandle {
