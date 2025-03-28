@@ -180,12 +180,43 @@ const StyledTimelineSlider = styled.div`
     transition: width 0.3s ease;
   }
 
+  .timeline-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nav-button {
+    background: #f0f0f0;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+    min-width: 32px;
+    height: 32px;
+
+    &:hover {
+      background: #e0e0e0;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
   .timeline-container {
     display: flex;
     align-items: center;
-    overflow-x: auto;  // Allow horizontal scrolling if many dates
+    overflow-x: auto;
     gap: 4px;
-    padding-bottom: 4px; // Space for the scrollbar
+    padding-bottom: 4px;
+    flex: 1;
     
     /* Hide scrollbar for Chrome, Safari and Opera */
     &::-webkit-scrollbar {
@@ -198,7 +229,7 @@ const StyledTimelineSlider = styled.div`
   }
 
   .day-label {
-    flex: 0 0 auto; // Prevent shrinking
+    flex: 0 0 auto;
     font-size: 12px;
     color: #666;
     text-align: center;
@@ -207,7 +238,7 @@ const StyledTimelineSlider = styled.div`
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
-    white-space: nowrap; // Prevent text wrapping
+    white-space: nowrap;
 
     &:hover {
       background: #f0f0f0;
@@ -820,6 +851,8 @@ interface FeedLayerState {
 
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
+  const timelineContainerRef = useRef<HTMLDivElement>(null)
+  const activeDateRef = useRef<HTMLDivElement>(null)
 
   const [viewport, setViewport] = useState<Viewport>()
   const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer[]>>({})
@@ -1707,6 +1740,54 @@ const DeckMulti = (props: DeckMultiProps) => {
     };
   }, [clearFeedLayerSelection, setTooltip]);
 
+  // Add handleTimeNavigation function
+  const handleTimeNavigation = useCallback((direction: 'prev' | 'next') => {
+    if (!timeRange || !currentTime) return;
+
+    const timeGrains = Object.values(temporalData)
+      .map(({ column }) => {
+        const sliceFormData = props.payload.data.slices.find(
+          (s: any) => s.form_data.temporal_column === column
+        )?.form_data;
+        return sliceFormData?.time_grain_sqla;
+      })
+      .filter(Boolean) as string[];
+    
+    const largestTimeGrain = getLargestTimeGrain(timeGrains);
+    const availableDates = getDatesInRange(timeRange[0], timeRange[1], largestTimeGrain);
+    const currentIndex = availableDates.findIndex(
+      date => date.getTime() === currentTime.getTime()
+    );
+
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex >= 0 && newIndex < availableDates.length) {
+      setCurrentTime(availableDates[newIndex]);
+    }
+  }, [timeRange, currentTime, temporalData, props.payload.data.slices]);
+
+  // Add scroll effect when currentTime changes
+  useEffect(() => {
+    if (currentTime && timelineContainerRef.current && activeDateRef.current) {
+      const container = timelineContainerRef.current;
+      const activeElement = activeDateRef.current;
+      
+      // Calculate if the active element is outside the visible area
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeElement.getBoundingClientRect();
+      
+      if (activeRect.left < containerRect.left || activeRect.right > containerRect.right) {
+        // Scroll the active element into view with smooth behavior
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [currentTime]);
+
   return (
     <DeckGLContainerStyledWrapper
       ref={containerRef}
@@ -1758,14 +1839,13 @@ const DeckMulti = (props: DeckMultiProps) => {
               value={currentTime ? moment(currentTime) : undefined}
               onChange={(date: Moment | null) => {
                 if (date) {
-                  // Ensure the selected date is within the time range
                   const selectedTime = date.toDate();
                   const boundedTime = new Date(
                     Math.min(
                       Math.max(selectedTime.getTime(), timeRange[0].getTime()),
                       timeRange[1].getTime()
                     )
-                  )
+                  );
                   setCurrentTime(boundedTime);
                 }
               }}
@@ -1842,7 +1922,6 @@ const DeckMulti = (props: DeckMultiProps) => {
               locale={locale}
               onPanelChange={(value, mode) => {
                 if (mode === 'week' && value) {
-                  // Ensure the selected date is aligned to Monday using ISO week
                   const monday = value.clone().startOf('isoWeek');
                   if (!value.isSame(monday, 'day')) {
                     setCurrentTime(monday.toDate());
@@ -1860,53 +1939,68 @@ const DeckMulti = (props: DeckMultiProps) => {
               }}
             />
           </div>
-          <div className="timeline-container">
-            {(() => {
-              const timeGrains = Object.values(temporalData)
-                .map(({ column }) => {
-                  const sliceFormData = props.payload.data.slices.find(
-                    (s: any) => s.form_data.temporal_column === column
-                  )?.form_data;
-                  return sliceFormData?.time_grain_sqla;
-                })
-                .filter(Boolean) as string[];
-              
-              const largestTimeGrain = getLargestTimeGrain(timeGrains);
-              
-              return getDatesInRange(timeRange[0], timeRange[1], largestTimeGrain).map((date, index) => {
-                let dateFormat: Intl.DateTimeFormatOptions = {};
-                switch (largestTimeGrain) {
-                  case 'P1Y':
-                    dateFormat = { year: 'numeric' };
-                    break;
-                  case 'P1M':
-                    dateFormat = { month: 'short', year: 'numeric' };
-                    break;
-                  case 'P1W':
-                    dateFormat = { month: 'short', day: 'numeric' };
-                    break;
-                  case 'PT1H':
-                    dateFormat = { hour: 'numeric', hour12: true };
-                    break;
-                  default:
-                    dateFormat = { weekday: 'short' };
-                }
+          <div className="timeline-navigation">
+            <button
+              className="nav-button"
+              onClick={() => handleTimeNavigation('prev')}
+              disabled={!currentTime || currentTime.getTime() === timeRange[0].getTime()}
+            >
+              ←
+            </button>
+            <div className="timeline-container" ref={timelineContainerRef}>
+              {(() => {
+                const timeGrains = Object.values(temporalData)
+                  .map(({ column }) => {
+                    const sliceFormData = props.payload.data.slices.find(
+                      (s: any) => s.form_data.temporal_column === column
+                    )?.form_data;
+                    return sliceFormData?.time_grain_sqla;
+                  })
+                  .filter(Boolean) as string[];
                 
-                return (
-                  <div 
-                    key={index} 
-                    className={`day-label ${
-                      currentTime && date.toDateString() === currentTime.toDateString() 
-                        ? 'active' 
-                        : ''
-                    }`}
-                    onClick={() => setCurrentTime(date)}
-                  >
-                    {date.toLocaleDateString('en-US', dateFormat)}
-                  </div>
-                );
-              });
-            })()}
+                const largestTimeGrain = getLargestTimeGrain(timeGrains);
+                
+                return getDatesInRange(timeRange[0], timeRange[1], largestTimeGrain).map((date, index) => {
+                  let dateFormat: Intl.DateTimeFormatOptions = {};
+                  switch (largestTimeGrain) {
+                    case 'P1Y':
+                      dateFormat = { year: 'numeric' };
+                      break;
+                    case 'P1M':
+                      dateFormat = { month: 'short', year: 'numeric' };
+                      break;
+                    case 'P1W':
+                      dateFormat = { month: 'short', day: 'numeric' };
+                      break;
+                    case 'PT1H':
+                      dateFormat = { hour: 'numeric', hour12: true };
+                      break;
+                    default:
+                      dateFormat = { weekday: 'short' };
+                  }
+                  
+                  const isActive = currentTime && date.toDateString() === currentTime.toDateString();
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`day-label ${isActive ? 'active' : ''}`}
+                      onClick={() => setCurrentTime(date)}
+                      ref={isActive ? activeDateRef : null}
+                    >
+                      {date.toLocaleDateString('en-US', dateFormat)}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+            <button
+              className="nav-button"
+              onClick={() => handleTimeNavigation('next')}
+              disabled={!currentTime || currentTime.getTime() === timeRange[1].getTime()}
+            >
+              →
+            </button>
           </div>
         </StyledTimelineSlider>
       )}
