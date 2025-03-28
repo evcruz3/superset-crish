@@ -130,7 +130,7 @@ export function ResponsiveChartSlug({
         });
       } else {
         chartDataResponse = await SupersetClient.post({
-          endpoint: `/api/v1/chart/data?form_data=${JSON.stringify({"slice_id": chartId})}`,
+          endpoint: `/api/v1/chart/explore_json?form_data=${JSON.stringify({"slice_id": chartId})}`,
           jsonPayload: {
             datasource: formDataResponse.datasource,
             force: false,

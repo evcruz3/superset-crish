@@ -405,12 +405,43 @@ const StyledTimelineSlider = styled.div`
     transition: width 0.3s ease;
   }
 
+  .timeline-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nav-button {
+    background: #f0f0f0;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+    min-width: 32px;
+    height: 32px;
+
+    &:hover {
+      background: #e0e0e0;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
   .timeline-container {
     display: flex;
     align-items: center;
-    overflow-x: auto;  // Allow horizontal scrolling if many dates
+    overflow-x: auto;
     gap: 4px;
-    padding-bottom: 4px; // Space for the scrollbar
+    padding-bottom: 4px;
+    flex: 1;
     
     /* Hide scrollbar for Chrome, Safari and Opera */
     &::-webkit-scrollbar {
@@ -423,7 +454,7 @@ const StyledTimelineSlider = styled.div`
   }
 
   .day-label {
-    flex: 0 0 auto; // Prevent shrinking
+    flex: 0 0 auto;
     font-size: 12px;
     color: #666;
     text-align: center;
@@ -432,7 +463,7 @@ const StyledTimelineSlider = styled.div`
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
-    white-space: nowrap; // Prevent text wrapping
+    white-space: nowrap;
 
     &:hover {
       background: #f0f0f0;
@@ -883,6 +914,8 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
 
 export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const containerRef = useRef<DeckGLContainerHandleExtended>();
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const activeDateRef = useRef<HTMLDivElement>(null);
   const [geoJson, setGeoJson] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [iconUrls, setIconUrls] = useState<string[]>([]);
@@ -1056,6 +1089,44 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   const metricValues = geoJsonLayer?.metricValues || [];
   const categoricalValues = geoJsonLayer?.categoricalValues || [];
 
+  // Add a new useEffect to handle scrolling when currentTime changes
+  useEffect(() => {
+    if (currentTime && timelineContainerRef.current && activeDateRef.current) {
+      const container = timelineContainerRef.current;
+      const activeElement = activeDateRef.current;
+      
+      // Calculate if the active element is outside the visible area
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeElement.getBoundingClientRect();
+      
+      if (activeRect.left < containerRect.left || activeRect.right > containerRect.right) {
+        // Scroll the active element into view with smooth behavior
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [currentTime]);
+
+  // Update the handleTimeNavigation to ensure smooth scrolling after state update
+  const handleTimeNavigation = useCallback((direction: 'prev' | 'next') => {
+    if (!timeRange || !currentTime) return;
+
+    const availableDates = getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla);
+    const currentIndex = availableDates.findIndex(
+      date => date.getTime() === currentTime.getTime()
+    );
+
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex >= 0 && newIndex < availableDates.length) {
+      setCurrentTime(availableDates[newIndex]);
+    }
+  }, [timeRange, currentTime, formData.time_grain_sqla]);
+
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
   }
@@ -1153,41 +1224,56 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                 }}
               />
             </div>
-            <div className="timeline-container">
-              {getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla).map((date, index) => {
-                // Format date based on time grain
-                let dateFormat: Intl.DateTimeFormatOptions = {};
-                switch (formData.time_grain_sqla) {
-                  case 'P1Y':
-                    dateFormat = { year: 'numeric' };
-                    break;
-                  case 'P1M':
-                    dateFormat = { month: 'short', year: 'numeric' };
-                    break;
-                  case 'P1W':
-                    dateFormat = { month: 'short', day: 'numeric' };
-                    break;
-                  case 'PT1H':
-                    dateFormat = { hour: 'numeric', hour12: true };
-                    break;
-                  default:
-                    dateFormat = { weekday: 'short' };
-                }
-                
-                return (
-                  <div 
-                    key={index} 
-                    className={`day-label ${
-                      currentTime && date.toDateString() === currentTime.toDateString() 
-                        ? 'active' 
-                        : ''
-                    }`}
-                    onClick={() => setCurrentTime(date)}
-                  >
-                    {date.toLocaleDateString('en-US', dateFormat)}
-                  </div>
-                );
-              })}
+            <div className="timeline-navigation">
+              <button
+                className="nav-button"
+                onClick={() => handleTimeNavigation('prev')}
+                disabled={!currentTime || currentTime.getTime() === timeRange[0].getTime()}
+              >
+                ←
+              </button>
+              <div className="timeline-container" ref={timelineContainerRef}>
+                {getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla).map((date, index) => {
+                  // Format date based on time grain
+                  let dateFormat: Intl.DateTimeFormatOptions = {};
+                  switch (formData.time_grain_sqla) {
+                    case 'P1Y':
+                      dateFormat = { year: 'numeric' };
+                      break;
+                    case 'P1M':
+                      dateFormat = { month: 'short', year: 'numeric' };
+                      break;
+                    case 'P1W':
+                      dateFormat = { month: 'short', day: 'numeric' };
+                      break;
+                    case 'PT1H':
+                      dateFormat = { hour: 'numeric', hour12: true };
+                      break;
+                    default:
+                      dateFormat = { weekday: 'short' };
+                  }
+                  
+                  const isActive = currentTime && date.toDateString() === currentTime.toDateString();
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`day-label ${isActive ? 'active' : ''}`}
+                      onClick={() => setCurrentTime(date)}
+                      ref={isActive ? activeDateRef : null}
+                    >
+                      {date.toLocaleDateString('en-US', dateFormat)}
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                className="nav-button"
+                onClick={() => handleTimeNavigation('next')}
+                disabled={!currentTime || currentTime.getTime() === timeRange[1].getTime()}
+              >
+                →
+              </button>
             </div>
           </StyledTimelineSlider>
         )}

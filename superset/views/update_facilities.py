@@ -1,20 +1,28 @@
-from flask import flash, request, redirect, g, make_response, url_for
+from flask import flash, request, redirect, g, make_response, url_for, Response
 from flask_appbuilder import expose
-from flask_appbuilder.api import expose as expose_api, protect, safe
+from flask_appbuilder.api import expose as expose_api, protect, safe, rison
 from flask_appbuilder.security.decorators import has_access
 from flask_babel import lazy_gettext as _
 from superset.views.base import BaseSupersetView
-from superset.views.base_api import BaseSupersetApi, requires_form_data
-from superset.extensions import event_logger
-from superset.constants import MODEL_VIEW_RW_METHOD_PERMISSION_MAP
+from superset.views.base_api import BaseSupersetApi, BaseSupersetModelRestApi, requires_form_data, statsd_metrics
+from superset.extensions import event_logger, db
+from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
+from typing import Any, Dict, List, Optional, Type, Union
 import pandas as pd
-import sqlite3
+from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.utils import secure_filename
 import os
 import logging
-from flask_appbuilder.security.decorators import has_access_api
-from flask_appbuilder.models.sqla.interface import SQLAInterface
 import traceback
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
+from superset.models.health_facilities import HealthFacility
+from flask_appbuilder.models.sqla.interface import SQLAInterface
+from sqlalchemy import inspect, func
+from sqlalchemy.types import String
+from marshmallow import Schema, fields
+from math import radians, cos, sin, asin, sqrt
+from superset.utils.core import get_user_id
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
 ALLOWED_EXTENSIONS = {'xlsx'}
@@ -171,6 +179,7 @@ class UpdateFacilitiesRestApi(BaseSupersetApi):
                 return self.response(200, message="File processed successfully and saved as template")
             except Exception as ex:
                 logger.error(f"Error processing file: {str(ex)}")
+                logger.error(traceback.format_exc())
                 if os.path.exists(temp_filepath):
                     os.remove(temp_filepath)  # Clean up on error
                 return self.response(500, message=str(ex))
@@ -179,7 +188,6 @@ class UpdateFacilitiesRestApi(BaseSupersetApi):
 
     def process_facilities_file(self, file_path):
         sheets_data = pd.read_excel(file_path, sheet_name=None)
-        conn = sqlite3.connect('health_facilities.db')
 
         administrative_posts = [
             "Aileu", "Ainaro", "Atauro", "Baucau", "Bobonaro",
@@ -187,22 +195,124 @@ class UpdateFacilitiesRestApi(BaseSupersetApi):
             "Lautem", "Liquica", "Raeoa", "Viqueque"
         ]
 
+        # Process data from each sheet
         for sheet_name, data in sheets_data.items():
             if sheet_name in administrative_posts:
+                logger.info(f"Processing sheet: {sheet_name}")
                 cleaned_data = pd.read_excel(file_path, sheet_name=sheet_name, header=0)
-                cleaned_data = cleaned_data.dropna(subset=[cleaned_data.columns[1]])
+                # ensure header names are whitespace trimmed
+                cleaned_data.columns = cleaned_data.columns.str.strip()
+                # print headers
+                logger.info(f"Headers: {cleaned_data.columns}")
+                # Drop rows with missing essential data (using the Facility Name column)
+                cleaned_data = cleaned_data.dropna(subset=['Facility Name'])
                 cleaned_data.columns = cleaned_data.columns.str.strip()
 
-                # Convert data types
-                numeric_columns = ['Longitude', 'Latitude', 'Ambulance', 'Maternity bed', 'Total bed']
+                # Ensure we have the coordinates
+                cleaned_data = cleaned_data.dropna(subset=['Longitude', 'Latitude'])
+
+                # Convert data types for numeric columns
+                numeric_columns = ['Longitude', 'Latitude', 'Elevation (m)', 'Ambulance', 'Maternity bed', 'Total bed']
                 for col in numeric_columns:
                     if col in cleaned_data.columns:
                         cleaned_data[col] = pd.to_numeric(cleaned_data[col], errors='coerce')
-                        if col != 'Longitude' and col != 'Latitude':
-                            cleaned_data[col] = cleaned_data[col].astype('Int64')
+                
+                # Process each facility
+                for _, row in cleaned_data.iterrows():
+                    try:
+                        # Extract data from row and ensure proper types
+                        longitude = float(row['Longitude']) if pd.notna(row.get('Longitude')) else 0.0
+                        latitude = float(row['Latitude']) if pd.notna(row.get('Latitude')) else 0.0
+                        
+                        if longitude == 0.0 or latitude == 0.0:
+                            logger.warning(f"Skipping facility with invalid coordinates: {row.get('Facility Name')}")
+                            continue
+                        
+                        # Parse numeric fields with proper type handling
+                        try:
+                            elevation = float(row.get('Elevation (m)')) if pd.notna(row.get('Elevation (m)')) else None
+                        except (ValueError, TypeError):
+                            elevation = None
+                        
+                        try:
+                            total_beds = int(row.get('Total bed')) if pd.notna(row.get('Total bed')) else None
+                        except (ValueError, TypeError):
+                            total_beds = None
+                            
+                        try:
+                            maternity_beds = int(row.get('Maternity bed')) if pd.notna(row.get('Maternity bed')) else None
+                        except (ValueError, TypeError):
+                            maternity_beds = None
+                        
+                        # Parse boolean field
+                        try:
+                            has_ambulance = bool(row.get('Ambulance', False))
+                        except (ValueError, TypeError):
+                            has_ambulance = False
+                        
+                        # id will be based from the concatenation of the municipality and No
+                        key = (str(row.get('No', '')) if pd.notna(row.get('No')) else None) + str(sheet_name)
+                        # Ensure text fields are strings
+                        name = str(row.get('Facility Name', f"Facility in {sheet_name}"))
+                        facility_type = str(row.get('Facility Type', 'Unknown')) if pd.notna(row.get('Facility Type')) else 'Unknown'
+                        code = str(row.get('Code', '')) if pd.notna(row.get('Code')) else None
+                        municipality = str(row.get('Municipality', sheet_name)) if pd.notna(row.get('Municipality')) else sheet_name
+                        location = str(row.get('Postu Administrative', sheet_name)) if pd.notna(row.get('Postu Administrative')) else sheet_name
+                        suco = str(row.get('Suco', '')) if pd.notna(row.get('Suco')) else None
+                        aldeia = str(row.get('Aldeia', '')) if pd.notna(row.get('Aldeia')) else None
+                        property_type = str(row.get('Property', '')) if pd.notna(row.get('Property')) else None
+                        
+                        # Optional fields
+                        address = None  # Not in the Excel but in our model
+                        phone = None    # Not in the Excel but in our model
+                        email = None    # Not in the Excel but in our model
+                        services = str(row.get('Services Offer', '')) if pd.notna(row.get('Services Offer')) else None
+                        operating_days = str(row.get('Operating Days', '')) if pd.notna(row.get('Operating Days')) else None
+                        operating_hours = str(row.get('Operating Hours', '')) if pd.notna(row.get('Operating Hours')) else None
+                        
+                        # Set emergency services based on facility type
+                        has_emergency = 'emergency' in facility_type.lower() if facility_type else False
+                        
+                        # Use the model to create a new facility
+                        facility = HealthFacility(
+                            key=key,
+                            name=name,
+                            facility_type=facility_type,
+                            code=code,
+                            municipality=municipality,  
+                            location=location,
+                            suco=suco,
+                            aldeia=aldeia,
+                            latitude=latitude,
+                            longitude=longitude,
+                            elevation=elevation,  
+                            property_type=property_type,
+                            address=address,
+                            phone=phone,
+                            email=email,
+                            services=services,
+                            operating_days=operating_days,
+                            operating_hours=operating_hours,  
+                            total_beds=total_beds,
+                            maternity_beds=maternity_beds,
+                            has_ambulance=has_ambulance,
+                            has_emergency=has_emergency
+                        )
+                        
+                        # upsert the facility based on key
+                        existing_facility = db.session.query(HealthFacility).filter_by(key=key).first()
+                        if existing_facility:
+                            existing_facility.update(facility)
+                        else:
+                            db.session.add(facility)
 
-                cleaned_data = cleaned_data.dropna(subset=['Longitude', 'Latitude'])
-                cleaned_data.to_sql('Facility', conn, if_exists='replace', index=False)
+                    except Exception as e:
+                        logger.error(f"Error processing facility row: {e}")
+                        logger.error(traceback.format_exc())
+                
+                # Commit after each sheet
+                db.session.commit()
+                logger.info(f"Processed facilities for {sheet_name}")
+        
+        logger.info("All facilities processed successfully")
 
-        conn.commit()
-        conn.close()

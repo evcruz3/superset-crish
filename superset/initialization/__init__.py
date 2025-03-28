@@ -192,13 +192,14 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.views.users.api import CurrentUserRestApi, UserRestApi
         from superset.views.weather import WeatherForecastView
         from superset.views.diseases.views import DiseasesView
-        from superset.views.facilities import FacilitiesView
-        from superset.views.update_facilities import UpdateFacilitiesRestApi
         from superset.views.diseases.api import UpdateCaseReportsRestApi
         from superset.bulletins.api import BulletinsRestApi
         from superset.views.bulletins_and_advisories import BulletinsAndAdvisoriesView
         from superset.views.public_education import PublicEducationView, PublicEducationRestApi
         from superset.views.disease_forecasts import DiseaseForecastView
+        from superset.views.update_facilities import UpdateFacilitiesRestApi
+        from superset.views.facilities import FacilitiesView
+        from superset.health_facilities.api import HealthFacilitiesRestApi
 
 
         set_app_error_handlers(self.superset_app)
@@ -241,6 +242,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(UpdateCaseReportsRestApi)
         appbuilder.add_api(BulletinsRestApi)
         appbuilder.add_api(PublicEducationRestApi)
+        appbuilder.add_api(HealthFacilitiesRestApi)
         #
         # Setup regular views
         #
@@ -279,9 +281,29 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             DiseasesView,
             "Overview",
             label=__("Overview"),
-            icon="fa-heart",
+            icon="fa-virus",
             category="Diseases",
             category_label=__("Diseases"),
+        )
+
+        appbuilder.add_view(
+            FacilitiesView,
+            "Overview",
+            label=__("Overview"),
+            icon="fa-building",
+            category="Facilities",
+            category_label=__("Facilities"),
+            category_icon="",
+        )
+
+        appbuilder.add_link(
+            "Update",
+            label=__("Update Facilities"),
+            href="/facilities/update/",
+            icon="fa-upload",
+            category="Facilities",
+            category_label=__("Facilities"),
+            category_icon="",
         )
 
         appbuilder.add_link(
@@ -318,26 +340,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             icon="fa-upload",
             category="Diseases",
             category_label=__("Diseases"),
-        )
-
-        appbuilder.add_view(
-            FacilitiesView,
-            "Overview",
-            label=__("Overview"),
-            icon="fa-building",
-            category="Facilities",
-            category_label=__("Facilities"),
-            category_icon="",
-        )
-
-        appbuilder.add_link(
-            "Update",
-            label=__("Update Facilities"),
-            href="/facilities/update/",
-            icon="fa-upload",
-            category="Facilities",
-            category_label=__("Facilities"),
-            category_icon="",
         )
 
         appbuilder.add_view(

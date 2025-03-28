@@ -122,3 +122,4 @@ docker/*local*
 # Jest test report
 test-report.html
 superset/static/stats/statistics.html
+db_initializer/facilities/~$tl_health_facilities_edited.xlsx

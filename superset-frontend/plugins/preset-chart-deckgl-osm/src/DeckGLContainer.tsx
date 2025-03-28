@@ -29,6 +29,7 @@ import {
   useImperativeHandle,
   useState,
   useMemo,
+  useRef,
 } from 'react';
 import { isEqual } from 'lodash';
 import { Layer } from '@deck.gl/core';
@@ -36,6 +37,7 @@ import DeckGL from '@deck.gl/react';
 import { JsonObject, JsonValue, styled, usePrevious } from '@superset-ui/core';
 import Tooltip, { TooltipProps } from './components/Tooltip';
 // import 'mapbox-gl/dist/mapbox-gl.css';
+// import { StaticMap } from 'react-map-gl';
 import { Viewport } from './utils/fitViewport';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { BitmapLayer } from '@deck.gl/layers';
@@ -61,8 +63,30 @@ export const DeckGLContainer = memo(
     const [lastUpdate, setLastUpdate] = useState<number | null>(null);
     const [viewState, setViewState] = useState(props.viewport);
     const prevViewport = usePrevious(props.viewport);
+    const deckRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    useImperativeHandle(ref, () => ({ setTooltip }), []);
+    const captureImage = useCallback(() => {
+      if (deckRef.current) {
+        return new Promise<string>((resolve, reject) => {
+          try {
+            const deck = deckRef.current.deck;
+            const image = deck.canvas.toDataURL('image/jpeg');
+            resolve(image);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
+      return Promise.reject(new Error('DeckGL ref not available'));
+    }, []);
+
+    useImperativeHandle(ref, () => ({ 
+      setTooltip,
+      captureImage,
+      deckRef: deckRef.current,
+      containerRef: containerRef.current,
+    }), [setTooltip, captureImage]);
 
     const tick = useCallback(() => {
       // Rate limiting updating viewport controls as it triggers lots of renders
@@ -121,7 +145,17 @@ export const DeckGLContainer = memo(
     }), []);
 
     // Handle layers, memoize to avoid recreating layers on each render
-    const layers = useMemo(() => {
+    // const layers = useMemo(() => {
+    //   if (props.layers.some(l => typeof l === 'function')) {
+    //     return [
+    //       osmTileLayer, // Insert the OSM layer as the base layer
+    //       ...props.layers.map(l => (typeof l === 'function' ? l() : l)),
+    //     ] as Layer[];
+    //   }
+    //   return [osmTileLayer, ...props.layers] as Layer[];
+    // }, [osmTileLayer, props.layers]);
+
+    const layers = useCallback(() => {
       if (props.layers.some(l => typeof l === 'function')) {
         return [
           osmTileLayer, // Insert the OSM layer as the base layer
@@ -131,20 +165,37 @@ export const DeckGLContainer = memo(
       return [osmTileLayer, ...props.layers] as Layer[];
     }, [osmTileLayer, props.layers]);
 
+    // const layers = useCallback(() => {
+    //   // Support for layer factory
+    //   if (props.layers.some(l => typeof l === 'function')) {
+    //     return props.layers.map(l =>
+    //       typeof l === 'function' ? l() : l,
+    //     ) as Layer[];
+    //   }
+
+    //   return props.layers as Layer[];
+    // }, [props.layers]);
+
     const { children = null, height, width } = props;
 
     return (
       <>
-        <div style={{ position: 'relative', width, height }}>
+        <div ref={containerRef} style={{ position: 'relative', width, height }} className="deck-container" data-component="DeckGLContainer">
           <DeckGL
+            ref={deckRef}
             controller
             width={width}
             height={height}
-            layers={layers}
+            layers={layers()}
             viewState={viewState}
-            glOptions={{ preserveDrawingBuffer: true }} // Disable buffer preservation for better performance
+            glOptions={{ preserveDrawingBuffer: true }}
             onViewStateChange={onViewStateChange}
           >
+            {/* <StaticMap
+              preserveDrawingBuffer
+              mapStyle={'light'}
+              mapboxApiAccessToken={'pk.eyJ1IjoiZXJpY2tzb24tcmltZXMiLCJhIjoiY201bXExbWoxMDJpMTJwc2ljeXhlZ3Y3OCJ9.mliFT8407N_TsGRiMFnpcw'}
+            /> */}
           </DeckGL>
           {children}
         </div>
@@ -163,4 +214,7 @@ export const DeckGLContainerStyledWrapper = styled(DeckGLContainer)`
 
 export type DeckGLContainerHandle = typeof DeckGLContainer & {
   setTooltip: (tooltip: ReactNode) => void;
+  captureImage: () => Promise<string>;
+  deckRef: any;
+  containerRef: HTMLDivElement | null;
 };
