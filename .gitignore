@@ -123,3 +123,4 @@ docker/*local*
 test-report.html
 superset/static/stats/statistics.html
 db_initializer/facilities/~$tl_health_facilities_edited.xlsx
+superset-frontend/.temp_cache/
