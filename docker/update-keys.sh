@@ -8,25 +8,28 @@ rm -f /etc/apt/sources.list.d/debian.sources
 # Create keyrings directory
 mkdir -p /etc/apt/keyrings
 
-# Create initial sources.list
+# Create initial sources.list without signed-by option
 cat > /etc/apt/sources.list << EOF
 deb http://deb.debian.org/debian bookworm main
 deb http://deb.debian.org/debian bookworm-updates main
 deb http://deb.debian.org/debian-security bookworm-security main
 EOF
 
-# Install required packages including debian-archive-keyring
-apt-get update -qq
+# Install required packages for key management
+apt-get update -qq || true
 apt-get install -y --no-install-recommends \
     ca-certificates \
-    debian-archive-keyring \
-    gnupg2
+    gnupg2 \
+    curl
+
+# Get Debian archive keyring directly
+curl -fsSL https://ftp-master.debian.org/keys/release-11.asc | gpg --dearmor -o /etc/apt/keyrings/debian-archive-keyring.gpg
 
 # Update sources.list with signed-by option
 cat > /etc/apt/sources.list << EOF
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm main
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm-updates main
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian-security bookworm-security main
+deb [signed-by=/etc/apt/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm main
+deb [signed-by=/etc/apt/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm-updates main
+deb [signed-by=/etc/apt/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian-security bookworm-security main
 EOF
 
 # Update package lists with new sources
