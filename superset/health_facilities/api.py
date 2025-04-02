@@ -33,15 +33,40 @@ class NearbyFacilitySchema(Schema):
     longitude = fields.Float(required=True)
     radius = fields.Float(missing=10.0)
 
-# Define the rison schema as a dictionary
+# Update the rison schema to include filter properties
 nearby_facility_rison_schema = {
     "type": "object",
     "properties": {
         "latitude": {"type": "number"},
         "longitude": {"type": "number"},
         "radius": {"type": "number"},
+        # Add new optional filter properties
+        "facility_type": {"type": "array", "items": {"type": "string"}},
+        "name": {"type": "string"},
+        "services": {"type": "string"},
+        "has_ambulance": {"type": "boolean"},
+        "has_emergency": {"type": "boolean"},
     },
     "required": ["latitude", "longitude"]
+}
+
+# Schema for facilities within bounds parameters
+bounds_facility_rison_schema = {
+    "type": "object",
+    "properties": {
+        # Bounding box coordinates
+        "min_latitude": {"type": "number"},
+        "min_longitude": {"type": "number"},
+        "max_latitude": {"type": "number"},
+        "max_longitude": {"type": "number"},
+        # Optional filter properties (same as nearby)
+        "facility_type": {"type": "array", "items": {"type": "string"}},
+        "name": {"type": "string"},
+        "services": {"type": "string"},
+        "has_ambulance": {"type": "boolean"},
+        "has_emergency": {"type": "boolean"},
+    },
+    "required": ["min_latitude", "min_longitude", "max_latitude", "max_longitude"]
 }
 
 class HealthFacilitiesRestApi(BaseSupersetModelRestApi):
@@ -51,7 +76,7 @@ class HealthFacilitiesRestApi(BaseSupersetModelRestApi):
     class_permission_name = "HealthFacilities"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
     include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
-        "nearby_facilities", "facility_types", "facility_locations", "facility_counts", "municipalities"
+        "nearby_facilities", "facility_types", "facility_locations", "facility_counts", "municipalities", "facilities_in_bounds"
     }
     list_columns = [
         "id", "name", "facility_type", "code", "municipality", 
@@ -114,27 +139,20 @@ class HealthFacilitiesRestApi(BaseSupersetModelRestApi):
     @rison(schema=nearby_facility_rison_schema)
     @statsd_metrics
     def nearby_facilities(self, **kwargs: Any) -> Response:
-        """Get facilities near a location
+        """Get facilities near a location, with optional filters
         ---
         get:
-          summary: Get facilities near a location
+          summary: Get facilities near a location with optional filters
           parameters:
             - in: query
               name: q
               content:
                 application/json:
                   schema:
-                    type: object
-                    properties:
-                      latitude:
-                        type: number
-                      longitude:
-                        type: number
-                      radius:
-                        type: number
+                    $ref: '#/components/schemas/nearby_facility_rison_schema' # Use the schema definition
           responses:
             200:
-              description: List of nearby facilities
+              description: List of nearby facilities matching filters
             400:
               $ref: '#/components/responses/400'
             500:
@@ -145,36 +163,69 @@ class HealthFacilitiesRestApi(BaseSupersetModelRestApi):
             latitude = args.get("latitude")
             longitude = args.get("longitude")
             radius = args.get("radius", 10.0)
-            
+
+            # Extract filter arguments
+            filter_facility_type = args.get("facility_type")
+            filter_name = args.get("name")
+            filter_services = args.get("services")
+            filter_has_ambulance = args.get("has_ambulance")
+            filter_has_emergency = args.get("has_emergency")
+
             if not latitude or not longitude:
                 return self.response(400, message="Latitude and longitude are required")
-            
+
             # Check if the table exists
             inspector = inspect(db.engine)
             if not inspector.has_table(HealthFacility.__tablename__):
                 return self.response(200, data={'facilities': []})
-            
-            # Simple Haversine distance calculation
-            logger.info("Using Haversine distance calculation")
-            
-            # Get all facilities
-            all_facilities = db.session.query(HealthFacility).all()
-            
-            # Filter by distance
+
+            # Build the base query
+            query = db.session.query(HealthFacility)
+
+            # Apply filters to the query
+            if filter_facility_type:
+                # Use 'in_' if it's a list with items
+                if isinstance(filter_facility_type, list) and filter_facility_type:
+                    query = query.filter(HealthFacility.facility_type.in_(filter_facility_type))
+                # Handle potential single string if needed, though schema expects array
+                elif isinstance(filter_facility_type, str):
+                     query = query.filter(HealthFacility.facility_type == filter_facility_type)
+            if filter_name:
+                # Use case-insensitive search for name
+                query = query.filter(HealthFacility.name.ilike(f"%{filter_name}%"))
+            if filter_services:
+                # Use case-insensitive search for services
+                query = query.filter(HealthFacility.services.ilike(f"%{filter_services}%"))
+            if filter_has_ambulance is not None:
+                query = query.filter(HealthFacility.has_ambulance == filter_has_ambulance)
+            if filter_has_emergency is not None:
+                query = query.filter(HealthFacility.has_emergency == filter_has_emergency)
+
+            # Fetch potential facilities based on filters
+            logger.info(f"Executing filtered query: {str(query)}")
+            potential_facilities = query.all()
+            logger.info(f"Found {len(potential_facilities)} potential facilities after filtering.")
+
+            # Filter by distance using Haversine
             nearby = []
-            for facility in all_facilities:
-                distance = self.haversine_distance(
-                    latitude, longitude, 
-                    facility.latitude, facility.longitude
-                )
-                if distance <= radius:
-                    facility_dict = facility.to_dict()
-                    facility_dict['distance'] = round(distance, 2)
-                    nearby.append(facility_dict)
-            
+            for facility in potential_facilities:
+                # Ensure latitude and longitude are not None before calculating distance
+                if facility.latitude is not None and facility.longitude is not None:
+                    distance = self.haversine_distance(
+                        latitude, longitude,
+                        facility.latitude, facility.longitude
+                    )
+                    if distance <= radius:
+                        facility_dict = facility.to_dict()
+                        facility_dict['distance'] = round(distance, 2)
+                        nearby.append(facility_dict)
+                else:
+                     logger.warning(f"Facility ID {facility.id} has missing coordinates.")
+
+
             # Sort by distance
-            nearby.sort(key=lambda x: x.get('distance', 0))
-            
+            nearby.sort(key=lambda x: x.get('distance', float('inf'))) # Use inf for missing distances
+
             return self.response(200, data={
                 'facilities': nearby
             })
@@ -295,5 +346,92 @@ class HealthFacilitiesRestApi(BaseSupersetModelRestApi):
             })
         except Exception as e:
             logger.error(f"Error calculating facility counts: {str(e)}")
+            logger.error(traceback.format_exc())
+            return self.response(500, message=str(e))
+
+    @expose_api("/bounds", methods=["GET"])
+    @safe
+    @rison(schema=bounds_facility_rison_schema)
+    @statsd_metrics
+    def facilities_in_bounds(self, **kwargs: Any) -> Response:
+        """Get facilities within a specified bounding box, with optional filters
+        ---
+        get:
+          summary: Get facilities within a bounding box with optional filters
+          parameters:
+            - in: query
+              name: q
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/bounds_facility_rison_schema' # Reference the new schema
+          responses:
+            200:
+              description: List of facilities within bounds matching filters
+            400:
+              $ref: '#/components/responses/400'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            args = kwargs.get("rison", {})
+            min_latitude = args.get("min_latitude")
+            min_longitude = args.get("min_longitude")
+            max_latitude = args.get("max_latitude")
+            max_longitude = args.get("max_longitude")
+
+            # Extract filter arguments (same as nearby)
+            filter_facility_type = args.get("facility_type")
+            filter_name = args.get("name")
+            filter_services = args.get("services")
+            filter_has_ambulance = args.get("has_ambulance")
+            filter_has_emergency = args.get("has_emergency")
+
+            # Basic validation for bounds
+            if None in [min_latitude, min_longitude, max_latitude, max_longitude]:
+                return self.response(400, message="Bounding box coordinates (min/max latitude/longitude) are required")
+
+            # Check if the table exists
+            inspector = inspect(db.engine)
+            if not inspector.has_table(HealthFacility.__tablename__):
+                return self.response(200, data={'facilities': []})
+
+            # Build the base query
+            query = db.session.query(HealthFacility)
+
+            # Apply bounding box filter
+            query = query.filter(HealthFacility.latitude.between(min_latitude, max_latitude))
+            query = query.filter(HealthFacility.longitude.between(min_longitude, max_longitude))
+
+            # Apply optional filters (reuse logic from nearby)
+            if filter_facility_type:
+                # Use 'in_' if it's a list with items
+                if isinstance(filter_facility_type, list) and filter_facility_type:
+                    query = query.filter(HealthFacility.facility_type.in_(filter_facility_type))
+                # Handle potential single string if needed
+                elif isinstance(filter_facility_type, str):
+                     query = query.filter(HealthFacility.facility_type == filter_facility_type)
+            if filter_name:
+                query = query.filter(HealthFacility.name.ilike(f"%{filter_name}%"))
+            if filter_services:
+                query = query.filter(HealthFacility.services.ilike(f"%{filter_services}%"))
+            if filter_has_ambulance is not None:
+                query = query.filter(HealthFacility.has_ambulance == filter_has_ambulance)
+            if filter_has_emergency is not None:
+                query = query.filter(HealthFacility.has_emergency == filter_has_emergency)
+
+            # Fetch facilities based on bounds and filters
+            logger.info(f"Executing bounds query: {str(query)}")
+            facilities_in_bounds = query.all()
+            logger.info(f"Found {len(facilities_in_bounds)} facilities within bounds after filtering.")
+
+            # Convert results to dictionary format (optional, depends on how frontend uses it)
+            result_list = [facility.to_dict() for facility in facilities_in_bounds]
+
+            return self.response(200, data={
+                'facilities': result_list
+            })
+        except Exception as e:
+            logger.error(f"Error finding facilities in bounds: {str(e)}")
             logger.error(traceback.format_exc())
             return self.response(500, message=str(e))

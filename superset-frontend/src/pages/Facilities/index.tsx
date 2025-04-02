@@ -32,14 +32,25 @@ import {
 import rison from 'rison';
 import { cachedSupersetGet } from 'src/utils/cachedSupersetGet';
 
-const { TabPane } = Tabs;
-const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
+// Import shared types
+import { Facility, FacilityCountData, ChartDataItem, ViewState } from './types';
 
-const COLORS = [
-  '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
-];
+// Import child tab components
+import ListViewTab from './ListViewTab';
+import MapViewTab from './MapViewTab';
+import AnalyticsTab from './AnalyticsTab';
+
+// Import necessary types for MapViewTab props
+import { PickingInfo } from '@deck.gl/core';
+
+const { TabPane } = Tabs;
+// const { Title, Text } = Typography;
+// const { Option } = Select; // Removed as unused
+
+// Style constants
+const MAPBOX_STYLE = 'https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png';
+const MARKER_SIZE = 20;
+const SELECTED_MARKER_SIZE = 30;
 
 // Initial map viewState centered on Timor-Leste
 const INITIAL_VIEW_STATE = {
@@ -49,11 +60,6 @@ const INITIAL_VIEW_STATE = {
   pitch: 0,
   bearing: 0
 };
-
-// Style constants
-const MAPBOX_STYLE = 'https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png';
-const MARKER_SIZE = 20;
-const SELECTED_MARKER_SIZE = 30;
 
 // Helper function to encode rison parameters
 const encodeRisonParams = (params: Record<string, any>) => {
@@ -123,50 +129,6 @@ const StyledStatistic = styled(Statistic)`
   }
 `;
 
-// Type definitions
-interface Facility {
-  id: number;
-  name: string;
-  facility_type: string;
-  location: string;
-  municipality: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  services?: string;
-  operating_hours?: string;
-  latitude: number;
-  longitude: number;
-  total_beds?: number;
-  maternity_beds?: number;
-  has_ambulance: boolean;
-  has_emergency: boolean;
-  created_on?: string;
-  distance?: number;
-}
-
-interface FacilityCountData {
-  total: number;
-  by_type: Record<string, number>;
-  by_location: Record<string, number>;
-  by_municipality: Record<string, number>;
-}
-
-interface ChartDataItem {
-  name: string;
-  value: number;
-}
-
-interface ViewState {
-  longitude: number;
-  latitude: number;
-  zoom: number;
-  pitch?: number;
-  bearing?: number;
-  transitionDuration?: number;
-  transitionInterpolator?: LinearInterpolator;
-}
-
 const PAGE_SIZE = 25;
 
 // Main component
@@ -199,51 +161,54 @@ function Facilities({ addSuccessToast, addDangerToast }: {
   const [activeTab, setActiveTab] = useState<string>('list');
   const [showFacilityModal, setShowFacilityModal] = useState<boolean>(false);
   
-  // Filter state
-  const [filteredFacilities, setFilteredFacilities] = useState<Facility[]>([]);
+  // Filter state for ListView (Remains)
+  // const [filteredFacilities, setFilteredFacilities] = useState<Facility[]>([]); // Removed, ListView uses data prop
   
-  // User location
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [nearbyFacilities, setNearbyFacilities] = useState<Facility[]>([]);
-  const [searchRadius, setSearchRadius] = useState<number>(10);
-  const [showNearbyModal, setShowNearbyModal] = useState<boolean>(false);
-  const [nearbyLoading, setNearbyLoading] = useState<boolean>(false);
-
-  // Map state
+  // Map state (Remains for map control)
   const [viewState, setViewState] = useState<ViewState>(INITIAL_VIEW_STATE);
-  const [hoveredFacility, setHoveredFacility] = useState<Facility | null>(null);
-  const deckRef = useRef<any>(null);
+  const deckRef = useRef<any>(null); // This might move to MapViewTab if DeckGL moves entirely
 
   // Handle view state changes with proper typing
-  const [lastUpdate, setLastUpdate] = useState<number | null>(null);
-  const TICK = 250; // milliseconds
-
   const handleViewStateChange = useCallback((params: any) => {
-    const { viewState } = params;
-    setViewState(viewState);
-    setLastUpdate(Date.now());
+    const { viewState: nextViewState } = params;
+    setViewState(nextViewState);
+    // Debounced API call would happen in MapViewTab based on this viewState change
   }, []);
 
-  // Rate limit viewport updates
-  useEffect(() => {
-    if (lastUpdate && Date.now() - lastUpdate > TICK) {
-      setLastUpdate(null);
-    }
-  }, [lastUpdate, viewState]);
+  // Restore Navigation control handlers
+  const handleZoomIn = useCallback(() => {
+    setViewState((currentViewState: ViewState) => ({
+      ...currentViewState,
+      zoom: Math.min((currentViewState.zoom || 0) + 1, 20),
+      transitionDuration: 300
+    }));
+  }, []);
 
-  // Update view state when selected facility changes
-  useEffect(() => {
-    if (selectedFacility?.latitude && selectedFacility?.longitude) {
-      setViewState({
-        ...viewState,
-        longitude: selectedFacility.longitude,
-        latitude: selectedFacility.latitude,
-        zoom: 14,
-        transitionDuration: 500,
-        transitionInterpolator: new LinearInterpolator(),
-      });
-    }
-  }, [selectedFacility]);
+  const handleZoomOut = useCallback(() => {
+    setViewState((currentViewState: ViewState) => ({
+      ...currentViewState,
+      zoom: Math.max((currentViewState.zoom || 0) - 1, 1),
+      transitionDuration: 300
+    }));
+  }, []);
+
+  const handleResetBearing = useCallback(() => {
+    setViewState((currentViewState: ViewState) => ({
+      ...currentViewState,
+      bearing: 0,
+      transitionDuration: 300
+    }));
+  }, []);
+
+  const handleResetNorth = useCallback(() => {
+    setViewState((currentViewState: ViewState) => ({
+      ...currentViewState,
+      pitch: 0,
+      bearing: 0,
+      transitionDuration: 300
+    }));
+  }, []);
+  // End Restore Navigation control handlers
 
   // Create the base tile layer using the same pattern as DeckGLContainer.tsx
   const osmTileLayer = useMemo(() => new TileLayer({
@@ -268,7 +233,7 @@ function Facilities({ addSuccessToast, addDangerToast }: {
   // Create a ScatterplotLayer for facilities
   const facilitiesLayer = useMemo(() => new ScatterplotLayer({
     id: 'facilities-layer',
-    data: filteredFacilities,
+    data: facilities,
     pickable: true,
     stroked: false,
     filled: true,
@@ -280,8 +245,8 @@ function Facilities({ addSuccessToast, addDangerToast }: {
       if (selectedFacility && d.id === selectedFacility.id) {
         return [255, 0, 0, 255]; // Red for selected
       } 
-      if (hoveredFacility && d.id === hoveredFacility.id) {
-        return [255, 140, 0, 255]; // Orange for hovered
+      if (selectedFacility && d.id === selectedFacility.id) {
+        return [255, 140, 0, 255]; // Orange for selected
       }
       return [0, 140, 255, 200]; // Default blue
     },
@@ -292,33 +257,21 @@ function Facilities({ addSuccessToast, addDangerToast }: {
       return MARKER_SIZE;
     },
     updateTriggers: {
-      getFillColor: [selectedFacility, hoveredFacility],
+      getFillColor: [selectedFacility],
       getRadius: [selectedFacility]
     },
-    onClick: (info: any) => {
-      if (info.object) {
-        setSelectedFacility(info.object);
-        setViewState({
-          ...viewState,
-          longitude: info.object.longitude,
-          latitude: info.object.latitude,
-          zoom: 14,
-          transitionDuration: 500
-        });
-      }
-    },
     onHover: (info: any) => {
-      setHoveredFacility(info.object || null);
+      // setHoveredFacility(info.object || null);
     }
-  }), [filteredFacilities, selectedFacility, hoveredFacility, viewState]);
+  }), [selectedFacility, viewState, facilities]);
 
   // User location marker layer
   const userLocationLayer = useMemo(() => {
-    if (!userLocation) return null;
+    if (!selectedFacility) return null;
     
     return new ScatterplotLayer({
       id: 'user-location-layer',
-      data: [{ position: userLocation }],
+      data: [{ position: [selectedFacility.longitude, selectedFacility.latitude] }],
       pickable: false,
       stroked: true,
       filled: true,
@@ -330,28 +283,7 @@ function Facilities({ addSuccessToast, addDangerToast }: {
       getLineColor: [0, 0, 255, 255],
       getLineWidth: 2
     });
-  }, [userLocation]);
-
-  // Radius visualization layer - updated to use a properly typed layer
-  const radiusLayer = useMemo(() => {
-    if (!userLocation || !searchRadius) return null;
-    
-    // Calculate the radius in meters at this latitude
-    const radiusInMeters = searchRadius * 1000;
-    
-    return new ScatterplotLayer({
-      id: 'radius-layer',
-      data: [{ center: userLocation, radius: radiusInMeters }],
-      pickable: false,
-      stroked: true,
-      filled: true,
-      getPosition: (d: any) => d.center,
-      getRadius: (_: any) => radiusInMeters,
-      getFillColor: [0, 0, 255, 20],
-      getLineColor: [0, 0, 255, 100],
-      getLineWidth: 2,
-    });
-  }, [userLocation, searchRadius]);
+  }, [selectedFacility]);
 
   // Combine all layers using the DeckGLContainer pattern
   const layers = useMemo(() => {
@@ -362,89 +294,35 @@ function Facilities({ addSuccessToast, addDangerToast }: {
     
     // Add conditional layers if they exist
     if (userLocationLayer) allLayers.push(userLocationLayer);
-    if (radiusLayer) allLayers.push(radiusLayer);
     
     return allLayers;
-  }, [osmTileLayer, facilitiesLayer, userLocationLayer, radiusLayer]);
+  }, [osmTileLayer, facilitiesLayer, userLocationLayer]);
 
-  const handleMapClick = useCallback((info: any) => {
-    const { coordinate } = info;
-    
-    // If not clicking on a facility, set user location
-    if (!info.object && coordinate) {
-      setUserLocation([coordinate[0], coordinate[1]]);
-    }
-  }, []);
-
-  // Navigation control handlers
-  const handleZoomIn = useCallback(() => {
-    setViewState(currentViewState => ({
-      ...currentViewState,
-      zoom: Math.min((currentViewState.zoom || 0) + 1, 20),
-      transitionDuration: 300
-    }));
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setViewState(currentViewState => ({
-      ...currentViewState,
-      zoom: Math.max((currentViewState.zoom || 0) - 1, 1),
-      transitionDuration: 300
-    }));
-  }, []);
-
-  const handleResetBearing = useCallback(() => {
-    setViewState(currentViewState => ({
-      ...currentViewState,
-      bearing: 0,
-      transitionDuration: 300
-    }));
-  }, []);
-
-  const handleResetNorth = useCallback(() => {
-    setViewState(currentViewState => ({
-      ...currentViewState,
-      pitch: 0,
-      bearing: 0,
-      transitionDuration: 300
-    }));
-  }, []);
-
-  // Additional refs for handling tooltip button clicks
-  const showDetailsHandlers = useRef<{ [key: number]: () => void }>({});
-
-  useEffect(() => {
-    // Setup global window handlers for tooltip button clicks
-    if (typeof window !== 'undefined') {
-      // @ts-ignore
-      window.showFacilityDetails = (facilityId: number) => {
-        const facility = filteredFacilities.find(f => f.id === facilityId);
-        if (facility) {
-          setSelectedFacility(facility);
-          setShowFacilityModal(true);
-        }
-      };
-    }
-    
-    return () => {
-      // Clean up handler on unmount
-      if (typeof window !== 'undefined') {
-        // @ts-ignore
-        delete window.showFacilityDetails;
-      }
-    };
-  }, [filteredFacilities]);
-
-  // Update tooltip content
-  const getFacilityTooltip = useCallback(({object}: any) => {
-    if (object && 'name' in object) {
-      const facility = object as Facility;
+  // Tooltip logic (Can remain here, passed to MapViewTab)
+  const getFacilityTooltip = useCallback((info: PickingInfo): { html: string; style?: object } | null => {
+    // Check if the picked object is a Facility (adjust check as needed based on your layers)
+    if (info.object && typeof info.object === 'object' && 'facility_type' in info.object) {
+      const facility = info.object as Facility;
+      
+      // Create emergency and ambulance indicators if available
+      const emergencyIndicator = facility.has_emergency 
+        ? '<div style="color: #fa8c16; margin-top: 4px;"><span style="margin-right: 4px;">⚠️</span> Emergency services available</div>' 
+        : '';
+      
+      const ambulanceIndicator = facility.has_ambulance 
+        ? '<div style="color: #52c41a; margin-top: 4px;"><span style="margin-right: 4px;">🚑</span> Ambulance service available</div>' 
+        : '';
+      
+      // Create a more informative tooltip
       return {
         html: `
-          <div style="padding: 8px">
-            <b>${facility.name}</b><br/>
-            Type: ${facility.facility_type}<br/>
-            Location: ${facility.location}<br/>
+          <div style="padding: 10px">
+            <div style="font-weight: bold; font-size: 1.1em; margin-bottom: 4px;">${facility.name}</div>
+            <div><span style="color: #666;">Type:</span> ${facility.facility_type}</div>
+            <div><span style="color: #666;">Location:</span> ${facility.location || 'N/A'}</div>
+            <div><span style="color: #666;">Municipality:</span> ${facility.municipality || 'N/A'}</div>
+            ${emergencyIndicator}
+            ${ambulanceIndicator}
           </div>
         `,
         style: {
@@ -452,7 +330,9 @@ function Facilities({ addSuccessToast, addDangerToast }: {
           fontSize: '0.8em',
           color: '#333',
           borderRadius: '4px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          maxWidth: '280px',
+          pointerEvents: 'none'
         }
       };
     }
@@ -461,14 +341,10 @@ function Facilities({ addSuccessToast, addDangerToast }: {
 
   // Effects
   useEffect(() => {
-    fetchFacilityTypes();
+    loadFacilityTypes();
     fetchLocations();
     fetchCountData();
   }, []);
-
-  useEffect(() => {
-    setFilteredFacilities([...nearbyFacilities, ...facilities]);
-  }, [facilities, nearbyFacilities]);
 
   const typesToSelectOptions = (types: string[]) => {
     return types.map(type => ({
@@ -478,30 +354,64 @@ function Facilities({ addSuccessToast, addDangerToast }: {
     }));
   };
 
-  // Data fetching functions
+  // Add this new function for populating state
+  const loadFacilityTypes = async () => {
+    try {
+      // Use SupersetClient directly as we just need the list
+      const response = await SupersetClient.get({
+        endpoint: '/api/v1/health_facilities/types',
+      });
+      const types = response.json?.data?.types;
+      if (Array.isArray(types)) {
+        console.log('Setting Facility Types State:', types); // Log for debugging
+        setFacilityTypes(types); // Update the state directly
+      } else {
+        console.warn('Unexpected response format for facility types state:', response);
+        setFacilityTypes([]);
+        addDangerToast(t('Received unexpected facility types data format'));
+      }
+    } catch (error) {
+      console.error('Error loading facility types for state:', error);
+      setFacilityTypes([]);
+      addDangerToast(t('Error loading facility types'));
+    }
+  };
+
+  // *** Restore the original fetchFacilityTypes for ListView filters ***
   const fetchFacilityTypes = async (filterValue = '', page = 0, pageSize = 25) => {
     try {
+      // Use cachedSupersetGet as originally intended for filters
       const response = await cachedSupersetGet({
         endpoint: '/api/v1/health_facilities/types',
       });
       
-      if (response.json?.data?.types) {
-        const types = typesToSelectOptions(response.json.data.types);
-        return {
-          data: types.slice(page * pageSize, (page + 1) * pageSize),
-          totalCount: types.length
-        };
+      let typeOptions: { value: string; label: string; key: string }[] = [];
+      if (response.json?.data?.types && Array.isArray(response.json.data.types)) {
+        typeOptions = typesToSelectOptions(response.json.data.types);
       } else {
-        console.warn('Unexpected response format for facility types:', response);
+        console.warn('Unexpected response format for facility types (filter):', response);
         addDangerToast(t('Received unexpected facility types data format'));
-        return { data: [], totalCount: 0 };
       }
+
+      // Filter based on search value if provided
+      const filteredData = filterValue 
+        ? typeOptions.filter(t => 
+            t.label.toLowerCase().includes(filterValue.toLowerCase())
+          )
+        : typeOptions;
+
+      // Return the object structure expected by fetchSelects
+      return {
+        data: filteredData.slice(page * pageSize, (page + 1) * pageSize),
+        totalCount: filteredData.length
+      };
     } catch (error) {
-      console.error('Error fetching facility types:', error);
+      console.error('Error fetching facility types (filter):', error);
       addDangerToast(t('Error loading facility types'));
       return { data: [], totalCount: 0 };
     }
   };
+  // *** End Restore ***
 
   const municipalitiesToSelectOptions = (municipalities: string[]) => {
     return municipalities.map(municipality => ({
@@ -562,19 +472,33 @@ function Facilities({ addSuccessToast, addDangerToast }: {
       });
       
       if (response.json?.data?.locations) {
-        const locations = locationsToSelectOptions(response.json.data.locations);
+        const fetchedLocations = response.json.data.locations;
+        // Also update the locations state here
+        if(Array.isArray(fetchedLocations)) {
+             console.log('Setting Locations State:', fetchedLocations);
+             setLocations(fetchedLocations);
+        }
+        // Continue formatting for ListView filter
+        const locationOptions = locationsToSelectOptions(fetchedLocations);
+        const filteredData = filterValue 
+          ? locationOptions.filter(l => 
+              l.label.toLowerCase().includes(filterValue.toLowerCase())
+            )
+          : locationOptions;
         return {
-          data: locations.slice(page * pageSize, (page + 1) * pageSize),
-          totalCount: locations.length
+          data: filteredData.slice(page * pageSize, (page + 1) * pageSize),
+          totalCount: filteredData.length
         };
       } else {
         console.warn('Unexpected response format for locations:', response);
         addDangerToast(t('Received unexpected locations data format'));
+        setLocations([]); // Clear state on error/bad format
         return { data: [], totalCount: 0 };
       }
     } catch (error) {
       console.error('Error fetching locations:', error);
       addDangerToast(t('Error loading facility locations'));
+      setLocations([]); // Clear state on error
       return { data: [], totalCount: 0 };
     } 
   };
@@ -598,69 +522,16 @@ function Facilities({ addSuccessToast, addDangerToast }: {
     }
   };
 
-  const searchNearbyFacilities = async () => {
-    if (!userLocation) {
-      addDangerToast(t('Please set your location first'));
-      return;
-    }
-    
-    setNearbyLoading(true);
-    try {
-      const [lng, lat] = userLocation;
-      
-      // Create the params object
-      const params = {
-        latitude: lat,
-        longitude: lng,
-        radius: searchRadius,
-      };
-      
-      // Use the rison library directly to encode parameters correctly
-      const risonQuery = rison.encode(params);
-      
-      const response = await SupersetClient.get({
-        endpoint: `/api/v1/health_facilities/nearby?q=${risonQuery}`,
-      });
-      
-      if (response.json?.data?.facilities) {
-        setNearbyFacilities(response.json.data.facilities);
-        addSuccessToast(t(`Found ${response.json.data.facilities.length} facilities nearby`));
-      } else {
-        console.warn('Unexpected response format for nearby facilities:', response);
-        setNearbyFacilities([]);
-        addDangerToast(t('No facilities found nearby'));
-      }
-      
-      setNearbyLoading(false);
-      setShowNearbyModal(true);
-    } catch (error) {
-      console.error('Error searching nearby facilities:', error);
-      setNearbyLoading(false);
-      addDangerToast(t('Error searching for nearby facilities'));
-    }
-  };
-
   // Helper functions
   const handleFacilityClick = (facility: Facility) => {
     setSelectedFacility(facility);
     setShowFacilityModal(true);
-    if (facility.latitude && facility.longitude) {
-      setViewState({
-        ...viewState,
-        longitude: facility.longitude,
-        latitude: facility.latitude,
-        zoom: 14,
-        transitionDuration: 500
-      });
-    }
+    // Optionally trigger map view change here or let MapViewTab handle it via useEffect
+    // setViewState({...}); 
   };
 
-  const formatCountData = (data: Record<string, number> | undefined): ChartDataItem[] => {
-    if (!data) return [];
-    return Object.entries(data).map(([name, value]) => ({ name, value }));
-  };
-
-  const filters: Filter[] = [
+  // Filter definition for ListView (Remains)
+  const listViewFilters: Filter[] = [
     {
       Header: t('Name'),
       id: 'name',
@@ -701,56 +572,6 @@ function Facilities({ addSuccessToast, addDangerToast }: {
     },
   ];
 
-  const columns = [
-    {
-      accessor: 'name',
-      Header: t('Name'),
-      size: 'xl',
-      Cell: ({ row: { original } }: any) => (
-        <a onClick={() => handleFacilityClick(original)}>{original.name}</a>
-      ),
-    },
-    {
-      accessor: 'facility_type',
-      Header: t('Type'),
-      size: 'xl',
-      Cell: ({ value }: any) => <Tag color="blue">{value}</Tag>,
-    },
-    {
-      accessor: 'location',
-      Header: t('Location'),
-      size: 'xl',
-    },
-    {
-      accessor: 'municipality',
-      Header: t('Municipality'),
-      size: 'xl',
-    },
-    {
-      accessor: 'services',
-      Header: t('Services'),
-      size: 'xl',
-    },
-    {
-      accessor: 'id',
-      Header: t('Actions'),
-      size: 'xl',
-      Cell: ({ row: { original } }: any) => (
-        <Button 
-          type="primary" 
-          size="small" 
-          icon={<EnvironmentOutlined />}
-          onClick={() => {
-            setSelectedFacility(original);
-            setActiveTab('map');
-          }}
-        >
-          {t('Show on Map')}
-        </Button>
-      ),
-    },
-  ];
-
   return (
     <Container>
       {/* <Title level={2}>{t('Health Facilities')}</Title> */}
@@ -761,184 +582,49 @@ function Facilities({ addSuccessToast, addDangerToast }: {
 
       <Tabs activeKey={activeTab} onChange={key => setActiveTab(key)}>
         <TabPane tab={<span><BarsOutlined /> {t('List View')}</span>} key="list">
-          <ListView<Facility>
-            bulkActions={[]}
-            bulkSelectEnabled={false}
-            className="facilities-list-view"
-            columns={columns}
-            count={facilityCount}
-            data={filteredFacilities}
-            fetchData={fetchData}
-            filters={filters}
-            initialSort={[{ id: 'name', desc: false }]}
+          <ListViewTab
             loading={loading}
-            pageSize={PAGE_SIZE}
+            facilityCount={facilityCount}
+            facilities={facilities}
+            fetchData={fetchData}
             refreshData={refreshData}
-            renderCard={undefined}
-            defaultViewMode="table"
+            filters={listViewFilters}
+            handleFacilityClick={handleFacilityClick}
+            setSelectedFacility={setSelectedFacility}
+            setActiveTab={setActiveTab}
             addSuccessToast={addSuccessToast}
             addDangerToast={addDangerToast}
+            pageSize={PAGE_SIZE}
           />
         </TabPane>
         
         <TabPane tab={<span><EnvironmentOutlined /> {t('Map View')}</span>} key="map">
-          <StyledCard bodyStyle={{ padding: 0 }}>
-            <div style={{ padding: '16px 16px 0' }}>
-              <Space style={{ marginBottom: 16 }}>
-                <Text>
-                  {t('Click on the map to set your location, then search for nearby facilities.')}
-                </Text>
-                <Space>
-                  <Text>{t('Radius')}: </Text>
-                  <InputNumber
-                    min={1}
-                    max={100}
-                    value={searchRadius}
-                    onChange={value => setSearchRadius(value as number)}
-                    style={{ width: 80 }}
-                  />
-                  <Text> km</Text>
-                </Space>
-                <Button 
-                  type="primary" 
-                  onClick={searchNearbyFacilities}
-                  loading={nearbyLoading}
-                  disabled={!userLocation}
-                  icon={<SearchOutlined />}
-                >
-                  {t('Find Nearby')}
-                </Button>
-                {userLocation && (
-                  <Button
-                    danger
-                    onClick={() => setUserLocation(null)}
-                  >
-                    {t('Clear Location')}
-                  </Button>
-                )}
-              </Space>
-            </div>
-            
-            <StyledMapContainer>
-              <NavigationControls>
-                <NavButton onClick={handleZoomIn}>+</NavButton>
-                <NavButton onClick={handleZoomOut}>-</NavButton>
-                <NavButton onClick={handleResetNorth}>⭯</NavButton>
-              </NavigationControls>
-              
-              <DeckGL
-                ref={deckRef}
-                initialViewState={INITIAL_VIEW_STATE}
-                viewState={viewState}
-                onViewStateChange={handleViewStateChange}
-                controller={true}
-                width="100%"
-                height="100%"
-                layers={layers}
-                onClick={handleMapClick}
-                glOptions={{ preserveDrawingBuffer: true }}
-                getTooltip={getFacilityTooltip}
-              >
-                <StaticMap
-                  preserveDrawingBuffer
-                  mapStyle="light"
-                  mapboxApiAccessToken={process.env.MAPBOX_API_KEY || ''}
-                />
-              </DeckGL>
-            </StyledMapContainer>
-          </StyledCard>
+          <MapViewTab
+            // Map state and handlers
+            viewState={viewState}
+            handleViewStateChange={handleViewStateChange}
+            getFacilityTooltip={getFacilityTooltip}
+            initialViewState={INITIAL_VIEW_STATE} 
+            // Map navigation controls
+            handleZoomIn={handleZoomIn}
+            handleZoomOut={handleZoomOut}
+            handleResetBearing={handleResetBearing}
+            handleResetNorth={handleResetNorth}
+            // State/handlers from parent
+            selectedFacility={selectedFacility}
+            setActiveTab={setActiveTab}
+            facilityTypes={facilityTypes}
+            locations={locations}
+            addDangerToast={addDangerToast}
+            setSelectedFacility={setSelectedFacility}
+          />
         </TabPane>
         
         <TabPane tab={<span><PieChartOutlined /> {t('Analytics')}</span>} key="analytics">
-          <StyledCard>
-            {countData ? (
-              <>
-                <Row gutter={16} style={{ marginBottom: 24 }}>
-                  <Col span={8}>
-                    <StyledStatistic 
-                      title={t('Total Health Facilities')} 
-                      value={countData.total} 
-                      valueStyle={{ color: '#3f8600' }}
-                    />
-                  </Col>
-                  <Col span={8}>
-                    <StyledStatistic 
-                      title={t('Facility Types')} 
-                      value={Object.keys(countData.by_type || {}).length} 
-                    />
-                  </Col>
-                  <Col span={8}>
-                    <StyledStatistic 
-                      title={t('Administrative Posts with Facilities')} 
-                      value={Object.keys(countData.by_location || {}).length} 
-                    />
-                  </Col>
-                </Row>
-                
-                <Divider orientation="left">{t('Facilities by Type')}</Divider>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={formatCountData(countData.by_type)}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={true}
-                          label={({ name, value }: {name: string, value: number}) => `${name}: ${value}`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {formatCountData(countData.by_type).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Col>
-                  <Col span={12}>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={formatCountData(countData.by_type)}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        layout="vertical"
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={150} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="value" fill="#8884d8" name="Facilities" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Col>
-                </Row>
-                
-                <Divider orientation="left">{t('Facilities by Location')}</Divider>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart
-                    data={formatCountData(countData.by_location)}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="value" fill="#82ca9d" name="Facilities" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: 24 }}>
-                <Spin size="large" />
-                <div style={{ marginTop: 16 }}>{t('Loading analytics...')}</div>
-              </div>
-            )}
-          </StyledCard>
+          <AnalyticsTab 
+            countData={countData}
+            loading={loading || !countData}
+          />
         </TabPane>
       </Tabs>
       
@@ -989,95 +675,6 @@ function Facilities({ addSuccessToast, addDangerToast }: {
               <p><InfoCircleOutlined /> <strong>Emergency Services:</strong> {selectedFacility.has_emergency ? 'Yes' : 'No'}</p>
             </Col>
           </Row>
-        )}
-      </Modal>
-      
-      {/* Nearby Facilities Modal */}
-      <Modal
-        title={t('Nearby Health Facilities')}
-        visible={showNearbyModal}
-        onCancel={() => setShowNearbyModal(false)}
-        footer={[
-          <Button key="close" onClick={() => setShowNearbyModal(false)}>
-            {t('Close')}
-          </Button>
-        ]}
-        width={800}
-      >
-        {nearbyLoading ? (
-          <div style={{ textAlign: 'center', padding: 24 }}>
-            <Spin />
-            <div style={{ marginTop: 16 }}>{t('Searching for facilities...')}</div>
-          </div>
-        ) : (
-          <>
-            {nearbyFacilities.length > 0 ? (
-              <Table
-                columns={[
-                  {
-                    title: 'Name',
-                    dataIndex: 'name',
-                    key: 'name',
-                    render: (text: string, record: Facility) => (
-                      <a onClick={() => {
-                        handleFacilityClick(record);
-                        setShowNearbyModal(false);
-                      }}>{text}</a>
-                    ),
-                  },
-                  {
-                    title: 'Type',
-                    dataIndex: 'facility_type',
-                    key: 'facility_type',
-                    render: (text: string) => <Tag color="blue">{text}</Tag>,
-                  },
-                  {
-                    title: 'Distance',
-                    dataIndex: 'distance',
-                    key: 'distance',
-                    render: (distance: number) => `${distance} km`,
-                    sorter: (a: Facility, b: Facility) => 
-                      (a.distance || Infinity) - (b.distance || Infinity),
-                    defaultSortOrder: 'ascend',
-                  },
-                  {
-                    title: 'Actions',
-                    key: 'actions',
-                    render: (_: any, record: Facility) => (
-                      <Space>
-                        <Button 
-                          type="primary" 
-                          size="small" 
-                          icon={<EnvironmentOutlined />}
-                          onClick={() => {
-                            handleFacilityClick(record);
-                            setShowNearbyModal(false);
-                          }}
-                        >
-                          View on Map
-                        </Button>
-                        <Button
-                          size="small"
-                          href={`https://www.google.com/maps/dir/?api=1&origin=${userLocation?.[1]},${userLocation?.[0]}&destination=${record.latitude},${record.longitude}`}
-                          target="_blank"
-                        >
-                          Get Directions
-                        </Button>
-                      </Space>
-                    ),
-                  },
-                ]}
-                dataSource={nearbyFacilities}
-                rowKey="id"
-                pagination={{ pageSize: 5 }}
-                bordered
-              />
-            ) : (
-              <Empty description={
-                t('No facilities found within {radius} km of your location', { radius: searchRadius })
-              } />
-            )}
-          </>
         )}
       </Modal>
     </Container>
