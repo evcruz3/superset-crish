@@ -376,7 +376,7 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
       getSize: d => 24, 
       getColor: d => (selectedFacility && d.id === selectedFacility.id) 
           ? [255, 255, 255, 255] // Full opacity for the selected facility
-          : selectedFacility ? [255, 255, 255, 100]  // half-opacity for non-selected facility
+          : selectedFacility ? [255, 255, 255, 75]  // half-opacity for non-selected facility
           : [255, 255, 255, 255], // Full opacity for all when there's no selected facility
       // Make sure the icons are properly centered
       autoHighlight: true,
