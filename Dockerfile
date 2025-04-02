@@ -134,7 +134,7 @@ COPY --chown=superset:superset scripts/check-env.py scripts/
 # Install Python dependencies using docker/pip-install.sh
 RUN --mount=type=bind,source=./docker,target=/docker \
     --mount=type=cache,target=/root/.cache/pip \
-    /docker/pip-install.sh --requires-build-essential --keep-build-deps -r requirements/base.txt
+    /docker/pip-install.sh --requires-build-essential -r requirements/base.txt
 
 # Copy the compiled frontend assets from the node image
 COPY --chown=superset:superset --from=superset-node /app/superset/static/assets superset/static/assets

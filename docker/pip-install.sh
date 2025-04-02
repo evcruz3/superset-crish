@@ -20,7 +20,6 @@ set -euo pipefail
 # Default flag
 REQUIRES_BUILD_ESSENTIAL=false
 USE_CACHE=true
-KEEP_BUILD_DEPS=false
 
 # Filter arguments
 ARGS=()
@@ -32,9 +31,6 @@ for arg in "$@"; do
     --no-cache)
       USE_CACHE=false
       ;;
-    --keep-build-deps)
-      KEEP_BUILD_DEPS=true
-      ;;
     *)
       ARGS+=("$arg")
       ;;
@@ -45,7 +41,7 @@ done
 if $REQUIRES_BUILD_ESSENTIAL; then
   echo "Installing build-essential for package builds..."
   apt-get update -qq \
-    && apt-get install -yqq --no-install-recommends build-essential gcc g++ make
+    && apt-get install -yqq --no-install-recommends build-essential
 fi
 
 # Choose whether to use pip cache
@@ -57,14 +53,12 @@ else
   uv pip install --system --no-cache-dir "${ARGS[@]}"
 fi
 
-# Remove build-essential if it was installed and we don't need to keep it
-if $REQUIRES_BUILD_ESSENTIAL && ! $KEEP_BUILD_DEPS; then
+# Remove build-essential if it was installed
+if $REQUIRES_BUILD_ESSENTIAL; then
   echo "Removing build-essential to keep the image lean..."
   apt-get autoremove -yqq --purge build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-elif $REQUIRES_BUILD_ESSENTIAL && $KEEP_BUILD_DEPS; then
-  echo "Keeping build dependencies as requested..."
 fi
 
 echo "Python packages installed successfully."
