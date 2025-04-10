@@ -2015,12 +2015,12 @@ const DeckMulti = (props: DeckMultiProps) => {
         maxHeight: '80vh' // This ensures the card itself doesn't exceed viewport
       }}>
         <CardHeader>
-          <CardTitle>Layers</CardTitle>
-          <GuideText>
+          {/* <CardTitle>Layers</CardTitle> */}
+          {/* <GuideText>
             <span>• Drag layers to reorder</span>
             <span>• Toggle visibility using the eye icon</span>
             <span>• Adjust opacity using the slider</span>
-          </GuideText>
+          </GuideText> */}
         </CardHeader>
         <LayersCardContent>
           <DragDropContext onDragEnd={onDragEnd}>
