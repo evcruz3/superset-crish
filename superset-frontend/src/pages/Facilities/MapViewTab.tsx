@@ -685,14 +685,31 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
             <FloatingDetailCard>
               {/* Sticky Header */}
               <StickyHeader>
-                <Title level={4} style={{ margin: 0, fontSize: '18px' }}>{selectedFacility.name}</Title>
-                <Button 
-                  type="text" 
-                  shape="circle" 
-                  size="small" 
-                  icon={<span style={{ fontSize: '16px' }}>✕</span>} 
-                  onClick={() => setSelectedFacility(null)}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div style={{ flex: 1 }}>
+                      <Title level={4} style={{ margin: 0, fontSize: '18px' }}>{selectedFacility.name}</Title>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <Button 
+                        type="primary" 
+                        size="small"
+                        href={getDirectionsUrl(selectedFacility)}
+                        target="_blank" 
+                        icon={<EnvironmentOutlined />}
+                      >
+                        {t('Get Directions')}
+                      </Button>
+                      <Button 
+                        type="text" 
+                        shape="circle" 
+                        size="small" 
+                        icon={<span style={{ fontSize: '16px' }}>✕</span>} 
+                        onClick={() => setSelectedFacility(null)}
+                      />
+                    </div>
+                  </div>
+                </div>
               </StickyHeader>
 
               {/* Scrollable Body */}
@@ -765,19 +782,6 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
                   </div>
                 )}
               </ScrollableBody>
-              
-              {/* Sticky Footer with Buttons */}
-              <StickyFooter>
-                <Button 
-                  type="primary" 
-                  size="middle"
-                  href={getDirectionsUrl(selectedFacility)}
-                  target="_blank" 
-                  icon={<EnvironmentOutlined />}
-                >
-                  {t('Get Directions')}
-                </Button>
-              </StickyFooter>
             </FloatingDetailCard>
           )}
         </Col>
