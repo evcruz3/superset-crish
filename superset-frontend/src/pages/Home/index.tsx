@@ -68,7 +68,7 @@ function Welcome({ user, addDangerToast, chartSlug = 'overview-map' }: WelcomePr
   return (
     <ChartContainer>
       <FloatingToggle onClick={toggleView}>
-        {showFullChart ? 'Show Alerts' : 'Show Overview'}
+        {showFullChart ? 'Show Alerts' : 'Show Map'}
       </FloatingToggle>
       
       <div style={{ 
