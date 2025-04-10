@@ -1187,12 +1187,12 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                   formData.time_grain_sqla === 'P1Y'
                     ? 'YYYY'
                     : formData.time_grain_sqla === 'P1M'
-                    ? 'YYYY-MM'
+                    ? 'MMM YYYY'
                     : formData.time_grain_sqla === 'P1W'
-                    ? 'YYYY-[W]ww'
+                    ? 'MMM YYYY [Week] w'
                     : formData.time_grain_sqla === 'PT1H'
-                    ? 'YYYY-MM-DD HH:mm:ss'
-                    : 'YYYY-MM-DD'
+                    ? 'DD MMM YYYY HH:mm'
+                    : 'DD MMM YYYY'
                 }
                 allowClear={false}
                 disabledDate={current => {

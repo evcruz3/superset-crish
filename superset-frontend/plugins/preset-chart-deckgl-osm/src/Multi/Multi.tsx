@@ -1901,13 +1901,13 @@ const DeckMulti = (props: DeckMultiProps) => {
                   case 'P1Y':
                     return 'YYYY';
                   case 'P1M':
-                    return 'YYYY-MM';
+                    return 'MMM YYYY';
                   case 'P1W':
-                    return 'YYYY-[W]ww';
+                    return 'MMM YYYY [Week] w';
                   case 'PT1H':
-                    return 'YYYY-MM-DD HH:mm:ss';
+                    return 'DD MMM YYYY HH:mm';
                   default:
-                    return 'YYYY-MM-DD';
+                    return 'DD MMM YYYY';
                 }
               })()}
               allowClear={false}
