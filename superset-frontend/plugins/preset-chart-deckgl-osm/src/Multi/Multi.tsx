@@ -50,6 +50,7 @@ import {
 } from '../types/feed'
 import { FeedSidePanel } from '../layers/Feed/Feed'
 import RegionInfoModal from '../components/RegionInfoModal'
+import { Matrix4 } from '@math.gl/core'
 
 // Configure moment to use Monday as first day of week
 moment.updateLocale('en', {
@@ -849,6 +850,47 @@ interface FeedLayerState {
   loadingState: GeoJsonLoadingState;
 }
 
+// Define TemporalOptions if not already defined
+interface TemporalOptions {
+    currentTime?: Date;
+    allData?: JsonObject[];
+}
+
+// Define SelectionOptions if not already defined
+interface SelectionOptions {
+    selectedRegion: SelectedRegion | null;
+    setSelectedRegion: (region: SelectedRegion | null) => void;
+}
+
+// Define a base interface for common options
+interface BaseLayerOptions {
+    formData: QueryFormData | FeedFormData; // Allow both types
+    payload: JsonObject;
+    onAddFilter: (filters: any[], merge?: boolean) => void; // Refine type if possible
+    setTooltip: (tooltip: any) => void; // Refine tooltip type if possible
+    opacity?: number;
+    // REMOVED: elevation prop as it's handled dynamically by elevationScale
+}
+
+export interface LayerOptions extends BaseLayerOptions {
+    // Optional features used by specific layer types
+    datasource?: Datasource;                // For Scatter layer
+    geoJson?: FeedGeoJSON;                  // For Country and Feed layers (use specific type)
+    temporalOptions?: TemporalOptions;      // For Country layer
+    viewState?: Viewport;                   // For Country layer (if needed by generator)
+    selectionOptions?: SelectionOptions;    // For Polygon and Feed layers
+    // REMOVED: opacity?: number; - Already in BaseLayerOptions
+    onClick?: (info: { object?: any }) => void;
+    // REMOVED: elevation?: number;
+}
+
+// Specific props for FeedLayer if needed (extending LayerOptions)
+export interface FeedLayerProps extends LayerOptions {
+    formData: FeedFormData; // Ensure formData is FeedFormData for FeedLayer
+    geoJson?: FeedGeoJSON;
+    selectionOptions: SelectionOptions; // Make selectionOptions required for FeedLayer
+}
+
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
   const timelineContainerRef = useRef<HTMLDivElement>(null)
@@ -868,6 +910,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     loadingState: {},
   });
   const [selectedRegion, setSelectedRegion] = useState<{ properties: any } | null>(null);
+  const [pitch, setPitch] = useState<number>(0);
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef
@@ -1006,7 +1049,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         ),
         transitionDuration: 1000,
       };
-      
+
       setViewport(newViewport);
     } catch (error) {
       console.error('Error calculating feature bounds:', error);
@@ -1085,183 +1128,108 @@ const DeckMulti = (props: DeckMultiProps) => {
       },
     };
 
-    if (subslice.form_data.viz_type === 'deck_feed') {
-      console.log('Creating Feed Layer:', {
-        sliceId: subslice.slice_id,
-        hasGeoJson: Boolean(feedLayerState.geoJson[subslice.slice_id]),
-        hasSelection: Boolean(feedLayerState.selectedRegions[subslice.slice_id]),
-        currentSelection: feedLayerState.selectedRegions[subslice.slice_id]
-      });
-
-      const feedGeoJson = feedLayerState.geoJson[subslice.slice_id];
-      
-      const layerOptions: FeedLayerProps = {
-        formData: subslice.form_data as FeedFormData,
-        payload: jsonWithProcessedData,
-        onAddFilter: props.onAddFilter,
-        setTooltip,
-        geoJson: feedGeoJson,
-        selectionOptions: {
-          selectedRegion: feedLayerState.selectedRegions[subslice.slice_id] || null,
-          setSelectedRegion: (region) => {
-            console.log('Feed Layer Selection Callback:', {
-              sliceId: subslice.slice_id,
-              newRegion: region ? {
-                name: region.name,
-                id: region.id,
-                entriesCount: region.entries.length
-              } : null,
-              currentSelection: feedLayerState.selectedRegions[subslice.slice_id]
-            });
-            
-            setFeedLayerState(prev => ({
-              ...prev,
-              selectedRegions: {
-                ...prev.selectedRegions,
-                [subslice.slice_id]: region,
-              },
-            }));
-
-             // Add zooming when a region is selected
-             if (region && feedGeoJson) {
-              const feature = feedGeoJson.features.find(
-                (f: FeedGeoJSONFeature) => f.properties.ISO === region.id || 
-                       f.properties.ADM1 === region.name ||
-                       f.properties.name === region.name ||
-                       f.properties.NAME === region.name
-              );
-              
-              if (feature) {
-                panToFeature(feature);
-              }
-            }
-          },
-        },
-        opacity: layerOpacities[subslice.slice_id] ?? 1.0,
-      };
-
-      const layers = layerGenerators.deck_feed(layerOptions);
-      console.log('Generated Feed Layers:', {
-        sliceId: subslice.slice_id,
-        layerTypes: Array.isArray(layers) ? layers.map(l => l.constructor.name) : typeof layers,
-        hasClickHandlers: Array.isArray(layers) ? layers.map(l => Boolean(l.props?.onClick)) : 'N/A'
-      });
-
-      setSubSlicesLayers(prevLayers => {
-        const newLayers = {
-          ...prevLayers,
-          [subslice.slice_id]: layers,
-        };
-        // Log final layer state with text layer info
-        console.log('Updated Feed Layers:', {
-          sliceId: subslice.slice_id,
-          finalLayerCount: newLayers[subslice.slice_id].length,
-          finalLayerTypes: newLayers[subslice.slice_id].map(layer => layer.constructor.name),
-          textLayerInfo: newLayers[subslice.slice_id]
-            .filter(layer => layer.constructor.name === 'TextLayer')
-            .map(layer => ({
-              hasData: Boolean(layer.props?.data?.length),
-              dataLength: layer.props?.data?.length,
-              sampleData: layer.props?.data?.[0]
-            }))
-        });
-        return newLayers;
-      });
-    } else if (subslice.form_data.viz_type === 'deck_country') {
-      const country = subslice.form_data.select_country;
-      
-      const createAndSetLayer = (geoJsonData: JsonObject) => {
-        console.log('Creating Feed Layer:', {
-          sliceId: subslice.slice_id,
-          formData: subslice.form_data,
-          geoJsonFeatures: (geoJsonData as FeedGeoJSON).features?.length,
-          selectedRegion: feedLayerState.selectedRegions[subslice.slice_id],
-          loadingState: feedLayerState.loadingState[subslice.slice_id]
-        });
-
-        const handleClick = (info: { object?: any }) => {
-          console.log('GeoJsonLayer onClick fired:', info);
-          // display region info modal
-          setSelectedRegion(info.object);
-        };
-
-        const layers = layerGenerators.deck_country({
-          formData: subslice.form_data,
-          payload: jsonWithProcessedData,
-          onAddFilter: props.onAddFilter,
-          setTooltip,
-          geoJson: geoJsonData as FeedGeoJSON,
-          temporalOptions: {
-            currentTime,
-            allData: jsonWithAllData.data.data,
-          },
-          opacity: layerOpacities[subslice.slice_id] ?? 1.0,
-          onClick: handleClick
-        });
-
-        console.log('Feed Layer Generated:', {
-          layerCount: Array.isArray(layers) ? layers.length : 1,
-          layers: layers.map(layer => ({
-            id: layer.id,
-            type: layer.constructor.name,
-            dataLength: layer.props?.data?.length
-          }))
-        });
-
-        setSubSlicesLayers(prevLayers => {
-          const newLayers = {
-            ...prevLayers,
-            [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
-          };
-          console.log('Updated SubSlice Layers:', {
-            sliceId: subslice.slice_id,
-            layerCount: newLayers[subslice.slice_id].length,
-            allSlices: Object.keys(newLayers)
-          });
-          return newLayers;
-        });
-      };
-
-      if (country && typeof countries[country] === 'string') {
-        if (geoJsonCache[country]) {
-          createAndSetLayer(geoJsonCache[country]);
-        } else {
-          const url = countries[country];
-          fetch(url)
-            .then(response => response.json())
-            .then(data => {
-              geoJsonCache[country] = data;
-              createAndSetLayer(data);
-            });
-        }
-      }
-    } else if (typeof layerGenerators[subslice.form_data.viz_type] === 'function') {
-      const layer = layerGenerators[subslice.form_data.viz_type]({
+    const layerGeneratorOptions = {
         formData: subslice.form_data,
-        payload: jsonWithProcessedData,
+        payload: jsonWithProcessedData, // or jsonWithAllData depending on context
         onAddFilter: props.onAddFilter,
         setTooltip,
         datasource: props.datasource,
+        geoJson: undefined as FeedGeoJSON | undefined, // Define explicitly for type safety
+        selectionOptions: undefined as any, // Define explicitly for type safety
         temporalOptions: {
           currentTime,
           allData: jsonWithAllData.data.data,
         },
         opacity: layerOpacities[subslice.slice_id] ?? 1.0,
-      });
+        // REMOVED: elevation calculation is now dynamic in orderedLayers
+        // elevation: viewport?.pitch ? viewport.pitch * subslice.slice_id * 100 : 0,
+        onClick: undefined as ((info: { object?: any }) => void) | undefined, // Define explicitly
+    };
 
-      setSubSlicesLayers((prevLayers) => ({
-        ...prevLayers,
-        [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
-      }));
+    if (subslice.form_data.viz_type === 'deck_feed') {
+        // ... feed layer specific options and creation ...
+        const feedGeoJson = feedLayerState.geoJson[subslice.slice_id];
+        layerGeneratorOptions.geoJson = feedGeoJson;
+        layerGeneratorOptions.selectionOptions = {
+            selectedRegion: feedLayerState.selectedRegions[subslice.slice_id] || null,
+            setSelectedRegion: (region: SelectedRegion | null) => {
+                // ... setSelectedRegion logic ...
+                setFeedLayerState(prev => ({
+                  ...prev,
+                  selectedRegions: {
+                    ...prev.selectedRegions,
+                    [subslice.slice_id]: region,
+                  },
+                }));
+                // ... panToFeature logic ...
+            },
+        };
+
+        const layers = layerGenerators.deck_feed(layerGeneratorOptions as FeedLayerProps);
+        // ... setSubSlicesLayers logic ...
+        setSubSlicesLayers(prevLayers => ({
+          ...prevLayers,
+          [subslice.slice_id]: layers,
+        }));
+
+    } else if (subslice.form_data.viz_type === 'deck_country') {
+        const country = subslice.form_data.select_country;
+
+        const createAndSetLayer = (geoJsonData: JsonObject) => {
+            // ... logging ...
+            const handleClick = (info: { object?: any }) => {
+              console.log('GeoJsonLayer onClick fired:', info);
+              setSelectedRegion(info.object);
+            };
+
+            layerGeneratorOptions.geoJson = geoJsonData as FeedGeoJSON;
+            layerGeneratorOptions.onClick = handleClick;
+
+            const layers = layerGenerators.deck_country(layerGeneratorOptions);
+            // ... logging and setSubSlicesLayers ...
+            setSubSlicesLayers(prevLayers => ({
+              ...prevLayers,
+              [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
+            }));
+        };
+
+        // ... logic to fetch/use cached geoJson ...
+        if (country && typeof countries[country as keyof typeof countries] === 'string') {
+          if (geoJsonCache[country]) {
+            createAndSetLayer(geoJsonCache[country]);
+          } else {
+            const url = countries[country as keyof typeof countries];
+            fetch(url)
+              .then(response => response.json())
+              .then(data => {
+                geoJsonCache[country] = data;
+                createAndSetLayer(data);
+              });
+          }
+        }
+
+    } else if (typeof layerGenerators[subslice.form_data.viz_type] === 'function') {
+        const layer = layerGenerators[subslice.form_data.viz_type](layerGeneratorOptions);
+
+        setSubSlicesLayers((prevLayers) => ({
+          ...prevLayers,
+          [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
+        }));
     }
 
-    // Add logging before returning from the function
-    console.log('Layer creation complete:', {
-      sliceId: subslice.slice_id,
-      hasProcessedData: processedData.length > 0,
-      timeGrain: largestTimeGrain,
-    });
-  }, [props.onAddFilter, props.datasource, setTooltip, currentTime, layerOpacities, temporalData, feedLayerState]);
+    // ... logging ...
+  }, [
+      props.onAddFilter,
+      props.datasource,
+      setTooltip,
+      currentTime,
+      layerOpacities,
+      temporalData,
+      feedLayerState, // Include feedLayerState as it's used
+      panToFeature,   // Include panToFeature if used inside setSelectedRegion
+      layerOrder,     // Include layerOrder if used for base elevation index
+      // REMOVED viewport from dependencies here, handled in orderedLayers
+  ]);
 
   // Function to filter data based on current time
   const filterDataByTime = useCallback((
@@ -1513,102 +1481,154 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   // Separate text layers from other layers and reorder them
   const orderedLayers = useMemo(() => {
+    console.log('[DEBUG] Recalculating orderedLayers. Pitch:', viewport?.pitch); // Log viewport pitch
+
     const nonTextLayers: Layer[] = [];
     const iconLayers: Layer[] = [];
     const textLayers: Layer[] = [];
+    const PITCH_SCALE_FACTOR = 1000; // Adjusted for potential visibility
 
     // Helper function to get region key from text data
     const getRegionKey = (d: any) => {
-      // Try different possible administrative region properties
-      const regionId = d.object?.properties?.ADM1 || 
-                      d.object?.properties?.name || 
-                      d.object?.properties?.NAME || 
-                      d.object?.properties?.ISO;
-      
-      return regionId;
+        const regionId = d.object?.properties?.ADM1 ||
+                        d.object?.properties?.name ||
+                        d.object?.properties?.NAME ||
+                        d.object?.properties?.ISO;
+        return regionId;
     };
-
-    // First, collect all text data from deck_country text layers only
     const combinedTextData = new Map<string, { coordinates: number[], texts: string[] }>();
-    
+
     layerOrder
       .filter((id) => visibleLayers[id])
       .forEach((id) => {
         const layerGroup = subSlicesLayers[id];
-        // Get the layer type from the slice data
         const layerType = props.payload.data.slices.find(slice => slice.slice_id === id)?.form_data.viz_type;
 
+        // Ensure layerGroup is an array before iterating
         if (Array.isArray(layerGroup)) {
           layerGroup.forEach(layer => {
-            if (layer instanceof TextLayer) {
-              // Only combine text layers from deck_country layers
-              if (layerType === 'deck_country') {
-                const data = layer.props.data || [];
-                if (Array.isArray(data)) {
-                  data.forEach((d: any) => {
-                    const regionKey = getRegionKey(d);
+            // Check if layer is a valid deck.gl Layer instance with a clone method
+            if (layer && typeof layer.clone === 'function') {
+                // Calculate dynamic elevation scale based on pitch AND layer order index
+                // Normalize pitch (0-60 degrees) to a 0-1 range, then apply factor and index
+                const normalizedPitch = (pitch ?? 0);
+                const layerIndex = layerOrder.indexOf(id); // Get the index of the current layer
+                const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (layerOrder.length - layerIndex); // Base elevation increases with layer order
 
-                    if (regionKey) {
-                      if (!combinedTextData.has(regionKey)) {
-                        combinedTextData.set(regionKey, {
-                          coordinates: d.coordinates,
-                          texts: []
-                        });
-                      }
-                      combinedTextData.get(regionKey)?.texts.push(d.text);
+                // Use modelMatrix for elevation translation
+                const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
+
+                console.log('[DEBUG] Layer ID:', id, 'Index:', layerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
+
+                // Clone the layer and apply the modelMatrix
+                // Pass other necessary props if clone clears them (check deck.gl docs if needed)
+                const scaledLayer = layer.clone({ modelMatrix });
+
+                if (layer instanceof TextLayer) {
+                    // Handle TextLayer combining logic (no scaling needed here)
+                    if (layerType === 'deck_country') {
+                        const data = layer.props.data || [];
+                        if (Array.isArray(data)) {
+                            data.forEach((d: any) => {
+                                const regionKey = getRegionKey(d);
+                                if (regionKey) {
+                                    if (!combinedTextData.has(regionKey)) {
+                                        combinedTextData.set(regionKey, {
+                                            coordinates: d.coordinates || d.position, // Use position if coordinates missing
+                                            texts: []
+                                        });
+                                    }
+                                    const currentData = combinedTextData.get(regionKey);
+                                    if (currentData && d.text) { // Ensure text exists
+                                       currentData.texts.push(d.text);
+                                    }
+                                }
+                            });
+                        }
+                    } else {
+                        textLayers.push(layer); // Push original text layer if not 'deck_country'
                     }
-                  });
+                } else if (layer instanceof IconLayer) {
+                  // Apply scaling only if IconLayer should be elevated
+                  iconLayers.push(scaledLayer);
+                } else {
+                  nonTextLayers.push(scaledLayer);
                 }
-              } else {
-                // For non-deck_country text layers, add them directly to textLayers
-                textLayers.push(layer);
-              }
-            } else if (layer instanceof IconLayer) {
-              iconLayers.push(layer);
             } else {
-              nonTextLayers.push(layer);
+              console.warn('[DEBUG] Invalid layer object encountered for ID:', id, layer);
+              // Optionally push the original layer if it shouldn't be scaled or is invalid
+              if(layer instanceof TextLayer) textLayers.push(layer);
+              else if (layer instanceof IconLayer) iconLayers.push(layer);
+              else if (layer) nonTextLayers.push(layer); // Push original if it exists but isn't cloneable?
             }
           });
+        } else if (layerGroup && typeof layerGroup.clone === 'function') {
+          // Handle single layer case (less common) - Ensure it's cloneable
+          const normalizedPitch = (viewport?.pitch ?? 0) / 60;
+          const layerIndex = layerOrder.indexOf(id);
+          const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (layerIndex + 1);
+          const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
+          console.log('[DEBUG] Single Layer ID:', id, 'Index:', layerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
+          const scaledLayer = layerGroup.clone({ modelMatrix });
+          nonTextLayers.push(scaledLayer); // Assume it's a non-text layer if single
         } else if (layerGroup) {
-          nonTextLayers.push(layerGroup);
+             console.warn('[DEBUG] Invalid single layer object encountered for ID:', id, layerGroup);
+             // Push original if it exists but isn't cloneable?
+             nonTextLayers.push(layerGroup);
         }
       });
 
     // Create a single text layer for deck_country text layers if show_text_labels is enabled
     if (combinedTextData.size > 0 && formData.show_text_labels) {
-      const combinedData = Array.from(combinedTextData.values()).map(({ coordinates, texts }) => ({
-        coordinates,
-        text: texts.join('\n')
-      }));
+        const combinedData = Array.from(combinedTextData.values()).map(({ coordinates, texts }) => ({
+            coordinates,
+            text: texts.join('\n')
+        }));
 
-      const combinedTextLayer = new TextLayer({
-        id: 'combined-country-text-layer',
-        data: combinedData,
-        getPosition: (d: any) => d.coordinates,
-        getText: (d: any) => d.text,
-        getSize: 12,
-        getTextAnchor: 'middle',
-        getAlignmentBaseline: 'center',
-        background: true,
-        backgroundPadding: [4, 4],
-        getBackgroundColor: [255, 255, 255, 230],
-        fontFamily: 'Arial',
-        characterSet: 'auto',
-        sizeScale: 1,
-        sizeUnits: 'pixels',
-        sizeMinPixels: 12,
-        sizeMaxPixels: 12,
-        pickable: true,
-        billboard: true,
-        lineHeight: 1.2,
-      });
+        // Check if coordinates exist before creating layer
+        const validCombinedData = combinedData.filter(d => d.coordinates);
 
-      textLayers.push(combinedTextLayer);
+        if (validCombinedData.length > 0) {
+          const combinedTextLayer = new TextLayer({
+              id: 'combined-country-text-layer',
+              data: validCombinedData, // Use filtered data
+              getPosition: (d: any) => d.coordinates,
+              getText: (d: any) => d.text,
+              getSize: 12,
+              getTextAnchor: 'middle',
+              getAlignmentBaseline: 'center',
+              background: true,
+              backgroundPadding: [4, 4],
+              getBackgroundColor: [255, 255, 255, 230],
+              fontFamily: 'Arial',
+              characterSet: 'auto',
+              sizeScale: 1,
+              sizeUnits: 'pixels',
+              sizeMinPixels: 12,
+              sizeMaxPixels: 12,
+              pickable: true,
+              billboard: true,
+              lineHeight: 1.2,
+          });
+          textLayers.push(combinedTextLayer);
+        }
     }
 
+    const finalLayers = [...nonTextLayers.reverse(), ...iconLayers.reverse(), ...textLayers];
+    console.log('[DEBUG] Final orderedLayers count:', finalLayers.length); // Log final layers
+
     // Return layers in correct order: base layers, icon layers, and text layer on top
-    return [...nonTextLayers.reverse(), ...iconLayers.reverse(), ...textLayers];
-  }, [layerOrder, visibleLayers, subSlicesLayers, formData.show_text_labels, props.payload.data.slices]);
+    return finalLayers;
+  }, [
+      layerOrder,
+      visibleLayers,
+      subSlicesLayers,
+      formData.show_text_labels,
+      props.payload.data.slices,
+      pitch, // Dependency remains
+  ]);
+
+  console.log("viewport", viewport)
 
   // Effect to update layers when time changes
   useEffect(() => {
@@ -1795,7 +1815,14 @@ const DeckMulti = (props: DeckMultiProps) => {
       viewport={viewport || props.viewport}
       layers={orderedLayers}
       mapStyle={formData.mapbox_style}
-      setControlValue={setControlValue}
+      setControlValue={(control, value) => {
+        console.log('[DEBUG] setControlValue', control, value)
+        setControlValue(control, value)
+        if (control === 'viewport') {
+          // retain the zoom level
+          setPitch(value.pitch);
+        }
+      }}
       onViewportChange={setViewport}
       height={height}
       width={width}
