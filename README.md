@@ -23,6 +23,7 @@ CRISH extends Apache Superset's data visualization and analytics platform with c
    - Retrieves weather forecast data from external data sources
    - Processes and transforms raw weather data for use in prediction models
    - Stores historical and forecast weather data for analysis
+   - Generates weather alerts for dangerous conditions based on parameter thresholds
    - Supports parameters like temperature, rainfall, humidity, and wind speed
 
 4. **Case Reports Initializer**
@@ -55,7 +56,13 @@ The system uses a PostgreSQL database with extensions for geographic data. Key t
 
 - `health_facilities`: Stores health facility information
 - `tlhis_diseases`: Stores disease case reports with details like municipality, date, disease type, and case counts
-- Weather data tables for storing historical and forecast weather information
+- Weather data tables for storing historical and forecast weather information:
+  - `rainfall_daily_weighted_average`: Daily rainfall forecasts by municipality
+  - `rh_daily_avg_region`: Daily relative humidity forecasts by municipality
+  - `tmax_daily_tmax_region`: Daily maximum temperature forecasts by municipality
+  - `ws_daily_avg_region`: Daily wind speed forecasts by municipality
+  - `heat_index_daily_region`: Calculated heat index based on temperature and humidity
+  - `weather_forecast_alerts`: Alerts generated for dangerous weather conditions
 - Standard Superset tables for dashboards, charts, and user management
 
 ## Deployment Architecture

@@ -108,6 +108,101 @@ def transform_weather_data(input_file):
     
     return df
 
+def generate_weather_alerts(dataframes):
+    """Generate weather alerts from weather parameter data."""
+    # Check if we have all required dataframes
+    required_dfs = ['heat_index_daily_region', 'rainfall_daily_weighted_average', 'ws_daily_avg_region']
+    if not all(df_name in dataframes for df_name in required_dfs):
+        print("Warning: Not all required weather parameters available for alert generation")
+        return None
+    
+    # Heat Index Alerts
+    heat_index_alerts = dataframes['heat_index_daily_region'].with_columns([
+        pl.lit('Heat Index').alias('weather_parameter'),
+        pl.when(pl.col('value') > 42).then(pl.lit('Extreme Danger'))
+          .when(pl.col('value') > 40).then(pl.lit('Danger'))
+          .when(pl.col('value') >= 36).then(pl.lit('Extreme Caution'))
+          .otherwise(pl.lit('Normal')).alias('alert_level'),
+        pl.when(pl.col('value') > 42).then(pl.lit('Extreme Heat Index Alert'))
+          .when(pl.col('value') > 40).then(pl.lit('Dangerous Heat Index Alert'))
+          .when(pl.col('value') >= 36).then(pl.lit('High Heat Index Warning'))
+          .otherwise(pl.lit('Normal Conditions')).alias('alert_title'),
+        pl.when(pl.col('value') > 42).then(pl.lit('Heat stroke imminent. Avoid any outdoor activities.'))
+          .when(pl.col('value') > 40).then(pl.lit('Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure.'))
+          .when(pl.col('value') >= 36).then(pl.lit('Heat cramps and heat exhaustion possible; continuing activity could result in heat stroke.'))
+          .otherwise(pl.lit('No heat index alerts at this time.')).alias('alert_message'),
+        pl.col('value').alias('parameter_value')
+    ])
+
+    # Rainfall Alerts
+    rainfall_alerts = dataframes['rainfall_daily_weighted_average'].with_columns([
+        pl.lit('Rainfall').alias('weather_parameter'),
+        pl.when(pl.col('value') > 60).then(pl.lit('Extreme Danger'))
+          .when(pl.col('value') > 25).then(pl.lit('Danger'))
+          .when(pl.col('value') >= 15).then(pl.lit('Extreme Caution'))
+          .otherwise(pl.lit('Normal')).alias('alert_level'),
+        pl.when(pl.col('value') > 60).then(pl.lit('Severe Rainfall Alert'))
+          .when(pl.col('value') > 25).then(pl.lit('Special Rainfall Attention'))
+          .when(pl.col('value') >= 15).then(pl.lit('Rainfall Advisory'))
+          .otherwise(pl.lit('Normal Rainfall Conditions')).alias('alert_title'),
+        pl.when(pl.col('value') > 60).then(pl.lit('Severe rainfall expected. High risk of flooding and landslides.'))
+          .when(pl.col('value') > 25).then(pl.lit('Significant rainfall expected. Be vigilant of local alerts.'))
+          .when(pl.col('value') >= 15).then(pl.lit('Moderate rainfall expected. Exercise caution.'))
+          .otherwise(pl.lit('No significant rainfall expected.')).alias('alert_message'),
+        pl.col('value').alias('parameter_value')
+    ])
+
+    # Wind Alerts
+    wind_alerts = dataframes['ws_daily_avg_region'].with_columns([
+        pl.lit('Wind Speed').alias('weather_parameter'),
+        pl.when(pl.col('value') > 80).then(pl.lit('Extreme Danger'))
+          .when(pl.col('value') > 60).then(pl.lit('Danger'))
+          .when(pl.col('value') >= 40).then(pl.lit('Extreme Caution'))
+          .otherwise(pl.lit('Normal')).alias('alert_level'),
+        pl.when(pl.col('value') > 80).then(pl.lit('Severe Wind Alert'))
+          .when(pl.col('value') > 60).then(pl.lit('Strong Wind Warning'))
+          .when(pl.col('value') >= 40).then(pl.lit('Wind Speed Advisory'))
+          .otherwise(pl.lit('Calm Conditions')).alias('alert_title'),
+        pl.when(pl.col('value') > 80).then(pl.lit('Extremely strong winds expected. Major damage possible.'))
+          .when(pl.col('value') > 60).then(pl.lit('Strong winds expected. Secure loose objects and take precautions.'))
+          .when(pl.col('value') >= 40).then(pl.lit('Moderate winds expected. Stay alert for possible disruptions.'))
+          .otherwise(pl.lit('Calm wind conditions expected.')).alias('alert_message'),
+        pl.col('value').alias('parameter_value')
+    ])
+
+    # Filter out normal conditions
+    heat_index_alerts = heat_index_alerts.filter(pl.col('alert_level') != pl.lit('Normal'))
+    rainfall_alerts = rainfall_alerts.filter(pl.col('alert_level') != pl.lit('Normal'))
+    wind_alerts = wind_alerts.filter(pl.col('alert_level') != pl.lit('Normal'))
+
+    # Concatenate all alerts
+    all_alerts = pl.concat([heat_index_alerts, rainfall_alerts, wind_alerts])
+    
+    # Select and order columns to match final schema
+    alerts_df = all_alerts.select([
+        'municipality_code',
+        'forecast_date',
+        'weather_parameter',
+        'alert_level',
+        'alert_title',
+        'alert_message',
+        'parameter_value',
+        'municipality_name'
+    ])
+    
+    # Sort by forecast_date and alert_level severity
+    return alerts_df.with_columns([
+        pl.when(pl.col('alert_level') == pl.lit('Extreme Danger')).then(pl.lit(1))
+          .when(pl.col('alert_level') == pl.lit('Danger')).then(pl.lit(2))
+          .when(pl.col('alert_level') == pl.lit('Extreme Caution')).then(pl.lit(3))
+          .otherwise(pl.lit(4)).alias('alert_priority')
+    ]).sort([
+        'forecast_date',
+        'alert_priority',
+        'weather_parameter',
+        'municipality_code'
+    ]).drop('alert_priority')
+
 def process_weather_files():
     """Process all weather parameter files in the data directory using Polars."""
     data_dir = Path(__file__).parent.parent / 'data'
@@ -136,6 +231,11 @@ def process_weather_files():
             dataframes['rh_daily_avg_region']
         )
         dataframes['heat_index_daily_region'] = heat_index_df
+    
+    # Generate weather alerts
+    alerts_df = generate_weather_alerts(dataframes)
+    if alerts_df is not None:
+        dataframes['weather_forecast_alerts'] = alerts_df
     
     return dataframes
 

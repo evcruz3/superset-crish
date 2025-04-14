@@ -190,6 +190,17 @@ CREATE TABLE IF NOT EXISTS ws_daily_avg_region (
     municipality_code VARCHAR(5) NOT NULL,
     municipality_name VARCHAR(50) NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS weather_forecast_alerts (
+    municipality_code VARCHAR(5) NOT NULL,
+    forecast_date DATE NOT NULL,
+    weather_parameter VARCHAR(50) NOT NULL,
+    alert_level VARCHAR(30) NOT NULL,
+    alert_title VARCHAR(100) NOT NULL,
+    alert_message TEXT NOT NULL,
+    parameter_value FLOAT NOT NULL,
+    municipality_name VARCHAR(50) NOT NULL
+);
 ```
 
 ## 7. Testing Plan
