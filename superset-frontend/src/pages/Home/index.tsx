@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { styled, t } from '@superset-ui/core';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 import DashboardTabs from '../WeatherForecasts/DashboardTabs';
 import Modal from 'src/components/Modal';
+import { SupersetClient } from '@superset-ui/core';
 
 const FloatingToggle = styled.div`
   position: fixed;
@@ -100,18 +101,194 @@ const AlertDetail = styled.div`
   margin: 3px 0;
 `;
 
+interface AlertType {
+  id: string;
+  weather_parameter: string;
+  alert_level: string;
+  alert_title: string;
+  alert_message: string;
+  municipality_name: string;
+  parameter_value: number;
+  forecast_date: string;
+  municipality_code: string;
+}
+
+interface GroupedAlertType {
+  type: string;
+  title: string;
+  details: { label: string; count: number }[];
+  color: string;
+  alertData: AlertType[];
+}
+
 interface WelcomeProps {
   user: {
     userId: number;
   };
   addDangerToast: (message: string) => void;
+  addSuccessToast: (message: string) => void;
   chartSlug?: string;
 }
 
-function Welcome({ user, addDangerToast, chartSlug = 'overview-map' }: WelcomeProps) {
+function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-map' }: WelcomeProps) {
   const [showFullChart, setShowFullChart] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
+  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [weatherAlerts, setWeatherAlerts] = useState<GroupedAlertType[]>([]);
+
+  // Fetch alerts from the API
+  const fetchAlerts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      console.log("[Weather Forecast Alerts] fetching alerts");
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/weather_forecast_alert/?q=${encodeURIComponent(JSON.stringify({
+          page_size: 100, // Get more results per page
+          page: 0,
+          order_column: 'forecast_date',
+          order_direction: 'desc'
+        }))}`,
+        headers: { Accept: 'application/json' },
+      });
+      
+      console.log("[Weather Forecast Alerts] response.json", response.json);
+      
+      if (response.json?.result) {
+        // Count alerts by type before processing
+        const counts: Record<string, number> = {};
+        response.json.result.forEach((alert: AlertType) => {
+          counts[alert.weather_parameter] = (counts[alert.weather_parameter] || 0) + 1;
+        });
+        console.log("[Weather Forecast Alerts] Counts by parameter:", counts);
+        
+        // Process and group alerts by weather parameter
+        processAlerts(response.json.result);
+        addSuccessToast(t('Weather alerts loaded successfully'));
+      } else {
+        // Handle case where result is empty or undefined
+        setWeatherAlerts([]);
+        addDangerToast(t('No weather alerts returned from API'));
+      }
+    } catch (error) {
+      console.error('Error fetching weather alerts:', error);
+      addDangerToast(t('Failed to load weather alerts: %s', error.message || String(error)));
+      // Set empty alerts with a fallback UI state
+      setWeatherAlerts([{
+        type: 'error',
+        title: 'API Error',
+        color: '#dc3545',
+        details: [{ label: 'Status', count: 0 }],
+        alertData: [{
+          id: '0_0_Error',
+          weather_parameter: 'Error',
+          alert_level: 'Error',
+          alert_title: 'Could not load alerts',
+          alert_message: 'There was an error connecting to the alerts API. Please try again later.',
+          municipality_name: '-',
+          parameter_value: 0,
+          forecast_date: new Date().toISOString(),
+          municipality_code: '0'
+        }]
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addDangerToast, addSuccessToast]);
+
+  // Process alerts and group them by type
+  const processAlerts = useCallback((alerts: AlertType[]) => {
+    // Log all the unique weather parameters for debugging
+    const uniqueParameters = [...new Set(alerts.map(a => a.weather_parameter))];
+    console.log("[Weather Forecast Alerts] Unique weather parameters:", uniqueParameters);
+    
+    // Group alerts by weather parameter
+    const groupedByParameter: Record<string, AlertType[]> = {};
+    
+    alerts.forEach(alert => {
+      // Make sure id exists, or create it from composite fields
+      if (!alert.id && alert.municipality_code && alert.forecast_date && alert.weather_parameter) {
+        alert.id = `${alert.municipality_code}_${alert.forecast_date}_${alert.weather_parameter}`;
+      }
+      
+      // Log each alert for debugging
+      console.log(`[Debug Alert] ${alert.weather_parameter} - ${alert.alert_level} - ${alert.municipality_name}`);
+      
+      if (!groupedByParameter[alert.weather_parameter]) {
+        groupedByParameter[alert.weather_parameter] = [];
+      }
+      groupedByParameter[alert.weather_parameter].push(alert);
+    });
+    
+    // Map to the format expected by the UI
+    const alertGroups: GroupedAlertType[] = [];
+    
+    // Map weather parameters to types and colors - expanded to include more variations
+    const parameterMapping: Record<string, { type: string; color: string; title: string }> = {
+      'Rainfall': { type: 'rain', color: '#3a5998', title: 'Rainfall Alert' },
+      'Wind Speed': { type: 'wind', color: '#4c9c6d', title: 'Wind Alert' },
+      'Heat Index': { type: 'heat', color: '#a67533', title: 'Heat Alert' }
+    };
+    
+    // Create alert groups for all parameters, don't skip any
+    Object.entries(groupedByParameter).forEach(([parameter, alerts]) => {
+      // Get mapping or create a default one if parameter is unknown
+      const mapping = parameterMapping[parameter] || { 
+        type: parameter.toLowerCase().replace(/\s+/g, '_'), 
+        color: '#888888',
+        title: `${parameter} Alert`
+      };
+      
+      // Count alerts by all possible severity levels
+      const extremeDanger = alerts.filter(a => 
+        a.alert_level === 'Extreme Danger' || 
+        a.alert_level === 'Severe'
+      ).length;
+      
+      const danger = alerts.filter(a => 
+        a.alert_level === 'Danger' || 
+        a.alert_level === 'Heavy' ||
+        a.alert_level === 'Strong'
+      ).length;
+      
+      const extremeCaution = alerts.filter(a => 
+        a.alert_level === 'Extreme Caution' || 
+        a.alert_level === 'Moderate' ||
+        a.alert_level === 'Caution'
+      ).length;
+      
+      const light = alerts.filter(a => 
+        a.alert_level === 'Light'
+      ).length;
+      
+      console.log(`[Weather Forecast Alerts] Counts for ${parameter}: 
+        Extreme=${extremeDanger}, Danger=${danger}, Caution=${extremeCaution}, Light=${light}`);
+      
+      // Create group with all information
+      alertGroups.push({
+        type: mapping.type,
+        title: mapping.title,
+        color: mapping.color,
+        details: [
+          { label: 'Extreme', count: extremeDanger },
+          { label: 'Danger', count: danger },
+          { label: 'Caution', count: extremeCaution },
+          { label: 'Light', count: light }
+        ].filter(d => d.count > 0), // Only include non-zero counts
+        alertData: alerts
+      });
+    });
+    
+    console.log("[Weather Forecast Alerts] Final alert groups:", alertGroups);
+    
+    setWeatherAlerts(alertGroups);
+  }, []);
+
+  // Fetch alerts on component mount
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
 
   const handleError = useCallback((error: Error) => {
     addDangerToast(t('Failed to load chart: %s', error.message));
@@ -121,45 +298,44 @@ function Welcome({ user, addDangerToast, chartSlug = 'overview-map' }: WelcomePr
     setShowFullChart(prev => !prev);
   }, []);
 
-  const handleAlertClick = useCallback((title: string) => {
-    setModalTitle(title);
+  const handleAlertClick = useCallback((alertGroup: GroupedAlertType) => {
+    setModalTitle(alertGroup.title);
+    
+    // Generate detailed content for the modal
+    const content = (
+      <div>
+        {alertGroup.alertData.map(alert => {
+          // Try to format the date nicely - handle both string and date formats
+          let formattedDate = alert.forecast_date;
+          try {
+            // If it's a valid date string, format it nicely
+            formattedDate = new Date(alert.forecast_date).toLocaleDateString();
+          } catch (e) {
+            // If conversion fails, just use the original string
+            console.warn('Could not format date:', alert.forecast_date);
+          }
+          
+          return (
+            <div key={alert.id} style={{ marginBottom: '15px', padding: '10px', borderBottom: '1px solid #eee' }}>
+              <h4 style={{ margin: '0 0 8px 0' }}>{alert.alert_title}</h4>
+              <p><strong>Level:</strong> {alert.alert_level}</p>
+              <p><strong>Location:</strong> {alert.municipality_name}</p>
+              <p><strong>Date:</strong> {formattedDate}</p>
+              <p><strong>Value:</strong> {alert.parameter_value}</p>
+              <p>{alert.alert_message}</p>
+            </div>
+          );
+        })}
+      </div>
+    );
+    
+    setModalContent(content);
     setShowModal(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setShowModal(false);
   }, []);
-
-  // Weather alert data
-  const weatherAlerts = [
-    {
-      type: 'rain',
-      title: 'Heavy Rain Alert',
-      details: [
-        { label: 'Extreme', count: 0 },
-        { label: 'Heavy', count: 5 },
-      ],
-      color: '#3a5998',
-    },
-    {
-      type: 'wind',
-      title: 'Strong Wind Alert',
-      details: [
-        { label: 'Extreme', count: 0 },
-        { label: 'Heavy', count: 0 },
-      ],
-      color: '#4c9c6d',
-    },
-    {
-      type: 'heat',
-      title: 'Heat Alert',
-      details: [
-        { label: 'Very Hot', count: 4 },
-        { label: 'Hot', count: 0 },
-      ],
-      color: '#a67533',
-    },
-  ];
 
   // Weather icons
   const getIcon = (type: string) => {
@@ -181,22 +357,36 @@ function Welcome({ user, addDangerToast, chartSlug = 'overview-map' }: WelcomePr
         {showFullChart ? 'Show Alerts' : 'Show Map'}
       </FloatingToggle>
       
-      <AlertsContainer>
-        {weatherAlerts.map((alert) => (
-          <AlertCard key={alert.type} onClick={() => handleAlertClick(alert.title)}>
-            <IconContainer bgColor={alert.color}>
-              <span style={{ fontSize: '24px' }}>{getIcon(alert.type)}</span>
-            </IconContainer>
+      <AlertsContainer style={{ display: showFullChart ? 'flex' : 'none' }}>
+        {isLoading ? (
+          <AlertCard>
             <AlertContent>
-              <AlertTitle>{alert.title}</AlertTitle>
-              {alert.details.map((detail) => (
-                <AlertDetail key={detail.label}>
-                  {detail.label}: {detail.count} Locations
-                </AlertDetail>
-              ))}
+              <AlertTitle>Loading alerts...</AlertTitle>
             </AlertContent>
           </AlertCard>
-        ))}
+        ) : weatherAlerts.length === 0 ? (
+          <AlertCard>
+            <AlertContent>
+              <AlertTitle>No active alerts</AlertTitle>
+            </AlertContent>
+          </AlertCard>
+        ) : (
+          weatherAlerts.map((alert) => (
+            <AlertCard key={alert.type} onClick={() => handleAlertClick(alert)}>
+              <IconContainer bgColor={alert.color}>
+                <span style={{ fontSize: '24px' }}>{getIcon(alert.type)}</span>
+              </IconContainer>
+              <AlertContent>
+                <AlertTitle>{alert.title}</AlertTitle>
+                {alert.details.map((detail) => (
+                  <AlertDetail key={detail.label}>
+                    {detail.label}: {detail.count} Locations
+                  </AlertDetail>
+                ))}
+              </AlertContent>
+            </AlertCard>
+          ))
+        )}
       </AlertsContainer>
       
       <div style={{ 
@@ -224,12 +414,15 @@ function Welcome({ user, addDangerToast, chartSlug = 'overview-map' }: WelcomePr
         show={showModal}
         onHide={closeModal}
         footer={[
+          <button key="refresh" onClick={fetchAlerts} style={{ marginRight: '10px' }}>
+            Refresh Alerts
+          </button>,
           <button key="close" onClick={closeModal}>
             Close
           </button>
         ]}
       >
-        <p>Alert details will be displayed here.</p>
+        {modalContent}
       </Modal>
     </ChartContainer>
   );

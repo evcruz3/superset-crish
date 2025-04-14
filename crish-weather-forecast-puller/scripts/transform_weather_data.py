@@ -170,10 +170,31 @@ def generate_weather_alerts(dataframes):
         pl.col('value').alias('parameter_value')
     ])
 
+    # Debug the raw alerts before filtering
+    print(f"\nRaw Heat Index alerts count: {heat_index_alerts.shape[0]}")
+    print(f"Raw Rainfall alerts count: {rainfall_alerts.shape[0]}")
+    print(f"Raw Wind Speed alerts count: {wind_alerts.shape[0]}")
+
+    # Generate some basic statistics for rainfall
+    if rainfall_alerts.shape[0] > 0:
+        min_rainfall = rainfall_alerts['value'].min()
+        max_rainfall = rainfall_alerts['value'].max()
+        print(f"\nRainfall value range: min={min_rainfall}, max={max_rainfall}")
+        
+        # Count by alert level before filtering
+        rainfall_by_level = rainfall_alerts.group_by('alert_level').agg(pl.count())
+        print("Rainfall alerts by level (before filtering):")
+        print(rainfall_by_level)
+
     # Filter out normal conditions
     heat_index_alerts = heat_index_alerts.filter(pl.col('alert_level') != pl.lit('Normal'))
     rainfall_alerts = rainfall_alerts.filter(pl.col('alert_level') != pl.lit('Normal'))
     wind_alerts = wind_alerts.filter(pl.col('alert_level') != pl.lit('Normal'))
+
+    # Debug filtered alerts
+    print(f"\nFiltered Heat Index alerts count: {heat_index_alerts.shape[0]}")
+    print(f"Filtered Rainfall alerts count: {rainfall_alerts.shape[0]}")
+    print(f"Filtered Wind Speed alerts count: {wind_alerts.shape[0]}")
 
     # Concatenate all alerts
     all_alerts = pl.concat([heat_index_alerts, rainfall_alerts, wind_alerts])
@@ -189,6 +210,11 @@ def generate_weather_alerts(dataframes):
         'parameter_value',
         'municipality_name'
     ])
+    
+    # Debug final alerts composition
+    alerts_by_type = alerts_df.group_by('weather_parameter').agg(pl.count())
+    print("\nFinal alerts by weather parameter:")
+    print(alerts_by_type)
     
     # Sort by forecast_date and alert_level severity
     return alerts_df.with_columns([
@@ -251,6 +277,19 @@ def ingest_to_postgresql(dataframes):
     try:
         for table_name, df in dataframes.items():
             print(f"Ingesting data to PostgreSQL for table: {table_name}")
+            
+            # For weather_forecast_alerts, add extra debug info
+            if table_name == 'weather_forecast_alerts':
+                # Count rows by weather parameter type
+                param_counts = df.group_by('weather_parameter').agg(pl.count().alias('count'))
+                print(f"Weather forecast alerts by parameter type:")
+                print(param_counts)
+                
+                # Check alert level distribution
+                level_counts = df.group_by(['weather_parameter', 'alert_level']).agg(pl.count().alias('count'))
+                print(f"Weather forecast alerts by parameter and level:")
+                print(level_counts)
+            
             # Write DataFrame to database using Polars native method with ADBC
             rows_affected = df.write_database(
                 table_name=table_name,
