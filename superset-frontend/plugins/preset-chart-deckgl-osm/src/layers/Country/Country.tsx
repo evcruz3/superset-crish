@@ -249,6 +249,7 @@ interface ColorLegendProps {
   metricName?: string;
   isCategorical?: boolean;
   valueMap?: Record<string, string | number>;
+  rangeMap?: Record<string, string>;
 }
 
 const ColorLegend = ({ 
@@ -260,13 +261,14 @@ const ColorLegend = ({
   values,
   metricName = 'Values',
   isCategorical = false,
-  valueMap = {}
+  valueMap = {},
+  rangeMap = {}
 }: ColorLegendProps) => {
   // Get unique values and sort them
   const uniqueValues = [...new Set(values)];
   
-  // If we have a valueMap and are using categorical values, prioritize those values
-  let displayValues = uniqueValues;
+  // Initialize displayValues 
+  let displayValues: Array<number | string> = [];
   
   if (isCategorical) {
     // Get explicitly mapped values first
@@ -280,17 +282,49 @@ const ColorLegend = ({
     
     // Show mapped values first, then unmapped values
     displayValues = [...mappedValues, ...unmappedValues];
+  } else if (Object.keys(rangeMap).length > 0) {
+    // When using range map, display the ranges directly
+    return (
+      <StyledLegend>
+        <div className="legend-title">{metricName}</div>
+        <div className="legend-items">
+          {Object.entries(rangeMap).map(([range, color], i) => {
+            const [min, max] = range.split('-').map(Number);
+            const formattedMin = format ? format(min) : min;
+            const formattedMax = format ? format(max) : max;
+            
+            return (
+              <div key={i} className="legend-item">
+                <div 
+                  className="color-box" 
+                  style={{ 
+                    backgroundColor: color || '#fff',
+                    border: '1px solid'
+                  }}
+                />
+                <span className="label">
+                  {`${metricPrefix}${formattedMin}${metricUnit} - ${metricPrefix}${formattedMax}${metricUnit}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </StyledLegend>
+    );
   } else if (uniqueValues.length > 5) {
     // For non-categorical with many values, select a subset
     const min = Math.min(...uniqueValues.map(v => Number(v)));
     const max = Math.max(...uniqueValues.map(v => Number(v)));
+    const range: [number, number] = [min, max]; // Ensure it's a tuple
     const middleIndices = [
       Math.floor(uniqueValues.length * 0.25),
       Math.floor(uniqueValues.length * 0.5),
       Math.floor(uniqueValues.length * 0.75),
     ];
     const middleValues = middleIndices.map(i => uniqueValues[i]);
-    displayValues = [max, ...middleValues, min];
+    displayValues = [min, ...middleValues, max].sort((a, b) => Number(b) - Number(a)); // Sort largest to smallest
+  } else {
+    displayValues = [...uniqueValues].sort((a, b) => Number(b) - Number(a)); // Sort largest to smallest
   }
 
   return (
@@ -588,17 +622,49 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       .map((d: DataRecord) => d.metric)
       .filter((v: number) => v !== undefined && v !== null);
     metricValues = allMetricValues;
-    extent = allMetricValues.length > 0 
+    const minMaxExtent = allMetricValues.length > 0 
       ? [Math.min(...allMetricValues), Math.max(...allMetricValues)]
       : [0, 100]; // Default range if no metrics available
 
-    const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
-    const linearScale = scheme 
-      ? scheme.createLinearScale(extent) 
-      : scaleLinear<string>()
-          .domain(extent)
-          .range(['#ccc', '#343434']);
-    colorScale = (value: any) => linearScale(Number(value)) || '#ccc';
+    // Check if we have a range_map defined in form data
+    const hasRangeMap = fd.range_map && Object.keys(fd.range_map).length > 0;
+
+    if (hasRangeMap) {
+      // Use the range_map for segmented linear color mapping
+      colorScale = (value: any) => {
+        const numValue = Number(value);
+        
+        // Check if this value falls within any of our defined ranges
+        for (const range of Object.keys(fd.range_map)) {
+          const [min, max] = range.split('-').map(Number);
+          if (numValue >= min && numValue <= max) {
+            return fd.range_map[range];
+          }
+        }
+        
+        // Fallback to a default linear scale for values not in any range
+        const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
+        const linearScale = scheme 
+          ? scheme.createLinearScale(minMaxExtent) 
+          : scaleLinear<string>()
+              .domain(minMaxExtent)
+              .range(['#ccc', '#343434']);
+              
+        return linearScale(numValue) || '#ccc';
+      };
+    } else {
+      // Use the standard linear color scheme
+      const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
+      const linearScale = scheme 
+        ? scheme.createLinearScale(minMaxExtent) 
+        : scaleLinear<string>()
+            .domain(minMaxExtent)
+            .range(['#ccc', '#343434']);
+      colorScale = (value: any) => linearScale(Number(value)) || '#ccc';
+    }
+    
+    // Still store the original extent for legend display
+    extent = minMaxExtent;
   }
 
   // Filter records based on current time for display
@@ -1294,6 +1360,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
             }
             isCategorical={!!formData.categorical_column}
             valueMap={formData.value_map}
+            rangeMap={formData.range_map}
           />
         )}
       </DeckGLContainerStyledWrapper>

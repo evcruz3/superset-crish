@@ -51,6 +51,7 @@ import CurrencyControl from './CurrencyControl';
 import ColumnConfigControl from './ColumnConfigControl';
 import { ComparisonRangeLabel } from './ComparisonRangeLabel';
 import ValueMappedControl from './ValueMappedControl';
+import ValueRangeMapControl from './ValueRangeMapControl';
 
 const controlMap = {
   AnnotationLayerControl,
@@ -86,6 +87,7 @@ const controlMap = {
   ComparisonRangeLabel,
   TimeOffsetControl,
   ValueMappedControl,
+  ValueRangeMapControl,
   ...sharedControlComponents,
 };
 export default controlMap;

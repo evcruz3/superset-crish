@@ -276,6 +276,45 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        [
+          {
+            name: 'range_map',
+            config: {
+              type: 'ValueRangeMapControl',
+              label: t('Value Range to Color Mapping'),
+              description: t('Map specific ranges of values to colors. Click "+ Add Range" to add a new mapping.'),
+              default: {},
+              renderTrigger: true,
+              visibility: ({ controls }) => !controls?.categorical_column?.value,
+              mapStateToProps: (state) => {
+                const metricValue = state.controls?.metric?.value;
+                const metricColumn = isMetricValue(metricValue) ? metricValue.column_name : undefined;
+                const metricLabel = state.form_data?.metric?.label;
+                const currentColorScheme = state.controls?.linear_color_scheme?.value as string | undefined;
+                
+                debugLog('Range Map State', {
+                  metricValue,
+                  metricColumn,
+                  metricLabel,
+                  currentColorScheme,
+                  state
+                });
+
+                const schemeMap = getSequentialSchemeMap();
+                const currentScheme = getColorScheme(schemeMap, currentColorScheme, 'blue_white_yellow');
+                
+                return {
+                  minLabel: t('Min Value'),
+                  maxLabel: t('Max Value'),
+                  colorLabel: t('Color'),
+                  scheme: currentScheme,
+                  addRangePlaceholder: t('Enter range values'),
+                  addRangeLabel: t('+ Add Range'),
+                };
+              },
+            },
+          },
+        ],
         // [
         //   {
         //     name: 'categorical_fallback_color',

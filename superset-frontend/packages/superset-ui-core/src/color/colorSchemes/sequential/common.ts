@@ -42,7 +42,7 @@ const schemes = [
   {
     id: 'dark_blue',
     label: 'dark blues',
-    colors: ['#EBF5F8', '#6BB1CC', '#357E9B', '#1B4150', '#092935'],
+    colors: ['#EBF5F8', '#ABD3E2', '#6BB1CC', '#357E9B', '#1B4150', '#123543', '#092935'],
   },
   {
     id: 'pink_grey',

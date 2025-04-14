@@ -55,6 +55,23 @@ export type DeckGLContainerProps = {
   height: number;
   layers: (Layer | (() => Layer))[];
   onViewportChange?: (viewport: Viewport) => void;
+  rangeMap?: Record<string, string>; // Value range to color mapping
+};
+
+// Helper function to determine color based on value and range map
+export const getColorFromRangeMap = (value: number, rangeMap: Record<string, string> | undefined): string | null => {
+  if (!rangeMap || Object.keys(rangeMap).length === 0 || value === null || value === undefined) {
+    return null;
+  }
+
+  for (const range of Object.keys(rangeMap)) {
+    const [min, max] = range.split('-').map(Number);
+    if (value >= min && value <= max) {
+      return rangeMap[range];
+    }
+  }
+
+  return null;
 };
 
 export const DeckGLContainer = memo(
@@ -138,43 +155,49 @@ export const DeckGLContainer = memo(
         return [
           new BitmapLayer(otherProps, {
             image: data,
-            bounds: [west, south, east, north]
+            bounds: [west, south, east, north],
+            desaturate: 0.5
           })
         ];
       }
     }), []);
 
-    // Handle layers, memoize to avoid recreating layers on each render
-    // const layers = useMemo(() => {
-    //   if (props.layers.some(l => typeof l === 'function')) {
-    //     return [
-    //       osmTileLayer, // Insert the OSM layer as the base layer
-    //       ...props.layers.map(l => (typeof l === 'function' ? l() : l)),
-    //     ] as Layer[];
-    //   }
-    //   return [osmTileLayer, ...props.layers] as Layer[];
-    // }, [osmTileLayer, props.layers]);
-
+    // Enhance layers to use rangeMap if provided
     const layers = useCallback(() => {
-      if (props.layers.some(l => typeof l === 'function')) {
-        return [
-          osmTileLayer, // Insert the OSM layer as the base layer
-          ...props.layers.map(l => (typeof l === 'function' ? l() : l)),
-        ] as Layer[];
-      }
-      return [osmTileLayer, ...props.layers] as Layer[];
-    }, [osmTileLayer, props.layers]);
+      const enhancedLayers = props.layers.map(layer => {
+        if (typeof layer === 'function') {
+          // For function-based layers, we need to wrap the function
+          return () => {
+            const originalLayer = layer();
+            if (props.rangeMap && Object.keys(props.rangeMap).length > 0) {
+              // Add rangeMap to layer props without trying to construct a new layer
+              return {
+                ...originalLayer,
+                props: {
+                  ...originalLayer.props,
+                  rangeMap: props.rangeMap,
+                  getColorFromRangeMap,
+                },
+              };
+            }
+            return originalLayer;
+          };
+        } else if (props.rangeMap && Object.keys(props.rangeMap).length > 0) {
+          // For direct layer instances, add properties without constructing
+          return {
+            ...layer,
+            props: {
+              ...layer.props,
+              rangeMap: props.rangeMap,
+              getColorFromRangeMap,
+            },
+          };
+        }
+        return layer;
+      });
 
-    // const layers = useCallback(() => {
-    //   // Support for layer factory
-    //   if (props.layers.some(l => typeof l === 'function')) {
-    //     return props.layers.map(l =>
-    //       typeof l === 'function' ? l() : l,
-    //     ) as Layer[];
-    //   }
-
-    //   return props.layers as Layer[];
-    // }, [props.layers]);
+      return [osmTileLayer, ...enhancedLayers] as Layer[];
+    }, [osmTileLayer, props.layers, props.rangeMap]);
 
     const { children = null, height, width } = props;
 

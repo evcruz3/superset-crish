@@ -510,6 +510,7 @@ interface ColorLegendProps {
   metricName?: string;
   layerName: string;
   isCategorical?: boolean;
+  rangeMap?: Record<string, string>; // Add support for range map
 }
 
 const ColorLegend: React.FC<ColorLegendProps> = ({ 
@@ -521,7 +522,8 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
   values,
   metricName = 'Values',
   layerName,
-  isCategorical = false
+  isCategorical = false,
+  rangeMap = {} // Default to empty object
 }) => {
   // Get unique values and sort them
   const uniqueValues = [...new Set(values)].sort((a, b) => {
@@ -530,6 +532,35 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
     }
     return Number(b) - Number(a);
   });
+  
+  // If we're using range map for non-categorical data, render a different type of legend
+  if (!isCategorical && Object.keys(rangeMap).length > 0) {
+    return (
+      <LegendCard>
+        <div className="layer-name">{layerName}</div>
+        <div className="legend-title">{metricName}</div>
+        <div className="legend-items">
+          {Object.entries(rangeMap).map(([range, color], i) => {
+            const [min, max] = range.split('-').map(Number);
+            const formattedMin = format ? format(min) : min;
+            const formattedMax = format ? format(max) : max;
+            
+            return (
+              <div key={i} className="legend-item">
+                <div 
+                  className="color-box" 
+                  style={{ backgroundColor: color || '#fff' }}
+                />
+                <span className="label">
+                  {`${metricPrefix}${formattedMin}${metricUnit} - ${metricPrefix}${formattedMax}${metricUnit}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </LegendCard>
+    );
+  }
   
   // If we have more than 5 values and not categorical, select a subset
   let displayValues = uniqueValues;
@@ -601,6 +632,7 @@ interface ExtendedLayer extends Layer {
   extent?: [number, number];
   metricValues?: number[];
   categoricalValues?: string[];
+  valueMap?: Record<string, string | number>;
 }
 
 // Add type definitions for the form data
@@ -1026,7 +1058,6 @@ const DeckMulti = (props: DeckMultiProps) => {
   }, []);
 
   const panToFeature = useCallback((feature: FeedGeoJSONFeature) => {
-    console.log('[DEBUG] panToFeature:', feature);
     
     try {
       // Cast the feature to the type expected by @turf/bbox
@@ -1481,7 +1512,6 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   // Separate text layers from other layers and reorder them
   const orderedLayers = useMemo(() => {
-    console.log('[DEBUG] Recalculating orderedLayers. Pitch:', viewport?.pitch); // Log viewport pitch
 
     const nonTextLayers: Layer[] = [];
     const iconLayers: Layer[] = [];
@@ -1509,20 +1539,36 @@ const DeckMulti = (props: DeckMultiProps) => {
           layerGroup.forEach(layer => {
             // Check if layer is a valid deck.gl Layer instance with a clone method
             if (layer && typeof layer.clone === 'function') {
+
+                // if not visible, skip
+                if (!visibleLayers[id]) {
+                  return;
+                }
+
                 // Calculate dynamic elevation scale based on pitch AND layer order index
                 // Normalize pitch (0-60 degrees) to a 0-1 range, then apply factor and index
-                const normalizedPitch = (pitch ?? 0);
+                const normalizedPitch = (pitch ?? 0) * 2.5;
                 const layerIndex = layerOrder.indexOf(id); // Get the index of the current layer
+                // count visible layers
+                // const countVisibleLayers = Object.values(visibleLayers).filter(Boolean).length;
+                // get index of current layer when visible
+                // const visibleLayerIndex = layerOrder.findIndex(layer => visibleLayers[layer]);
                 const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (layerOrder.length - layerIndex); // Base elevation increases with layer order
 
                 // Use modelMatrix for elevation translation
                 const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
 
-                console.log('[DEBUG] Layer ID:', id, 'Index:', layerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
+                // console.log('[DEBUG] Layer ID:', id, 'Index:', layerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
 
                 // Clone the layer and apply the modelMatrix
                 // Pass other necessary props if clone clears them (check deck.gl docs if needed)
-                const scaledLayer = layer.clone({ modelMatrix });
+                // Get maximum value from metricValues
+                // const maxValue = layer.metricValues?.reduce((max: number, value: number) => Math.max(max, value), 1) ?? 1;
+                const scaledLayer = layer.clone({ 
+                  modelMatrix, 
+                  // extruded: pitch > 1 ? true : false, 
+                  // getElevation: (d: any) => d.properties.metric && pitch > 1 ? d.properties.metric / maxValue * 10000 : pitch > 1 ? 2000 : 0
+                });
 
                 if (layer instanceof TextLayer) {
                     // Handle TextLayer combining logic (no scaling needed here)
@@ -1615,7 +1661,6 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
 
     const finalLayers = [...nonTextLayers.reverse(), ...iconLayers.reverse(), ...textLayers];
-    console.log('[DEBUG] Final orderedLayers count:', finalLayers.length); // Log final layers
 
     // Return layers in correct order: base layers, icon layers, and text layer on top
     return finalLayers;
@@ -1711,28 +1756,28 @@ const DeckMulti = (props: DeckMultiProps) => {
   }
 
   // Add selection state management functions
-  const handleFeedLayerSelection = useCallback((sliceId: number, region: SelectedRegion | null) => {
-    console.log('Feed Layer Selection Handler:', {
-      sliceId,
-      region: region ? {
-        name: region.name,
-        id: region.id,
-        entriesCount: region.entries.length
-      } : null,
-      currentState: {
-        hasSelection: Boolean(feedLayerState.selectedRegions[sliceId]),
-        isLayerVisible: visibleLayers[sliceId]
-      }
-    });
+  // const handleFeedLayerSelection = useCallback((sliceId: number, region: SelectedRegion | null) => {
+  //   console.log('Feed Layer Selection Handler:', {
+  //     sliceId,
+  //     region: region ? {
+  //       name: region.name,
+  //       id: region.id,
+  //       entriesCount: region.entries.length
+  //     } : null,
+  //     currentState: {
+  //       hasSelection: Boolean(feedLayerState.selectedRegions[sliceId]),
+  //       isLayerVisible: visibleLayers[sliceId]
+  //     }
+  //   });
 
-    setFeedLayerState(prev => ({
-      ...prev,
-      selectedRegions: {
-        ...prev.selectedRegions,
-        [sliceId]: region,
-      },
-    }));
-  }, [feedLayerState.selectedRegions, visibleLayers]);
+  //   setFeedLayerState(prev => ({
+  //     ...prev,
+  //     selectedRegions: {
+  //       ...prev.selectedRegions,
+  //       [sliceId]: region,
+  //     },
+  //   }));
+  // }, [feedLayerState.selectedRegions, visibleLayers]);
 
   const clearFeedLayerSelection = useCallback((sliceId: number) => {
     console.log('Clearing Feed Layer Selection:', {
@@ -1816,7 +1861,6 @@ const DeckMulti = (props: DeckMultiProps) => {
       layers={orderedLayers}
       mapStyle={formData.mapbox_style}
       setControlValue={(control, value) => {
-        console.log('[DEBUG] setControlValue', control, value)
         setControlValue(control, value)
         if (control === 'viewport') {
           // retain the zoom level
@@ -2041,14 +2085,14 @@ const DeckMulti = (props: DeckMultiProps) => {
         flexDirection: 'column',
         maxHeight: '80vh' // This ensures the card itself doesn't exceed viewport
       }}>
-        <CardHeader>
-          {/* <CardTitle>Layers</CardTitle> */}
-          {/* <GuideText>
+        {/* <CardHeader>
+          <CardTitle>Layers</CardTitle>
+          <GuideText>
             <span>• Drag layers to reorder</span>
             <span>• Toggle visibility using the eye icon</span>
             <span>• Adjust opacity using the slider</span>
-          </GuideText> */}
-        </CardHeader>
+          </GuideText>
+        </CardHeader> */}
         <LayersCardContent>
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="droppable">
@@ -2181,9 +2225,10 @@ const DeckMulti = (props: DeckMultiProps) => {
                 metricPrefix={metricPrefix}
                 metricUnit={metricUnit}
                 values={isCategorical ? categoricalValues : metricValues}
-                metricName={metricName}
+                metricName={""}
                 layerName={subslice.slice_name}
                 isCategorical={isCategorical}
+                rangeMap={subslice.form_data.range_map}
               />
             );
           })}
