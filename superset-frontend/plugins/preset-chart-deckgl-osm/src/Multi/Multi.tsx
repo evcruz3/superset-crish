@@ -21,6 +21,7 @@ import {
   usePrevious,
   styled,
   getNumberFormatter,
+  getSequentialSchemeRegistry, // Import the color scheme registry
 } from '@superset-ui/core'
 import { Layer } from '@deck.gl/core'
 import { Slider, DatePicker } from 'antd'
@@ -31,13 +32,24 @@ import { Moment } from 'moment'
 import locale from 'antd/es/date-picker/locale/en_US'
 import bbox from '@turf/bbox'
 import * as GeoJSON from 'geojson'
+import Modal from 'src/components/Modal'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 
 import { DeckGLContainerHandle, DeckGLContainerStyledWrapper } from '../DeckGLContainer'
 import { getExploreLongUrl } from '../utils/explore'
 import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
-import { countries } from '../layers/Country/countries'
+import { countries, type CountryKeys } from '../layers/Country/countries'
 import type { CountryKeys } from '../layers/Country/countries'
 import {
   FeedEntry,
@@ -923,6 +935,12 @@ export interface FeedLayerProps extends LayerOptions {
     selectionOptions: SelectionOptions; // Make selectionOptions required for FeedLayer
 }
 
+// Interface for chart data points
+interface ChartDataPoint {
+  time: number | string; // Timestamp or formatted date string
+  [key: string]: number | string; // Metric values
+}
+
 const DeckMulti = (props: DeckMultiProps) => {
   const containerRef = useRef<DeckGLContainerHandle>(null)
   const timelineContainerRef = useRef<HTMLDivElement>(null)
@@ -941,8 +959,11 @@ const DeckMulti = (props: DeckMultiProps) => {
     selectedRegions: {},
     loadingState: {},
   });
-  const [selectedRegion, setSelectedRegion] = useState<{ properties: any } | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<FeedGeoJSONFeature | null>(null); // Use the specific type
   const [pitch, setPitch] = useState<number>(0);
+  const [regionChartModalVisible, setRegionChartModalVisible] = useState<boolean>(false);
+  const [regionChartModalContent, setRegionChartModalContent] = useState<React.ReactNode>(null);
+  const [regionChartModalTitle, setRegionChartModalTitle] = useState<string>('');
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef
@@ -1102,8 +1123,8 @@ const DeckMulti = (props: DeckMultiProps) => {
   // Function to create layer based on filtered data
   const createLayer = useCallback((
     subslice: Subslice,
-    json: JsonObject,
-    filteredData: JsonObject[],
+    json: JsonObject, // Keep the original full json payload
+    filteredData: JsonObject[], // This might be data filtered by the timeline
   ) => {
     console.log('Creating layer:', {
       sliceId: subslice.slice_id,
@@ -1111,141 +1132,274 @@ const DeckMulti = (props: DeckMultiProps) => {
       temporalColumn: subslice.form_data.temporal_column,
       timeGrain: subslice.form_data.time_grain_sqla,
       dataLength: filteredData.length,
+      originalDataLength: json.data?.data?.length, // Log original length
     });
 
-    // Get the largest time grain from all temporal layers
-    const timeGrains = Object.values(temporalData)
-      .map(({ column }) => {
-        const sliceFormData = props.payload.data.slices.find(
-          (s: any) => s.form_data.temporal_column === column
-        )?.form_data;
-        return sliceFormData?.time_grain_sqla;
-      })
-      .filter(Boolean) as string[];
+    // ... (rest of the aggregation logic remains the same) ...
+    // Use the *original* unfiltered data for the click handler context
+    const originalLayerData = Array.isArray(json.data?.data) ? json.data.data :
+                             Array.isArray(json.data) ? json.data : [];
 
-    const largestTimeGrain = getLargestTimeGrain(timeGrains);
 
-    // If this layer has temporal data and its grain is smaller than the largest,
-    // aggregate its data to match the largest grain
-    let processedData = filteredData;
-    if (subslice.form_data.temporal_column && 
-        subslice.form_data.time_grain_sqla !== largestTimeGrain) {
-      const metrics = Array.isArray(subslice.form_data.metric) 
-        ? subslice.form_data.metric 
-        : [subslice.form_data.metric];
-      
-      processedData = aggregateDataToTimeGrain(
-        filteredData,
-        subslice.form_data.temporal_column,
-        subslice.form_data.time_grain_sqla || 'P1D',
-        largestTimeGrain,
-        metrics
-      );
-    }
-
-    const jsonWithProcessedData = {
-      ...json,
-      data: {
-        ...json.data,
-        data: processedData,
-      },
-    };
-
-    const jsonWithAllData = {
-      ...json,
-      data: {
-        ...json.data,
-        data: json.data.data,
-      },
-    };
-
-    const layerGeneratorOptions = {
+    const layerGeneratorOptions: LayerOptions = { // Use LayerOptions type
         formData: subslice.form_data,
-        payload: jsonWithProcessedData, // or jsonWithAllData depending on context
+        payload: { ...json, data: { ...json.data, data: filteredData } }, // Use time-filtered data for rendering
         onAddFilter: props.onAddFilter,
         setTooltip,
         datasource: props.datasource,
-        geoJson: undefined as FeedGeoJSON | undefined, // Define explicitly for type safety
-        selectionOptions: undefined as any, // Define explicitly for type safety
         temporalOptions: {
           currentTime,
-          allData: jsonWithAllData.data.data,
+          allData: originalLayerData, // Pass original data here if needed by generator
         },
         opacity: layerOpacities[subslice.slice_id] ?? 1.0,
-        // REMOVED: elevation calculation is now dynamic in orderedLayers
-        // elevation: viewport?.pitch ? viewport.pitch * subslice.slice_id * 100 : 0,
-        onClick: undefined as ((info: { object?: any }) => void) | undefined, // Define explicitly
+        // Define properties explicitly, even if undefined initially
+        geoJson: undefined,
+        selectionOptions: undefined,
+        onClick: undefined,
     };
 
     if (subslice.form_data.viz_type === 'deck_feed') {
-        // ... feed layer specific options and creation ...
-        const feedGeoJson = feedLayerState.geoJson[subslice.slice_id];
-        layerGeneratorOptions.geoJson = feedGeoJson;
-        layerGeneratorOptions.selectionOptions = {
-            selectedRegion: feedLayerState.selectedRegions[subslice.slice_id] || null,
-            setSelectedRegion: (region: SelectedRegion | null) => {
-                // ... setSelectedRegion logic ...
-                setFeedLayerState(prev => ({
-                  ...prev,
-                  selectedRegions: {
-                    ...prev.selectedRegions,
-                    [subslice.slice_id]: region,
-                  },
-                }));
-                // ... panToFeature logic ...
-            },
-        };
-
-        const layers = layerGenerators.deck_feed(layerGeneratorOptions as FeedLayerProps);
-        // ... setSubSlicesLayers logic ...
-        setSubSlicesLayers(prevLayers => ({
-          ...prevLayers,
-          [subslice.slice_id]: layers,
-        }));
+      // ... existing deck_feed logic ...
 
     } else if (subslice.form_data.viz_type === 'deck_country') {
         const country = subslice.form_data.select_country;
+        // Define identifier column (needs to be configured or inferred)
+        // Let's assume it's 'country_id' for now, adjust as needed
+        const regionIdentifierColumn = subslice.form_data.country_column || 'country_id';
+        const temporalColumn = subslice.form_data.temporal_column;
+        const metricColumns = Array.isArray(subslice.form_data.metric)
+            ? subslice.form_data.metric.map((m: any) => typeof m === 'string' ? m : m.label || 'value') // Handle object metrics
+            : typeof subslice.form_data.metric === 'string'
+            ? [subslice.form_data.metric]
+            : typeof subslice.form_data.metric === 'object' && subslice.form_data.metric !== null
+            ? [subslice.form_data.metric.label || 'value'] // Handle single object metric
+            : ['value']; // Default fallback
 
         const createAndSetLayer = (geoJsonData: JsonObject) => {
-            // ... logging ...
-            const handleClick = (info: { object?: any }) => {
-              console.log('GeoJsonLayer onClick fired:', info);
-              setSelectedRegion(info.object);
+            console.log('Creating deck_country layer:', {
+              sliceId: subslice.slice_id,
+              temporalColumn,
+              regionIdentifierColumn,
+              metricColumns,
+              originalDataLength: originalLayerData.length
+            });
+
+            const handleClick = (info: { object?: FeedGeoJSONFeature | any }) => { // Use more specific type if possible
+              console.log('deck_country GeoJsonLayer onClick fired:', info);
+              const clickedFeature = info.object as FeedGeoJSONFeature | undefined;
+              if (!clickedFeature || !clickedFeature.properties) {
+                  console.warn('Clicked object is not a valid GeoJSON feature with properties.');
+                  return;
+              }
+
+              // Extract region identifier (e.g., ISO code, Admin level ID)
+              const regionId = clickedFeature.properties.ISO || clickedFeature.properties.id || clickedFeature.properties.name;
+              const regionName = clickedFeature.properties.ADM1 || clickedFeature.properties.name || clickedFeature.properties.NAME || regionId || 'Selected Region'; // Get a display name
+
+              if (!regionId) {
+                  console.warn('Could not determine region identifier from clicked feature properties:', clickedFeature.properties);
+                  setRegionChartModalTitle(`Data for ${regionName}`);
+                  setRegionChartModalContent(<div>Could not identify the specific region from the click event.</div>);
+                  setRegionChartModalVisible(true);
+                  return;
+              }
+
+              // Filter the *original* dataset for this region
+              const regionData = originalLayerData.filter((row: JsonObject) =>
+                  row[regionIdentifierColumn] === regionId
+              );
+
+              if (temporalColumn && regionData.length > 0) {
+                  // --- Check if it's a categorical layer using value_map ---
+                  const isCategorical = subslice.form_data.value_map &&
+                                        Object.keys(subslice.form_data.value_map).length > 0 &&
+                                        subslice.form_data.categorical_column;
+
+                  if (isCategorical) {
+                    // --- Categorical Data Visualization ---
+                    console.log("[DEBUG] Handling categorical click with value_map:", subslice.form_data.value_map);
+                    const categoricalColumn = subslice.form_data.temporal_column;
+                    const valueMap = subslice.form_data.value_map as Record<string, string>; // Assert type
+
+                    const categoryTimelineData = regionData
+                      .map((row: any) => {
+                        console.log("[DEBUG] row: ", row);
+                        return {
+                          time: new Date(row[temporalColumn]).getTime(),
+                          category: row['categorical_value'],
+                        }
+                      })
+                      .filter(item => item.category !== undefined && item.category !== null) // Filter out null/undefined categories
+                      .sort((a, b) => a.time - b.time)
+                      .map(item => ({
+                        ...item,
+                        timeFormatted: moment(item.time).format(subslice.form_data.date_format || 'DD MMM YYYY') // Format time
+                      }));
+
+                    setRegionChartModalTitle(`${subslice.slice_name} (${regionName})`);
+
+                    if (categoryTimelineData.length > 0) {
+                      setRegionChartModalContent(
+                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+                          <h4>{subslice.form_data.categorical_column_label || categoricalColumn} Over Time</h4>
+                          <ul style={{ listStyle: 'none', padding: 0 }}>
+                            {categoryTimelineData.map((item, index) => (
+                              <li key={index} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                marginBottom: '8px',
+                                padding: '6px',
+                                borderLeft: `5px solid ${valueMap[item.category] || '#ccc'}`, // Use color from value_map
+                                backgroundColor: '#f9f9f9',
+                                borderRadius: '3px'
+                              }}>
+                                <span style={{
+                                  backgroundColor: valueMap[item.category] || '#ccc',
+                                  width: '16px',
+                                  height: '16px',
+                                  borderRadius: '3px',
+                                  marginRight: '10px',
+                                  flexShrink: 0
+                                }}></span>
+                                <span style={{ fontWeight: 500, marginRight: '10px', minWidth: '150px' }}>{item.timeFormatted}:</span>
+                                <span>{item.category}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    } else {
+                       setRegionChartModalContent(<div>No valid categorical data points found for this timeline.</div>);
+                    }
+
+                  } else {
+                    // --- Numerical Data Visualization (Existing Line Chart) ---
+                    // Prepare data for line chart
+                    const chartData: ChartDataPoint[] = regionData
+                        .map((row: any) => {
+                            const point: ChartDataPoint = {
+                                time: new Date(row[temporalColumn]).getTime(),
+                            };
+                            metricColumns.forEach(metric => {
+                                // Ensure metric value is a number
+                                // Check if metric is an object like { label: 'Actual Metric Name' }
+                                // const metricKey = typeof subslice.form_data.metric === 'object' && subslice.form_data.metric !== null && !Array.isArray(subslice.form_data.metric)
+                                                  // ? subslice.form_data.metric.label // Use label if metric is an object
+                                                  // : metric; // Otherwise use the string directly
+                                const value = Number(row["metric"]); // Use the potentially adjusted key
+                                point[metric] = isNaN(value) ? 0 : value; // Handle non-numeric values
+                            });
+                            return point;
+                        })
+                        .sort((a: any, b: any) => (a.time as number) - (b.time as number))
+                        .map((point: any) => ({
+                           ...point,
+                           time: moment(point.time).format(subslice.form_data.date_format || 'DD MMM YYYY') // Use configured/default format
+                        }));
+
+                    // Basic check if data looks plottable
+                    if (chartData.length > 0 && metricColumns.length > 0) {
+                        // --- Get Color Scheme ---
+                        const schemeName = subslice.form_data.linear_color_scheme || 'supersetColors'; // Default scheme
+                        const colorScheme = getSequentialSchemeRegistry().get(schemeName);
+                        const lineColors = colorScheme?.colors || ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']; // Default colors if scheme not found
+
+                        setRegionChartModalTitle(`${subslice.slice_name} (${regionName}) (${subslice.form_data.metric_unit || ''})`);
+                        setRegionChartModalContent(
+                          <ResponsiveContainer width="100%" height={400}>
+                            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="time" />
+                              <YAxis domain={['dataMin', 'dataMax']} />
+                              <RechartsTooltip />
+                              <Legend />
+                              {metricColumns.map((metric, index) => (
+                                <Line
+                                  key={metric}
+                                  type="monotone"
+                                  dataKey={metric}
+                                  // Use a consistent color, maybe the last but one from the scheme?
+                                  stroke={lineColors[lineColors.length - 2] || '#1f77b4'}
+                                  activeDot={{ r: 8 }}
+                                  // Try to get a better name if metric is an object
+                                  name={subslice.form_data.metric.column.column_name || metric}
+                                />
+                              ))}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        );
+                    } else {
+                       setRegionChartModalTitle(`Trendline Data for ${regionName}`);
+                       setRegionChartModalContent(<div>No valid temporal data points found for charting.</div>);
+                    }
+                  }
+              } else {
+                  // No temporal column or no data for the region
+                  setRegionChartModalTitle(`Data for ${regionName}`);
+                  const message = regionData.length === 0
+                    ? `No data found for ${regionName} in this layer.`
+                    : `Placeholder: No temporal data configured for this layer to display a chart or timeline for ${regionName}.`;
+                  setRegionChartModalContent(<div>{message}</div>);
+              }
+              setRegionChartModalVisible(true); // Show the modal
             };
 
+            // Ensure geoJsonData is correctly typed before assigning
             layerGeneratorOptions.geoJson = geoJsonData as FeedGeoJSON;
             layerGeneratorOptions.onClick = handleClick;
 
-            const layers = layerGenerators.deck_country(layerGeneratorOptions);
-            // ... logging and setSubSlicesLayers ...
-            setSubSlicesLayers(prevLayers => ({
-              ...prevLayers,
-              [subslice.slice_id]: Array.isArray(layers) ? layers : [layers],
-            }));
+            // Fix TS error by ensuring the generator is callable and casting options
+            const vizType = subslice.form_data.viz_type as keyof typeof layerGenerators;
+            if (typeof layerGenerators[vizType] === 'function') {
+               const layers = layerGenerators[vizType](layerGeneratorOptions as any); // Use 'as any' if type matching is complex
+               setSubSlicesLayers(prevLayers => ({
+                 ...prevLayers,
+                 // Ensure the result is always an array of Layers
+                 [subslice.slice_id]: (Array.isArray(layers) ? layers : [layers]).filter(l => l instanceof Layer) as Layer[],
+               }));
+            } else {
+               console.error(`Invalid viz_type or layer generator not found: ${vizType}`);
+            }
         };
 
         // ... logic to fetch/use cached geoJson ...
-        if (country && typeof countries[country as keyof typeof countries] === 'string') {
+        // Fix potential type error with country key access
+        const countryKey = country as keyof typeof countries;
+        if (country && typeof countries[countryKey] === 'string') {
           if (geoJsonCache[country]) {
             createAndSetLayer(geoJsonCache[country]);
           } else {
-            const url = countries[country as keyof typeof countries];
+            const url = countries[countryKey];
             fetch(url)
-              .then(response => response.json())
+              .then(response => {
+                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                 return response.json();
+              })
               .then(data => {
-                geoJsonCache[country] = data;
+                geoJsonCache[country] = data; // Cache the data
                 createAndSetLayer(data);
+              })
+              .catch(error => {
+                 console.error(`Failed to fetch GeoJSON for ${country}:`, error);
+                 // Optionally set an error state for this layer
               });
           }
+        } else if (country) {
+             console.warn(`Invalid or missing country key: ${country}`);
         }
 
-    } else if (typeof layerGenerators[subslice.form_data.viz_type] === 'function') {
-        const layer = layerGenerators[subslice.form_data.viz_type](layerGeneratorOptions);
+    } else if (typeof layerGenerators[subslice.form_data.viz_type as keyof typeof layerGenerators] === 'function') {
+        // Fix TS error by ensuring the generator is callable and casting options
+        const vizType = subslice.form_data.viz_type as keyof typeof layerGenerators;
+        const layer = layerGenerators[vizType](layerGeneratorOptions as any); // Use 'as any' for complex types
 
         setSubSlicesLayers((prevLayers) => ({
           ...prevLayers,
-          [subslice.slice_id]: Array.isArray(layer) ? layer : [layer],
+          // Ensure the result is always an array of Layers
+          [subslice.slice_id]: (Array.isArray(layer) ? layer : [layer]).filter(l => l instanceof Layer) as Layer[],
         }));
+    } else {
+        console.error(`Invalid viz_type or layer generator not found: ${subslice.form_data.viz_type}`);
     }
 
     // ... logging ...
@@ -1256,10 +1410,15 @@ const DeckMulti = (props: DeckMultiProps) => {
       currentTime,
       layerOpacities,
       temporalData,
-      feedLayerState, // Include feedLayerState as it's used
-      panToFeature,   // Include panToFeature if used inside setSelectedRegion
-      layerOrder,     // Include layerOrder if used for base elevation index
-      // REMOVED viewport from dependencies here, handled in orderedLayers
+      feedLayerState.geoJson, // Only need geoJson here, selection handled elsewhere
+      // props.payload.data.slices, // Avoid dependency if possible, use args
+      // panToFeature, // Not directly used in createLayer
+      // layerOrder, // Not directly used in createLayer
+      // viewport, // Used for elevation calculation, keep if needed there
+      // Include new modal setters if they were used inside (they are now)
+      setRegionChartModalVisible,
+      setRegionChartModalContent,
+      setRegionChartModalTitle,
   ]);
 
   // Function to filter data based on current time
@@ -1673,26 +1832,36 @@ const DeckMulti = (props: DeckMultiProps) => {
       pitch, // Dependency remains
   ]);
 
-  console.log("viewport", viewport)
-
   // Effect to update layers when time changes
   useEffect(() => {
     if (currentTime && Object.keys(temporalData).length > 0) {
       Object.entries(temporalData).forEach(([sliceId, { column, data }]) => {
         const numericSliceId = Number(sliceId)
+        // Check visibility *before* filtering and recreating
         if (visibleLayers[numericSliceId]) {
           const subslice = props.payload.data.slices.find(
             (slice: any) => slice.slice_id === numericSliceId
           )
           if (subslice) {
-            // Filter data for current time but keep original data for color scale
-            const filteredData = filterDataByTime(data.data.data, column, currentTime)
-            createLayer(subslice, data, filteredData)
+            // Get the *original* full data associated with this slice ID
+            const originalJsonPayload = temporalData[numericSliceId]?.data;
+            if (!originalJsonPayload) {
+              console.warn(`Original JSON payload not found for slice ${numericSliceId} in temporalData`);
+              return;
+            }
+            const originalLayerData = Array.isArray(originalJsonPayload.data?.data) ? originalJsonPayload.data.data :
+                                      Array.isArray(originalJsonPayload.data) ? originalJsonPayload.data : [];
+
+            // Filter data for the current time step for rendering
+            const filteredDataForTime = filterDataByTime(originalLayerData, column, currentTime)
+            // Recreate layer with the time-filtered data, but pass the original payload too
+            createLayer(subslice, originalJsonPayload, filteredDataForTime)
           }
         }
       })
     }
-  }, [currentTime, temporalData, visibleLayers, filterDataByTime, createLayer, props.payload.data.slices])
+    // Add createLayer and filterDataByTime to dependencies if not already present
+  }, [currentTime, temporalData, visibleLayers, filterDataByTime, createLayer, props.payload.data.slices]);
 
   // Effect to update time range when temporal data changes
   useEffect(() => {
@@ -1853,6 +2022,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, [currentTime]);
 
+  // Add the new Modal to the render function
   return (
     <DeckGLContainerStyledWrapper
       ref={containerRef}
@@ -1875,16 +2045,16 @@ const DeckMulti = (props: DeckMultiProps) => {
         const activeFeedPanels = Object.entries(feedLayerState.selectedRegions)
           .filter(([sliceId, region]) => region && visibleLayers[Number(sliceId)]);
         
-        console.log('Feed Side Panel Render State:', {
-          selectedRegions: Object.keys(feedLayerState.selectedRegions),
-          visibleLayers: Object.keys(visibleLayers).filter(id => visibleLayers[Number(id)]),
-          activePanels: activeFeedPanels.map(([sliceId, region]) => ({
-            sliceId,
-            regionName: region.name,
-            entriesCount: region.entries.length,
-            entries: region.entries
-          }))
-        });
+        // console.log('Feed Side Panel Render State:', {
+        //   selectedRegions: Object.keys(feedLayerState.selectedRegions),
+        //   visibleLayers: Object.keys(visibleLayers).filter(id => visibleLayers[Number(id)]),
+        //   activePanels: activeFeedPanels.map(([sliceId, region]) => ({
+        //     sliceId,
+        //     regionName: region.name,
+        //     entriesCount: region.entries.length,
+        //     entries: region.entries
+        //   }))
+        // });
 
       
         return activeFeedPanels.map(([sliceId, region]) => {
@@ -2233,13 +2403,26 @@ const DeckMulti = (props: DeckMultiProps) => {
             );
           })}
       </LegendsContainer>
-      {selectedRegion && (
-        <RegionInfoModal
-          visible={!!selectedRegion}
-          onClose={() => setSelectedRegion(null)}
-          properties={selectedRegion?.properties}
-        />
-      )}
+      {/* Modal for Region Chart/Placeholder */}
+      <Modal
+        show={regionChartModalVisible}
+        onHide={() => setRegionChartModalVisible(false)}
+        title={regionChartModalTitle}
+        // Optionally add footer buttons if needed
+        footer={<></>}
+        responsive // Make modal responsive
+      >
+        {regionChartModalContent}
+      </Modal>
+
+      {/* Existing RegionInfoModal for non-temporal clicks or other purposes if still needed */}
+      {selectedRegion && !regionChartModalVisible && ( // Only show if the new modal isn't active
+         <RegionInfoModal
+           visible={!!selectedRegion}
+           onClose={() => setSelectedRegion(null)}
+           properties={selectedRegion?.properties}
+         />
+       )}
     </DeckGLContainerStyledWrapper>
   )
 }

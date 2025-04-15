@@ -259,7 +259,8 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
       ).length;
       
       const light = alerts.filter(a => 
-        a.alert_level === 'Light'
+        a.alert_level === 'Light' || 
+        a.alert_level === 'Normal'
       ).length;
       
       console.log(`[Weather Forecast Alerts] Counts for ${parameter}: 
@@ -271,10 +272,10 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         title: mapping.title,
         color: mapping.color,
         details: [
-          { label: 'Extreme', count: extremeDanger },
+          { label: 'Extreme Danger', count: extremeDanger },
           { label: 'Danger', count: danger },
-          { label: 'Caution', count: extremeCaution },
-          { label: 'Light', count: light }
+          { label: 'Extreme Caution', count: extremeCaution },
+          { label: 'Normal', count: light }
         ].filter(d => d.count > 0), // Only include non-zero counts
         alertData: alerts
       });
@@ -304,28 +305,146 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     // Generate detailed content for the modal
     const content = (
       <div>
-        {alertGroup.alertData.map(alert => {
-          // Try to format the date nicely - handle both string and date formats
-          let formattedDate = alert.forecast_date;
-          try {
-            // If it's a valid date string, format it nicely
-            formattedDate = new Date(alert.forecast_date).toLocaleDateString();
-          } catch (e) {
-            // If conversion fails, just use the original string
-            console.warn('Could not format date:', alert.forecast_date);
-          }
+        {(() => {
+          // Group alerts by date
+          const alertsByDate: Record<string, AlertType[]> = {};
           
-          return (
-            <div key={alert.id} style={{ marginBottom: '15px', padding: '10px', borderBottom: '1px solid #eee' }}>
-              <h4 style={{ margin: '0 0 8px 0' }}>{alert.alert_title}</h4>
-              <p><strong>Level:</strong> {alert.alert_level}</p>
-              <p><strong>Location:</strong> {alert.municipality_name}</p>
-              <p><strong>Date:</strong> {formattedDate}</p>
-              <p><strong>Value:</strong> {alert.parameter_value}</p>
-              <p>{alert.alert_message}</p>
-            </div>
-          );
-        })}
+          alertGroup.alertData.forEach(alert => {
+            // Format date for grouping (15 Apr 2025)
+            let dateKey = alert.forecast_date;
+            try {
+              const date = new Date(alert.forecast_date);
+              const day = date.getDate();
+              const month = date.toLocaleString('en-US', { month: 'short' });
+              const year = date.getFullYear();
+              dateKey = `${day} ${month} ${year}`;
+            } catch (e) {
+              console.warn('Could not format date for grouping:', alert.forecast_date);
+            }
+            
+            if (!alertsByDate[dateKey]) {
+              alertsByDate[dateKey] = [];
+            }
+            alertsByDate[dateKey].push(alert);
+          });
+          
+          // Sort dates (oldest first)
+          const sortedDates = Object.keys(alertsByDate).sort((a, b) => {
+            try {
+              return new Date(a).getTime() - new Date(b).getTime();
+            } catch (e) {
+              return 0;
+            }
+          });
+          
+          return sortedDates.map(dateKey => {
+            // Sort alerts by municipality name (alphabetically)
+            const sortedAlerts = [...alertsByDate[dateKey]].sort((a, b) => 
+              a.municipality_name.localeCompare(b.municipality_name)
+            );
+            
+            return (
+              <div key={dateKey} style={{ marginBottom: '30px' }}>
+                <div style={{ 
+                  fontSize: '18px', 
+                  fontWeight: 600, 
+                  marginBottom: '15px', 
+                  padding: '10px',
+                  borderBottom: '2px solid #f0f0f0'
+                }}>
+                  {dateKey}
+                </div>
+                
+                {sortedAlerts.map(alert => {
+                  // Format date in consistent format
+                  let formattedDate = dateKey;
+                  
+                  // Determine status color based on alert level
+                  let statusColor = '#888888';
+                  if (alert.alert_level.includes('Extreme Danger') || alert.alert_level === 'Severe') {
+                    statusColor = '#F44336'; // Red for extreme/severe
+                  } else if (alert.alert_level === 'Danger' || alert.alert_level === 'Heavy' || alert.alert_level === 'Strong') {
+                    statusColor = '#FF9800'; // Orange for danger
+                  } else if (alert.alert_level.includes('Extreme Caution') || alert.alert_level === 'Moderate' || alert.alert_level === 'Caution') {
+                    statusColor = '#FFEB3B'; // Yellow for caution
+                  } else if (alert.alert_level === 'Light' || alert.alert_level === 'Normal') {
+                    statusColor = '#4CAF50'; // Green for light/normal
+                  }
+                  
+                  return (
+                    <div 
+                      key={alert.id} 
+                      style={{ 
+                        marginBottom: '20px', 
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{ 
+                        padding: '12px 20px', 
+                        borderBottom: '1px solid #f0f0f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: '#fafafa'
+                      }}>
+                        <div style={{ fontSize: '18px', fontWeight: 500 }}>{alert.municipality_name}</div>
+                        <div style={{
+                          background: statusColor,
+                          color: 'white',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          fontWeight: 500
+                        }}>
+                          {alert.alert_level}
+                        </div>
+                      </div>
+                      
+                      <div style={{ padding: '15px 20px' }}>
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(2, 1fr)', 
+                          gap: '10px',
+                          marginBottom: '15px'
+                        }}>
+                          <div>
+                            <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Parameter</div>
+                            <div style={{ fontSize: '15px' }}>{alert.weather_parameter}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Value</div>
+                            <div style={{ fontSize: '15px' }}>
+                              {typeof alert.parameter_value === 'number' 
+                                ? (Number.isInteger(alert.parameter_value) 
+                                  ? alert.parameter_value 
+                                  : alert.parameter_value.toFixed(2)) 
+                                : alert.parameter_value}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ marginTop: '15px' }}>
+                          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Advisory Message</div>
+                          <div style={{ 
+                            fontSize: '15px', 
+                            padding: '10px', 
+                            background: '#f9f9f9', 
+                            borderRadius: '6px',
+                            lineHeight: '1.5'
+                          }}>
+                            {alert.alert_message}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          });
+        })()}
       </div>
     );
     
