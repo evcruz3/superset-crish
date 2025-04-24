@@ -101,6 +101,19 @@ const AlertDetail = styled.div`
   margin: 3px 0;
 `;
 
+const DataSourceAttribution = styled.div`
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  z-index: 900;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+`;
+
 interface AlertType {
   id: string;
   weather_parameter: string;
@@ -527,6 +540,11 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
       }}>
         <DashboardTabs idOrSlug="overview" />
       </div>
+
+      {/* Data source attribution */}
+      <DataSourceAttribution>
+        Weather data provided by ECMWF (European Centre for Medium-Range Weather Forecasts)
+      </DataSourceAttribution>
 
       <Modal
         title={modalTitle}

@@ -399,8 +399,8 @@ const DraggableItem = styled.div<DraggableItemProps>`
 
 const StyledLegendsContainer = styled.div<{ hasOverflow: boolean }>`
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: 45px;
+  left: 10px;
   display: flex;
   gap: 12px;
   max-width: 50%;
