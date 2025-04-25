@@ -1557,6 +1557,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       const initialVisibility: { [key: number]: boolean } = {}
       const initialOpacities: { [key: number]: number } = {}
       orderedSlices.forEach((subslice: { slice_id: number } & JsonObject, index: number) => {
+        console.log("[DEUG] index and slice id:", index, subslice.slice_id, subslice);
         // Make the first layer (index 0) visible, all others invisible
         initialVisibility[subslice.slice_id] = index === 0
         initialOpacities[subslice.slice_id] = 1.0
@@ -1566,6 +1567,8 @@ const DeckMulti = (props: DeckMultiProps) => {
           loadGeoJson(subslice.slice_id, subslice.form_data.select_country);
         }
       })
+
+      console.log("[DEBUG] initialVisibility: ", initialVisibility);
       
       setVisibleLayers(initialVisibility)
       setLayerOpacities(initialOpacities)
@@ -1591,6 +1594,8 @@ const DeckMulti = (props: DeckMultiProps) => {
       loadLayers(formData, payload)
     }
   }, [loadLayers, prevDeckSlices, props])
+
+  console.log("[DEBUG] visibleLayers: ", visibleLayers);
 
   const toggleLayerVisibility = (layerId: number) => {
     console.log('Toggling Layer Visibility:', {
@@ -1894,17 +1899,17 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, [temporalData, currentTime])
 
-  useEffect(() => {
-    const initialVisibility: { [key: number]: boolean } = {}
-    const initialOpacities: { [key: number]: number } = {}
-    props.payload.data.slices.forEach((slice: any, index: number) => {
-      // Make the first layer (index 0) visible, all others invisible
-      initialVisibility[slice.slice_id] = index === 0
-      initialOpacities[slice.slice_id] = 1.0
-    })
-    setVisibleLayers(initialVisibility)
-    setLayerOpacities(initialOpacities)
-  }, [props.payload.data.slices])
+  // useEffect(() => {
+  //   const initialVisibility: { [key: number]: boolean } = {}
+  //   const initialOpacities: { [key: number]: number } = {}
+  //   props.payload.data.slices.forEach((slice: any, index: number) => {
+  //     // Make the first layer (index 0) visible, all others invisible
+  //     initialVisibility[slice.slice_id] = index === 0
+  //     initialOpacities[slice.slice_id] = 1.0
+  //   })
+  //   setVisibleLayers(initialVisibility)
+  //   setLayerOpacities(initialOpacities)
+  // }, [props.payload.data.slices])
 
   const handleOpacityChange = (layerId: number, value: number) => {
     setLayerOpacities(prev => ({
@@ -2272,6 +2277,8 @@ const DeckMulti = (props: DeckMultiProps) => {
                   ref={provided.innerRef}
                 >
                   {layerOrder.map((id, index) => {
+                    console.log("[DEBUG] id: ", id);
+                    console.log("[DEBUG] index: ", index);
                     const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === id)
                     const layer = subSlicesLayers[id]?.[0] as ExtendedLayer
                     const isVisible = visibleLayers[id]
