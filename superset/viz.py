@@ -2431,16 +2431,25 @@ class DeckFeed(DeckCountry):
         # Add title and message columns
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
+        parameter_column = self.form_data.get("parameter_column")
+        status_column = self.form_data.get("status_column")
+        value_column = self.form_data.get("value_column")
         temporal_column = self.form_data.get("temporal_column")
 
         if not title_column:
             raise QueryObjectValidationError(_("Must specify a title column"))
         if not message_column:
             raise QueryObjectValidationError(_("Must specify a message column"))
+        if not parameter_column:
+            raise QueryObjectValidationError(_("Must specify a parameter column"))
+        if not status_column:
+            raise QueryObjectValidationError(_("Must specify a status column"))
+        if not value_column:
+            raise QueryObjectValidationError(_("Must specify a value column"))
         if not temporal_column:
             raise QueryObjectValidationError(_("Must specify a temporal column"))
 
-        query_obj["columns"].extend([title_column, message_column, temporal_column])
+        query_obj["columns"].extend([title_column, message_column, parameter_column, status_column, value_column, temporal_column])
         return query_obj
 
     def get_data(self, df: pd.DataFrame) -> VizData:
@@ -2451,10 +2460,13 @@ class DeckFeed(DeckCountry):
         metric = utils.get_metric_name(self.form_data["metric"])
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
+        parameter_column = self.form_data.get("parameter_column")
+        status_column = self.form_data.get("status_column")
+        value_column = self.form_data.get("value_column")
         temporal_column = self.form_data.get("temporal_column")
         
         # Prepare the data for the visualization
-        columns_to_use = [entity, metric, title_column, message_column, temporal_column]
+        columns_to_use = [entity, metric, title_column, message_column, parameter_column, status_column, value_column, temporal_column]
             
         df = df[columns_to_use]
         
@@ -2464,6 +2476,9 @@ class DeckFeed(DeckCountry):
             metric: "metric", 
             title_column: "title", 
             message_column: "message",
+            parameter_column: "parameter",
+            status_column: "status",
+            value_column: "value",
             # Keep temporal_column as-is without renaming to "date"
         }
         
@@ -2488,6 +2503,9 @@ class DeckFeed(DeckCountry):
             "mapboxApiKey": config["MAPBOX_API_KEY"],
             "mapStyle": self.form_data.get("mapbox_style"),
             "temporal_column": temporal_column,  # Include the temporal column name for frontend reference
+            "parameter_column": parameter_column,  # Include the parameter column name for frontend reference
+            "status_column": status_column,  # Include the status column name for frontend reference
+            "value_column": value_column,  # Include the value column name for frontend reference
         }
 
     def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -2495,6 +2513,9 @@ class DeckFeed(DeckCountry):
         properties.update({
             "title": data.get("title"),
             "message": data.get("message"),
+            "parameter": data.get("parameter"),
+            "status": data.get("status"),
+            "value": data.get("value"),
         })
         return properties
 

@@ -149,72 +149,89 @@ const CloseButton = styled.button`
 const FeedList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
   padding: 20px;
   overflow-y: auto;
   max-height: calc(100vh - 120px); /* Account for header height and margins */
 `;
 
-const FeedItemDate = styled.span`
-  display: block;
-  font-size: 12px;
-  color: ${({ theme }) => theme.colors.grayscale.base};
-  margin: 4px 0;
-  font-style: italic;
+const FeedItemDate = styled.div`
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-bottom: 2px solid #f0f0f0;
 `;
 
 const FeedItem = styled.div`
-  padding: 12px;
-  border-radius: 4px;
-  background: ${({ theme }) => theme.colors.grayscale.light4};
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  overflow: hidden;
   opacity: 0;
   animation: ${fadeIn} 0.3s ease-out forwards;
   animation-delay: ${({ index }: { index: number }) => `${index * 0.1}s`};
-  
-  h4 {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    color: ${({ theme }) => theme.colors.grayscale.dark1};
-  }
-  
-  p {
-    margin: 0;
-    font-size: 14px;
-    color: ${({ theme }) => theme.colors.grayscale.dark1};
-  }
 `;
 
-const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
-  const dates: Date[] = [];
-  const currentDate = new Date(startDate);
+const FeedItemHeader = styled.div`
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafafa;
+`;
 
-  while (currentDate <= endDate) {
-    dates.push(new Date(currentDate));
-    
-    // Increment based on time grain
-    switch (timeGrain) {
-      case 'P1Y':
-        currentDate.setFullYear(currentDate.getFullYear() + 1);
-        break;
-      case 'P1M':
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        break;
-      case 'P1W':
-        currentDate.setDate(currentDate.getDate() + 7);
-        break;
-      case 'P1D':
-        currentDate.setDate(currentDate.getDate() + 1);
-        break;
-      case 'PT1H':
-        currentDate.setHours(currentDate.getHours() + 1);
-        break;
-      default:
-        // Default to daily if no time grain specified
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
-  }
-  return dates;
-};
+const FeedItemTitle = styled.div`
+  font-size: 18px;
+  font-weight: 500;
+`;
+
+const StatusBadge = styled.div<{ statusColor: string }>`
+  background: ${props => props.statusColor};
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+const FeedItemBody = styled.div`
+  padding: 15px 20px;
+`;
+
+const FeedItemGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+`;
+
+const FeedItemGridCell = styled.div`
+  margin-bottom: 5px;
+`;
+
+const FeedItemLabel = styled.div`
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+`;
+
+const FeedItemValue = styled.div`
+  font-size: 15px;
+`;
+
+const FeedItemMessage = styled.div`
+  margin-top: 15px;
+`;
+
+const FeedItemMessageContent = styled.div`
+  font-size: 15px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  line-height: 1.5;
+`;
 
 const StyledTimelineSlider = styled.div`
   position: absolute;
@@ -327,14 +344,77 @@ interface FeedPanelProps {
 }
 
 export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regionName, isExiting, temporal_column }) => {
-  // Sort entries by date in descending order (newest first)
-  const sortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) => {
-      const dateA = a[temporal_column] ? new Date(a[temporal_column]).getTime() : 0;
-      const dateB = b[temporal_column] ? new Date(b[temporal_column]).getTime() : 0;
-      return dateA - dateB;
+  // Group entries by date
+  const entriesByDate = useMemo(() => {
+    const grouped: Record<string, FeedEntry[]> = {};
+    
+    [...entries].forEach(entry => {
+      if (entry[temporal_column]) {
+        try {
+          const date = new Date(entry[temporal_column]);
+          const day = date.getDate();
+          const month = date.toLocaleString('en-US', { month: 'short' });
+          const year = date.getFullYear();
+          const dateKey = `${day} ${month} ${year}`;
+          
+          if (!grouped[dateKey]) {
+            grouped[dateKey] = [];
+          }
+          grouped[dateKey].push(entry);
+        } catch (e) {
+          console.warn('Could not format date for grouping:', entry[temporal_column]);
+        }
+      }
     });
-  }, [entries]);
+    
+    return grouped;
+  }, [entries, temporal_column]);
+  
+  // Sort dates (newest first)
+  const sortedDates = useMemo(() => {
+    return Object.keys(entriesByDate).sort((a, b) => {
+      try {
+        return new Date(b).getTime() - new Date(a).getTime();
+      } catch (e) {
+        return 0;
+      }
+    });
+  }, [entriesByDate]);
+
+  // Helper to determine status color based on status value
+  const getStatusColor = useCallback((status: string) => {
+    let statusColor = '#888888';
+    if (status.includes('Extreme Danger') || status === 'Severe') {
+      statusColor = '#F44336'; // Red for extreme/severe
+    } else if (status === 'Danger' || status === 'Heavy' || status === 'Strong') {
+      statusColor = '#FF9800'; // Orange for danger
+    } else if (status.includes('Extreme Caution') || status === 'Moderate' || status === 'Caution') {
+      statusColor = '#FFEB3B'; // Yellow for caution
+    } else if (status === 'Light' || status === 'Normal') {
+      statusColor = '#4CAF50'; // Green for light/normal
+    }
+    return statusColor;
+  }, []);
+
+  // Format numeric value for display
+  const formatValue = useCallback((value: any) => {
+    if (typeof value === 'number') {
+      return Number.isInteger(value) ? value : value.toFixed(2);
+    }
+    return value;
+  }, []);
+
+  // Get form data from the payload (if available)
+  const formData = useMemo(() => {
+    // Return default column names if not defined in form data
+    return {
+      title_column: 'title',
+      message_column: 'message',
+      parameter_column: 'parameter',
+      status_column: 'status',
+      value_column: 'value',
+    };
+  }, []);
 
   return (
     <FeedPanel isExiting={isExiting}>
@@ -343,19 +423,64 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regi
         <CloseButton onClick={onClose}>&times;</CloseButton>
       </FeedHeader>
       <FeedList>
-        {sortedEntries.map((entry, index) => (
-          <FeedItem key={index} index={index}>
-            <h4>{entry.title}</h4>
-            {entry[temporal_column] && (
+        {sortedDates.map(dateKey => {
+          // Sort entries alphabetically by title
+          const sortedEntries = [...entriesByDate[dateKey]].sort((a, b) => 
+            ((a[formData.title_column] || '') as string).localeCompare((b[formData.title_column] || '') as string)
+          );
+          
+          return (
+            <div key={dateKey}>
               <FeedItemDate>
-                {format(new Date(entry[temporal_column]), 'MMM d, yyyy h:mm a')}
-                {' '}
-                ({formatDistanceToNow(new Date(entry[temporal_column]), { addSuffix: true })})
+                {dateKey}
               </FeedItemDate>
-            )}
-            <p>{entry.message}</p>
-          </FeedItem>
-        ))}
+              
+              {sortedEntries.map((entry, index) => (
+                <FeedItem key={`${dateKey}-${index}`} index={index}>
+                  <FeedItemHeader>
+                    <FeedItemTitle>{entry[formData.title_column]}</FeedItemTitle>
+                    {entry[formData.status_column] && (
+                      <StatusBadge statusColor={getStatusColor(entry[formData.status_column] as string)}>
+                        {entry[formData.status_column]}
+                      </StatusBadge>
+                    )}
+                  </FeedItemHeader>
+                  
+                  <FeedItemBody>
+                    <FeedItemGrid>
+                      {entry[formData.parameter_column] && (
+                        <FeedItemGridCell>
+                          <FeedItemLabel>Parameter</FeedItemLabel>
+                          <FeedItemValue>{entry[formData.parameter_column]}</FeedItemValue>
+                        </FeedItemGridCell>
+                      )}
+                      
+                      {entry[formData.value_column] !== undefined && (
+                        <FeedItemGridCell>
+                          <FeedItemLabel>Value</FeedItemLabel>
+                          <FeedItemValue>{formatValue(entry[formData.value_column])}</FeedItemValue>
+                        </FeedItemGridCell>
+                      )}
+                    </FeedItemGrid>
+                    
+                    {entry[formData.message_column] && (
+                      <FeedItemMessage>
+                        <FeedItemLabel>Advisory Message</FeedItemLabel>
+                        <FeedItemMessageContent>
+                          {entry[formData.message_column]}
+                        </FeedItemMessageContent>
+                      </FeedItemMessage>
+                    )}
+                  </FeedItemBody>
+                </FeedItem>
+              ))}
+            </div>
+          );
+        })}
+        
+        {sortedDates.length === 0 && (
+          <div>No entries available for this region.</div>
+        )}
       </FeedList>
     </FeedPanel>
   );
@@ -953,6 +1078,43 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   if (!geoJson) {
     return <div>Loading...</div>;
   }
+
+  const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
+    const dates: Date[] = [];
+    const currentDate = new Date(startDate);
+
+
+
+
+
+
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate));
+      
+      // Increment based on time grain
+      switch (timeGrain) {
+        case 'P1Y':
+          currentDate.setFullYear(currentDate.getFullYear() + 1);
+          break;
+        case 'P1M':
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          break;
+        case 'P1W':
+          currentDate.setDate(currentDate.getDate() + 7);
+          break;
+        case 'P1D':
+          currentDate.setDate(currentDate.getDate() + 1);
+          break;
+        case 'PT1H':
+          currentDate.setHours(currentDate.getHours() + 1);
+          break;
+        default:
+          // Default to daily if no time grain specified
+          currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+    return dates;
+  };
 
   return (
     <>

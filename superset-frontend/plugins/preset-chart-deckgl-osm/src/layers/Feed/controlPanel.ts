@@ -66,7 +66,7 @@ const config: ControlPanelConfig = {
               description: t('Column containing titles for feed entries'),
               mapStateToProps: state => ({
                 choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.verbose_name || c.column_name]) ?? [],
+                  .map(c => [c.column_name, c.column_name]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -82,7 +82,55 @@ const config: ControlPanelConfig = {
               description: t('Column containing messages for feed entries'),
               mapStateToProps: state => ({
                 choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.verbose_name || c.column_name]) ?? [],
+                  .map(c => [c.column_name, c.column_name]) ?? [],
+              }),
+              default: null,
+              validators: [validateNonEmpty],
+            },
+          },
+        ],
+        [
+          {
+            name: 'parameter_column',
+            config: {
+              type: 'SelectControl',
+              label: t('Parameter Column'),
+              description: t('Column containing parameter data for feed entries'),
+              mapStateToProps: state => ({
+                choices: state.datasource?.columns
+                  .map(c => [c.column_name, c.column_name]) ?? [],
+              }),
+              default: null,
+              validators: [validateNonEmpty],
+            },
+          },
+        ],
+        [
+          {
+            name: 'status_column',
+            config: {
+              type: 'SelectControl',
+              label: t('Status Column'),
+              description: t('Column containing status information for feed entries'),
+              mapStateToProps: state => ({
+                choices: state.datasource?.columns
+                  .map(c => [c.column_name, c.column_name]) ?? [],
+              }),
+              default: null,
+              validators: [validateNonEmpty],
+            },
+          },
+        ],
+        [
+          {
+            name: 'value_column',
+            config: {
+              type: 'SelectControl',
+              label: t('Value Column'),
+              description: t('Column containing numeric values for feed entries'),
+              mapStateToProps: state => ({
+                choices: state.datasource?.columns
+                  .map(c => [c.column_name, c.column_name]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
