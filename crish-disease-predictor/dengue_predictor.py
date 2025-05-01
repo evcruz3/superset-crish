@@ -47,6 +47,7 @@ class DenguePredictor:
             'Ermera': 'TL-ER',
             'Lautem': 'TL-LA',
             'Liquica': 'TL-LI',
+            'Liquiça': 'TL-LI',
             'Manatuto': 'TL-MT',
             'Manufahi': 'TL-MF',
             'Raeoa': 'TL-OE',

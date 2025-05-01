@@ -21,3 +21,6 @@
 !.gitignore
 !superset_config.py
 !superset_config_local.example
+!custom_auth/custom_security_manager.py
+!custom_auth/custom_user_models.py
+!custom_auth

@@ -220,6 +220,7 @@ The system uses ISO 3166-2 codes for Timor-Leste municipalities:
 - Ermera: TL-ER
 - Lautem: TL-LA
 - Liquica: TL-LI
+- Liquiça: TL-LI
 - Manatuto: TL-MT
 - Manufahi: TL-MF
 - Raeoa: TL-OE
