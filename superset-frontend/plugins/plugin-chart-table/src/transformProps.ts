@@ -475,6 +475,7 @@ const transformProps = (
     comparison_color_enabled: comparisonColorEnabled = false,
     comparison_color_scheme: comparisonColorScheme = ColorSchemeEnum.Green,
     comparison_type,
+    filterable_columns,
   } = formData;
   const isUsingTimeComparison =
     !isEmpty(time_compare) &&
@@ -706,6 +707,7 @@ const transformProps = (
     basicColorFormatters,
     startDateOffset,
     basicColorColumnFormatters,
+    filterableColumns: filterable_columns ? filterable_columns : [],
   };
 };
 

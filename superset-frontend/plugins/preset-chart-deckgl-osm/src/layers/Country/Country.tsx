@@ -748,12 +748,46 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       ];
 
       // Add temporal information if available
+      // Format the date based on the formdata
+      // formData.time_grain_sqla === 'P1Y'
+      // ? 'YYYY'
+      // : formData.time_grain_sqla === 'P1M'
+      // ? 'MMM YYYY'
+      // : formData.time_grain_sqla === 'P1W'
+      // ? 'MMM YYYY [Week] w'
+      // : formData.time_grain_sqla === 'PT1H'
+      // ? 'DD MMM YYYY HH:mm'
+      // : 'DD MMM YYYY'
+      const timeGrain = formData.time_grain_sqla;
+      let formattedDate = '';
+      
+      if (currentTime) {
+        const momentDate = moment(currentTime);
+        switch (timeGrain) {
+          case 'P1Y':
+            formattedDate = momentDate.format('YYYY');
+            break;
+          case 'P1M':
+            formattedDate = momentDate.format('MMM YYYY');
+            break;
+          case 'P1W':
+            formattedDate = momentDate.format('MMM YYYY [Week] w');
+            break;
+          case 'PT1H':
+            formattedDate = momentDate.format('DD MMM YYYY HH:mm');
+            break;
+          default:
+            formattedDate = momentDate.format('DD MMM YYYY');
+            break;
+        }
+      }
+
       if (fd.temporal_column && currentTime) {
         tooltipRows.push(
           <TooltipRow
             key="date"
             label="Date "
-            value={currentTime.toLocaleDateString()}
+            value={formattedDate}
           />
         );
       }

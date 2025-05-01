@@ -82,6 +82,59 @@ export default styled.div`
       float: right;
     }
 
+    .dt-column-filter {
+      margin-top: ${theme.gridUnit}px;
+      padding: ${theme.gridUnit}px;
+      width: 100%;
+    }
+
+    .dt-filter-info {
+      padding: ${theme.gridUnit * 3}px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      background-color: ${theme.colors.grayscale.light4};
+      border-radius: ${theme.borderRadius}px;
+      margin-bottom: ${theme.gridUnit * 2}px;
+      min-height: ${theme.gridUnit * 12}px;
+    }
+
+    .dt-filter-info > div {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      max-width: 80%;
+    }
+
+    .filter-badge {
+      background-color: ${theme.colors.primary.base};
+      color: ${theme.colors.grayscale.light5};
+      padding: ${theme.gridUnit}px ${theme.gridUnit * 2}px;
+      border-radius: ${theme.borderRadius}px;
+      flex-shrink: 0;
+    }
+
+    .filter-info-text {
+      margin-left: ${theme.gridUnit * 2}px;
+      color: ${theme.colors.grayscale.dark1};
+      font-size: ${theme.typography.sizes.s}px;
+      line-height: 1.4;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .clear-filters-button {
+      border: 1px solid ${theme.colors.primary.base};
+      color: ${theme.colors.primary.base};
+      background-color: transparent;
+      border-radius: ${theme.borderRadius}px;
+      padding: ${theme.gridUnit}px ${theme.gridUnit * 2}px;
+      cursor: pointer;
+      &:hover {
+        background-color: ${theme.colors.primary.light4};
+      }
+    }
+
     .dt-truncate-cell {
       overflow: hidden;
       text-overflow: ellipsis;

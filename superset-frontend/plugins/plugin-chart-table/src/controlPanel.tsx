@@ -186,6 +186,27 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
     })
     .flat();
 
+// Add a new control for filterable columns
+const filterableColumnsControl: ControlConfig<'SelectControl'> = {
+  type: 'SelectControl',
+  label: t('Filterable columns'),
+  description: t('Select columns that can be filtered directly from the table header'),
+  multi: true,
+  freeForm: true,
+  allowAll: true,
+  commaChoosesOption: false,
+  optionRenderer: (c: any) => <ColumnOption showType column={c} />,
+  valueRenderer: (c: any) => <ColumnOption column={c} />,
+  valueKey: 'column_name',
+  mapStateToProps: ({ datasource, controls }) => {
+    // Use the same logic as other column selectors
+    return {
+      options: datasource?.columns || [],
+      queryMode: getQueryMode(controls),
+    };
+  },
+};
+
 const config: ControlPanelConfig = {
   controlPanelSections: [
     {
@@ -440,6 +461,12 @@ const config: ControlPanelConfig = {
               default: false,
               description: t('Whether to include a client-side search box'),
             },
+          },
+        ],
+        [
+          {
+            name: 'filterable_columns',
+            config: filterableColumnsControl,
           },
         ],
         [

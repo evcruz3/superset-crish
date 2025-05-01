@@ -60,8 +60,10 @@ import {
   MinusCircleOutlined,
   PlusCircleOutlined,
   TableOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
-import { isEmpty, isNumber } from 'lodash';
+import { isEmpty, isNumber, uniq } from 'lodash';
+import moment from 'moment';
 import {
   ColorSchemeEnum,
   DataColumnMeta,
@@ -79,6 +81,14 @@ import { formatColumnValue } from './utils/formatValue';
 import { PAGE_SIZE_OPTIONS } from './consts';
 import { updateExternalFormData } from './DataTable/utils/externalAPIs';
 import getScrollBarSize from './DataTable/utils/getScrollBarSize';
+import {
+  DatePicker,
+  Input,
+  Select,
+  Badge,
+  Tooltip as AntdTooltip,
+  Tag,
+} from 'antd';
 
 type ValueRange = [number, number];
 
@@ -234,6 +244,150 @@ function SelectPageSize({
 const getNoResultsMessage = (filter: string) =>
   filter ? t('No matching records found') : t('No records found');
 
+// Add a new component for column header filter
+function ColumnHeaderFilter({
+  column,
+  data,
+  onChange,
+  currentFilterValue,
+  currentFilterValues,
+  onRemove,
+}: {
+  column: DataColumnMeta;
+  data: DataRecord[];
+  onChange: (value: string) => void;
+  currentFilterValue?: string;
+  currentFilterValues?: string[];
+  onRemove?: (value: string) => void;
+}) {
+  // Get unique values for the dropdown
+  const uniqueValues = useMemo(() => {
+    const values = data
+      .map(row => row[column.key])
+      .filter(val => val !== null && val !== undefined)
+      .map(val => String(val));
+    return uniq(values).sort();
+  }, [data, column.key]);
+
+  // Stop propagation to prevent sorting when clicking the filter
+  const stopPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  if (column.dataType === GenericDataType.Temporal) {
+    // For date columns, we need to properly parse the date strings
+    const parseDate = () => {
+      if (!currentFilterValue) return null;
+      try {
+        // Use moment.js to parse the date string
+        return moment(currentFilterValue);
+      } catch (e) {
+        return null;
+      }
+    };
+    
+    return (
+      <div onClick={stopPropagation}>
+        <DatePicker
+          size="small"
+          placeholder={t('Filter by date')}
+          onChange={(date, dateString) => {
+            // If date is cleared or invalid, pass empty string
+            if (!date) {
+              if (currentFilterValue && onRemove) {
+                onRemove(currentFilterValue);
+              }
+              return;
+            }
+            // Otherwise pass the ISO string of the selected date
+            onChange(date.toISOString());
+          }}
+          style={{ width: '100%' }}
+          value={parseDate()}
+        />
+        {currentFilterValues && currentFilterValues.length > 0 && (
+          <div style={{ marginTop: '4px' }}>
+            {currentFilterValues.map(dateStr => {
+              try {
+                const formattedDate = moment(dateStr).format('MMM D, YYYY');
+                return (
+                  <Tag 
+                    key={dateStr} 
+                    closable 
+                    onClose={() => onRemove && onRemove(dateStr)}
+                    style={{ marginBottom: '2px' }}
+                  >
+                    {formattedDate}
+                  </Tag>
+                );
+              } catch (e) {
+                return null;
+              }
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div onClick={stopPropagation}>
+      <AntdTooltip 
+        title={t('You can select multiple values')}
+        placement="top"
+      >
+        <div>
+          <Select
+            size="small"
+            placeholder={<span><FilterOutlined /> {t('Select values...')}</span>}
+            value={currentFilterValues || []}
+            onChange={(values: string[]) => {
+              if (values.length === 0) {
+                // Clear all values for this column
+                if (currentFilterValues && currentFilterValues.length > 0) {
+                  currentFilterValues.forEach(val => {
+                    if (onRemove) onRemove(val);
+                  });
+                }
+              } else if (currentFilterValues) {
+                // Find values that were removed
+                const removed = currentFilterValues.filter(v => !values.includes(v));
+                // Find values that were added
+                const added = values.filter(v => !currentFilterValues.includes(v));
+                
+                // Remove old values
+                removed.forEach(val => {
+                  if (onRemove) onRemove(val);
+                });
+                
+                // Add new values
+                added.forEach(val => onChange(val));
+              } else {
+                // Add all values
+                values.forEach(val => onChange(val));
+              }
+            }}
+            style={{ width: '100%' }}
+            allowClear
+            showSearch
+            mode="multiple"
+            virtual
+            dropdownMatchSelectWidth={false}
+            optionLabelProp="children"
+            maxTagCount={1}
+          >
+            {uniqueValues.map(value => (
+              <Select.Option key={value} value={value}>
+                {value}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+      </AntdTooltip>
+    </div>
+  );
+}
+
 export default function TableChart<D extends DataRecord = DataRecord>(
   props: TableChartTransformedProps<D> & {
     sticky?: DataTableProps<D>['sticky'];
@@ -267,6 +421,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     isUsingTimeComparison,
     basicColorFormatters,
     basicColorColumnFormatters,
+    filterableColumns = [],
   } = props;
   const comparisonColumns = [
     { key: 'all', label: t('Display all') },
@@ -290,6 +445,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   ]);
   const [hideComparisonKeys, setHideComparisonKeys] = useState<string[]>([]);
   const theme = useTheme();
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
   // only take relevant page size options
   const pageSizeOptions = useMemo(() => {
@@ -676,6 +832,90 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     [filteredColumnsMeta, isUsingTimeComparison],
   );
 
+  // Function to handle column filter changes
+  const handleColumnFilterChange = useCallback((key: string, value: string) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [key]: [...(prev[key] || []), value],
+    }));
+  }, []);
+
+  // Function to remove a filter value
+  const removeColumnFilterValue = useCallback((key: string, value: string) => {
+    setColumnFilters(prev => {
+      const updatedValues = (prev[key] || []).filter(v => v !== value);
+      const updatedFilters = { ...prev };
+      
+      if (updatedValues.length === 0) {
+        // Remove the key if no values left
+        delete updatedFilters[key];
+      } else {
+        updatedFilters[key] = updatedValues;
+      }
+      
+      return updatedFilters;
+    });
+  }, []);
+
+  // Function to clear all filters
+  const clearAllFilters = useCallback(() => {
+    setColumnFilters({});
+  }, []);
+
+  // Update data filtering to include column filters
+  const memoizedData = useMemo(() => {
+    if (Object.keys(columnFilters).length === 0) {
+      return data;
+    }
+
+    return data.filter(row => {
+      return Object.entries(columnFilters).every(([key, filterValues]) => {
+        if (!filterValues.length) return true;
+        
+        const value = row[key];
+        if (value == null) return false;
+        
+        // Get the column metadata to check its type
+        const columnMeta = columnsMeta.find(col => col.key === key);
+        if (!columnMeta) return false;
+        
+        // Handle different types of columns differently
+        if (columnMeta.dataType === GenericDataType.Temporal) {
+          // For temporal columns, compare the dates
+          try {
+            // Convert values to strings before parsing with moment
+            const rowDate = moment(String(value));
+            
+            // Check if the row date matches any of the filter dates
+            return filterValues.some(filterValue => {
+              const filterDate = moment(String(filterValue));
+              // Check if both dates are valid
+              if (rowDate.isValid() && filterDate.isValid()) {
+                // Compare the dates (same day)
+                return rowDate.isSame(filterDate, 'day');
+              }
+              return false;
+            });
+          } catch (e) {
+            return false;
+          }
+        } else {
+          // For non-temporal columns, use exact matching for any of the filter values
+          const stringValue = String(value);
+          return filterValues.includes(stringValue);
+        }
+      });
+    });
+  }, [data, columnFilters, columnsMeta]);
+
+  // Calculate how many rows are filtered
+  const filteredRowCount = useMemo(() => {
+    if (Object.keys(columnFilters).length === 0) {
+      return data.length;
+    }
+    return memoizedData.length;
+  }, [data.length, memoizedData.length, columnFilters]);
+
   const getColumnConfigs = useCallback(
     (column: DataColumnMeta, i: number): ColumnWithLooseAccessor<D> => {
       const {
@@ -738,6 +978,8 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           className += ' right-border-only';
         }
       }
+
+      const isFilterable = filterableColumns.includes(key);
 
       return {
         id: String(i), // to allow duplicate column keys
@@ -969,6 +1211,18 @@ export default function TableChart<D extends DataRecord = DataRecord>(
               <span data-column-name={col.id}>{label}</span>
               <SortIcon column={col} />
             </div>
+            {isFilterable && (
+              <div className="dt-column-filter">
+                <ColumnHeaderFilter 
+                  column={column} 
+                  data={data} 
+                  onChange={value => handleColumnFilterChange(key, value)} 
+                  currentFilterValue={columnFilters[key]?.[0]}
+                  currentFilterValues={columnFilters[key]}
+                  onRemove={value => removeColumnFilterValue(key, value)}
+                />
+              </div>
+            )}
           </th>
         ),
         Footer: totals ? (
@@ -1017,6 +1271,9 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       totals,
       columnColorFormatters,
       columnOrderToggle,
+      filterableColumns,
+      handleColumnFilterChange,
+      memoizedData,
     ],
   );
 
@@ -1065,21 +1322,62 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     }
   }, [width, height, handleSizeChange, tableSize]);
 
+  // Extract width and height from tableSize for passing to DataTable
   const { width: widthFromState, height: heightFromState } = tableSize;
 
   return (
     <Styles>
+      {Object.keys(columnFilters).length > 0 && (
+        <div className="dt-filter-info" style={{ marginTop: '80px', width: '100%', boxSizing: 'border-box' }}>
+          <div>
+            <Badge 
+              count={`${filteredRowCount} ${t('of')} ${data.length} ${t('rows')}`} 
+            />
+            <span className="filter-info-text">
+              {t('Active filters')}: {Object.entries(columnFilters).map(([key, values], index) => {
+                const column = columnsMeta.find(col => col.key === key);
+                const columnName = column?.label || key;
+                
+                // Format the filter value based on column type
+                let displayValues = values;
+                if (column?.dataType === GenericDataType.Temporal && values.length) {
+                  try {
+                    // Format dates nicely
+                    displayValues = values.map(value => moment(String(value)).format('MMM D, YYYY'));
+                  } catch (e) {
+                    // Fallback to raw values if formatting fails
+                    displayValues = values;
+                  }
+                }
+                
+                return (
+                  <span key={key} style={{ display: 'inline-block', marginRight: '12px' }}>
+                    <strong>{columnName}</strong>: {displayValues.join(', ')}
+                    {index < Object.keys(columnFilters).length - 1 ? ';' : ''}
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+          <button 
+            className="clear-filters-button" 
+            onClick={clearAllFilters}
+          >
+            {t('Clear all filters')}
+          </button>
+        </div>
+      )}
       <DataTable<D>
         columns={columns}
-        data={data}
+        data={memoizedData}
         rowCount={rowCount}
-        tableClassName="table table-striped table-condensed"
-        pageSize={pageSize}
-        serverPaginationData={serverPaginationData}
-        pageSizeOptions={pageSizeOptions}
         width={widthFromState}
         height={heightFromState}
+        tableClassName="table table-striped table-condensed"
+        pageSize={pageSize}
         serverPagination={serverPagination}
+        pageSizeOptions={pageSizeOptions}
+        serverPaginationData={serverPaginationData}
         onServerPaginationChange={handleServerPaginationChange}
         onColumnOrderChange={() => setColumnOrderToggle(!columnOrderToggle)}
         // 9 page items in > 340px works well even for 100+ pages
