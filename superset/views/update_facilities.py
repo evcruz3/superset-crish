@@ -261,6 +261,10 @@ class UpdateFacilitiesRestApi(BaseSupersetApi):
                         suco = str(row.get('Suco', '')) if pd.notna(row.get('Suco')) else None
                         aldeia = str(row.get('Aldeia', '')) if pd.notna(row.get('Aldeia')) else None
                         property_type = str(row.get('Property', '')) if pd.notna(row.get('Property')) else None
+
+                        # Log the facility type if municipality is Bobonaro
+                        if municipality == 'Bobonaro':
+                            logger.info(f"Bobonaro Facility type: {facility_type}")
                         
                         # Optional fields
                         address = None  # Not in the Excel but in our model
@@ -302,7 +306,28 @@ class UpdateFacilitiesRestApi(BaseSupersetApi):
                         # upsert the facility based on key
                         existing_facility = db.session.query(HealthFacility).filter_by(key=key).first()
                         if existing_facility:
-                            existing_facility.update(facility)
+                            # Update all attributes directly
+                            existing_facility.name = facility.name
+                            existing_facility.facility_type = facility.facility_type
+                            existing_facility.code = facility.code
+                            existing_facility.municipality = facility.municipality
+                            existing_facility.location = facility.location
+                            existing_facility.suco = facility.suco
+                            existing_facility.aldeia = facility.aldeia
+                            existing_facility.latitude = facility.latitude
+                            existing_facility.longitude = facility.longitude
+                            existing_facility.elevation = facility.elevation
+                            existing_facility.property_type = facility.property_type
+                            existing_facility.address = facility.address
+                            existing_facility.phone = facility.phone
+                            existing_facility.email = facility.email
+                            existing_facility.services = facility.services
+                            existing_facility.operating_days = facility.operating_days
+                            existing_facility.operating_hours = facility.operating_hours
+                            existing_facility.total_beds = facility.total_beds
+                            existing_facility.maternity_beds = facility.maternity_beds
+                            existing_facility.has_ambulance = facility.has_ambulance
+                            existing_facility.has_emergency = facility.has_emergency
                         else:
                             db.session.add(facility)
 
