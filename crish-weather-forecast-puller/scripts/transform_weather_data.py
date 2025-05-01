@@ -79,6 +79,7 @@ def transform_weather_data(input_file):
         'Ermera': 'TL-ER',
         'Lautém': 'TL-LA',
         'Liquica': 'TL-LI',
+        'Liquiçá': 'TL-LI',
         'Manatuto': 'TL-MT',
         'Manufahi': 'TL-MF',
         'Oecusse': 'TL-OE',
