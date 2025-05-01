@@ -6,6 +6,7 @@ import BulletinChart from './BulletinChart';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import BulletinDetailModal from './BulletinDetailModal';
 import moment from 'moment';
+import rison from 'rison';
 
 const FALLBACK_THUMBNAIL_URL = '/static/assets/images/chart-card-fallback.svg';
 
@@ -13,6 +14,7 @@ interface BulletinCardProps {
   bulletin: Bulletin;
   hasPerm: (perm: string) => boolean;
   bulkSelectEnabled: boolean;
+  refreshData: () => void;
 }
 
 const StyledCard = styled(Card)`
@@ -160,16 +162,24 @@ export default function BulletinCard({
   bulletin,
   hasPerm,
   bulkSelectEnabled,
+  refreshData: parentRefreshData,
 }: BulletinCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [localBulletin, setLocalBulletin] = useState<Bulletin>(bulletin);
+
+  // Update local bulletin when prop changes or after edit
+  useEffect(() => {
+    setLocalBulletin(bulletin);
+  }, [bulletin, refreshKey]);
 
   useEffect(() => {
     const fetchThumbnailUrl = async () => {
-      if (bulletin.chart_id) {
+      if (localBulletin.chart_id) {
         try {
           const response = await SupersetClient.get({
-            endpoint: `/api/v1/chart/${bulletin.chart_id}`,
+            endpoint: `/api/v1/chart/${localBulletin.chart_id}`,
           });
           const chartData = response.json.result;
           if (chartData.thumbnail_url) {
@@ -185,11 +195,11 @@ export default function BulletinCard({
     };
 
     fetchThumbnailUrl();
-  }, [bulletin.chart_id]);
+  }, [localBulletin.chart_id, refreshKey]);
 
-  if (!bulletin) return null;
+  if (!localBulletin) return null;
 
-  const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
+  const hashtags = localBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
   
   const handleClick = () => {
     if (!bulkSelectEnabled) {
@@ -197,47 +207,83 @@ export default function BulletinCard({
     }
   };
   
+  const handleLocalRefresh = async () => {
+    try {
+      // Fetch the latest bulletin data with all needed fields
+      const encodedFilters = rison.encode({
+        filters: [{ col: 'id', opr: 'eq', value: bulletin.id }],
+        columns: [
+          'id', 'title', 'advisory', 'risks', 'safety_tips', 'hashtags', 
+          'chart_id', 'created_by.first_name', 'created_by.last_name', 
+          'created_on', 'changed_on'
+        ],
+      });
+      
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/bulletins_and_advisories/?q=${encodedFilters}`,
+      });
+      
+      if (response.json && response.json.result && response.json.result.length > 0) {
+        setLocalBulletin(response.json.result[0]);
+      }
+      
+      // Update local state
+      setRefreshKey(prev => prev + 1);
+      // Also trigger parent refresh to update global data
+      parentRefreshData();
+    } catch (error) {
+      console.error('Failed to fetch updated bulletin:', error);
+      // Still trigger parent refresh
+      parentRefreshData();
+    }
+  };
+  
   return (
     <>
       <StyledCard onClick={handleClick}>
-        <div className="bulletin-title">{bulletin.title}</div>
+        <div className="bulletin-title">{localBulletin.title}</div>
         <div className="bulletin-meta">
-          {bulletin.created_by ? (
+          {localBulletin.created_by ? (
             <>
-              {t('Posted by')} {`${bulletin.created_by.first_name} ${bulletin.created_by.last_name}`}{' • '}
+              {t('Posted by')} {`${localBulletin.created_by.first_name} ${localBulletin.created_by.last_name}`}{' • '}
             </>
           ) : null}
-          {bulletin.created_on && (
+          {localBulletin.created_on && (
             <>
-              {moment(bulletin.created_on).fromNow()}
+              {t('Created')} {moment(localBulletin.created_on).fromNow()}
+            </>
+          )}
+          {localBulletin.changed_on && localBulletin.changed_on !== localBulletin.created_on && (
+            <>
+              {' • '}{t('Updated')} {moment(localBulletin.changed_on).fromNow()}
             </>
           )}
         </div>
         <div className="bulletin-content">
           <div className="bulletin-section advisory-section">
             <div className="section-title">{t('Advisory')}</div>
-            <div className="section-content">{bulletin.advisory}</div>
+            <div className="section-content">{localBulletin.advisory}</div>
           </div>
           <div className="bulletin-section risks-section">
             <div className="section-title">{t('Risks')}</div>
-            <div className="section-content">{bulletin.risks}</div>
+            <div className="section-content">{localBulletin.risks}</div>
           </div>
           <div className="bulletin-section safety-tips-section">
             <div className="section-title">{t('Safety Tips')}</div>
-            <div className="section-content">{bulletin.safety_tips}</div>
+            <div className="section-content">{localBulletin.safety_tips}</div>
           </div>
           <div className="bulletin-chart">
             {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
-              bulletin.chart_id ? (
-                <BulletinChart chartId={bulletin.chart_id} />
+              localBulletin.chart_id ? (
+                <BulletinChart chartId={localBulletin.chart_id} />
               ) : (
                 <div style={{ height: '200px' }}></div>
               )
-            ) : bulletin.chart_id ? (
+            ) : localBulletin.chart_id ? (
               <ImageLoader
                 src={thumbnailUrl || ''}
                 fallback={FALLBACK_THUMBNAIL_URL}
-                isLoading={!!bulletin.chart_id && !thumbnailUrl}
+                isLoading={!!localBulletin.chart_id && !thumbnailUrl}
                 position="top"
               />
             ) : (
@@ -254,8 +300,10 @@ export default function BulletinCard({
         )}
       </StyledCard>
       <BulletinDetailModal 
-        bulletin={showModal ? bulletin : null}
+        bulletin={showModal ? localBulletin : null}
         onClose={() => setShowModal(false)}
+        hasPerm={hasPerm}
+        refreshData={handleLocalRefresh}
       />
     </>
   );

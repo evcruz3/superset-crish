@@ -14,6 +14,7 @@ export interface Bulletin {
   thumbnail_url?: string;
   created_by: CreatedBy;
   created_on: string;
+  changed_on: string;
 }
 
 export interface BulletinApiResponse {

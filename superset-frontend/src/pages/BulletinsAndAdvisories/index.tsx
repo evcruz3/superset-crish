@@ -7,6 +7,7 @@ import withToasts from 'src/components/MessageToasts/withToasts';
 import { Bulletin } from './types';
 import BulletinCard from './BulletinCard';
 import CreateBulletinModal from './CreateBulletinModal';
+import EditBulletinModal from './EditBulletinModal';
 import moment from 'moment';
 import { createErrorHandler } from 'src/views/CRUD/utils';
 import DeleteModal from 'src/components/DeleteModal';
@@ -38,6 +39,7 @@ const BULLETIN_COLUMNS_TO_FETCH = [
   'created_by.first_name',
   'created_by.last_name',
   'created_on',
+  'changed_on',
 ];
 
 const Actions = styled.div`
@@ -101,6 +103,8 @@ function BulletinsAndAdvisories({
   user 
 }: BulletinsAndAdvisoriesProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [bulletinToEdit, setBulletinToEdit] = useState<Bulletin | null>(null);
   const [bulletinToDelete, setBulletinToDelete] = useState<Bulletin | null>(null);
   const [bulletinsToDelete, setBulletinsToDelete] = useState<Bulletin[]>([]);
 
@@ -188,26 +192,58 @@ function BulletinsAndAdvisories({
       },
       {
         Cell: ({ row: { original } }: any) => {
+          // Only show if different from created_on
+          if (original.changed_on && original.changed_on !== original.created_on) {
+            return <>{moment(original.changed_on).fromNow()}</>;
+          }
+          return null;
+        },
+        Header: t('Last Updated'),
+        accessor: 'changed_on',
+      },
+      {
+        Cell: ({ row: { original } }: any) => {
           const handleDelete = () => setBulletinToDelete(original);
+          const handleEdit = () => {
+            setBulletinToEdit(original);
+            setEditModalVisible(true);
+          };
           
           return (
             <Actions className="actions">
               {hasPerm('can_write') && (
-                <Tooltip
-                  id="delete-action-tooltip"
-                  title={t('Delete')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleDelete}
-                    data-test="dashboard-delete-action"
+                <>
+                  <Tooltip
+                    id="edit-action-tooltip"
+                    title={t('Edit')}
+                    placement="bottom"
                   >
-                    <Icons.Trash data-test="dashboard-delete-icon" />
-                  </span>
-                </Tooltip>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="action-button"
+                      onClick={handleEdit}
+                      data-test="bulletin-edit-action"
+                    >
+                      <Icons.EditAlt data-test="bulletin-edit-icon" />
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    id="delete-action-tooltip"
+                    title={t('Delete')}
+                    placement="bottom"
+                  >
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="action-button"
+                      onClick={handleDelete}
+                      data-test="dashboard-delete-action"
+                    >
+                      <Icons.Trash data-test="dashboard-delete-icon" />
+                    </span>
+                  </Tooltip>
+                </>
               )}
             </Actions>
           );
@@ -253,10 +289,11 @@ function BulletinsAndAdvisories({
           bulletin={bulletin}
           hasPerm={hasPerm}
           bulkSelectEnabled={bulkSelectEnabled}
+          refreshData={refreshData}
         />
       );
     },
-    [bulkSelectEnabled, hasPerm],
+    [bulkSelectEnabled, hasPerm, refreshData],
   );
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
@@ -370,6 +407,20 @@ function BulletinsAndAdvisories({
           setCreateModalVisible(false);
           refreshData();
         }}
+      />
+
+      <EditBulletinModal
+        visible={editModalVisible}
+        onClose={() => {
+          setEditModalVisible(false);
+          setBulletinToEdit(null);
+        }}
+        onSuccess={() => {
+          setEditModalVisible(false);
+          setBulletinToEdit(null);
+          refreshData();
+        }}
+        bulletin={bulletinToEdit}
       />
 
       {/* Delete Modal for single bulletin delete */}

@@ -276,35 +276,149 @@ def ingest_to_postgresql(dataframes):
     )
     
     try:
-        for table_name, df in dataframes.items():
-            print(f"Ingesting data to PostgreSQL for table: {table_name}")
+        with psycopg2.connect(db_uri) as conn:
+            conn.autocommit = True
             
-            # For weather_forecast_alerts, add extra debug info
-            if table_name == 'weather_forecast_alerts':
-                # Count rows by weather parameter type
-                param_counts = df.group_by('weather_parameter').agg(pl.count().alias('count'))
-                print(f"Weather forecast alerts by parameter type:")
-                print(param_counts)
+            for table_name, df in dataframes.items():
+                print(f"Ingesting data to PostgreSQL for table: {table_name}")
                 
-                # Check alert level distribution
-                level_counts = df.group_by(['weather_parameter', 'alert_level']).agg(pl.count().alias('count'))
-                print(f"Weather forecast alerts by parameter and level:")
-                print(level_counts)
+                # For weather_forecast_alerts, add extra debug info
+                if table_name == 'weather_forecast_alerts':
+                    # Count rows by weather parameter type
+                    param_counts = df.group_by('weather_parameter').agg(pl.count().alias('count'))
+                    print(f"Weather forecast alerts by parameter type:")
+                    print(param_counts)
+                    
+                    # Check alert level distribution
+                    level_counts = df.group_by(['weather_parameter', 'alert_level']).agg(pl.count().alias('count'))
+                    print(f"Weather forecast alerts by parameter and level:")
+                    print(level_counts)
+                    
+                    # Create bulletins for Danger or Extreme Danger alerts
+                    if df.shape[0] > 0:
+                        # Filter for high severity alerts only (Danger or Extreme Danger)
+                        high_severity_alerts = df.filter(
+                            (pl.col('alert_level') == 'Danger') | 
+                            (pl.col('alert_level') == 'Extreme Danger')
+                        )
+                        
+                        if high_severity_alerts.shape[0] > 0:
+                            print(f"Creating bulletins for {high_severity_alerts.shape[0]} high severity weather alerts")
+                            
+                            # Convert to pandas for easier processing with psycopg2
+                            alerts_to_process = high_severity_alerts.to_pandas()
+                            
+                            # Create bulletins for each significant alert
+                            with conn.cursor() as cur:
+                                for _, alert in alerts_to_process.iterrows():
+                                    # Build the safety tips based on alert type
+                                    safety_tips = ""
+                                    if alert['weather_parameter'] == 'Heat Index':
+                                        safety_tips = (
+                                            "• Stay hydrated by drinking plenty of water\n"
+                                            "• Avoid outdoor activities during the hottest part of the day\n"
+                                            "• Wear lightweight, light-colored, loose-fitting clothing\n"
+                                            "• Check on vulnerable individuals like elderly and children regularly\n"
+                                            "• Know the signs of heat-related illness (dizziness, nausea, headache)"
+                                        )
+                                    elif alert['weather_parameter'] == 'Rainfall':
+                                        safety_tips = (
+                                            "• Avoid flood-prone areas and crossing flooded roads\n"
+                                            "• Secure your home against water damage\n"
+                                            "• Have emergency supplies ready\n"
+                                            "• Follow evacuation orders if issued\n"
+                                            "• Stay informed through local weather updates"
+                                        )
+                                    elif alert['weather_parameter'] == 'Wind Speed':
+                                        safety_tips = (
+                                            "• Secure or bring inside loose outdoor items\n"
+                                            "• Stay away from damaged buildings, power lines, and trees\n"
+                                            "• Avoid the coastline during strong winds\n"
+                                            "• Prepare for possible power outages\n"
+                                            "• If traveling, be aware of potential road hazards"
+                                        )
+                                    
+                                    # Format date for title
+                                    forecast_date = datetime.fromisoformat(alert['forecast_date'])
+                                    formatted_date = forecast_date.strftime('%B %d, %Y')
+                                    
+                                    # Create bulletin title
+                                    title = f"{alert['alert_level']} Weather Alert: {alert['weather_parameter']} in {alert['municipality_name']} ({formatted_date})"
+                                    
+                                    # Create advisory text
+                                    advisory = (
+                                        f"{alert['alert_title']} for {alert['municipality_name']} on {formatted_date}.\n\n"
+                                        f"{alert['alert_message']}\n\n"
+                                        f"Parameter value: {alert['parameter_value']}"
+                                    )
+                                    
+                                    # Create risks section
+                                    risks = ""
+                                    if alert['weather_parameter'] == 'Heat Index':
+                                        risks = (
+                                            "• Heat stroke and heat exhaustion\n"
+                                            "• Dehydration\n"
+                                            "• Increased vulnerability for elderly, children, and those with chronic illnesses\n"
+                                            "• Possible impacts on infrastructure and services"
+                                        )
+                                    elif alert['weather_parameter'] == 'Rainfall':
+                                        risks = (
+                                            "• Flooding in low-lying areas\n"
+                                            "• Landslides in mountainous regions\n"
+                                            "• Water contamination\n"
+                                            "• Travel disruptions\n"
+                                            "• Possible damage to crops and infrastructure"
+                                        )
+                                    elif alert['weather_parameter'] == 'Wind Speed':
+                                        risks = (
+                                            "• Flying debris causing injuries\n"
+                                            "• Damage to structures and vegetation\n"
+                                            "• Power outages\n"
+                                            "• Transportation hazards\n"
+                                            "• Coastal dangers including storm surge"
+                                        )
+                                    
+                                    # Create hashtags
+                                    hashtags = f"weather,alert,{alert['weather_parameter'].lower().replace(' ', '')},{alert['municipality_name'].lower()}"
+                                    
+                                    # Insert bulletin record
+                                    sql = """
+                                    INSERT INTO bulletins (
+                                        title, advisory, hashtags, created_by_fk, 
+                                        created_on, changed_on, risks, safety_tips
+                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                    """
+                                    
+                                    current_time = datetime.now()
+                                    cur.execute(sql, (
+                                        title,
+                                        advisory,
+                                        hashtags,
+                                        1,  # Admin user ID as requested
+                                        current_time,
+                                        current_time,
+                                        risks,
+                                        safety_tips
+                                    ))
+                                    
+                                    print(f"Created bulletin: {title}")
+                
+                # Write DataFrame to database using Polars native method with ADBC
+                rows_affected = df.write_database(
+                    table_name=table_name,
+                    connection=db_uri,
+                    if_table_exists='replace',  # This will create new or replace existing table
+                    engine='adbc'  # Using ADBC engine instead of SQLAlchemy
+                )
+                
+                print(f"Successfully inserted/updated {rows_affected} rows into {table_name}")
             
-            # Write DataFrame to database using Polars native method with ADBC
-            rows_affected = df.write_database(
-                table_name=table_name,
-                connection=db_uri,
-                if_table_exists='replace',  # This will create new or replace existing table
-                engine='adbc'  # Using ADBC engine instead of SQLAlchemy
-            )
+            print("All data successfully ingested to PostgreSQL")
             
-            print(f"Successfully inserted/updated {rows_affected} rows into {table_name}")
-        
-        print("All data successfully ingested to PostgreSQL")
-        
     except Exception as e:
         print(f"Error ingesting data to PostgreSQL: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 def main():
     # Process all weather files and get DataFrames

@@ -15,7 +15,7 @@ class Bulletin(Model):
     chart_id = Column(Integer, ForeignKey('slices.id'))
     created_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=False)
     created_on = Column(DateTime, default=datetime.utcnow, nullable=False)
-    changed_on = Column(DateTime, default=datetime.utcnow, nullable=False)
+    changed_on = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relationships
     chart = relationship('Slice', foreign_keys=[chart_id])

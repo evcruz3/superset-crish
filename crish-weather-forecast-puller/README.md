@@ -164,3 +164,66 @@ forecast-data-puller/
   - Check environment variables: `docker-compose config`
   - View container logs: `docker-compose logs`
   - Inspect auth file: `docker exec weather-forecast cat /home/datauser/.dataex_auth.json`
+
+## Features
+
+### Weather Data Collection
+- Pulls weather forecast data from the DATAEX API
+- Processes parameters including maximum temperature, rainfall, relative humidity, and wind speed
+- Calculates derived parameters such as heat index
+- Stores data in the PostgreSQL database for access by other CRISH components
+
+### Weather Alert Generation
+- Analyzes weather data to identify potentially dangerous conditions
+- Generates alerts for various weather parameters with different severity levels:
+  - Normal: Regular conditions, no alert needed
+  - Extreme Caution: Conditions warrant increased vigilance
+  - Danger: Potentially dangerous conditions
+  - Extreme Danger: Severe weather conditions requiring immediate action
+- Stores alerts in the `weather_forecast_alerts` table
+
+### Automated Bulletin Creation
+- Automatically creates bulletins in the Superset bulletins system for high severity weather alerts
+- Only creates bulletins for alerts with 'Danger' or 'Extreme Danger' level
+- Includes detailed information in the bulletin:
+  - Title indicating the alert level, weather parameter, and location
+  - Advisory text with details about the alert
+  - Customized safety tips based on the weather parameter
+  - Specific risks associated with the weather condition
+  - Relevant hashtags for easy categorization
+- Bulletins appear in the Superset Bulletins and Advisories interface
+- Created with admin user ID (1) to ensure proper visibility
+
+## Database Tables
+
+### Bulletin Table Integration
+The service also integrates with the Superset `bulletins` table:
+
+```sql
+-- Simplified schema for the bulletins table
+CREATE TABLE IF NOT EXISTS bulletins (
+    id INTEGER PRIMARY KEY,
+    title VARCHAR,
+    advisory TEXT,
+    hashtags VARCHAR,
+    chart_id INTEGER,
+    created_by_fk INTEGER,
+    created_on TIMESTAMP,
+    changed_on TIMESTAMP,
+    risks TEXT,
+    safety_tips TEXT
+);
+```
+
+## Testing
+
+### Unit Tests
+The project includes test scripts to verify functionality:
+
+- `test_alert_generation.py`: Tests the weather alert generation
+- `test_bulletin_creation()`: Tests the bulletin creation process for weather alerts
+
+To run tests:
+```bash
+python scripts/test_alert_generation.py
+```
