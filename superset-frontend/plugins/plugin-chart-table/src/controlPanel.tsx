@@ -699,6 +699,59 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        [
+          {
+            name: 'string_conditional_formatting',
+            config: {
+              type: 'ConditionalFormattingControl',
+              renderTrigger: true,
+              label: t('String Conditional Formatting'),
+              description: t(
+                'Apply conditional color formatting to string columns',
+              ),
+              shouldMapStateToProps() {
+                return true;
+              },
+              mapStateToProps(explore, _, chart) {
+                const verboseMap = explore?.datasource?.hasOwnProperty(
+                  'verbose_map',
+                )
+                  ? (explore?.datasource as Dataset)?.verbose_map
+                  : (explore?.datasource?.columns ?? {});
+                const chartStatus = chart?.chartStatus;
+                const { colnames, coltypes } =
+                  chart?.queriesResponse?.[0] ?? {};
+                const stringColumns =
+                  Array.isArray(colnames) && Array.isArray(coltypes)
+                    ? colnames
+                        .filter(
+                          (colname: string, index: number) =>
+                            coltypes[index] === GenericDataType.String,
+                        )
+                        .map(colname => ({
+                          value: colname,
+                          label: verboseMap[colname] ?? colname,
+                        }))
+                    : [];
+                const columnOptions = explore?.controls?.time_compare?.value
+                  ? processComparisonColumns(
+                      stringColumns || [],
+                      ensureIsArray(
+                        explore?.controls?.time_compare?.value,
+                      )[0]?.toString() || '',
+                    )
+                  : stringColumns;
+
+                return {
+                  removeIrrelevantConditions: chartStatus === 'success',
+                  columnOptions,
+                  verboseMap,
+                  isStringFormatting: true,
+                };
+              },
+            },
+          },
+        ],
       ],
     },
     {

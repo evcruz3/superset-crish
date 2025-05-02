@@ -38,6 +38,12 @@ import { ColorFormatters } from '@superset-ui/chart-controls';
 
 export type CustomFormatter = (value: DataRecordValue) => string;
 
+// Interface for string-based color formatters
+export type StringColorFormatters = {
+  column: string;
+  getColorFromValue: (value: string) => string | undefined;
+}[];
+
 export type TableColumnConfig = {
   d3NumberFormat?: string;
   d3SmallNumberFormat?: string;
@@ -136,6 +142,7 @@ export interface TableChartTransformedProps<D extends DataRecord = DataRecord> {
   emitCrossFilters?: boolean;
   onChangeFilter?: ChartProps['hooks']['onAddFilter'];
   columnColorFormatters?: ColorFormatters;
+  stringColumnColorFormatters?: StringColorFormatters;
   allowRearrangeColumns?: boolean;
   allowRenderHtml?: boolean;
   onContextMenu?: (

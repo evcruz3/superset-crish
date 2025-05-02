@@ -25,6 +25,8 @@ import { FormattingPopover } from './FormattingPopover';
 import {
   ConditionalFormattingConfig,
   ConditionalFormattingControlProps,
+  StringComparator,
+  StringConditionalFormattingConfig,
 } from './types';
 import {
   AddControlLabel,
@@ -72,11 +74,12 @@ const ConditionalFormattingControl = ({
   verboseMap,
   removeIrrelevantConditions,
   extraColorChoices,
+  isStringFormatting = false,
   ...props
 }: ConditionalFormattingControlProps) => {
   const theme = useTheme();
   const [conditionalFormattingConfigs, setConditionalFormattingConfigs] =
-    useState<ConditionalFormattingConfig[]>(value ?? []);
+    useState<(ConditionalFormattingConfig | StringConditionalFormattingConfig)[]>(value ?? []);
 
   useEffect(() => {
     if (onChange) {
@@ -105,24 +108,49 @@ const ConditionalFormattingControl = ({
     );
   };
 
-  const onSave = (config: ConditionalFormattingConfig) => {
+  const onSave = (config: ConditionalFormattingConfig | StringConditionalFormattingConfig) => {
     setConditionalFormattingConfigs(prevConfigs => [...prevConfigs, config]);
   };
 
-  const onEdit = (newConfig: ConditionalFormattingConfig, index: number) => {
+  const onEdit = (
+    newConfig: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+    index: number
+  ) => {
     const newConfigs = [...conditionalFormattingConfigs];
     newConfigs.splice(index, 1, newConfig);
     setConditionalFormattingConfigs(newConfigs);
   };
 
-  const createLabel = ({
-    column,
-    operator,
-    targetValue,
-    targetValueLeft,
-    targetValueRight,
-  }: ConditionalFormattingConfig) => {
-    const columnName = (column && verboseMap?.[column]) ?? column;
+  const createLabel = (
+    config: ConditionalFormattingConfig | StringConditionalFormattingConfig
+  ) => {
+    const columnName = (config.column && verboseMap?.[config.column]) ?? config.column;
+    
+    // If this is a string conditional formatting config
+    if ('isString' in config && config.isString) {
+      const { operator, targetStringValue } = config as StringConditionalFormattingConfig;
+      
+      switch (operator) {
+        case StringComparator.None:
+          return `${columnName}`;
+        case StringComparator.Equal:
+          return `${columnName} ${operator} "${targetStringValue}"`;
+        case StringComparator.NotEqual:
+          return `${columnName} ${operator} "${targetStringValue}"`;
+        case StringComparator.Contains:
+          return `${columnName} ${operator} "${targetStringValue}"`;
+        case StringComparator.StartsWith:
+          return `${columnName} ${operator} "${targetStringValue}"`;
+        case StringComparator.EndsWith:
+          return `${columnName} ${operator} "${targetStringValue}"`;
+        default:
+          return `${columnName} ${operator} "${targetStringValue}"`;
+      }
+    }
+    
+    // Otherwise, it's a numeric conditional formatting config
+    const { operator, targetValue, targetValueLeft, targetValueRight } = config as ConditionalFormattingConfig;
+    
     switch (operator) {
       case Comparator.None:
         return `${columnName}`;
@@ -152,11 +180,12 @@ const ConditionalFormattingControl = ({
               title={t('Edit formatter')}
               config={config}
               columns={columnOptions}
-              onChange={(newConfig: ConditionalFormattingConfig) =>
+              onChange={(newConfig: ConditionalFormattingConfig | StringConditionalFormattingConfig) =>
                 onEdit(newConfig, index)
               }
               destroyTooltipOnHide
               extraColorChoices={extraColorChoices}
+              isStringFormatting={isStringFormatting}
             >
               <OptionControlContainer withCaret>
                 <Label>{createLabel(config)}</Label>
@@ -173,6 +202,7 @@ const ConditionalFormattingControl = ({
           onChange={onSave}
           destroyTooltipOnHide
           extraColorChoices={extraColorChoices}
+          isStringFormatting={isStringFormatting}
         >
           <AddControlLabel>
             <Icons.PlusSmall iconColor={theme.colors.grayscale.light1} />

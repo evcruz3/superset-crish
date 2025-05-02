@@ -414,6 +414,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     filters,
     sticky = true, // whether to use sticky header
     columnColorFormatters,
+    stringColumnColorFormatters,
     allowRearrangeColumns = false,
     allowRenderHtml = true,
     onContextMenu,
@@ -949,6 +950,11 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         isNumeric &&
         Array.isArray(columnColorFormatters) &&
         columnColorFormatters.length > 0;
+        
+      const hasStringColumnColorFormatters =
+        dataType === GenericDataType.String &&
+        Array.isArray(stringColumnColorFormatters) &&
+        stringColumnColorFormatters.length > 0;
 
       const hasBasicColorFormatters =
         isUsingTimeComparison &&
@@ -1010,6 +1016,20 @@ export default function TableChart<D extends DataRecord = DataRecord>(
                 const formatterResult =
                   value || value === 0
                     ? formatter.getColorFromValue(value as number)
+                    : false;
+                if (formatterResult) {
+                  backgroundColor = formatterResult;
+                }
+              });
+          }
+          
+          if (hasStringColumnColorFormatters) {
+            stringColumnColorFormatters!
+              .filter(formatter => formatter.column === column.key)
+              .forEach(formatter => {
+                const formatterResult = 
+                  value !== null && value !== undefined
+                    ? formatter.getColorFromValue(String(value))
                     : false;
                 if (formatterResult) {
                   backgroundColor = formatterResult;

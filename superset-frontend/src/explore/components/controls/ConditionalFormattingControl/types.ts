@@ -30,6 +30,25 @@ export type ConditionalFormattingConfig = {
   colorScheme?: string;
 };
 
+// Add string-specific comparator enum
+export enum StringComparator {
+  None = 'None',
+  Equal = '=',
+  NotEqual = '≠',
+  Contains = 'contains',
+  StartsWith = 'starts with',
+  EndsWith = 'ends with',
+}
+
+// Add string-specific conditional formatting config
+export type StringConditionalFormattingConfig = {
+  operator?: StringComparator;
+  targetStringValue?: string; // Using string value instead of numeric value
+  column?: string;
+  colorScheme?: string;
+  isString?: boolean; // Flag to identify this as a string formatter
+};
+
 export type ConditionalFormattingControlProps = ControlComponentProps<
   ConditionalFormattingConfig[]
 > & {
@@ -39,13 +58,15 @@ export type ConditionalFormattingControlProps = ControlComponentProps<
   label: string;
   description: string;
   extraColorChoices?: { label: string; value: string }[];
+  isStringFormatting?: boolean; // Flag to enable string-specific UI
 };
 
 export type FormattingPopoverProps = PopoverProps & {
   columns: { label: string; value: string }[];
-  onChange: (value: ConditionalFormattingConfig) => void;
-  config?: ConditionalFormattingConfig;
+  onChange: (value: ConditionalFormattingConfig | StringConditionalFormattingConfig) => void;
+  config?: ConditionalFormattingConfig | StringConditionalFormattingConfig;
   title: string;
   children: ReactNode;
   extraColorChoices?: { label: string; value: string }[];
+  isStringFormatting?: boolean; // Flag to enable string-specific UI
 };

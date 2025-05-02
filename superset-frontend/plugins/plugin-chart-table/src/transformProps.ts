@@ -45,10 +45,12 @@ import {
 import { isEmpty } from 'lodash';
 import isEqualColumns from './utils/isEqualColumns';
 import DateWithFormatter from './utils/DateWithFormatter';
+import { getStringColorFormatters } from './utils/getStringColorFormatters';
 import {
   BasicColorFormatterType,
   ColorSchemeEnum,
   DataColumnMeta,
+  StringColorFormatters,
   TableChartProps,
   TableChartTransformedProps,
   TableColumnConfig,
@@ -469,6 +471,7 @@ const transformProps = (
     query_mode: queryMode,
     show_totals: showTotals,
     conditional_formatting: conditionalFormatting,
+    string_conditional_formatting: stringConditionalFormatting,
     allow_rearrange_columns: allowRearrangeColumns,
     allow_render_html: allowRenderHtml,
     time_compare,
@@ -662,8 +665,9 @@ const transformProps = (
   const basicColorFormatters =
     comparisonColorEnabled && getBasicColorFormatter(baseQuery?.data, columns);
   const columnColorFormatters =
-    getColorFormatters(conditionalFormatting, passedData) ??
-    defaultColorFormatters;
+    conditionalFormatting?.length
+      ? getColorFormatters(conditionalFormatting, passedData)
+      : defaultColorFormatters;
 
   const basicColorColumnFormatters = getBasicColorFormatterForColumn(
     baseQuery?.data,
@@ -682,9 +686,14 @@ const transformProps = (
     serverPagination,
     metrics,
     percentMetrics,
-    serverPaginationData: serverPagination
-      ? serverPaginationData
-      : defaultServerPaginationData,
+    serverPaginationData: {
+      pageSize: serverPagination
+        ? (typeof serverPageLength === 'number' && serverPageLength > 0
+          ? Math.min(serverPageLength, 100) // limit page size to 100
+          : getPageSize(serverPageLength, data.length, columns.length))
+        : getPageSize(pageLength, data.length, columns.length),
+      currentPage: serverPaginationData?.currentPage,
+    },
     setDataMask,
     alignPositiveNegative,
     colorPositiveNegative,
@@ -692,13 +701,13 @@ const transformProps = (
     sortDesc,
     includeSearch,
     rowCount,
-    pageSize: serverPagination
-      ? serverPageLength
-      : getPageSize(pageLength, data.length, columns.length),
     filters: filterState.filters,
     emitCrossFilters,
     onChangeFilter,
     columnColorFormatters,
+    stringColumnColorFormatters: stringConditionalFormatting?.length
+      ? getStringColorFormatters(stringConditionalFormatting, passedData)
+      : [],
     timeGrain,
     allowRearrangeColumns,
     allowRenderHtml,
@@ -707,7 +716,7 @@ const transformProps = (
     basicColorFormatters,
     startDateOffset,
     basicColorColumnFormatters,
-    filterableColumns: filterable_columns ? filterable_columns : [],
+    filterableColumns: filterable_columns || [],
   };
 };
 

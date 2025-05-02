@@ -19,7 +19,11 @@
 import { useCallback, useState } from 'react';
 import Popover from 'src/components/Popover';
 import { FormattingPopoverContent } from './FormattingPopoverContent';
-import { ConditionalFormattingConfig, FormattingPopoverProps } from './types';
+import { 
+  ConditionalFormattingConfig, 
+  FormattingPopoverProps,
+  StringConditionalFormattingConfig 
+} from './types';
 
 export const FormattingPopover = ({
   title,
@@ -28,12 +32,13 @@ export const FormattingPopover = ({
   config,
   children,
   extraColorChoices,
+  isStringFormatting,
   ...props
 }: FormattingPopoverProps) => {
   const [visible, setVisible] = useState(false);
 
   const handleSave = useCallback(
-    (newConfig: ConditionalFormattingConfig) => {
+    (newConfig: ConditionalFormattingConfig | StringConditionalFormattingConfig) => {
       setVisible(false);
       onChange(newConfig);
     },
@@ -49,6 +54,7 @@ export const FormattingPopover = ({
           config={config}
           columns={columns}
           extraColorChoices={extraColorChoices}
+          isStringFormatting={isStringFormatting}
         />
       }
       visible={visible}

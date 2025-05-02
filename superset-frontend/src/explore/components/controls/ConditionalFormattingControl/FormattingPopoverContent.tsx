@@ -26,11 +26,15 @@ import {
 import { Form, FormItem, FormProps } from 'src/components/Form';
 import Select from 'src/components/Select/Select';
 import { Col, Row } from 'src/components';
-import { InputNumber } from 'src/components/Input';
+import { InputNumber, Input } from 'src/components/Input';
 import Button from 'src/components/Button';
-import { ConditionalFormattingConfig } from './types';
+import { ConditionalFormattingConfig, StringComparator, StringConditionalFormattingConfig } from './types';
 
 const FullWidthInputNumber = styled(InputNumber)`
+  width: 100%;
+`;
+
+const FullWidthInput = styled(Input)`
   width: 100%;
 `;
 
@@ -60,6 +64,16 @@ const operatorOptions = [
   { value: Comparator.BetweenOrEqual, label: '≤ x ≤' },
   { value: Comparator.BetweenOrLeftEqual, label: '≤ x <' },
   { value: Comparator.BetweenOrRightEqual, label: '< x ≤' },
+];
+
+// String-specific operator options
+const stringOperatorOptions = [
+  { value: StringComparator.None, label: t('None') },
+  { value: StringComparator.Equal, label: t('equals') },
+  { value: StringComparator.NotEqual, label: t('not equals') },
+  { value: StringComparator.Contains, label: t('contains') },
+  { value: StringComparator.StartsWith, label: t('starts with') },
+  { value: StringComparator.EndsWith, label: t('ends with') },
 ];
 
 const targetValueValidator =
@@ -95,6 +109,9 @@ const isOperatorMultiValue = (operator?: Comparator) =>
 const isOperatorNone = (operator?: Comparator) =>
   !operator || operator === Comparator.None;
 
+const isStringOperatorNone = (operator?: StringComparator) =>
+  !operator || operator === StringComparator.None;
+
 const rulesRequired = [{ required: true, message: t('Required') }];
 
 type GetFieldValue = Pick<Required<FormProps>['form'], 'getFieldValue'>;
@@ -116,30 +133,64 @@ const targetValueLeftDeps = ['targetValueRight'];
 const targetValueRightDeps = ['targetValueLeft'];
 
 const shouldFormItemUpdate = (
-  prevValues: ConditionalFormattingConfig,
-  currentValues: ConditionalFormattingConfig,
-) =>
-  isOperatorNone(prevValues.operator) !==
-    isOperatorNone(currentValues.operator) ||
-  isOperatorMultiValue(prevValues.operator) !==
-    isOperatorMultiValue(currentValues.operator);
+  prevValues: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+  currentValues: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+) => {
+  if ('isString' in prevValues || 'isString' in currentValues) {
+    // Handle string conditional formatting
+    return isStringOperatorNone(prevValues.operator as StringComparator) !==
+      isStringOperatorNone(currentValues.operator as StringComparator);
+  }
+  
+  // Handle numeric conditional formatting
+  return isOperatorNone(prevValues.operator as Comparator) !==
+    isOperatorNone(currentValues.operator as Comparator) ||
+  isOperatorMultiValue(prevValues.operator as Comparator) !==
+    isOperatorMultiValue(currentValues.operator as Comparator);
+};
 
-const renderOperator = ({ showOnlyNone }: { showOnlyNone?: boolean } = {}) => (
+const renderOperator = ({ showOnlyNone, isStringFormatting }: { showOnlyNone?: boolean, isStringFormatting?: boolean } = {}) => (
   <FormItem
     name="operator"
     label={t('Operator')}
     rules={rulesRequired}
-    initialValue={operatorOptions[0].value}
+    initialValue={isStringFormatting ? stringOperatorOptions[0].value : operatorOptions[0].value}
   >
     <Select
       ariaLabel={t('Operator')}
-      options={showOnlyNone ? [operatorOptions[0]] : operatorOptions}
+      options={
+        isStringFormatting
+          ? (showOnlyNone ? [stringOperatorOptions[0]] : stringOperatorOptions)
+          : (showOnlyNone ? [operatorOptions[0]] : operatorOptions)
+      }
     />
   </FormItem>
 );
 
-const renderOperatorFields = ({ getFieldValue }: GetFieldValue) =>
-  isOperatorNone(getFieldValue('operator')) ? (
+const renderOperatorFields = ({ getFieldValue, isStringFormatting }: GetFieldValue & { isStringFormatting?: boolean }) => {
+  if (isStringFormatting) {
+    return isStringOperatorNone(getFieldValue('operator')) ? (
+      <Row gutter={12}>
+        <Col span={6}>{renderOperator({ isStringFormatting: true })}</Col>
+      </Row>
+    ) : (
+      <Row gutter={12}>
+        <Col span={6}>{renderOperator({ isStringFormatting: true })}</Col>
+        <Col span={18}>
+          <FormItem
+            name="targetStringValue"
+            label={t('Target value')}
+            rules={rulesRequired}
+          >
+            <FullWidthInput placeholder={t('Enter string value')} />
+          </FormItem>
+        </Col>
+      </Row>
+    );
+  }
+
+  // Original numeric operator fields code
+  return isOperatorNone(getFieldValue('operator')) ? (
     <Row gutter={12}>
       <Col span={6}>{renderOperator()}</Col>
     </Row>
@@ -185,17 +236,20 @@ const renderOperatorFields = ({ getFieldValue }: GetFieldValue) =>
       </Col>
     </Row>
   );
+};
 
 export const FormattingPopoverContent = ({
   config,
   onChange,
   columns = [],
   extraColorChoices = [],
+  isStringFormatting = false,
 }: {
-  config?: ConditionalFormattingConfig;
-  onChange: (config: ConditionalFormattingConfig) => void;
+  config?: ConditionalFormattingConfig | StringConditionalFormattingConfig;
+  onChange: (config: ConditionalFormattingConfig | StringConditionalFormattingConfig) => void;
   columns: { label: string; value: string }[];
   extraColorChoices?: { label: string; value: string }[];
+  isStringFormatting?: boolean;
 }) => {
   const theme = useTheme();
   const colorScheme = colorSchemeOptions(theme);
@@ -210,9 +264,20 @@ export const FormattingPopoverContent = ({
     );
   };
 
+  const handleFinish = (values: any) => {
+    if (isStringFormatting) {
+      onChange({
+        ...values,
+        isString: true, // Mark as string formatter
+      } as StringConditionalFormattingConfig);
+    } else {
+      onChange(values as ConditionalFormattingConfig);
+    }
+  };
+
   return (
     <Form
-      onFinish={onChange}
+      onFinish={handleFinish}
       initialValues={config}
       requiredMark="optional"
       layout="vertical"
@@ -245,20 +310,22 @@ export const FormattingPopoverContent = ({
       </Row>
       <FormItem noStyle shouldUpdate={shouldFormItemUpdate}>
         {showOperatorFields ? (
-          renderOperatorFields
+          ({ getFieldValue }) => renderOperatorFields({ getFieldValue, isStringFormatting })
         ) : (
           <Row gutter={12}>
-            <Col span={6}>{renderOperator({ showOnlyNone: true })}</Col>
+            <Col span={6}>{renderOperator({ showOnlyNone: true, isStringFormatting })}</Col>
           </Row>
         )}
       </FormItem>
-      <FormItem>
-        <JustifyEnd>
-          <Button htmlType="submit" buttonStyle="primary">
-            {t('Apply')}
-          </Button>
-        </JustifyEnd>
-      </FormItem>
+      <JustifyEnd>
+        <Button
+          htmlType="submit"
+          buttonStyle="primary"
+          data-test="formatting-popover-apply-button"
+        >
+          {t('Apply')}
+        </Button>
+      </JustifyEnd>
     </Form>
   );
 };

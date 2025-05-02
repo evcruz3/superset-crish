@@ -25,68 +25,115 @@ import {
   MultipleValueComparators,
 } from '../types';
 
+// Import the StringComparator enum
+// Since we can't directly modify the chart-controls package, we'll need to recreate the enum here
+// to match what's in superset-frontend/src/explore/components/controls/ConditionalFormattingControl/types.ts
+enum StringComparator {
+  None = 'None',
+  Equal = '=',
+  NotEqual = '≠',
+  Contains = 'contains',
+  StartsWith = 'starts with',
+  EndsWith = 'ends with',
+}
+
+// Define the structure to match StringConditionalFormattingConfig
+interface StringConditionalFormattingConfig {
+  operator?: StringComparator;
+  targetStringValue?: string;
+  column?: string;
+  colorScheme?: string;
+  isString?: boolean;
+}
+
 export const round = (num: number, precision = 0) =>
   Number(`${Math.round(Number(`${num}e+${precision}`))}e-${precision}`);
 
-const MIN_OPACITY_BOUNDED = 0.05;
-const MIN_OPACITY_UNBOUNDED = 0;
-const MAX_OPACITY = 1;
-export const getOpacity = (
-  value: number,
-  cutoffPoint: number,
-  extremeValue: number,
-  minOpacity = MIN_OPACITY_BOUNDED,
-  maxOpacity = MAX_OPACITY,
-) => {
-  if (extremeValue === cutoffPoint) {
-    return maxOpacity;
-  }
-  return Math.min(
-    maxOpacity,
-    round(
-      Math.abs(
-        ((maxOpacity - minOpacity) / (extremeValue - cutoffPoint)) *
-          (value - cutoffPoint),
-      ) + minOpacity,
-      2,
-    ),
-  );
-};
+const MIN_OPACITY_BOUNDED = 0.3;
+const MAX_OPACITY_BOUNDED = 1;
+const MIN_OPACITY_UNBOUNDED = 0.1;
+const MAX_OPACITY_UNBOUNDED = 0.9;
+
+export const getOpacity = (minValue: number, maxValue: number, value: number) =>
+  maxValue - minValue === 0
+    ? 1
+    : round(
+        Math.max(Math.min((value - minValue) / (maxValue - minValue), 1), 0),
+        2,
+      );
 
 export const getColorFunction = (
-  {
-    operator,
-    targetValue,
-    targetValueLeft,
-    targetValueRight,
-    colorScheme,
-  }: ConditionalFormattingConfig,
-  columnValues: number[],
+  config: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+  valuesArray: number[] | string[],
   alpha?: boolean,
 ) => {
-  let minOpacity = MIN_OPACITY_BOUNDED;
-  const maxOpacity = MAX_OPACITY;
+  // Handle string conditional formatting
+  if ('isString' in config && config.isString) {
+    const { operator, targetStringValue, colorScheme } = config as StringConditionalFormattingConfig;
+    
+    if (!targetStringValue && operator !== StringComparator.None) {
+      return () => undefined;
+    }
+    
+    return (value: string): string | undefined => {
+      let isMatch = false;
+      
+      switch (operator) {
+        case StringComparator.None:
+          isMatch = true;
+          break;
+        case StringComparator.Equal:
+          isMatch = value === targetStringValue;
+          break;
+        case StringComparator.NotEqual:
+          isMatch = value !== targetStringValue;
+          break;
+        case StringComparator.Contains:
+          isMatch = typeof value === 'string' && value.includes(targetStringValue!);
+          break;
+        case StringComparator.StartsWith:
+          isMatch = typeof value === 'string' && value.startsWith(targetStringValue!);
+          break;
+        case StringComparator.EndsWith:
+          isMatch = typeof value === 'string' && value.endsWith(targetStringValue!);
+          break;
+        default:
+          isMatch = false;
+      }
+      
+      return isMatch ? (alpha ? addAlpha(colorScheme!, 1) : colorScheme) : undefined;
+    };
+  }
+  
+  // Original numeric conditional formatting
+  const { operator, targetValue, targetValueLeft, targetValueRight, colorScheme } =
+    config as ConditionalFormattingConfig;
+  const numericValues = valuesArray as number[];
+  
+  if (!config?.column) {
+    return () => undefined;
+  }
+
+  if (
+    (MultipleValueComparators.includes(operator!) &&
+      (targetValueLeft === undefined || targetValueRight === undefined)) ||
+    (!MultipleValueComparators.includes(operator!) && targetValue === undefined)
+  ) {
+    return () => undefined;
+  }
 
   let comparatorFunction: (
     value: number,
     allValues: number[],
-  ) => false | { cutoffValue: number; extremeValue: number };
-  if (operator === undefined || colorScheme === undefined) {
-    return () => undefined;
-  }
-  if (
-    MultipleValueComparators.includes(operator) &&
-    (targetValueLeft === undefined || targetValueRight === undefined)
-  ) {
-    return () => undefined;
-  }
-  if (
-    operator !== Comparator.None &&
-    !MultipleValueComparators.includes(operator) &&
-    targetValue === undefined
-  ) {
-    return () => undefined;
-  }
+  ) =>
+    | false
+    | {
+        cutoffValue: number;
+        extremeValue: number;
+      };
+  let minOpacity = MIN_OPACITY_BOUNDED;
+  const maxOpacity = MAX_OPACITY_BOUNDED;
+
   switch (operator) {
     case Comparator.None:
       minOpacity = MIN_OPACITY_UNBOUNDED;
@@ -129,19 +176,32 @@ export const getColorFunction = (
           : false;
       break;
     case Comparator.NotEqual:
+      minOpacity = MIN_OPACITY_UNBOUNDED;
       comparatorFunction = (value: number, allValues: number[]) => {
-        if (value === targetValue!) {
+        if (value === targetValue) {
           return false;
         }
-        const max = Math.max(...allValues);
-        const min = Math.min(...allValues);
-        return {
-          cutoffValue: targetValue!,
-          extremeValue:
-            Math.abs(targetValue! - min) > Math.abs(max - targetValue!)
-              ? min
-              : max,
-        };
+        let cutoffValue;
+        let extremeValue;
+        const sortedValues = [...allValues].sort((a, b) => a - b);
+        const targetIndex = sortedValues.indexOf(targetValue!);
+        if (targetIndex >= 0) {
+          // if targetValue is not in the array, this is -1
+          if (value < targetValue!) {
+            cutoffValue = 0;
+            extremeValue = targetValue!;
+          } else {
+            cutoffValue = targetValue!;
+            extremeValue = Infinity;
+          }
+        } else if (targetValue! < sortedValues[0]) {
+          cutoffValue = targetValue!;
+          extremeValue = Infinity;
+        } else {
+          cutoffValue = 0;
+          extremeValue = targetValue!;
+        }
+        return { cutoffValue, extremeValue };
       };
       break;
     case Comparator.Between:
@@ -170,48 +230,85 @@ export const getColorFunction = (
       break;
     default:
       comparatorFunction = () => false;
-      break;
   }
 
-  return (value: number) => {
-    const compareResult = comparatorFunction(value, columnValues);
-    if (compareResult === false) return undefined;
-    const { cutoffValue, extremeValue } = compareResult;
-    if (alpha === undefined || alpha) {
-      return addAlpha(
-        colorScheme,
-        getOpacity(value, cutoffValue, extremeValue, minOpacity, maxOpacity),
-      );
+  return (value: number): string | undefined => {
+    const matched = comparatorFunction(value, numericValues);
+    if (!matched) {
+      return undefined;
     }
-    return colorScheme;
+    const { cutoffValue, extremeValue } = matched;
+    let opacity = maxOpacity;
+    if (
+      operator === Comparator.None ||
+      operator === Comparator.NotEqual ||
+      value !== extremeValue
+    ) {
+      if (operator === Comparator.NotEqual) {
+        const distance = Math.abs(value - targetValue!);
+        if (extremeValue === Infinity) {
+          opacity = minOpacity;
+        } else {
+          const range = Math.abs(extremeValue - cutoffValue);
+          opacity = getOpacity(0, range, distance);
+        }
+      } else {
+        const range = Math.abs(extremeValue - cutoffValue);
+        const distance = Math.abs(value - cutoffValue);
+        opacity = getOpacity(
+          minOpacity,
+          maxOpacity,
+          (distance / range) * (maxOpacity - minOpacity) + minOpacity,
+        );
+      }
+    }
+    return alpha ? addAlpha(colorScheme!, opacity) : colorScheme;
   };
 };
 
 export const getColorFormatters = memoizeOne(
   (
-    columnConfig: ConditionalFormattingConfig[] | undefined,
+    columnConfig: (ConditionalFormattingConfig | StringConditionalFormattingConfig)[] | undefined,
     data: DataRecord[],
     alpha?: boolean,
   ) =>
     columnConfig?.reduce(
-      (acc: ColorFormatters, config: ConditionalFormattingConfig) => {
-        if (
-          config?.column !== undefined &&
-          (config?.operator === Comparator.None ||
-            (config?.operator !== undefined &&
-              (MultipleValueComparators.includes(config?.operator)
-                ? config?.targetValueLeft !== undefined &&
-                  config?.targetValueRight !== undefined
-                : config?.targetValue !== undefined)))
-        ) {
-          acc.push({
-            column: config?.column,
-            getColorFromValue: getColorFunction(
-              config,
-              data.map(row => row[config.column!] as number),
-              alpha,
-            ),
-          });
+      (acc: ColorFormatters, config: ConditionalFormattingConfig | StringConditionalFormattingConfig) => {
+        const targetColumn = config?.column;
+        
+        if (targetColumn !== undefined) {
+          if ('isString' in config && config.isString) {
+            // Handle string conditional formatting
+            const stringValues = data.map(row => String(row[targetColumn]));
+            acc.push({
+              column: targetColumn,
+              getColorFromValue: getColorFunction(
+                config,
+                stringValues,
+                alpha,
+              ) as (value: number) => string | undefined, // TS needs this cast
+            });
+          } else {
+            // Handle numeric conditional formatting
+            const numericValues = data.map(row => row[targetColumn] as number);
+            const isValid = config?.operator === Comparator.None ||
+              (config?.operator !== undefined &&
+                (MultipleValueComparators.includes(config?.operator)
+                  ? config?.targetValueLeft !== undefined &&
+                    config?.targetValueRight !== undefined
+                  : config?.targetValue !== undefined));
+            
+            if (isValid) {
+              acc.push({
+                column: targetColumn,
+                getColorFromValue: getColorFunction(
+                  config,
+                  numericValues,
+                  alpha,
+                ),
+              });
+            }
+          }
         }
         return acc;
       },
