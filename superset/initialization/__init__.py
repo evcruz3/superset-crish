@@ -200,7 +200,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.views.update_facilities import UpdateFacilitiesRestApi
         from superset.views.facilities import FacilitiesView
         from superset.health_facilities.api import HealthFacilitiesRestApi
-        from superset.weather_forecast_alerts.api import WeatherForecastAlertRestApi
+        from superset.weather_forecast_alerts.api import WeatherForecastAlertRestApi, WeatherDataPullRestApi
 
         set_app_error_handlers(self.superset_app)
 
@@ -244,6 +244,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(PublicEducationRestApi)
         appbuilder.add_api(HealthFacilitiesRestApi)
         appbuilder.add_api(WeatherForecastAlertRestApi)
+        appbuilder.add_api(WeatherDataPullRestApi)
         #
         # Setup regular views
         #

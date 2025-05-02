@@ -22,13 +22,13 @@ from flask import g, request, Response
 from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
-from marshmallow import ValidationError
+from marshmallow import ValidationError, Schema, fields
 
 from superset import db
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.extensions import event_logger
 from superset.views.base_api import BaseSupersetModelRestApi, statsd_metrics
-from superset.weather_forecast_alerts.models import WeatherForecastAlert
+from superset.weather_forecast_alerts.models import WeatherForecastAlert, WeatherDataPullHistory
 from superset.weather_forecast_alerts.schemas import (
     get_alert_ids_schema,
     openapi_spec_methods_override,
@@ -291,4 +291,116 @@ class WeatherForecastAlertRestApi(BaseSupersetModelRestApi):
             return self.response_404()
             
         db.session.commit()
-        return self.response(200, message=f"Deleted {deleted_count} weather forecast alerts") 
+        return self.response(200, message=f"Deleted {deleted_count} weather forecast alerts")
+
+
+class WeatherDataPullSchema(Schema):
+    """Schema for weather data pull request."""
+    parameters_pulled = fields.String(required=True)
+    pull_status = fields.String(required=True)
+    details = fields.String(required=False, allow_none=True)
+
+
+class WeatherDataPullRestApi(BaseSupersetModelRestApi):
+    datamodel = SQLAInterface(WeatherDataPullHistory)
+    resource_name = "weather_data_pull"
+    allow_browser_login = True
+
+    class_permission_name = "WeatherDataPullHistory"
+    method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
+
+    include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {"last_pull"}
+    
+    list_columns = [
+        "id",
+        "pulled_at",
+        "parameters_pulled",
+        "pull_status",
+        "details",
+    ]
+    
+    show_columns = list_columns
+    
+    add_columns = [
+        "parameters_pulled",
+        "pull_status",
+        "details",
+    ]
+    
+    edit_columns = add_columns
+    
+    search_columns = [
+        "pull_status",
+    ]
+    
+    base_order = ("pulled_at", "desc")
+    
+    openapi_spec_tag = "Weather Data Pull History"
+    
+    @expose("/", methods=["POST"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.post",
+        log_to_statsd=False,
+    )
+    def post(self) -> Response:
+        """Records a new weather data pull history entry."""
+        if not request.is_json:
+            return self.response_400(message="Request is not JSON")
+            
+        try:
+            schema = WeatherDataPullSchema()
+            item = schema.load(request.json)
+        except ValidationError as err:
+            return self.response_400(message=str(err))
+            
+        # Create the weather data pull history
+        new_history = WeatherDataPullHistory(
+            pulled_at=datetime.now(),
+            parameters_pulled=item["parameters_pulled"],
+            pull_status=item["pull_status"],
+            details=item.get("details")
+        )
+            
+        db.session.add(new_history)
+        db.session.commit()
+        
+        return self.response(201, id=new_history.id)
+    
+    @expose("/last_pull", methods=["GET"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.last_pull",
+        log_to_statsd=False,
+    )
+    def last_pull(self) -> Response:
+        """Get the latest successful weather data pull."""
+        try:
+            # Find the most recent successful pull
+            latest_pull = db.session.query(WeatherDataPullHistory)\
+                .filter(WeatherDataPullHistory.pull_status == "Success")\
+                .order_by(WeatherDataPullHistory.pulled_at.desc())\
+                .first()
+                
+            if not latest_pull:
+                logger.warning("No successful weather data pulls found in history")
+                return self.response(404, message="No successful weather data pull history found")
+                
+            # Format the response
+            result = {
+                "id": latest_pull.id,
+                "pulled_at": latest_pull.pulled_at.isoformat(),
+                "parameters_pulled": latest_pull.parameters_pulled,
+                "pull_status": latest_pull.pull_status,
+                "details": latest_pull.details
+            }
+                
+            return self.response(200, result=result)
+                
+        except Exception as e:
+            logger.error(f"Error retrieving last pull: {e}")
+            return self.response_422(message=str(e)) 

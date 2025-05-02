@@ -112,6 +112,14 @@ const DataSourceAttribution = styled.div`
   color: #666;
   z-index: 900;
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+`;
+
+const DataUpdateInfo = styled.span`
+  margin-top: 3px;
+  font-size: 11px;
+  color: #888;
 `;
 
 interface AlertType {
@@ -143,6 +151,14 @@ interface WelcomeProps {
   chartSlug?: string;
 }
 
+interface PullHistoryType {
+  id: number;
+  pulled_at: string;
+  parameters_pulled: string;
+  pull_status: string;
+  details?: string;
+}
+
 function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-map' }: WelcomeProps) {
   const [showFullChart, setShowFullChart] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -150,6 +166,8 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [weatherAlerts, setWeatherAlerts] = useState<GroupedAlertType[]>([]);
+  const [lastPullInfo, setLastPullInfo] = useState<PullHistoryType | null>(null);
+  const [lastPullLoading, setLastPullLoading] = useState(false);
 
   // Fetch alerts from the API
   const fetchAlerts = useCallback(async () => {
@@ -209,6 +227,38 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
       setIsLoading(false);
     }
   }, [addDangerToast, addSuccessToast]);
+
+  // Fetch last data pull information
+  const fetchLastPull = useCallback(async () => {
+    setLastPullLoading(true);
+    try {
+      console.log("[Weather Data Pull] Fetching last successful pull info");
+      const response = await SupersetClient.get({
+        endpoint: '/api/v1/weather_data_pull/last_pull',
+        headers: { Accept: 'application/json' },
+      });
+      
+      console.log("[Weather Data Pull] Response:", response.json);
+      
+      if (response.json?.result) {
+        setLastPullInfo(response.json.result);
+        console.log("[Weather Data Pull] Last successful pull:", response.json.result.pulled_at);
+      } else {
+        console.log("[Weather Data Pull] No successful pull info available");
+        setLastPullInfo(null);
+      }
+    } catch (error) {
+      // Handle 404 errors gracefully (no successful pulls yet)
+      if (error.status === 404) {
+        console.log("[Weather Data Pull] No successful pull history found");
+      } else {
+        console.error('Error fetching last pull info:', error);
+      }
+      setLastPullInfo(null);
+    } finally {
+      setLastPullLoading(false);
+    }
+  }, []);
 
   // Process alerts and group them by type
   const processAlerts = useCallback((alerts: AlertType[]) => {
@@ -299,10 +349,28 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     setWeatherAlerts(alertGroups);
   }, []);
 
-  // Fetch alerts on component mount
+  // Format date for display
+  const formatPullDate = useCallback((dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      // Format: "May 15, 2023 at 10:30 AM"
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateString;
+    }
+  }, []);
+
+  // Fetch alerts and last pull info on component mount
   useEffect(() => {
     fetchAlerts();
-  }, [fetchAlerts]);
+    fetchLastPull();
+  }, [fetchAlerts, fetchLastPull]);
 
   const handleError = useCallback((error: Error) => {
     addDangerToast(t('Failed to load chart: %s', error.message));
@@ -541,9 +609,18 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         <DashboardTabs idOrSlug="overview" />
       </div>
 
-      {/* Data source attribution */}
+      {/* Data source attribution with last pull time */}
       <DataSourceAttribution>
         Weather data provided by ECMWF (European Centre for Medium-Range Weather Forecasts)
+        {lastPullLoading ? (
+          <DataUpdateInfo>Loading last update time...</DataUpdateInfo>
+        ) : lastPullInfo ? (
+          <DataUpdateInfo>
+            Last successful update: {formatPullDate(lastPullInfo.pulled_at)}
+          </DataUpdateInfo>
+        ) : (
+          <DataUpdateInfo>No successful update history available</DataUpdateInfo>
+        )}
       </DataSourceAttribution>
 
       <Modal

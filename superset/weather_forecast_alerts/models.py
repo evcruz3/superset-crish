@@ -21,8 +21,9 @@ from typing import Any
 
 import sqlalchemy as sa
 from flask_appbuilder import Model
-from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, Text, PrimaryKeyConstraint
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table, Text, PrimaryKeyConstraint, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from superset import db
 from superset.models.helpers import AuditMixinNullable
@@ -68,4 +69,17 @@ class WeatherForecastAlert(Model):
             "alert_title": self.alert_title,
             "alert_message": self.alert_message,
             "parameter_value": self.parameter_value,
-        } 
+        }
+
+class WeatherDataPullHistory(Model):
+    """Tracks history of successful weather data pulls."""
+    __tablename__ = "weather_data_pull_history"
+    
+    id = Column(Integer, primary_key=True)
+    pulled_at = Column(DateTime, nullable=False, default=func.now())
+    parameters_pulled = Column(String(255), nullable=False)  # Comma-separated list of parameters
+    pull_status = Column(String(50), nullable=False, default="Success")
+    details = Column(Text, nullable=True)  # Optional details about the pull
+    
+    def __repr__(self):
+        return f"WeatherDataPullHistory(pulled_at={self.pulled_at}, status={self.pull_status})" 

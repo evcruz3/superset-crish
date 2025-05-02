@@ -6,8 +6,11 @@ import subprocess
 import sys
 import signal
 import os
+import json
+import psycopg2
 from pathlib import Path
 from transform_weather_data import process_weather_files, ingest_to_postgresql
+from datetime import datetime
 
 # Setup logging
 logging.basicConfig(
@@ -17,6 +20,70 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
+def record_pull_history(parameters_pulled, status="Success", details=None):
+    """Record a pull history directly to the database."""
+    try:
+        # Load environment variables
+        load_dotenv()
+        
+        # Get database connection details - use the same DB as for weather data
+        db_host = os.getenv('DATABASE_HOST', 'db')
+        db_port = os.getenv('DATABASE_PORT', '5432')
+        db_name = os.getenv('DATABASE_DB', 'superset')
+        db_user = os.getenv('DATABASE_USER', 'superset')
+        db_password = os.getenv('DATABASE_PASSWORD', 'superset')
+        
+        # Connect to the database
+        db_uri = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        logging.info(f"Connecting to database at {db_host}:{db_port} to record pull history")
+        
+        # Insert record directly into the database
+        with psycopg2.connect(db_uri) as conn:
+            with conn.cursor() as cur:
+                # First, check if the table exists and create it if it doesn't
+                cur.execute("""
+                SELECT EXISTS (
+                   SELECT FROM information_schema.tables 
+                   WHERE table_name = 'weather_data_pull_history'
+                );
+                """)
+                table_exists = cur.fetchone()[0]
+                
+                if not table_exists:
+                    logging.info("Creating weather_data_pull_history table")
+                    # Create the table based on the model definition
+                    cur.execute("""
+                    CREATE TABLE weather_data_pull_history (
+                        id SERIAL PRIMARY KEY,
+                        pulled_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        parameters_pulled VARCHAR(255) NOT NULL,
+                        pull_status VARCHAR(50) NOT NULL DEFAULT 'Success',
+                        details TEXT
+                    );
+                    """)
+                    conn.commit()
+                    logging.info("Table created successfully")
+                
+                # Insert into weather_data_pull_history table
+                sql = """
+                INSERT INTO weather_data_pull_history 
+                (pulled_at, parameters_pulled, pull_status, details)
+                VALUES (%s, %s, %s, %s)
+                """
+                cur.execute(sql, (
+                    datetime.now(),
+                    parameters_pulled,
+                    status,
+                    details or ""
+                ))
+                conn.commit()
+                
+            logging.info(f"Successfully recorded pull history: {parameters_pulled}")
+            
+    except Exception as e:
+        logging.error(f"Failed to record pull history: {str(e)}")
+        logging.exception("Full error traceback:")
 
 def pull_data():
     try:
@@ -64,6 +131,7 @@ def pull_data():
         ]
         
         pull_success = True  # Track if all pulls are successful
+        pull_details = []  # Store details about the pull
         
         for param in parameters:
             output_file = data_dir / f'{param}_data.json'
@@ -102,13 +170,22 @@ def pull_data():
                     if file_size == 0:
                         logging.warning(f"Output file exists but is empty: {output_file}")
                         pull_success = False
+                        pull_details.append(f"{param}: File empty")
+                    else:
+                        pull_details.append(f"{param}: Success ({file_size} bytes)")
                 else:
                     logging.error(f"Output file was not created: {output_file}")
                     logging.error(f"Directory contents: {list(data_dir.glob('*'))}")
                     pull_success = False
+                    pull_details.append(f"{param}: File not created")
             else:
                 logging.error(f"Command failed with exit code {result.returncode}")
                 pull_success = False
+                pull_details.append(f"{param}: Failed with code {result.returncode}")
+        
+        # Record the pull attempt
+        pull_status = "Success" if pull_success else "Partial" if any("Success" in detail for detail in pull_details) else "Failed"
+        record_pull_history(','.join(parameters), pull_status, '; '.join(pull_details))
         
         # If all data pulls were successful, process and ingest the data
         if pull_success:
@@ -124,6 +201,8 @@ def pull_data():
     except Exception as e:
         logging.error(f"Failed to pull data: {str(e)}")
         logging.exception("Full error traceback:")
+        # Record the failed pull
+        record_pull_history("all", "Failed", str(e))
 
 def main():
     # Handle graceful shutdown
