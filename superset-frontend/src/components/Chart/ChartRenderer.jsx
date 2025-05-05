@@ -250,6 +250,11 @@ class ChartRenderer extends Component {
   render() {
     const { chartAlert, chartStatus, chartId, emitCrossFilters } = this.props;
 
+    if (this.props.vizType === 'table') {
+      console.log('[ChartRenderer] render() called');
+      console.log('[ChartRenderer] this.props:', this.props);
+    }
+
     // Skip chart rendering
     if (chartStatus === 'loading' || !!chartAlert || chartStatus === null) {
       return null;

@@ -18,6 +18,10 @@
  */
 import React, { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react';
 import { styled, t, SupersetClient } from '@superset-ui/core';
+import { useDispatch, useSelector } from 'react-redux';
+import { exploreJSON } from 'src/components/Chart/chartAction';
+import { RootState } from 'src/views/store';
+import * as rison from 'rison';
 import { ChartSlugContainer } from './chartSlugComponents';
 
 const ResponsiveContainer = styled.div<{ fillHeight?: boolean }>`
@@ -44,20 +48,29 @@ export function ResponsiveChartSlug({
   onError,
   onChartLoad,
 }: ResponsiveChartSlugProps) {
-  const [formData, setFormData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [chartStatus, setChartStatus] = useState<'loading' | 'rendered' | 'failed'>('loading');
-  const [queriesResponse, setQueriesResponse] = useState<any[]>([]);
+  const dispatch = useDispatch();
+  const [chartId, setChartId] = useState<number | null>(null);
+  const [localFormData, setLocalFormData] = useState<any | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  const chartState = useSelector((state: RootState) => 
+    chartId ? state.charts?.[chartId] : null
+  );
+
+  const {
+    chartStatus = 'loading',
+    queriesResponse = null,
+    chartAlert = null,
+    lastRendered = 0,
+  } = chartState || {};
+  
+  const isLoading = initialLoading || !localFormData || !chartState || chartStatus === 'loading';
+
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
-  
-  // Reference to the chart container div
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Store previous dimensions for comparison
   const prevDimensionsRef = useRef({ width: 0, height: 0 });
-  
-  // Use a counter to track dimension updates
   const dimensionUpdateCount = useRef(0);
+  const hasSignaledLoad = useRef(false);
 
   const calculateDimensions = useCallback(() => {
     if (!containerRef.current) return false;
@@ -70,11 +83,9 @@ export function ResponsiveChartSlug({
       const navBarHeight = containerRect.top;
       const viewportHeight = window.innerHeight;
       
-      // Calculate the exact available space
       const availableHeight = fillHeight ? viewportHeight - navBarHeight : containerRect.height;
       const availableWidth = containerRect.width;
       
-      // Only update if dimensions changed by at least 1px
       const widthDiff = Math.abs(availableWidth - prevDimensionsRef.current.width);
       const heightDiff = Math.abs(availableHeight - prevDimensionsRef.current.height);
       
@@ -87,11 +98,11 @@ export function ResponsiveChartSlug({
       return false;
     } catch (error) {
       console.error('Error calculating dimensions:', error);
+      onError?.(error as Error);
       return false;
     }
-  }, [fillHeight]);
+  }, [fillHeight, onError]);
 
-  // Set up resize observer and dimension calculation
   useLayoutEffect(() => {
     if (!containerRef.current) return;
 
@@ -110,141 +121,116 @@ export function ResponsiveChartSlug({
     window.addEventListener('resize', handleResize);
     
     return () => {
-      if (containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
+      const currentRef = containerRef.current;
+      if (currentRef) {
+        resizeObserver.unobserve(currentRef);
       }
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
   }, [calculateDimensions]);
 
-  const fetchChartData = useCallback(async (chartId: number, formDataResponse: any) => {
+  const fetchChartBySlugAndDispatch = useCallback(async () => {
+    setInitialLoading(true);
+    setLocalFormData(null);
+    setChartId(null);
+    hasSignaledLoad.current = false;
     try {
-      let chartDataResponse;
-      const vizType = formDataResponse.viz_type;
-
-      if (vizType === 'deck_multi') {
-        chartDataResponse = await SupersetClient.post({
-          endpoint: `/superset/explore_json/?form_data=${JSON.stringify({"slice_id": chartId})}`,
-          jsonPayload: formDataResponse,
-        });
-      } else {
-        chartDataResponse = await SupersetClient.post({
-          endpoint: `/api/v1/chart/explore_json?form_data=${JSON.stringify({"slice_id": chartId})}`,
-          jsonPayload: {
-            datasource: formDataResponse.datasource,
-            force: false,
-            queries: [
-              {
-                filters: [],
-                extras: { having: '', where: '' },
-                applied_time_extras: {},
-                columns: [],
-                metrics: formDataResponse.metrics || [],
-                annotation_layers: [],
-                series_limit: 0,
-                order_desc: true,
-                url_params: { slice_id: chartId.toString() },
-                custom_params: {},
-                custom_form_data: {},
-              },
-            ],
-            form_data: formDataResponse,
-            result_format: 'json',
-            result_type: 'results',
-          },
-        });
+      if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+        console.error(`Attempted to fetch chart with invalid slug: '${slug}'`);
+        onError?.(new Error(`Invalid or missing slug provided: '${slug}'. Cannot fetch chart.`));
+        setInitialLoading(false);
+        return;
       }
-
-      setQueriesResponse([chartDataResponse.json]);
-      setChartStatus('rendered');
-      onChartLoad?.();
-    } catch (error) {
-      setChartStatus('failed');
-      onError?.(error as Error);
-    }
-  }, [onError, onChartLoad]);
-
-  const fetchChartBySlug = useCallback(async () => {
-    try {
-      setIsLoading(true);
       
-      // First fetch the chart using the slug
-      const chartResponse = await SupersetClient.get({
-        endpoint: `/api/v1/chart/?q=${JSON.stringify({ 
-          filters: [{ col: 'slug', opr: 'eq', value: slug }] 
-        })}`,
+      const query = rison.encode({
+        filters: [{ col: 'slug', opr: 'eq', value: slug }],
       });
-      
+      console.log(`Fetching chart metadata for slug: '${slug}', RISON query: ${query}`);
+
+      const chartResponse = await SupersetClient.get({
+        endpoint: `/api/v1/chart/?q=${query}`,
+      });
+
       if (!chartResponse.json.result || chartResponse.json.result.length === 0) {
         throw new Error(t('Chart with this slug was not found'));
       }
-      
       const chartMetadata = chartResponse.json.result[0];
-      
-      // Get form data for the chart
+      const fetchedChartId = chartMetadata.id;
+      setChartId(fetchedChartId);
+
       const formDataResponse = await SupersetClient.get({
-        endpoint: `/api/v1/form_data/?slice_id=${chartMetadata.id}`,
+         endpoint: `/api/v1/form_data/?slice_id=${fetchedChartId}`,
       });
 
-      // Format the form data with proper datasource structure
-      const [datasourceId, datasourceType] = (formDataResponse.json.datasource as string).split('__');
-      const formattedFormData = {
-        ...formDataResponse.json,
-        datasource: {
-          id: parseInt(datasourceId, 10),
-          type: datasourceType,
-        },
-      };
-      
-      setFormData(formattedFormData);
-      
-      // After getting form data, fetch the chart data
-      await fetchChartData(chartMetadata.id, formattedFormData);
-    } catch (error) {
-      onError?.(error as Error);
-      setChartStatus('failed');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [slug, fetchChartData, onError]);
+      const fetchedFormData = formDataResponse.json;
+      setLocalFormData(fetchedFormData);
 
-  // Fetch chart data when slug changes
+      if (fetchedChartId && fetchedFormData) {
+         dispatch(
+           exploreJSON(
+             fetchedFormData,
+             false,
+             undefined,
+             fetchedChartId,
+             undefined,
+             undefined
+           ),
+         );
+      } else {
+         throw new Error(t('Could not retrieve chart ID or form data.'));
+      }
+
+    } catch (error) {
+      console.error('Error fetching chart by slug or dispatching exploreJSON:', error);
+      onError?.(error as Error);
+      setChartId(null);
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [slug, dispatch, onError]);
+
   useEffect(() => {
-    fetchChartBySlug();
-  }, [fetchChartBySlug]);
+    fetchChartBySlugAndDispatch();
+  }, [fetchChartBySlugAndDispatch]);
+
+  useEffect(() => {
+    if (chartStatus === 'rendered' || chartStatus === 'success') {
+       if (!hasSignaledLoad.current) {
+          onChartLoad?.();
+          hasSignaledLoad.current = true;
+          setTimeout(calculateDimensions, 100); 
+       }
+    } else if (chartStatus === 'failed') {
+       console.error('Chart rendering failed (via Redux state):', chartAlert);
+    }
+  }, [chartStatus, chartAlert, onChartLoad, calculateDimensions]);
+
+  console.log('trying to render chart id', chartId);
+  console.log('formData', localFormData);
+  console.log('queriesResponse', queriesResponse);
 
   return (
-    <ResponsiveContainer 
-      ref={containerRef} 
+    <ResponsiveContainer
+      ref={containerRef}
       fillHeight={fillHeight}
       className={className}
     >
       {isLoading ? (
         <div>Loading...</div>
-      ) : !formData ? (
-        <div>No chart data found</div>
+      ) : !localFormData || !queriesResponse ? (
+        <div>{chartAlert || t('Chart form data or query data not available.')}</div>
       ) : (
         <ChartSlugContainer
-          key={`chart-${slug}-${chartDimensions.width}-${chartDimensions.height}`}
-          slug={slug}
-          formData={formData}
+          key={`chart-${chartId}-${chartDimensions.width}-${chartDimensions.height}-${lastRendered}`}
+          id={chartId}
+          formData={localFormData}
+          queriesResponse={queriesResponse}
+          chartStatus={chartStatus}
+          chartAlert={chartAlert}
           width={chartDimensions.width}
           height={chartDimensions.height}
-          vizType={formData.viz_type}
-          triggerRender={true}
-          filterState={null}
-          queriesResponse={queriesResponse}
-          onChartRender={() => {
-            setChartStatus('rendered');
-            onChartLoad?.();
-            // Recalculate dimensions after render
-            setTimeout(calculateDimensions, 100);
-          }}
-          onChartError={(error: any) => {
-            setChartStatus('failed');
-            onError?.(error);
-          }}
+          onChartLoad={onChartLoad}
         />
       )}
     </ResponsiveContainer>

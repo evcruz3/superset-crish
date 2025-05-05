@@ -45,10 +45,17 @@ export const StyledTabsContainer = styled.div`
   }
 `;
 
-const TabContentContainer = styled.div`
-  padding: ${({ theme }) => theme.gridUnit * 4}px;
+export const TabContentContainer = styled.div`
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+`;
+
+export const ChartContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
 `;

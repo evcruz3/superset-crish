@@ -21,6 +21,7 @@ import {
   useCallback,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   MouseEvent,
   KeyboardEvent as ReactKeyboardEvent,
@@ -447,6 +448,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   const [hideComparisonKeys, setHideComparisonKeys] = useState<string[]>([]);
   const theme = useTheme();
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const filterInfoRef = useRef<HTMLDivElement>(null);
 
   // only take relevant page size options
   const pageSizeOptions = useMemo(() => {
@@ -1317,41 +1319,52 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   useLayoutEffect(() => {
-    // After initial load the table should resize only when the new sizes
-    // Are not only scrollbar updates, otherwise, the table would twitch
     const scrollBarSize = getScrollBarSize();
-    const { width: tableWidth, height: tableHeight } = tableSize;
-    // Table is increasing its original size
-    if (
-      width - tableWidth > scrollBarSize ||
-      height - tableHeight > scrollBarSize
-    ) {
+    const { width: currentTableWidth, height: currentTableHeight } = tableSize;
+    
+    // Calculate available height first
+    let availableHeight = height;
+
+    // Check if filter info section is rendered and subtract its height
+    const filterInfoHeight = filterInfoRef.current?.offsetHeight || 0;
+    if (filterInfoHeight > 0) {
+      // Subtract height and add a margin (e.g., 8px or theme.gridUnit * 2)
+      availableHeight -= (filterInfoHeight + theme.gridUnit * 2); 
+    }
+
+    // Ensure height doesn't go negative
+    availableHeight = Math.max(0, availableHeight);
+
+    // Compare with available width and height
+    const widthDifference = Math.abs(width - currentTableWidth);
+    const heightDifference = Math.abs(availableHeight - currentTableHeight);
+
+    // Resize only if the difference is larger than the scrollbar size
+    // to avoid twitching from scrollbar appearance/disappearance
+    if (widthDifference > scrollBarSize || heightDifference > scrollBarSize) {
+      // Calculate new dimensions, accounting for potential scrollbars
+      // Note: This logic might need refinement based on exact scrollbar behavior
+      const newWidth = width - (availableHeight < currentTableHeight ? scrollBarSize : 0);
+      const newHeight = availableHeight - (width < currentTableWidth ? scrollBarSize : 0);
+
       handleSizeChange({
-        width: width - scrollBarSize,
-        height: height - scrollBarSize,
-      });
-    } else if (
-      tableWidth - width > scrollBarSize ||
-      tableHeight - height > scrollBarSize
-    ) {
-      // Table is decreasing its original size
-      handleSizeChange({
-        width,
-        height,
+        width: Math.max(0, newWidth),
+        height: Math.max(0, newHeight),
       });
     }
-  }, [width, height, handleSizeChange, tableSize]);
+  }, [width, height, handleSizeChange, tableSize, columnFilters, theme.gridUnit]);
 
   // Extract width and height from tableSize for passing to DataTable
   const { width: widthFromState, height: heightFromState } = tableSize;
 
   return (
     <Styles>
+      {/* Attach the ref to the filter info div */} 
       {Object.keys(columnFilters).length > 0 && (
-        <div className="dt-filter-info" style={{ marginTop: '80px', width: '100%', boxSizing: 'border-box' }}>
+        <div ref={filterInfoRef} className="dt-filter-info" style={{ width: '100%', boxSizing: 'border-box', marginBottom: `${theme.gridUnit * 2}px` }}> 
           <div>
             <Badge 
-              count={`${filteredRowCount} ${t('of')} ${data.length} ${t('rows')}`} 
+              count={`${filteredRowCount} ${t('of')} ${data.length} ${t('rows')}`}
             />
             <span className="filter-info-text">
               {t('Active filters')}: {Object.entries(columnFilters).map(([key, values], index) => {

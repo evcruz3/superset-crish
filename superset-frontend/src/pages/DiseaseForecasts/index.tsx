@@ -16,35 +16,81 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
-import DashboardTabs from '../WeatherForecasts/DashboardTabs';
-
+import React, { useState } from 'react';
+import DashboardTabs, { ChartContainer, TabContentContainer, StyledTabsContainer } from '../WeatherForecasts/DashboardTabs';
+import { LineEditableTabs } from 'src/components/Tabs';
+import { useTheme } from '@superset-ui/core';
+import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 export default function DiseaseForecasts() {
 
-  return <DashboardTabs idOrSlug="disease_forecasts" selectedTabIndex={0} />;
+  // return <DashboardTabs idOrSlug="disease_forecasts" selectedTabIndex={0} />;
 
-//   return (
-//     <div className="container">
-//       <Row gutter={16}>
-//         <Col xs={24} sm={24} md={24} lg={24}>
-//           <h1>{t('Disease Forecasts')}</h1>
-//           <div
-//             style={{
-//               backgroundColor: theme.colors.grayscale.light5,
-//               borderRadius: theme.borderRadius,
-//               padding: theme.gridUnit * 4,
-//               marginTop: theme.gridUnit * 2,
-//             }}
-//           >
-//             <p>{t('Welcome to Disease Forecasts')}</p>
-//             <p>
-//               {t(
-//                 'This page provides forecasting insights for various diseases in Timor-Leste.',
-//               )}
-//             </p>
-//           </div>
-//         </Col>
-//       </Row>
-//     </div>
-//   );
+  const theme = useTheme();
+    const [activeTab, setActiveTab] = useState('1');
+
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId);
+    };
+
+    return (
+        <StyledTabsContainer>
+            <LineEditableTabs
+                activeKey={activeTab}
+                onChange={handleTabChange}
+                type="card"
+            >
+                <LineEditableTabs.TabPane
+                    tab="Forecasts"
+                    key="1"
+                >
+                    <TabContentContainer>
+                        <ChartContainer>
+                            <ResponsiveChartSlug 
+                                slug="multi-disease-forecast" 
+                                fillHeight={true}
+                                onError={(error) => console.error('Chart error:', error)}
+                            />
+                        </ChartContainer>
+                    </TabContentContainer>
+                </LineEditableTabs.TabPane>
+                <LineEditableTabs.TabPane
+                    tab="Alerts"
+                    key="2"
+                >
+                    <TabContentContainer>
+                        <ChartContainer>
+                            <ResponsiveChartSlug 
+                                slug="disease_forecast_alerts" 
+                                fillHeight={true}
+                                onError={(error) => console.error('Chart error:', error)}
+                            />
+                        </ChartContainer>
+                    </TabContentContainer>
+                </LineEditableTabs.TabPane>
+                <LineEditableTabs.TabPane
+                    tab="Trendlines"
+                    key="3"
+                >
+                    <TabContentContainer>
+                        <DashboardTabs idOrSlug="disease_forecasts" selectedTabIndex={0} />
+                    </TabContentContainer>
+                </LineEditableTabs.TabPane>
+                <LineEditableTabs.TabPane
+                    tab="Table"
+                    key="4"
+                >
+                    <TabContentContainer>
+                        {/* Alot horizontal padding */}
+                        <ChartContainer style={{ paddingLeft: 16, paddingRight: 16 }}>
+                            <ResponsiveChartSlug 
+                                slug="disease_forecast_table" 
+                                fillHeight={true}
+                                onError={(error) => console.error('Chart error:', error)}
+                            />
+                        </ChartContainer>
+                    </TabContentContainer>
+                </LineEditableTabs.TabPane>
+            </LineEditableTabs>
+        </StyledTabsContainer>
+    );  
 } 

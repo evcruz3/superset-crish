@@ -20,9 +20,8 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import { t, SupersetClient } from '@superset-ui/core';
+import { t } from '@superset-ui/core';
 
-import Loading from '../Loading';
 import Chart from './Chart';
 import ErrorBoundary from '../ErrorBoundary';
 import * as actions from './chartAction';
@@ -30,111 +29,66 @@ import { logEvent } from '../../logger/actions';
 import { updateDataMask } from '../../dataMask/actions';
 
 /**
- * ChartSlugContainer is a component that renders a chart using its slug 
- * instead of its ID. It fetches the chart data using the slug, then
- * renders the Chart component with the fetched data.
+ * ChartSlugContainer receives chart data props (id, formData, queriesResponse, etc.)
+ * and renders the core Chart component.
  */
 const propTypes = {
-  slug: PropTypes.string.isRequired,
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   actions: PropTypes.object.isRequired,
   height: PropTypes.number,
   width: PropTypes.number,
   setControlValue: PropTypes.func,
-  vizType: PropTypes.string,
   triggerRender: PropTypes.bool,
-  chartId: PropTypes.number,
-  formData: PropTypes.object,
+  formData: PropTypes.object.isRequired,
+  queriesResponse: PropTypes.array,
+  chartStatus: PropTypes.string,
+  chartAlert: PropTypes.string,
   filterState: PropTypes.object,
+  onChartLoad: PropTypes.func,
 };
 
 export function ChartSlugComponent({
-  slug,
+  id,
   actions,
-  chartId,
   height,
   width,
   setControlValue,
-  vizType,
   triggerRender,
   formData,
+  queriesResponse,
+  chartStatus,
+  chartAlert,
   filterState,
+  onChartLoad,
   ...restProps
 }) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [chartData, setChartData] = useState(null);
-
-  useEffect(() => {
-    const fetchChartBySlug = async () => {
-      setLoading(true);
-      try {
-        // First, fetch the chart metadata using the slug
-        const response = await SupersetClient.get({
-          endpoint: `/api/v1/chart/?q=${JSON.stringify({ filters: [{ col: 'slug', opr: 'eq', value: slug }] })}`,
-        });
-
-        if (!response.json.result || response.json.result.length === 0) {
-          throw new Error(t('Chart with this slug was not found'));
-        }
-
-        // Get the first matching chart
-        const chartMetadata = response.json.result[0];
-        
-        // Set the retrieved chart data
-        setChartData(chartMetadata);
-        setLoading(false);
-      } catch (err) {
-        setError(err.message || t('Failed to load chart'));
-        setLoading(false);
-      }
-    };
-
-    fetchChartBySlug();
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div style={{ height, width, position: 'relative' }}>
-        <Loading position="absolute" />
-      </div>
-    );
-  }
-
-  if (error) {
+  if (chartStatus === 'failed') {
     return (
       <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <ErrorBoundary>
           <div className="alert alert-warning">
-            {error}
+            {chartAlert || t('Failed to load chart')}
           </div>
         </ErrorBoundary>
       </div>
     );
   }
 
-  if (!chartData) {
-    return null;
-  }
-
-  // If we have formData provided as a prop, use it
-  // Otherwise, use the formData from the chart metadata
-  const chartFormData = formData || JSON.parse(chartData.params || '{}');
-  
-  // If we have a chartId provided as a prop, use it
-  // Otherwise, use the id from the chart metadata
-  const id = chartId || chartData.id;
-
   return (
     <Chart
-      id={id}
+      id={id.toString()}
       height={height}
       width={width}
       setControlValue={setControlValue}
-      vizType={vizType || chartData.viz_type}
+      vizType={formData?.viz_type}
       triggerRender={triggerRender}
-      formData={chartFormData}
+      formData={formData}
+      queriesResponse={queriesResponse}
+      chartStatus={chartStatus}
+      chartAlert={chartAlert}
       filterState={filterState}
       actions={actions}
+      onQuery={onChartLoad}
       {...restProps}
     />
   );
