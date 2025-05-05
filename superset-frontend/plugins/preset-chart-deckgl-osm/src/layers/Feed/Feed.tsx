@@ -104,8 +104,8 @@ const fadeIn = keyframes`
 const FeedPanel = styled.div<{ isExiting?: boolean }>`
   position: absolute;
   top: 120px;
-  right: 20px;
-  width: 350px;
+  right: 10px;
+  width: 500px;
   max-height: calc(60vh);
   background: white;
   border-radius: 8px;

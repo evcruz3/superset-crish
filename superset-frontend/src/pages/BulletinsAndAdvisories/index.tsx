@@ -8,6 +8,7 @@ import { Bulletin } from './types';
 import BulletinCard from './BulletinCard';
 import CreateBulletinModal from './CreateBulletinModal';
 import EditBulletinModal from './EditBulletinModal';
+import BulletinDetailModal from './BulletinDetailModal';
 import moment from 'moment';
 import { createErrorHandler } from 'src/views/CRUD/utils';
 import DeleteModal from 'src/components/DeleteModal';
@@ -107,6 +108,8 @@ function BulletinsAndAdvisories({
   const [bulletinToEdit, setBulletinToEdit] = useState<Bulletin | null>(null);
   const [bulletinToDelete, setBulletinToDelete] = useState<Bulletin | null>(null);
   const [bulletinsToDelete, setBulletinsToDelete] = useState<Bulletin[]>([]);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [bulletinToView, setBulletinToView] = useState<Bulletin | null>(null);
 
   const {
     state: {
@@ -163,7 +166,24 @@ function BulletinsAndAdvisories({
   const columns = useMemo(
     () => [
       {
-        Cell: ({ row: { original } }: any) => original.title,
+        Cell: ({ row: { original } }: any) => {
+          const handleClick = () => {
+            setBulletinToView(original);
+            setDetailModalVisible(true);
+          };
+          
+          return (
+            <div 
+              role="button" 
+              tabIndex={0}
+              onClick={handleClick}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <Icons.File style={{ marginRight: 8, color: '#666' }} />
+              {original.title}
+            </div>
+          );
+        },
         Header: t('Title'),
         accessor: 'title',
       },
@@ -209,8 +229,39 @@ function BulletinsAndAdvisories({
             setEditModalVisible(true);
           };
           
+          const handleShare = () => {
+            const subject = encodeURIComponent(`Bulletin: ${original.title}`);
+            let body = encodeURIComponent(
+              `Title: ${original.title}\n` +
+              `Advisory: ${original.advisory || ''}\n` +
+              `Risks: ${original.risks || ''}\n` +
+              `Safety Tips: ${original.safety_tips || ''}\n` +
+              `Hashtags: ${original.hashtags || ''}\n\n` +
+              `Shared from ${window.location.origin}`
+            );
+            
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
+          };
+          
           return (
             <Actions className="actions">
+              {/* Share button - available to all users who can view */}
+              <Tooltip
+                id="share-action-tooltip"
+                title={t('Share')}
+                placement="bottom"
+              >
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="action-button"
+                  onClick={handleShare}
+                  data-test="bulletin-share-action"
+                >
+                  <Icons.Share data-test="bulletin-share-icon" />
+                </span>
+              </Tooltip>
+              
               {hasPerm('can_write') && (
                 <>
                   <Tooltip
@@ -395,7 +446,7 @@ function BulletinsAndAdvisories({
             loading={loading}
             pageSize={PAGE_SIZE}
             renderCard={renderCard}
-            defaultViewMode="card"
+            defaultViewMode="table"
           />
         )}
       </ConfirmStatusChange>
@@ -422,6 +473,18 @@ function BulletinsAndAdvisories({
         }}
         bulletin={bulletinToEdit}
       />
+
+      {bulletinToView && (
+        <BulletinDetailModal
+          bulletin={bulletinToView}
+          onClose={() => {
+            setDetailModalVisible(false);
+            setBulletinToView(null);
+          }}
+          hasPerm={hasPerm}
+          refreshData={refreshData}
+        />
+      )}
 
       {/* Delete Modal for single bulletin delete */}
       {bulletinToDelete && (
