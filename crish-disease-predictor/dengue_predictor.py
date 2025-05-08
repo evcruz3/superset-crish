@@ -11,6 +11,13 @@ import math
 import psycopg2
 import isoweek
 
+# Import alert generation functions
+from disease_alert_generator import (
+    generate_disease_alert, create_and_ingest_bulletins, 
+    get_iso_code_for_municipality, create_and_ingest_disease_forecast_alerts,
+    record_disease_pipeline_run
+)
+
 # Load environment variables
 load_dotenv()
 
@@ -219,7 +226,11 @@ class DenguePredictor:
 
 def main():
     predictor = DenguePredictor()
-    
+    pipeline_name = "Dengue Predictor Pipeline"
+    municipalities_processed_count = 0
+    alerts_generated_this_run = 0
+    bulletins_created_this_run = 0
+
     try:
         # Connect to database
         predictor.connect_db()
@@ -252,6 +263,8 @@ def main():
 
         # Store predictions
         predictions = {}
+        all_alerts = [] # Initialize list to store all generated alerts
+        processed_municipality_names = [] # Keep track of successfully processed municipalities
 
         # Process each municipality with available model
         for municipality in available_municipalities:
@@ -275,6 +288,11 @@ def main():
                 # Initialize next week prediction
                 next_week_prediction = None
                 
+                # Get municipality ISO code (needed for alerts)
+                municipality_iso_code = get_iso_code_for_municipality(municipality, predictor.municipality_iso_codes)
+                if not municipality_iso_code:
+                    print(f"Warning: ISO code not found for {municipality}, bulletins might be missing this info.")
+
                 # If forecast data is available, predict next week
                 if has_forecast and municipality in forecast_data and forecast_data[municipality]:
                     next_week_prediction = predictor.predict_next_week_cases(
@@ -300,8 +318,8 @@ def main():
                     # Add next week prediction if available
                     if next_week_prediction is not None:
                         # Calculate next week's date range
-                        current_end = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
-                        next_week_start = current_end + timedelta(days=1)
+                        current_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
+                        next_week_start = current_end_dt + timedelta(days=1)
                         next_week_end = next_week_start + timedelta(days=6)
                         
                         predictions[municipality]['next_week'] = {
@@ -312,6 +330,49 @@ def main():
                                 'end': next_week_end.strftime('%Y-%m-%d')
                             }
                         }
+                    
+                    # --- Generate Alerts --- 
+                    current_forecast_date_str = datetime.now().strftime('%Y-%m-%d')
+
+                    # Alert for current week prediction
+                    if current_prediction is not None:
+                        # Assumes current_prediction is for the week immediately following weeks[-1]
+                        last_hist_week_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
+                        current_pred_week_start_dt = last_hist_week_end_dt + timedelta(days=1)
+                        current_pred_week_end_dt = current_pred_week_start_dt + timedelta(days=6)
+
+                        current_alert = generate_disease_alert(
+                            disease_type="Dengue", # Changed to Dengue
+                            predicted_cases=int(current_prediction),
+                            municipality_name=municipality,
+                            forecast_date_str=current_forecast_date_str,
+                            week_start_str=current_pred_week_start_dt.strftime('%Y-%m-%d'),
+                            week_end_str=current_pred_week_end_dt.strftime('%Y-%m-%d'),
+                            municipality_iso_code=municipality_iso_code
+                        )
+                        if current_alert:
+                            all_alerts.append(current_alert)
+                            print(f"Generated current week Dengue alert for {municipality}: Level {current_alert['alert_level']}")
+
+                    # Alert for next week prediction
+                    if next_week_prediction is not None:
+                        next_week_alert = generate_disease_alert(
+                            disease_type="Dengue", # Changed to Dengue
+                            predicted_cases=int(next_week_prediction),
+                            municipality_name=municipality,
+                            forecast_date_str=current_forecast_date_str,
+                            week_start_str=predictions[municipality]['next_week']['week_range']['start'],
+                            week_end_str=predictions[municipality]['next_week']['week_range']['end'],
+                            municipality_iso_code=municipality_iso_code
+                        )
+                        if next_week_alert:
+                            all_alerts.append(next_week_alert)
+                            print(f"Generated next week Dengue alert for {municipality}: Level {next_week_alert['alert_level']}")
+
+                    processed_municipality_names.append(municipality)
+        
+        municipalities_processed_count = len(processed_municipality_names)
+        alerts_generated_this_run = len(all_alerts)
 
         # Save predictions
         os.makedirs(predictor.predictions_dir, exist_ok=True)
@@ -327,9 +388,42 @@ def main():
             print(f"{municipality}: Current week: {pred_data['current_week']['predicted_cases']} cases")
             if 'next_week' in pred_data:
                 print(f"             Next week: {pred_data['next_week']['predicted_cases']} cases")
+
+        # --- Ingest Bulletins ---    
+        if all_alerts:
+            print(f"\nAttempting to ingest {len(all_alerts)} Dengue alerts as bulletins...")
+            create_and_ingest_bulletins(all_alerts, predictor.db_params)
+            bulletins_created_this_run = len(all_alerts) # Assuming one bulletin per alert that leads to bulletin creation
+
+            # Also ingest raw alerts to disease_forecast_alerts table
+            create_and_ingest_disease_forecast_alerts(all_alerts, predictor.db_params)
+        else:
+            print("\nNo Dengue alerts generated to create bulletins or store in disease_forecast_alerts table.")
+        
+        record_disease_pipeline_run(
+            db_params=predictor.db_params,
+            pipeline_name=pipeline_name,
+            status="Success",
+            details=f"Successfully processed {municipalities_processed_count} municipalities. Generated {alerts_generated_this_run} alerts and {bulletins_created_this_run} bulletins.",
+            municipalities_processed_count=municipalities_processed_count,
+            alerts_generated_count=alerts_generated_this_run,
+            bulletins_created_count=bulletins_created_this_run
+        )
             
     except Exception as e:
-        print(f"Error: {str(e)}")
+        err_message = f"Error: {str(e)}"
+        print(err_message)
+        import traceback # For more detailed error logging
+        traceback.print_exc() # Print stack trace to console
+        record_disease_pipeline_run(
+            db_params=predictor.db_params,
+            pipeline_name=pipeline_name,
+            status="Failed",
+            details=err_message,
+            municipalities_processed_count=municipalities_processed_count,
+            alerts_generated_count=alerts_generated_this_run,
+            bulletins_created_count=bulletins_created_this_run
+        )
     finally:
         predictor.disconnect_db()
 
