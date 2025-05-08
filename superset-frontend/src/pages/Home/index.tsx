@@ -1233,9 +1233,9 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         title: mapping.title,
         color: mapping.color,
         details: [
-          { label: 'Extreme Danger/Severe', count: extremeDanger },
-          { label: 'Danger/Heavy/Strong', count: danger },
-          { label: 'Extreme Caution/Moderate', count: extremeCaution },
+          { label: 'Extreme Danger', count: extremeDanger },
+          { label: 'Danger', count: danger },
+          { label: 'Extreme Caution', count: extremeCaution },
           { label: 'Normal/Light', count: light }
         ].filter(d => d.count > 0), 
         alertData: parameterAlerts,
