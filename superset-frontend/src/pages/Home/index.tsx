@@ -1367,7 +1367,7 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
                   // Unified color logic
                   if (level.includes('extreme danger') || level === 'severe') statusColor = '#F44336';
                   else if (level === 'danger' || level === 'heavy' || level === 'strong' || level === 'high') statusColor = '#FF9800';
-                  else if (level.includes('extreme caution') || level === 'moderate' || level === 'caution') statusColor = '#FFC107'; // Darker yellow for better visibility
+                  else if (level.includes('extreme caution') || level === 'moderate' || level === 'caution') statusColor = '#FFEB3B';
                   else if (level === 'light' || level === 'normal' || level === 'low') statusColor = '#4CAF50';
                   
                   // Define variables outside the conditional block
@@ -1404,7 +1404,7 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
                     <div key={alert.id} style={{ marginBottom: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
                       <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
                         <div style={{ fontSize: '18px', fontWeight: 500 }}>{alert.municipality_name}</div>
-                        <div style={{ background: statusColor, color: statusColor === '#FFC107' ? '#333' : 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: 500 }}>
+                        <div style={{ background: statusColor, color: statusColor === '#FFEB3B' ? '#333' : 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: 500 }}>
                           {alert.alert_level}
                         </div>
                       </div>
