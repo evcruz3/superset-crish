@@ -30,13 +30,29 @@ import {
   css,
   keyframes,
   t,
+  TimeGranularity,
 } from '@superset-ui/core';
 import { scaleLinear } from 'd3-scale';
 import geojsonExtent from '@mapbox/geojson-extent';
 import { isEqual } from 'lodash';
 import DeckGL from '@deck.gl/react';
 import { LinearInterpolator } from '@deck.gl/core';
-import { formatDistanceToNow, format } from 'date-fns';
+import {
+  formatDistanceToNow,
+  format,
+  startOfDay,
+  startOfWeek,
+  startOfMonth,
+  startOfYear,
+  isSameDay,
+  isSameWeek,
+  isSameMonth,
+  isSameYear,
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+} from 'date-fns';
 import { DatePicker } from 'antd';
 import moment from 'moment';
 import { Moment } from 'moment';
@@ -67,6 +83,15 @@ import {
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
+
+// Helper function to check if two dates match based on granularity (moved outside getLayer)
+const datesMatch = (date1: Date, date2: Date, gran: TimeGranularity | null | undefined): boolean => {
+  if (!date1 || !date2 || !gran) return false;
+  if (gran === TimeGranularity.WEEK) return isSameWeek(date1, date2, { weekStartsOn: 1 });
+  if (gran === TimeGranularity.MONTH) return isSameMonth(date1, date2);
+  if (gran === TimeGranularity.YEAR) return isSameYear(date1, date2);
+  return isSameDay(date1, date2); // Default to Day
+};
 
 const slideIn = keyframes`
   from {
@@ -341,10 +366,18 @@ interface FeedPanelProps {
   regionName: string;
   isExiting?: boolean;
   temporal_column: string;
+  granularity: TimeGranularity | null;
 }
 
-export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regionName, isExiting, temporal_column }) => {
-  // Group entries by date
+export const FeedSidePanel: React.FC<FeedPanelProps> = ({
+  entries,
+  onClose,
+  regionName,
+  isExiting,
+  temporal_column,
+  granularity,
+}) => {
+  // Group entries by date, considering granularity
   const entriesByDate = useMemo(() => {
     const grouped: Record<string, FeedEntry[]> = {};
     
@@ -352,34 +385,67 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({ entries, onClose, regi
       if (entry[temporal_column]) {
         try {
           const date = new Date(entry[temporal_column]);
-          const day = date.getDate();
-          const month = date.toLocaleString('en-US', { month: 'short' });
-          const year = date.getFullYear();
-          const dateKey = `${day} ${month} ${year}`;
+          let groupDate: Date;
+          let dateFormat: string;
+          
+          // Determine the grouping date and format based on granularity
+          switch (granularity) {
+            case TimeGranularity.WEEK:
+              groupDate = startOfWeek(date, { weekStartsOn: 1 }); // Start week on Monday
+              dateFormat = 'yyyy-\'W\'II'; // ISO week format
+              break;
+            case TimeGranularity.MONTH:
+              groupDate = startOfMonth(date);
+              dateFormat = 'MMM yyyy';
+              break;
+            case TimeGranularity.YEAR:
+              groupDate = startOfYear(date);
+              dateFormat = 'yyyy';
+              break;
+            case TimeGranularity.DAY: // Default to Day
+            default:
+              groupDate = startOfDay(date);
+              dateFormat = 'd MMM yyyy';
+              break;
+          }
+          
+          const dateKey = format(groupDate, dateFormat);
           
           if (!grouped[dateKey]) {
             grouped[dateKey] = [];
           }
           grouped[dateKey].push(entry);
         } catch (e) {
-          console.warn('Could not format date for grouping:', entry[temporal_column]);
+          console.warn(
+            'Could not format/group date for FeedSidePanel:',
+            entry[temporal_column],
+            granularity,
+          );
         }
       }
     });
     
     return grouped;
-  }, [entries, temporal_column]);
+  }, [entries, temporal_column, granularity]);
   
-  // Sort dates (newest first)
+  // Sort dates (newest first based on actual date, not string key)
   const sortedDates = useMemo(() => {
     return Object.keys(entriesByDate).sort((a, b) => {
       try {
-        return new Date(b).getTime() - new Date(a).getTime();
+        // Get the actual date from the first entry of each group for sorting
+        const firstEntryA = entriesByDate[a]?.[0];
+        const firstEntryB = entriesByDate[b]?.[0];
+
+        const timeA = firstEntryA?.[temporal_column] ? new Date(firstEntryA[temporal_column]).getTime() : 0;
+        const timeB = firstEntryB?.[temporal_column] ? new Date(firstEntryB[temporal_column]).getTime() : 0;
+
+        return timeB - timeA;
       } catch (e) {
+        console.error('Error sorting dates in FeedSidePanel:', e);
         return 0;
       }
     });
-  }, [entriesByDate]);
+  }, [entriesByDate, temporal_column]);
 
   // Helper to determine status color based on status value
   const getStatusColor = useCallback((status: string) => {
@@ -524,9 +590,10 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
 
   const fd = formData as FeedFormData;
   const sc = fd.stroke_color_picker;
-  const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
+  const strokeColor = sc ? [sc.r, sc.g, sc.b, 255 * sc.a] : [0, 0, 0, 255];
   const data = payload.data as ProcessedData;
   const temporalColumn = data.temporal_column || formData.temporal_column;
+  const granularity = fd.time_granularity as TimeGranularity | undefined ?? TimeGranularity.DAY;
 
   // Calculate extent and color scale
   const allMetricValues = Object.values(data.regionMetrics);
@@ -548,16 +615,17 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     const regionId = feature.properties.ISO;
     const entries = entriesByRegion[regionId] || [];
     
-    // Filter entries by date first
-    const filteredEntries = currentTime && formData.temporal_column
+    // Filter entries by date and granularity
+    const filteredEntries = currentTime && temporalColumn
       ? entries.filter(entry => {
           if (!entry[temporalColumn]) return false; // Don't include entries without dates
-          const entryDate = new Date(entry[temporalColumn]);
-          const entryDateString = entryDate.toDateString();
-          const currentTimeString = currentTime.toDateString();
-          
-          // Only include entries that match the exact date (ignoring time)
-          return entryDateString === currentTimeString;
+          try {
+            const entryDate = new Date(entry[temporalColumn]);
+            return datesMatch(entryDate, currentTime, granularity);
+          } catch (e) {
+            console.warn('Invalid date encountered during filtering:', entry[temporalColumn]);
+            return false;
+          }
         })
       : entries;
 
@@ -608,10 +676,17 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       ? feature.geometry.coordinates[0]
       : feature.geometry.coordinates[0][0];
     
-    const center = coordinates.reduce(
-      (acc: [number, number], coord: [number, number]) => [acc[0] + coord[0], acc[1] + coord[1]],
-      [0, 0] as [number, number]
-    ).map((sum: number) => sum / coordinates.length);
+    // Simplified centroid calculation: Use bounding box center
+    let center: [number, number] = [0, 0]; 
+    if (Array.isArray(coordinates) && coordinates.length > 0 && Array.isArray(coordinates[0]) && coordinates[0].length === 2) {
+      const bounds = coordinates.reduce(([minX, minY, maxX, maxY], [x, y]) => [
+        Math.min(minX, x), Math.min(minY, y),
+        Math.max(maxX, x), Math.max(maxY, y),
+      ], [Infinity, Infinity, -Infinity, -Infinity]);
+      center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+    } else {
+      console.warn('Could not calculate centroid due to unexpected coordinate format for:', feature.properties.ISO);
+    }
 
     return {
       position: center as [number, number],
@@ -764,14 +839,17 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       return;
     }
 
+    const x = o.x ?? 0;
+    const y = o.y ?? 0;
+
     const areaName = o.object.properties?.ADM1 || 
                     o.object.properties?.name || 
                     o.object.properties?.NAME || 
                     o.object.properties?.ISO;
 
     setTooltip({
-      x: o.x,
-      y: o.y,
+      x,
+      y,
       content: (
         <div className="deckgl-tooltip">
           <TooltipRow
@@ -792,9 +870,12 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       return;
     }
 
+    const x = o.x ?? 0;
+    const y = o.y ?? 0;
+
     setTooltip({
-      x: o.x,
-      y: o.y,
+      x,
+      y,
       content: (
         <div className="deckgl-tooltip">
           <TooltipRow
@@ -830,7 +911,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
   const containerRef = useRef<DeckGLContainerHandleExtended>();
   
-  const { formData, payload, setControlValue, viewport: initialViewport, onAddFilter, height, width } = props;
+  const { formData, payload, setControlValue, viewport: initialViewport, height, width, onAddFilter } = props;
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef;
@@ -1013,14 +1094,15 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         const entries = payload.data.data.filter((entry: FeedEntry) => {
           if (!entry[date_key]) return false;
           const entryDate = new Date(entry[date_key]);
-          return entryDate.toDateString() === currentTime.toDateString();
+          const granularity = formData.time_granularity as TimeGranularity | undefined ?? TimeGranularity.DAY;
+          return datesMatch(entryDate, currentTime, granularity);
         });
 
         // Update the selected region with filtered entries
-        setSelectedRegion({
+        setSelectedRegion((prevRegion) => prevRegion ? {
           ...selectedRegion,
           entries: entries,
-        });
+        } : null);
       }
     }
   }, [currentTime, selectedRegion?.id, selectedRegion?.name, geoJson, payload.data?.data]);
@@ -1058,7 +1140,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
       return getLayer({
         formData,
         payload,
-        onAddFilter,
+        onAddFilter: props.onAddFilter,
         setTooltip,
         geoJson: geoJson as FeedGeoJSON,
         selectionOptions: {
@@ -1068,7 +1150,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         currentTime,
       });
     },
-    [formData, payload, onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature, setSelectedRegion, currentTime],
+    [formData, payload, setTooltip, geoJson, selectedRegion, panToFeature, setSelectedRegion, currentTime, props.onAddFilter],
   );
 
   if (error) {
@@ -1079,38 +1161,40 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     return <div>Loading...</div>;
   }
 
-  const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
+  const getDatesInRange = (startDate: Date, endDate: Date, granularity?: TimeGranularity | null) => {
     const dates: Date[] = [];
+    if (!granularity) return dates;
+
     const currentDate = new Date(startDate);
-
-
-
-
-
+    if (granularity === TimeGranularity.WEEK) currentDate.setDate(currentDate.getDate() - (currentDate.getDay() + 6) % 7);
+    if (granularity === TimeGranularity.MONTH) currentDate.setDate(1);
+    if (granularity === TimeGranularity.YEAR) currentDate.setMonth(0, 1);
 
     while (currentDate <= endDate) {
       dates.push(new Date(currentDate));
       
-      // Increment based on time grain
-      switch (timeGrain) {
-        case 'P1Y':
+      switch (granularity) {
+        case TimeGranularity.YEAR:
           currentDate.setFullYear(currentDate.getFullYear() + 1);
           break;
-        case 'P1M':
+        case TimeGranularity.MONTH:
           currentDate.setMonth(currentDate.getMonth() + 1);
           break;
-        case 'P1W':
+        case TimeGranularity.WEEK:
           currentDate.setDate(currentDate.getDate() + 7);
           break;
-        case 'P1D':
+        case TimeGranularity.DAY:
           currentDate.setDate(currentDate.getDate() + 1);
           break;
-        case 'PT1H':
+        case TimeGranularity.HOUR:
           currentDate.setHours(currentDate.getHours() + 1);
           break;
         default:
-          // Default to daily if no time grain specified
-          currentDate.setDate(currentDate.getDate() + 1);
+          if (granularity === null || granularity === TimeGranularity.DAY) {
+            currentDate.setDate(currentDate.getDate() + 1);
+          } else {
+            break;
+          }
       }
     }
     return dates;
@@ -1119,7 +1203,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   return (
     <>
       <DeckGLContainerStyledWrapper
-        ref={containerRef}
+        ref={containerRef as React.RefObject<DeckGLContainerHandle>}
         mapboxApiAccessToken={payload.data?.mapboxApiKey}
         viewport={currentViewport}
         onViewportChange={onViewportChange}
@@ -1147,26 +1231,23 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                     setCurrentTime(boundedTime);
                   }
                 }}
-                showTime={formData.time_grain_sqla === 'PT1H'}
                 picker={
-                  formData.time_grain_sqla === 'P1Y' 
+                  formData.time_granularity === TimeGranularity.YEAR
                     ? 'year'
-                    : formData.time_grain_sqla === 'P1M'
+                    : formData.time_granularity === TimeGranularity.MONTH
                     ? 'month'
-                    : formData.time_grain_sqla === 'P1W'
+                    : formData.time_granularity === TimeGranularity.WEEK
                     ? 'week'
                     : undefined
                 }
                 format={
-                  formData.time_grain_sqla === 'P1Y'
+                  formData.time_granularity === TimeGranularity.YEAR
                     ? 'YYYY'
-                    : formData.time_grain_sqla === 'P1M'
-                    ? 'YYYY-MM'
-                    : formData.time_grain_sqla === 'P1W'
-                    ? 'YYYY-[W]ww'
-                    : formData.time_grain_sqla === 'PT1H'
-                    ? 'YYYY-MM-DD HH:mm:ss'
-                    : 'YYYY-MM-DD'
+                    : formData.time_granularity === TimeGranularity.MONTH
+                    ? 'MMM YYYY'
+                    : formData.time_granularity === TimeGranularity.WEEK
+                    ? 'MMM YYYY [Week] w'
+                    : 'DD MMM YYYY'
                 }
                 allowClear={false}
                 disabledDate={current => {
@@ -1199,34 +1280,28 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
               />
             </div>
             <div className="timeline-container">
-              {getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla).map((date, index) => {
+              {getDatesInRange(timeRange[0], timeRange[1], formData.time_granularity as TimeGranularity | null).map((date, index) => {
                 // Format date based on time grain
                 let dateFormat: Intl.DateTimeFormatOptions = {};
-                switch (formData.time_grain_sqla) {
-                  case 'P1Y':
+                switch (formData.time_granularity) {
+                  case TimeGranularity.YEAR:
                     dateFormat = { year: 'numeric' };
                     break;
-                  case 'P1M':
+                  case TimeGranularity.MONTH:
                     dateFormat = { month: 'short', year: 'numeric' };
                     break;
-                  case 'P1W':
+                  case TimeGranularity.WEEK:
                     dateFormat = { month: 'short', day: 'numeric' };
-                    break;
-                  case 'PT1H':
-                    dateFormat = { hour: 'numeric', hour12: true };
                     break;
                   default:
                     dateFormat = { weekday: 'short' };
                 }
                 
+                const isActive = currentTime && datesMatch(date, currentTime, formData.time_granularity as TimeGranularity);
                 return (
                   <div 
                     key={index} 
-                    className={`day-label ${
-                      currentTime && date.toDateString() === currentTime.toDateString() 
-                        ? 'active' 
-                        : ''
-                    }`}
+                    className={`day-label ${isActive ? 'active' : ''}`}
                     onClick={() => setCurrentTime(date)}
                   >
                     {date.toLocaleDateString('en-US', dateFormat)}
@@ -1243,6 +1318,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
             regionName={selectedRegion.name}
             isExiting={isExiting}
             temporal_column={formData.temporal_column}
+            granularity={formData.time_granularity as TimeGranularity | null}
           />
         )}
       </DeckGLContainerStyledWrapper>

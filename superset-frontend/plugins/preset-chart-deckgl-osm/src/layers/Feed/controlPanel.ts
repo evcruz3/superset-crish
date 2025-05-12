@@ -154,6 +154,25 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        [
+          {
+            name: 'time_granularity',
+            config: {
+              type: 'SelectControl',
+              label: t('Time Granularity'),
+              default: 'P1D',
+              choices: [
+                ['P1D', t('Day')],
+                ['P1W', t('Week')],
+                ['P1M', t('Month')],
+                ['P1Y', t('Year')],
+              ],
+              description: t('The granularity to apply to the temporal column for filtering and display'),
+              visibility: ({ controls }) => Boolean(controls?.temporal_column?.value),
+              renderTrigger: true,
+            },
+          },
+        ],
         ['adhoc_filters'],
         [filterNulls],
         ['row_limit'],
