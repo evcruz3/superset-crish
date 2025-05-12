@@ -1,4 +1,5 @@
 {% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
 
 {% block content %}
 <div class="container">
@@ -27,8 +28,8 @@
         </div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('DisseminateBulletinView.form') }}">
-        {{ form.hidden_tag() if form else csrf_token() }} {# Includes CSRF token #}
+    <form method="POST" action="{{ url_for('DisseminateBulletinView.form') }}" id="disseminationForm">
+        {{ form.hidden_tag() }} {# Includes CSRF token #}
 
         <div class="form-group {% if form.bulletin_id.errors %}has-error{% endif %}">
             {{ form.bulletin_id.label(class_="control-label") }} <span style="color:red;">*</span>
@@ -48,7 +49,12 @@
 
         <div class="form-group {% if form.subject.errors %}has-error{% endif %}">
             {{ form.subject.label(class_="control-label") }} <span style="color:red;">*</span>
-            {{ form.subject(class_="form-control", id="subject") }}
+            {# Pre-fill subject if selected_bulletin is available #}
+            {% if selected_bulletin %}
+                {{ form.subject(class_="form-control", value=selected_bulletin.title ~ " - Advisory") }}
+            {% else %}
+                {{ form.subject(class_="form-control", id="subject") }}
+            {% endif %}
             {% if form.subject.errors %}
                 <ul class="help-block list-unstyled">{% for error in form.subject.errors %}<li>{{ error }}</li>{% endfor %}</ul>
             {% endif %}
@@ -56,7 +62,21 @@
 
         <div class="form-group {% if form.message.errors %}has-error{% endif %}">
             {{ form.message.label(class_="control-label") }} <span style="color:red;">*</span>
-            {{ form.message(class_="form-control", rows="10", id="message") }}
+            {# Pre-fill message if selected_bulletin is available #}
+            {% if selected_bulletin %}
+                {% set initial_message_html %}
+<h4>{{ selected_bulletin.title }}</h4>
+<p><strong>Advisory:</strong><br>{{ selected_bulletin.advisory.replace('\n', '<br>') if selected_bulletin.advisory else '' }}</p>
+<p><strong>Risks:</strong><br>{{ selected_bulletin.risks.replace('\n', '<br>') if selected_bulletin.risks else '' }}</p>
+<p><strong>Safety Tips:</strong><br>{{ selected_bulletin.safety_tips.replace('\n', '<br>') if selected_bulletin.safety_tips else '' }}</p>
+{% if selected_bulletin.hashtags %}
+<p><strong>Hashtags:</strong> {{ selected_bulletin.hashtags }}</p>
+{% endif %}
+                {% endset %}
+                {{ form.message(class_="form-control", rows=10, value=initial_message_html) }}
+            {% else %}
+                {{ form.message(class_="form-control", rows="10", id="message") }}
+            {% endif %}
             <small class="form-text text-muted">
                 {{ _("You can customize the message here. JavaScript will attempt to pre-fill this based on the selected bulletin.") }}
             </small>
@@ -106,46 +126,78 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("Error parsing bulletins data from script tag:", e);
     }
 
-    // Function to pre-fill form fields if a bulletin is selected
-    function prefillFormFields() {
-        const selectedBulletinId = bulletinSelect.value;
-        if (selectedBulletinId && bulletinsData.length > 0) {
-            const selectedBulletin = bulletinsData.find(b => String(b.id) === selectedBulletinId);
-            if (selectedBulletin) {
-                // Only pre-fill if the subject and message fields are currently empty or just whitespace
-                // to avoid overwriting user's deliberate changes after selection.
-                if (!subjectInput.value.trim()) {
-                    subjectInput.value = selectedBulletin.title;
-                }
-                if (!messageTextarea.value.trim()) {
-                    let defaultMessage = `<h4>${selectedBulletin.title}</h4>\n` +
-                                       `<p><strong>Advisory:</strong><br>${selectedBulletin.advisory || ''}</p>\n` +
-                                       `<p><strong>Risks:</strong><br>${selectedBulletin.risks || ''}</p>\n` +
-                                       `<p><strong>Safety Tips:</strong><br>${selectedBulletin.safety_tips || ''}</p>`;
-                    if(selectedBulletin.hashtags) {
-                        defaultMessage += `\n<p><strong>Hashtags:</strong> ${selectedBulletin.hashtags}</p>`;
-                    }
-                    messageTextarea.value = defaultMessage;
-                }
+    // Store original subject and message for comparison to avoid overwriting user edits
+    let originalSubject = subjectInput.value;
+    let originalMessage = messageTextarea.value;
+    let isUserEditedSubject = false;
+    let isUserEditedMessage = false;
+
+    // Function to update fields based on selected bulletin
+    function updateFields() {
+        const selectedId = parseInt(bulletinSelect.value);
+        const selectedBulletin = bulletinsData.find(b => b.id === selectedId);
+
+        if (selectedBulletin) {
+            // Pre-fill subject only if not edited by user or if it matches previous prefill
+            const newSubject = `${selectedBulletin.title} - Advisory`;
+            if (!isUserEditedSubject || subjectInput.value === originalSubject) {
+                subjectInput.value = newSubject;
+                originalSubject = newSubject; // Update original prefill reference
+            }
+
+            // Construct and pre-fill message only if not edited by user or if it matches previous prefill
+            let defaultMessage = `<h4>${selectedBulletin.title}</h4>\n` +
+                               `<p><strong>Advisory:</strong><br>${selectedBulletin.advisory ? selectedBulletin.advisory.replace(/\n/g, '<br>') : ''}</p>\n` +
+                               `<p><strong>Risks:</strong><br>${selectedBulletin.risks ? selectedBulletin.risks.replace(/\n/g, '<br>') : ''}</p>\n` +
+                               `<p><strong>Safety Tips:</strong><br>${selectedBulletin.safety_tips ? selectedBulletin.safety_tips.replace(/\n/g, '<br>') : ''}</p>`;
+            if(selectedBulletin.hashtags) {
+                defaultMessage += `\n<p><strong>Hashtags:</strong> ${selectedBulletin.hashtags}</p>`;
+            }
+            if (!isUserEditedMessage || messageTextarea.value === originalMessage) {
+                messageTextarea.value = defaultMessage;
+                originalMessage = defaultMessage; // Update original prefill reference
             }
         } else {
-            // Optionally clear if no bulletin is selected and fields were auto-filled by this script
-            // This part is tricky to manage without knowing if user manually cleared vs. deselected.
-            // For simplicity, we don't auto-clear here. User can manually clear.
+            // Clear if "-- Select --" is chosen and not user-edited
+            if (!isUserEditedSubject || subjectInput.value === originalSubject) {
+                subjectInput.value = '';
+                originalSubject = '';
+            }
+            if (!isUserEditedMessage || messageTextarea.value === originalMessage) {
+                messageTextarea.value = '';
+                originalMessage = '';
+            }
         }
     }
 
-    if (bulletinSelect) {
-        bulletinSelect.addEventListener('change', prefillFormFields);
-        // Call once on load in case a bulletin is already selected (e.g. form re-render after validation error)
-        if (bulletinSelect.value) { 
-            prefillFormFields();
-        }
+    // Listen for user edits
+    subjectInput.addEventListener('input', function() {
+        isUserEditedSubject = subjectInput.value !== originalSubject;
+    });
+    messageTextarea.addEventListener('input', function() {
+        isUserEditedMessage = messageTextarea.value !== originalMessage;
+    });
+
+    // Initial call to populate fields if a bulletin is pre-selected by the backend
+    // The backend now handles the initial pre-selection of bulletin_id in the form object
+    // and passes selected_bulletin, so Jinja handles initial HTML value for subject/message.
+    // The JS below primarily handles dynamic changes if the user changes the dropdown.
+
+    // If a bulletin was pre-selected by the backend, set the initial originalSubject and originalMessage
+    // based on what Jinja rendered, so the JS doesn't immediately overwrite it or think it's user-edited.
+    if (bulletinSelect.value && parseInt(bulletinSelect.value) !== 0) {
+        originalSubject = subjectInput.value;
+        originalMessage = messageTextarea.value;
+    } else {
+        // If no bulletin is pre-selected (or placeholder is selected), clear fields via JS
+        // unless they were somehow pre-filled by browser
+        if (!isUserEditedSubject) subjectInput.value = '';
+        if (!isUserEditedMessage) messageTextarea.value = '';
+        originalSubject = '';
+        originalMessage = '';
     }
-    
-    // If WTForms re-renders the form with values (e.g. after validation error),
-    // we don't want the JS to overwrite the subject/message the user already typed.
-    // The prefillFormFields function now checks if fields are empty before populating.
+
+    bulletinSelect.addEventListener('change', updateFields);
 });
 </script>
 

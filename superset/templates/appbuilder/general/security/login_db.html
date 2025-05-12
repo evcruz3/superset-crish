@@ -1,0 +1,249 @@
+{% extends "appbuilder/base.html" %} {# Extend original FAB base #}
+
+{% block content %}
+<style>
+  /* Apply gradient to html/body to ensure full coverage */
+  html, body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    /* Keep the background styling */
+    background: linear-gradient(to bottom right, #a8c0ff, #3f2b96);
+    background-size: cover;
+    background-repeat: no-repeat;
+    font-family: sans-serif;
+  }
+
+  .login-body-container { /* Use this to center the login box */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 90vh; /* Take most of viewport height, adjust if footer overlaps */
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .login-container {
+    /* Keep container styling */
+    background-color: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    max-width: 450px;
+    width: 100%;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .top-logos, .bottom-logos {
+    /* Keep logo layout */
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+   .top-logos img, .top-logos span {
+    height: 40px;
+    margin: 5px 10px;
+   }
+
+  .top-logos .crish-logo { /* Updated name */
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.5em;
+  }
+   .top-logos .crish-logo img { /* Updated name */
+     margin-right: 8px;
+     height: 35px;
+   }
+
+  .bottom-logos img {
+    height: 35px;
+    margin: 10px 10px;
+    opacity: 0.8;
+  }
+
+  /* Style form based on original structure and target */
+  #loginbox {
+      margin-top: 0 !important; /* Override inline style */
+      max-width: 100%; /* Allow container to control width */
+      box-shadow: none; /* Remove default shadow if any */
+      border: none; /* Remove default border */
+      padding: 0;
+      width: auto; /* Reset from backup */
+      float: none; /* Reset from backup */
+  }
+
+  #loginbox .panel {
+      box-shadow: none;
+      border: none;
+  }
+
+  #loginbox .panel-heading {
+      display: none; /* Hide original title bar */
+  }
+  #loginbox .panel-body {
+      padding-top: 0 !important; /* Remove default padding */
+  }
+
+  .form-group { /* Add styling for form groups */
+    margin-bottom: 15px;
+    text-align: left;
+  }
+
+  .form-group label { /* Style labels like target */
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-control { /* Style inputs like target */
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease-in-out;
+    height: auto; /* Reset height */
+    box-shadow: none; /* Remove default shadows */
+  }
+  .form-control:focus {
+      border-color: #7e57c2;
+      outline: none;
+  }
+
+  /* Remove FAB input group styling */
+  .input-group .input-group-addon {
+      display: none;
+  }
+  .input-group {
+     width: 100%;
+  }
+
+  /* Remove default help block */
+  #loginbox .help-block {
+      display: none;
+  }
+
+  /* Style submit button */
+  .btn-primary {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    width: 100%;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    margin-top: 10px; /* Add some space */
+  }
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
+
+  /* Style bottom links */
+  .login-links {
+    margin-top: 15px;
+    font-size: 0.9em;
+  }
+  .login-links a {
+    color: #007bff;
+    text-decoration: none;
+  }
+   .login-links a:hover {
+      text-decoration: underline;
+   }
+   .login-links span {
+     color: #666;
+     margin-right: 5px;
+   }
+
+   /* Keep navbar visible by NOT hiding it */
+   /* .navbar { display: none; } */
+   h2 { display: none; } /* Hide any remaining default title */
+
+   /* --- Navbar Adjustments --- */
+   .navbar-brand img {
+       max-height: 30px; /* Adjust max height of navbar logo */
+       width: auto;
+       margin-top: -5px; /* Adjust vertical alignment if needed */
+   }
+   /* ------------------------- */
+
+</style>
+
+{# Wrap the main content in our flex container for centering #}
+<div class="login-body-container">
+    {# Our custom centered container #}
+    <div class="login-container">
+
+        {# Add top logos #}
+        <div class="top-logos">
+          <span class="crish-logo">CRISH</span>
+          <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
+        </div>
+
+        {# This is the original FAB login box structure, we'll style it #}
+        <div id="loginbox" class="mainbox"> {# Removed col-* classes #}
+            <div class="panel panel-primary" >
+                <div class="panel-heading"> {# Kept for structure, hidden by CSS #}
+                    <div class="panel-title">{{ title }}</div>
+                </div>
+                <div class="panel-body" >
+
+                    <form class="form" action="" method="post" name="login">
+                        {{form.hidden_tag()}}
+                        {# Use form groups for layout #}
+                        <div class="form-group">
+                            <label class="control-label" for="username">{{_("User Name")}}</label> {# Use target label text #}
+                            <div class="input-group"> {# Keep structure for form field macro #}
+                                {{ form.username(class = "form-control", placeholder='Enter your email or username') }} {# Use target placeholder #}
+                            </div>
+                        </div>
+
+                         <div class="form-group">
+                            <label class="control-label" for="password">{{_("Password")}}</label> {# Use target label text #}
+                            <div class="input-group"> {# Keep structure for form field macro #}
+                                {{ form.password(class = "form-control", placeholder='Enter your password') }} {# Use target placeholder #}
+                            </div>
+                        </div>
+
+                        {# Submit button - styled via .btn-primary #}
+                        <input class="btn btn-primary btn-block" type="submit" value="{{_('Sign In')}}"> {# Use target button text #}
+                    </form>
+
+                    {# Add bottom links (Forgot Password / Register) #}
+                    <div class="login-links">
+                        <!-- <a href="#">{{_('Forgot your password?')}}</a> {# Placeholder #} -->
+                         {% if appbuilder.sm.auth_user_registration %}
+                             <br/>
+                             <span>{{_("Don't have an account?")}}</span>
+                             <a href="{{ appbuilder.sm.get_url_for_registeruser }}">
+                                 {{_("Register")}}
+                             </a>
+                         {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div> {# End #loginbox #}
+
+        {# Add bottom logos #}
+        <div class="bottom-logos">
+           <img src="{{ url_for('static', filename='assets/images/crish/GCF.svg') }}" alt="Green Climate Fund Logo">
+           <img src="{{ url_for('static', filename='assets/images/crish/UNEP.svg') }}" alt="UN Environment Programme Logo">
+           <img src="{{ url_for('static', filename='assets/images/crish/RIMES.svg') }}" alt="RIMES Logo">
+        </div>
+
+    </div> {# End .login-container #}
+</div> {# End .login-body-container #}
+{% endblock %}

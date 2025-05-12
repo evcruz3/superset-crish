@@ -84,7 +84,12 @@ const StyledModal = styled(Modal)`
     }
   }
 
-  .edit-button {
+  .actions-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .action-button {
     display: flex;
     align-items: center;
     margin-left: ${({ theme }) => theme.gridUnit * 2}px;
@@ -182,6 +187,12 @@ export default function BulletinDetailModal({
 
   const hashtags = updatedBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
 
+  const handleDisseminate = () => {
+    if (updatedBulletin?.id) {
+      window.location.href = `/disseminatebulletin/form/?bulletin_id=${updatedBulletin.id}`;
+    }
+  };
+
   return (
     <>
       <StyledModal
@@ -193,16 +204,29 @@ export default function BulletinDetailModal({
       >
         <div className="bulletin-title-container">
           <div className="bulletin-title">{updatedBulletin.title}</div>
-          {hasPerm('can_write') && (
-            <Button
-              className="edit-button"
-              onClick={() => setEditModalVisible(true)}
-              type="primary"
-              icon={<Icons.EditAlt />}
-            >
-              {t('Edit')}
-            </Button>
-          )}
+          <div className="actions-container">
+            {hasPerm('can_write') && (
+              <>
+                <Button
+                  className="action-button"
+                  onClick={() => setEditModalVisible(true)}
+                  type="primary"
+                  icon={<Icons.EditAlt />}
+                >
+                  {t('Edit')}
+                </Button>
+                <Button
+                  className="action-button"
+                  onClick={handleDisseminate}
+                  type="default"
+                  icon={<Icons.Share />}
+                  style={{ marginLeft: '8px' }}
+                >
+                  {t('Disseminate')}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <div className="bulletin-meta">
           {updatedBulletin.created_by && (

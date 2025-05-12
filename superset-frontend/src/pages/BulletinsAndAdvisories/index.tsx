@@ -229,7 +229,7 @@ function BulletinsAndAdvisories({
             setEditModalVisible(true);
           };
           
-          const handleShare = () => {
+          const handleShareViaEmail = () => {
             const subject = encodeURIComponent(`Bulletin: ${original.title}`);
             let body = encodeURIComponent(
               `Title: ${original.title}\n` +
@@ -239,23 +239,25 @@ function BulletinsAndAdvisories({
               `Hashtags: ${original.hashtags || ''}\n\n` +
               `Shared from ${window.location.origin}`
             );
-            
             window.location.href = `mailto:?subject=${subject}&body=${body}`;
+          };
+
+          const handleDisseminate = () => {
+            window.location.href = `/disseminatebulletin/form/?bulletin_id=${original.id}`;
           };
           
           return (
             <Actions className="actions">
-              {/* Share button - available to all users who can view */}
               <Tooltip
                 id="share-action-tooltip"
-                title={t('Share')}
+                title={t('Share via Email')}
                 placement="bottom"
               >
                 <span
                   role="button"
                   tabIndex={0}
                   className="action-button"
-                  onClick={handleShare}
+                  onClick={handleShareViaEmail}
                   data-test="bulletin-share-action"
                 >
                   <Icons.Share data-test="bulletin-share-icon" />
@@ -264,6 +266,21 @@ function BulletinsAndAdvisories({
               
               {hasPerm('can_write') && (
                 <>
+                  <Tooltip
+                    id="disseminate-action-tooltip"
+                    title={t('Disseminate Bulletin')}
+                    placement="bottom"
+                  >
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="action-button"
+                      onClick={handleDisseminate}
+                      data-test="bulletin-disseminate-action"
+                    >
+                      <Icons.Paperclip data-test="bulletin-disseminate-icon" />
+                    </span>
+                  </Tooltip>
                   <Tooltip
                     id="edit-action-tooltip"
                     title={t('Edit')}

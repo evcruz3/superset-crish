@@ -123,15 +123,31 @@ class DisseminateBulletinView(BaseView):
         email_groups = db.session.query(EmailGroup).order_by(EmailGroup.name).all()
         bulletins_json_for_template = self._bulletins_to_json(bulletins_query)
 
-        # Populate choices for select fields
         form.bulletin_id.choices = [ (b.id, b.title) for b in bulletins_query ]
         form.bulletin_id.choices.insert(0, (0, _('-- Select a Bulletin --')))
         form.email_group_id.choices = [ (g.id, g.name) for g in email_groups ]
         form.email_group_id.choices.insert(0, (0, _('-- Select an Email Group --')))
 
+        selected_bulletin_for_template = None # To pass to template for pre-filling subject/message
+
         if request.method == "GET":
-            if form.bulletin_id.data is None:
-                form.bulletin_id.data = 0
+            # Check for bulletin_id from query parameter for pre-selection
+            preselect_bulletin_id_str = request.args.get('bulletin_id')
+            if preselect_bulletin_id_str:
+                try:
+                    preselect_bulletin_id = int(preselect_bulletin_id_str)
+                    # Check if this ID is valid and in our choices
+                    if any(b.id == preselect_bulletin_id for b in bulletins_query):
+                        form.bulletin_id.data = preselect_bulletin_id
+                        selected_bulletin_for_template = db.session.query(Bulletin).get(preselect_bulletin_id)
+                    else:
+                        flash(_("Invalid bulletin ID provided for pre-selection."), "warning")
+                except ValueError:
+                    flash(_("Invalid bulletin ID format."), "warning")
+            
+            # Ensure default placeholder if no valid pre-selection or other data
+            if form.bulletin_id.data is None or form.bulletin_id.data == 0:
+                form.bulletin_id.data = 0 # Default to placeholder
             if form.email_group_id.data is None:
                 form.email_group_id.data = 0
 
@@ -193,7 +209,8 @@ class DisseminateBulletinView(BaseView):
             form=form,
             bulletins=bulletins_query, 
             email_groups=email_groups,
-            bulletins_json=bulletins_json_for_template
+            bulletins_json=bulletins_json_for_template,
+            selected_bulletin=selected_bulletin_for_template # Pass the pre-selected bulletin details
         )
 
 # Registration of views and menu items

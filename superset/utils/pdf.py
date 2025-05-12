@@ -196,12 +196,6 @@ def generate_bulletin_pdf(bulletin):
     # Metadata
     p.setFont("Helvetica-Oblique", 10)
     
-    # Created date
-    if hasattr(bulletin, 'created_on') and bulletin.created_on:
-        created_date = format_date(bulletin.created_on)
-        p.drawString(50, y, f"Created: {created_date}")
-        y -= 15
-    
     # Last modified date (if different from created date)
     if (hasattr(bulletin, 'changed_on') and bulletin.changed_on and 
         hasattr(bulletin, 'created_on') and bulletin.created_on and 
@@ -209,19 +203,6 @@ def generate_bulletin_pdf(bulletin):
         changed_date = format_date(bulletin.changed_on)
         p.drawString(50, y, f"Last updated: {changed_date}")
         y -= 15
-    
-    # Creator information
-    if hasattr(bulletin, 'created_by') and bulletin.created_by:
-        creator = bulletin.created_by
-        creator_name = ""
-        if hasattr(creator, 'first_name') and hasattr(creator, 'last_name'):
-            creator_name = f"{creator.first_name} {creator.last_name}"
-        elif hasattr(creator, 'username'):
-            creator_name = creator.username
-        
-        if creator_name:
-            p.drawString(50, y, f"Created by: {creator_name}")
-            y -= 15
     
     # Add some extra space after metadata
     y -= 10
