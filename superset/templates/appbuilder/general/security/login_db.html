@@ -11,10 +11,12 @@
 
   body {
     /* Keep the background styling */
-    background: linear-gradient(to bottom right, #a8c0ff, #3f2b96);
-    background-size: cover;
+    /* Use a gradient with soft colors and sharper stops for visible animated lines */
+    background: linear-gradient(135deg, #e9f5e9 40%, #e0f0f5 50%, #e9f5e9 60%); /* Light green - light cyan/blue - light green for contrast lines */
+    background-size: 400% 400%; /* Make background larger for animation */
     background-repeat: no-repeat;
     font-family: sans-serif;
+    animation: gradientShift 20s ease infinite; /* Slowed down animation slightly */
   }
 
   .login-body-container { /* Use this to center the login box */
@@ -44,7 +46,7 @@
     display: flex;
     justify-content: space-around;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
   }
 
@@ -179,6 +181,22 @@
    }
    /* ------------------------- */
 
+   /* Style for the CRISH heading */
+   .crish-heading {
+       text-align: center;
+       margin-bottom: 25px; /* Add space below the heading */
+       font-size: 2em; /* Make it a bit larger */
+       color: #333; /* Dark grey color */
+       font-weight: bold;
+   }
+
+   /* Keyframes for the background animation */
+   @keyframes gradientShift {
+       0% { background-position: 0% 50%; }
+       50% { background-position: 100% 50%; }
+       100% { background-position: 0% 50%; }
+   }
+
 </style>
 
 {# Wrap the main content in our flex container for centering #}
@@ -189,8 +207,12 @@
         {# Add top logos #}
         <div class="top-logos">
             <img src="{{ url_for('static', filename='assets/images/crish/RDTL.svg') }}" alt="RDTL Logo">
-          <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
+            <img src="{{ url_for('static', filename='assets/images/crish/MOH.png') }}" alt="CRISH Logo">
+            <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
         </div>
+
+        {# Add the CRISH heading here #}
+        <h3 class="crish-heading">CRISH</h3>
 
         {# This is the original FAB login box structure, we'll style it #}
         <div id="loginbox" class="mainbox"> {# Removed col-* classes #}
