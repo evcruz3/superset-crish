@@ -18,3 +18,14 @@ from . import core, dynamic_plugins, sql_lab, user_attributes  # noqa: F401
 from superset.models.bulletins import Bulletin  # noqa: F401
 from superset.models.public_education import PublicEducationPost, PublicEducationAttachment  # noqa: F401
 from superset.models.health_facilities import HealthFacility  # noqa: F401
+from superset.models.user_attributes import UserAttribute
+from superset.models.dissemination import EmailGroup, DisseminatedBulletinLog
+
+__all__ = (
+    "Alert",
+    "UserAttribute",
+    "CssTemplate",
+    "Bulletin",
+    "EmailGroup",
+    "DisseminatedBulletinLog",
+)

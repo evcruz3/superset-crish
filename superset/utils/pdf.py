@@ -17,6 +17,8 @@
 
 import logging
 from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 from superset.commands.report.exceptions import ReportSchedulePdfFailedError
 
@@ -46,3 +48,49 @@ def build_pdf_from_screenshots(snapshots: list[bytes]) -> bytes:
         ) from ex
 
     return new_pdf.read()
+
+
+def generate_bulletin_pdf(bulletin):
+    """
+    Generates a PDF file in memory from a Bulletin object.
+    Returns a BytesIO object containing the PDF data.
+    """
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    y = height - 50
+    
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, bulletin.title)
+    y -= 30
+    
+    p.setFont("Helvetica", 12)
+    if bulletin.advisory:
+        p.drawString(50, y, "Advisory:")
+        y -= 20
+        for line in bulletin.advisory.splitlines():
+            p.drawString(70, y, line)
+            y -= 15
+        y -= 10
+    if bulletin.risks:
+        p.drawString(50, y, "Risks:")
+        y -= 20
+        for line in bulletin.risks.splitlines():
+            p.drawString(70, y, line)
+            y -= 15
+        y -= 10
+    if bulletin.safety_tips:
+        p.drawString(50, y, "Safety Tips:")
+        y -= 20
+        for line in bulletin.safety_tips.splitlines():
+            p.drawString(70, y, line)
+            y -= 15
+        y -= 10
+    if bulletin.hashtags:
+        p.drawString(50, y, f"Hashtags: {bulletin.hashtags}")
+        y -= 20
+    
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+    return buffer

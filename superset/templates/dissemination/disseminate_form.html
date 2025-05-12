@@ -1,0 +1,152 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h3>{{ _("Disseminate Bulletin by Email") }}</h3>
+    <br>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {# Display form-wide errors if any (e.g., from flash messages on validation failure) #}
+    {% if form and form.errors and form.errors.get('__all__') %}
+        <div class="alert alert-danger">
+            <p>{{ _("Please correct the errors below:") }}</p>
+            <ul>
+                {% for error in form.errors['__all__'] %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('DisseminateBulletinView.form') }}">
+        {{ form.hidden_tag() if form else csrf_token() }} {# Includes CSRF token #}
+
+        <div class="form-group {% if form.bulletin_id.errors %}has-error{% endif %}">
+            {{ form.bulletin_id.label(class_="control-label") }} <span style="color:red;">*</span>
+            {{ form.bulletin_id(class_="form-control select2", id="bulletin_id") }}
+            {% if form.bulletin_id.errors %}
+                <ul class="help-block list-unstyled">{% for error in form.bulletin_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+
+        <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
+            {{ form.email_group_id.label(class_="control-label") }} <span style="color:red;">*</span>
+            {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
+            {% if form.email_group_id.errors %}
+                <ul class="help-block list-unstyled">{% for error in form.email_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+
+        <div class="form-group {% if form.subject.errors %}has-error{% endif %}">
+            {{ form.subject.label(class_="control-label") }} <span style="color:red;">*</span>
+            {{ form.subject(class_="form-control", id="subject") }}
+            {% if form.subject.errors %}
+                <ul class="help-block list-unstyled">{% for error in form.subject.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+
+        <div class="form-group {% if form.message.errors %}has-error{% endif %}">
+            {{ form.message.label(class_="control-label") }} <span style="color:red;">*</span>
+            {{ form.message(class_="form-control", rows="10", id="message") }}
+            <small class="form-text text-muted">
+                {{ _("You can customize the message here. JavaScript will attempt to pre-fill this based on the selected bulletin.") }}
+            </small>
+            {% if form.message.errors %}
+                <ul class="help-block list-unstyled">{% for error in form.message.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+        
+        {{ form.submit(class_="btn btn-primary") if form else "<button type=\"submit\" class=\"btn btn-primary\">"+_("Disseminate")+"</button>" | safe }}
+        <a href="{{ url_for('DisseminatedBulletinLogModelView.list') }}" class="btn btn-default">{{ _("Cancel") }}</a>
+    </form>
+</div>
+
+{# Data for JavaScript pre-population #}
+<script id="bulletins-data-json" type="application/json">
+    {{ bulletins_json | safe if bulletins_json else "[]" }}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialize Select2 - choices are now populated by WTForms on the server side
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#bulletin_id').select2({
+            placeholder: "{{ _('-- Select a Bulletin --') }}",
+            allowClear: true
+        });
+        $('#email_group_id').select2({
+            placeholder: "{{ _('-- Select an Email Group --') }}",
+            allowClear: true
+        });
+    } else {
+        console.warn('Select2 not available for disseminate_form.html');
+    }
+
+    // JavaScript for auto-populating subject and message based on selected bulletin
+    const bulletinSelect = document.getElementById('bulletin_id');
+    const subjectInput = document.getElementById('subject');
+    const messageTextarea = document.getElementById('message');
+    
+    let bulletinsData = [];
+    try {
+        const bulletinsDataElement = document.getElementById('bulletins-data-json');
+        if (bulletinsDataElement) {
+            bulletinsData = JSON.parse(bulletinsDataElement.textContent || '[]');
+        }
+    } catch (e) {
+        console.error("Error parsing bulletins data from script tag:", e);
+    }
+
+    // Function to pre-fill form fields if a bulletin is selected
+    function prefillFormFields() {
+        const selectedBulletinId = bulletinSelect.value;
+        if (selectedBulletinId && bulletinsData.length > 0) {
+            const selectedBulletin = bulletinsData.find(b => String(b.id) === selectedBulletinId);
+            if (selectedBulletin) {
+                // Only pre-fill if the subject and message fields are currently empty or just whitespace
+                // to avoid overwriting user's deliberate changes after selection.
+                if (!subjectInput.value.trim()) {
+                    subjectInput.value = selectedBulletin.title;
+                }
+                if (!messageTextarea.value.trim()) {
+                    let defaultMessage = `<h4>${selectedBulletin.title}</h4>\n` +
+                                       `<p><strong>Advisory:</strong><br>${selectedBulletin.advisory || ''}</p>\n` +
+                                       `<p><strong>Risks:</strong><br>${selectedBulletin.risks || ''}</p>\n` +
+                                       `<p><strong>Safety Tips:</strong><br>${selectedBulletin.safety_tips || ''}</p>`;
+                    if(selectedBulletin.hashtags) {
+                        defaultMessage += `\n<p><strong>Hashtags:</strong> ${selectedBulletin.hashtags}</p>`;
+                    }
+                    messageTextarea.value = defaultMessage;
+                }
+            }
+        } else {
+            // Optionally clear if no bulletin is selected and fields were auto-filled by this script
+            // This part is tricky to manage without knowing if user manually cleared vs. deselected.
+            // For simplicity, we don't auto-clear here. User can manually clear.
+        }
+    }
+
+    if (bulletinSelect) {
+        bulletinSelect.addEventListener('change', prefillFormFields);
+        // Call once on load in case a bulletin is already selected (e.g. form re-render after validation error)
+        if (bulletinSelect.value) { 
+            prefillFormFields();
+        }
+    }
+    
+    // If WTForms re-renders the form with values (e.g. after validation error),
+    // we don't want the JS to overwrite the subject/message the user already typed.
+    // The prefillFormFields function now checks if fields are empty before populating.
+});
+</script>
+
+{% endblock %} 

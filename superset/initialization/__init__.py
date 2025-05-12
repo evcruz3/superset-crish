@@ -202,6 +202,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.health_facilities.api import HealthFacilitiesRestApi
         from superset.weather_forecast_alerts.api import WeatherForecastAlertRestApi, WeatherDataPullRestApi
         from superset.disease_forecast_alerts.api import DiseaseForecastAlertRestApi, DiseasePipelineRunHistoryRestApi
+        # Import Dissemination Views
+        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView
 
         set_app_error_handlers(self.superset_app)
 
@@ -534,6 +536,32 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category="Security",
             category_label=__("Security"),
             icon="fa-lock",
+        )
+
+        # Dissemination Menu
+        appbuilder.add_view(
+            EmailGroupModelView,
+            "Manage Email Groups",
+            label=__("Email Groups"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-users",
+        )
+        appbuilder.add_view(
+            DisseminateBulletinView,
+            "Disseminate Bulletin",
+            label=__("Disseminate Bulletin"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-envelope-o",
+        )
+        appbuilder.add_view(
+            DisseminatedBulletinLogModelView,
+            "View Dissemination Logs",
+            label=__("Dissemination Logs"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-history",
         )
 
     def init_app_in_ctx(self) -> None:
