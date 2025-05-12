@@ -119,7 +119,7 @@ class DisseminateBulletinView(BaseView):
     @expose("/form/", methods=["GET", "POST"])
     def form(self):
         form = DisseminationForm()
-        bulletins_query = db.session.query(Bulletin).order_by(Bulletin.title).all()
+        bulletins_query = db.session.query(Bulletin).order_by(Bulletin.created_on.desc()).all()
         email_groups = db.session.query(EmailGroup).order_by(EmailGroup.name).all()
         bulletins_json_for_template = self._bulletins_to_json(bulletins_query)
 
