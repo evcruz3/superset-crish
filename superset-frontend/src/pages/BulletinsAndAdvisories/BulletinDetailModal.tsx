@@ -60,6 +60,7 @@ const StyledModal = styled(Modal)`
 
     .section-content {
       margin-left: ${({ theme }) => theme.gridUnit * 4}px;
+      white-space: pre-wrap;
     }
   }
   
@@ -222,15 +223,36 @@ export default function BulletinDetailModal({
         </div>
         <div className="bulletin-section">
           <div className="section-title">{t('Advisory')}</div>
-          <div className="section-content">{updatedBulletin.advisory}</div>
+          <div className="section-content">
+            {updatedBulletin.advisory?.split('\\n').map((line, index, arr) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < arr.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
         <div className="bulletin-section">
           <div className="section-title">{t('Risks')}</div>
-          <div className="section-content">{updatedBulletin.risks}</div>
+          <div className="section-content">
+            {updatedBulletin.risks?.split('\\n').map((line, index, arr) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < arr.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
         <div className="bulletin-section">
           <div className="section-title">{t('Safety Tips')}</div>
-          <div className="section-content">{updatedBulletin.safety_tips}</div>
+          <div className="section-content">
+            {updatedBulletin.safety_tips?.split('\\n').map((line, index, arr) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < arr.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
         <div className="bulletin-chart">
           {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
