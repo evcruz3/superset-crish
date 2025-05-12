@@ -19,6 +19,9 @@ import logging
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+import os
+from PIL import Image as PILImage
 
 from superset.commands.report.exceptions import ReportSchedulePdfFailedError
 
@@ -55,40 +58,226 @@ def generate_bulletin_pdf(bulletin):
     Generates a PDF file in memory from a Bulletin object.
     Returns a BytesIO object containing the PDF data.
     """
+    # Import here to avoid circular imports
+    from superset import app
+    
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
-    y = height - 50
+    page_width = width - 100  # Margins on both sides
     
+    # Start position - we'll adjust this based on logo placement
+    y_start = height - 50
+    y = y_start
+    
+    # Try to add the app icon from config
+    try:
+        app_icon = app.config.get('APP_ICON')
+        if app_icon:
+            # Handle both relative and absolute paths
+            if app_icon.startswith('/static'):
+                # Convert from URL path to file system path
+                static_folder = app.static_folder
+                icon_path = os.path.join(static_folder, app_icon.replace('/static/', ''))
+            else:
+                icon_path = app_icon
+                
+            if os.path.exists(icon_path):
+                # Get original image dimensions to preserve aspect ratio
+                img = PILImage.open(icon_path)
+                img_width, img_height = img.size
+                
+                # Set max width and height while preserving aspect ratio
+                max_img_height = 70  # Maximum height for the logo
+                max_img_width = 200   # Maximum width for the logo
+                
+                # Calculate scaling factor to maintain aspect ratio
+                width_ratio = max_img_width / img_width
+                height_ratio = max_img_height / img_height
+                scale_factor = min(width_ratio, height_ratio)
+                
+                # Calculate new dimensions
+                new_width = img_width * scale_factor
+                new_height = img_height * scale_factor
+                
+                # Calculate centered position
+                img_x = (width - new_width) / 2
+                img_y = y - new_height  # Position logo at the top
+                
+                # Draw the image centered
+                p.drawImage(icon_path, img_x, img_y, width=new_width, height=new_height, preserveAspectRatio=True, mask='auto')
+                
+                # Adjust y position for title to be below the image
+                y = img_y - 20  # Space between image and title
+                
+                # Add system title centered below the logo
+                system_title = "Climate Risk Information System for Public Health"
+                p.setFont("Helvetica-Bold", 18)
+                title_width = p.stringWidth(system_title)
+                title_x = (width - title_width) / 2
+                p.drawString(title_x, y, system_title)
+            else:
+                # Just show the title without logo
+                system_title = "Climate Risk Information System for Public Health"
+                p.setFont("Helvetica-Bold", 18)
+                title_width = p.stringWidth(system_title)
+                title_x = (width - title_width) / 2
+                p.drawString(title_x, y, system_title)
+    except Exception as e:
+        # If there's an error loading the image, just show the title
+        system_title = "Climate Risk Information System for Public Health"
+        p.setFont("Helvetica-Bold", 18)
+        title_width = p.stringWidth(system_title)
+        title_x = (width - title_width) / 2
+        p.drawString(title_x, y, system_title)
+    
+    # Add some space after the title
+    y -= 40
+    
+    # Helper function to split text by both actual newlines and escaped newlines
+    def split_text(text):
+        if not text:
+            return []
+        # First split by actual newlines
+        lines = []
+        for line in text.splitlines():
+            # Then split by escaped newlines if they exist
+            if '\\n' in line:
+                lines.extend(line.split('\\n'))
+            else:
+                lines.append(line)
+        return lines
+    
+    # Helper function to handle text that might be too long for one line
+    def draw_wrapped_text(text, x, y, max_width):
+        if not text:
+            return y
+            
+        words = text.split()
+        line = ""
+        for word in words:
+            test_line = f"{line} {word}".strip()
+            test_width = p.stringWidth(test_line)
+            
+            if test_width <= max_width:
+                line = test_line
+            else:
+                p.drawString(x, y, line)
+                y -= 15
+                line = word
+                
+        if line:
+            p.drawString(x, y, line)
+            y -= 15
+            
+        return y
+    
+    # Format date nicely
+    def format_date(date_obj):
+        if not date_obj:
+            return ""
+        from datetime import datetime
+        if isinstance(date_obj, str):
+            try:
+                date_obj = datetime.fromisoformat(date_obj.replace('Z', '+00:00'))
+            except ValueError:
+                try:
+                    date_obj = datetime.strptime(date_obj, "%Y-%m-%dT%H:%M:%S.%f")
+                except ValueError:
+                    return date_obj  # Return as is if can't parse
+        
+        return date_obj.strftime("%B %d, %Y at %I:%M %p")
+    
+    # Title
     p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, bulletin.title)
-    y -= 30
+    title_y = draw_wrapped_text(bulletin.title, 50, y, page_width)
+    y = title_y - 20  # Extra space after title
     
-    p.setFont("Helvetica", 12)
-    if bulletin.advisory:
-        p.drawString(50, y, "Advisory:")
-        y -= 20
-        for line in bulletin.advisory.splitlines():
-            p.drawString(70, y, line)
+    # Metadata
+    p.setFont("Helvetica-Oblique", 10)
+    
+    # Created date
+    if hasattr(bulletin, 'created_on') and bulletin.created_on:
+        created_date = format_date(bulletin.created_on)
+        p.drawString(50, y, f"Created: {created_date}")
+        y -= 15
+    
+    # Last modified date (if different from created date)
+    if (hasattr(bulletin, 'changed_on') and bulletin.changed_on and 
+        hasattr(bulletin, 'created_on') and bulletin.created_on and 
+        bulletin.changed_on != bulletin.created_on):
+        changed_date = format_date(bulletin.changed_on)
+        p.drawString(50, y, f"Last updated: {changed_date}")
+        y -= 15
+    
+    # Creator information
+    if hasattr(bulletin, 'created_by') and bulletin.created_by:
+        creator = bulletin.created_by
+        creator_name = ""
+        if hasattr(creator, 'first_name') and hasattr(creator, 'last_name'):
+            creator_name = f"{creator.first_name} {creator.last_name}"
+        elif hasattr(creator, 'username'):
+            creator_name = creator.username
+        
+        if creator_name:
+            p.drawString(50, y, f"Created by: {creator_name}")
             y -= 15
-        y -= 10
-    if bulletin.risks:
-        p.drawString(50, y, "Risks:")
+    
+    # Add some extra space after metadata
+    y -= 10
+    
+    # Sections
+    p.setFont("Helvetica-Bold", 12)
+    sections = [
+        ("Advisory", bulletin.advisory),
+        ("Risks", bulletin.risks),
+        ("Safety Tips", bulletin.safety_tips)
+    ]
+    
+    for section_title, section_content in sections:
+        if not section_content:
+            continue
+            
+        # Section header
+        p.drawString(50, y, section_title)
         y -= 20
-        for line in bulletin.risks.splitlines():
-            p.drawString(70, y, line)
-            y -= 15
-        y -= 10
-    if bulletin.safety_tips:
-        p.drawString(50, y, "Safety Tips:")
-        y -= 20
-        for line in bulletin.safety_tips.splitlines():
-            p.drawString(70, y, line)
-            y -= 15
-        y -= 10
+        
+        # Section content
+        p.setFont("Helvetica", 12)
+        content_lines = split_text(section_content)
+        
+        for line in content_lines:
+            if y < 50:  # Check if we need a new page
+                p.showPage()
+                y = height - 50
+                p.setFont("Helvetica", 12)
+                
+            y = draw_wrapped_text(line, 70, y, page_width - 20)
+            # No need to subtract y here as draw_wrapped_text already does it
+            
+        # Extra space after section
+        y -= 15
+        p.setFont("Helvetica-Bold", 12)
+    
+    # Hashtags if available
     if bulletin.hashtags:
-        p.drawString(50, y, f"Hashtags: {bulletin.hashtags}")
+        if y < 50:  # Check if we need a new page
+            p.showPage()
+            y = height - 50
+            
+        p.drawString(50, y, "Hashtags:")
         y -= 20
+        
+        p.setFont("Helvetica", 12)
+        hashtags_text = bulletin.hashtags.replace(',', ' #')
+        if not hashtags_text.startswith('#'):
+            hashtags_text = f"#{hashtags_text}"
+            
+        y = draw_wrapped_text(hashtags_text, 70, y, page_width - 20)
+    
+    # Add ID at the bottom of the last page
+    p.setFont("Helvetica", 8)
+    p.drawString(50, 30, f"Bulletin ID: {bulletin.id}")
     
     p.showPage()
     p.save()
