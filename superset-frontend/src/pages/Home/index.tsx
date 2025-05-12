@@ -24,6 +24,10 @@ import DashboardTabs from '../WeatherForecasts/DashboardTabs';
 import Modal from 'src/components/Modal';
 import { SupersetClient } from '@superset-ui/core';
 
+// Import the SVG as a React Component
+import StomachIcon from 'src/assets/images/icons/stomach.svg';
+import MosquitoIcon from 'src/assets/images/icons/mosquito.svg'; // Import mosquito SVG
+
 const ChartContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -753,182 +757,6 @@ const HeatAnimation = () => (
   </SvgContainer>
 );
 
-const DengueAnimation = () => (
-  <SvgContainer>
-    <svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        {/* Define gradients or filters if needed */}
-        <filter id="mosquitoShadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="0.5" result="blur"/>
-          <feOffset in="blur" dx="0.5" dy="0.5" result="offsetBlur"/>
-          <feComponentTransfer in="offsetBlur" result="shadow">
-              <feFuncA type="linear" slope="0.4"/>
-          </feComponentTransfer>
-          <feMerge>
-              <feMergeNode in="shadow"/>
-              <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* Background element (optional, e.g., subtle leaf or pattern) */}
-      <path 
-          d="M10 30 Q 20 25, 30 30 T 10 30" 
-          fill="#DCEDC8" 
-          opacity="0.3" 
-      />
-
-      {/* Mosquito Body */}
-      <ellipse cx="20" cy="20" rx="3" ry="6" fill="#424242" transform="rotate(-30 20 20)" filter="url(#mosquitoShadow)"/>
-      
-      {/* Mosquito Head */}
-      <circle cx="16.5" cy="16" r="2" fill="#333333"/>
-
-      {/* Mosquito Proboscis (stinger) */}
-      <line x1="16.5" y1="16" x2="14" y2="13" stroke="#333333" strokeWidth="0.8"/>
-
-      {/* Mosquito Wings (animated) - Use semi-transparent shapes */}
-      <g>
-        {/* Left Wing */}
-        <ellipse cx="17" cy="21" rx="5" ry="2" fill="#FFFFFF" opacity="0.5" transform="rotate(-45 17 21)">
-          <animateTransform 
-            attributeName="transform"
-            type="rotate"
-            values="-45 17 21; -65 17 21; -45 17 21"
-            dur="0.15s"
-            repeatCount="indefinite" />
-        </ellipse>
-        {/* Right Wing */}
-        <ellipse cx="23" cy="19" rx="5" ry="2" fill="#FFFFFF" opacity="0.5" transform="rotate(-15 23 19)">
-          <animateTransform 
-            attributeName="transform"
-            type="rotate"
-            values="-15 23 19; 5 23 19; -15 23 19"
-            dur="0.15s"
-            begin="0.05s" // Slight delay
-            repeatCount="indefinite" />
-        </ellipse>
-      </g>
-
-      {/* Mosquito Legs */}
-      <g stroke="#333333" strokeWidth="0.5">
-        <path d="M18 24 Q 16 28, 14 29" fill="none"/>
-        <path d="M19 25 Q 18 30, 17 31" fill="none"/>
-        <path d="M20 25 Q 22 30, 23 31" fill="none"/>
-        <path d="M21 24 Q 24 28, 26 29" fill="none"/>
-      </g>
-
-       {/* Movement path for the whole mosquito */}
-       <animateTransform
-          attributeName="transform"
-          type="translate"
-          values="0 0; 1 -1; -1 1; 0 0"
-          dur="1.5s"
-          repeatCount="indefinite"
-        />
-    </svg>
-  </SvgContainer>
-);
-
-const DiarrheaAnimation = () => (
-  <SvgContainer>
-    <svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet">
-       <defs>
-          <linearGradient id="tubeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#E0F7FA" stopOpacity="0.8"/>
-            <stop offset="100%" stopColor="#B2EBF2" stopOpacity="0.9"/>
-          </linearGradient>
-          <radialGradient id="bubbleGradient" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9"/>
-            <stop offset="100%" stopColor="#E0F7FA" stopOpacity="0.5"/>
-          </radialGradient>
-           <filter id="bubbleBlur" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="0.3" />
-          </filter>
-       </defs>
-
-       {/* Test Tube Shape */}
-       <path 
-         d="M 12 8 
-            L 12 30 
-            Q 12 35, 16 35 
-            L 24 35 
-            Q 28 35, 28 30 
-            L 28 8 Z" 
-         fill="url(#tubeGradient)" 
-         stroke="#757575" 
-         strokeWidth="0.5"
-        />
-        {/* Liquid Level */}
-        <path 
-         d="M 12 20 
-            L 28 20 
-            L 28 30 
-            Q 28 35, 24 35 
-            L 16 35 
-            Q 12 35, 12 30 Z" 
-         fill="#4DD0E1" 
-         opacity="0.7"
-        />
-       {/* Top opening highlight */}
-       <path d="M 13 8 Q 20 7, 27 8" stroke="#FFFFFF" strokeWidth="1" fill="none" opacity="0.6"/>
-
-       {/* Animated Bubbles */}
-       {[...Array(5)].map((_, i) => {
-         const startX = 15 + Math.random() * 10;
-         const startY = 32;
-         const endY = 21;
-         const duration = 1.5 + Math.random() * 1.5;
-         const delay = Math.random() * 1.5;
-         const radius = 1 + Math.random() * 1;
-
-         return (
-           <circle 
-             key={`bubble-${i}`}
-             cx={startX}
-             cy={startY}
-             r={radius}
-             fill="url(#bubbleGradient)"
-             opacity="0.8"
-             filter="url(#bubbleBlur)"
-           >
-             <animate 
-               attributeName="cy"
-               values={`${startY};${endY}`}
-               dur={`${duration}s`}
-               begin={`${delay}s`}
-               repeatCount="indefinite"
-             />
-             <animate 
-               attributeName="cx"
-               values={`${startX};${startX + (Math.random() * 4 - 2)}`}
-               dur={`${duration}s`}
-               begin={`${delay}s`}
-               repeatCount="indefinite"
-             />
-              <animate 
-               attributeName="opacity"
-               values="0;0.8;0.8;0"
-               keyTimes="0; 0.1; 0.9; 1"
-               dur={`${duration}s`}
-               begin={`${delay}s`}
-               repeatCount="indefinite"
-             />
-              <animate 
-               attributeName="r"
-               values={`${radius * 0.5};${radius};${radius * 0.8}`}
-                keyTimes="0; 0.5; 1"
-               dur={`${duration}s`}
-               begin={`${delay}s`}
-               repeatCount="indefinite"
-             />
-           </circle>
-         );
-       })}
-    </svg>
-  </SvgContainer>
-);
-
 const DataSourceAttribution = styled.div`
   position: fixed;
   bottom: 10px;
@@ -1055,7 +883,9 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         // Count alerts by type before processing
         const counts: Record<string, number> = {};
         response.json.result.forEach((alert: AlertType) => {
-          counts[alert.weather_parameter] = (counts[alert.weather_parameter] || 0) + 1;
+          if ('weather_parameter' in alert) {
+            counts[alert.weather_parameter] = (counts[alert.weather_parameter] || 0) + 1;
+          }
         });
         console.log("[Weather Forecast Alerts] Counts by parameter:", counts);
         
@@ -1262,8 +1092,8 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
 
     const alertGroups: GroupedAlertType[] = [];
     const diseaseMapping: Record<string, { type: string; color: string; title: string; icon: string }> = {
-      'Dengue': { type: 'dengue', color: '#8B0000', title: 'Dengue Alert', icon: '🦟' }, // Dark Red
-      'Diarrhea': { type: 'diarrhea', color: '#5F9EA0', title: 'Diarrhea Alert', icon: '<0xF0><0x9F><0xA7><0xBB>' } // Cadet Blue
+      'Dengue': { type: 'dengue', color: '#aa3535', title: 'Dengue Alert', icon: '🦟' }, // Red from mosquito.svg gradient
+      'Diarrhea': { type: 'diarrhea', color: '#56ACE0', title: 'Diarrhea Alert', icon: '<0xF0><0x9F><0xA7><0xBB>' } // Light blue from stomach.svg
     };
 
     Object.entries(groupedByDisease).forEach(([disease, diseaseAlerts]) => {
@@ -1462,8 +1292,8 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     if (isDisease) {
       // Use new animated components for diseases
       switch (type) {
-        case 'dengue': return <DengueAnimation />;
-        case 'diarrhea': return <DiarrheaAnimation />;
+        case 'dengue': return <MosquitoIcon width="40" height="40" />;
+        case 'diarrhea': return <StomachIcon width="40" height="40" />;
         default: return <span style={{ fontSize: '28px' }}>{getIcon(type)}</span>; // Fallback emoji
       }
     }

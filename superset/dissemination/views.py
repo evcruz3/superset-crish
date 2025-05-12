@@ -116,19 +116,33 @@ class DisseminateBulletinView(BaseView):
             })
         return json.dumps(output)
 
+    def _email_groups_to_json(self, email_groups_list):
+        """ Converts a list of EmailGroup objects to a JSON string for the template, including emails. """
+        output = []
+        for group in email_groups_list:
+            # Split emails string into a list, handling potential None or empty strings
+            emails_list = [e.strip() for e in (group.emails or "").split(',') if e.strip()]
+            output.append({
+                "id": group.id,
+                "name": group.name,
+                "emails": emails_list # Store emails as a list
+            })
+        return json.dumps(output)
+
     @expose("/form/", methods=["GET", "POST"])
     def form(self):
         form = DisseminationForm()
         bulletins_query = db.session.query(Bulletin).order_by(Bulletin.created_on.desc()).all()
-        email_groups = db.session.query(EmailGroup).order_by(EmailGroup.name).all()
+        email_groups_query = db.session.query(EmailGroup).order_by(EmailGroup.name).all() # Renamed variable
         bulletins_json_for_template = self._bulletins_to_json(bulletins_query)
+        email_groups_json_for_template = self._email_groups_to_json(email_groups_query) # Generate JSON for email groups
 
         form.bulletin_id.choices = [ (b.id, b.title) for b in bulletins_query ]
         form.bulletin_id.choices.insert(0, (0, _('-- Select a Bulletin --')))
-        form.email_group_id.choices = [ (g.id, g.name) for g in email_groups ]
+        form.email_group_id.choices = [ (g.id, g.name) for g in email_groups_query ] # Use renamed variable
         form.email_group_id.choices.insert(0, (0, _('-- Select an Email Group --')))
 
-        selected_bulletin_for_template = None # To pass to template for pre-filling subject/message
+        selected_bulletin_for_template = None
 
         if request.method == "GET":
             # Check for bulletin_id from query parameter for pre-selection
@@ -159,7 +173,7 @@ class DisseminateBulletinView(BaseView):
 
             # Fetch the bulletin and email group
             bulletin = db.session.query(Bulletin).get(bulletin_id)
-            email_group = db.session.query(EmailGroup).get(email_group_id)
+            email_group = db.session.query(EmailGroup).get(email_group_id) # Use correct variable
 
             # Generate PDF attachment
             pdf_buffer = generate_bulletin_pdf(bulletin)
@@ -208,8 +222,9 @@ class DisseminateBulletinView(BaseView):
             "dissemination/disseminate_form.html", 
             form=form,
             bulletins=bulletins_query, 
-            email_groups=email_groups,
+            email_groups=email_groups_query, # Pass the query result (optional, could remove if unused)
             bulletins_json=bulletins_json_for_template,
+            email_groups_json=email_groups_json_for_template, # Pass the email group JSON
             selected_bulletin=selected_bulletin_for_template # Pass the pre-selected bulletin details
         )
 

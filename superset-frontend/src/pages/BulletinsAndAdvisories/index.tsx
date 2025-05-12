@@ -18,6 +18,7 @@ import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
 import rison from 'rison';
 import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
+import Tag from 'antd/es/tag';
 
 const PAGE_SIZE = 25;
 
@@ -188,7 +189,25 @@ function BulletinsAndAdvisories({
         accessor: 'title',
       },
       {
-        Cell: ({ row: { original } }: any) => original.hashtags,
+        Cell: ({ row: { original } }: any) => {
+          if (!original.hashtags) {
+            return null;
+          }
+          const tags = original.hashtags
+            .split(',')
+            .map((tag: string) => tag.trim())
+            .filter((tag: string) => tag.length > 0);
+          
+          return (
+            <>
+              {tags.map((tag: string) => (
+                <Tag key={tag} style={{ marginBottom: '4px', marginRight: '4px' }}>
+                  {tag}
+                </Tag>
+              ))}
+            </>
+          );
+        },
         Header: t('Hashtags'),
         accessor: 'hashtags',
       },
@@ -260,7 +279,7 @@ function BulletinsAndAdvisories({
                   onClick={handleShareViaEmail}
                   data-test="bulletin-share-action"
                 >
-                  <Icons.Share data-test="bulletin-share-icon" />
+                  <Icons.Email data-test="bulletin-email-icon" />
                 </span>
               </Tooltip>
               
@@ -278,7 +297,7 @@ function BulletinsAndAdvisories({
                       onClick={handleDisseminate}
                       data-test="bulletin-disseminate-action"
                     >
-                      <Icons.Paperclip data-test="bulletin-disseminate-icon" />
+                      <Icons.Share data-test="bulletin-disseminate-icon" />
                     </span>
                   </Tooltip>
                   <Tooltip

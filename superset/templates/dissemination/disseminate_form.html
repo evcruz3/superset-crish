@@ -47,6 +47,11 @@
             {% endif %}
         </div>
 
+        {# Email Preview Area #}
+        <div id="email-preview" style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9; min-height: 40px;">
+            <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
+        </div>
+
         <div class="form-group {% if form.subject.errors %}has-error{% endif %}">
             {{ form.subject.label(class_="control-label") }} <span style="color:red;">*</span>
             {# Pre-fill subject if selected_bulletin is available #}
@@ -94,10 +99,13 @@
 <script id="bulletins-data-json" type="application/json">
     {{ bulletins_json | safe if bulletins_json else "[]" }}
 </script>
+<script id="email-groups-data-json" type="application/json">
+    {{ email_groups_json | safe if email_groups_json else "[]" }}
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Initialize Select2 - choices are now populated by WTForms on the server side
+    // Initialize Select2
     if (typeof $ !== 'undefined' && $.fn.select2) {
         $('#bulletin_id').select2({
             placeholder: "{{ _('-- Select a Bulletin --') }}",
@@ -111,11 +119,10 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('Select2 not available for disseminate_form.html');
     }
 
-    // JavaScript for auto-populating subject and message based on selected bulletin
+    // Bulletin auto-population logic
     const bulletinSelect = document.getElementById('bulletin_id');
     const subjectInput = document.getElementById('subject');
     const messageTextarea = document.getElementById('message');
-    
     let bulletinsData = [];
     try {
         const bulletinsDataElement = document.getElementById('bulletins-data-json');
@@ -123,9 +130,8 @@ document.addEventListener('DOMContentLoaded', function () {
             bulletinsData = JSON.parse(bulletinsDataElement.textContent || '[]');
         }
     } catch (e) {
-        console.error("Error parsing bulletins data from script tag:", e);
+        console.error("Error parsing bulletins data:", e);
     }
-
     // Store original subject and message for comparison to avoid overwriting user edits
     let originalSubject = subjectInput.value;
     let originalMessage = messageTextarea.value;
@@ -198,6 +204,42 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     bulletinSelect.addEventListener('change', updateFields);
+    // End Bulletin auto-population logic
+    
+    // Email Group Preview Logic
+    const emailGroupSelect = document.getElementById('email_group_id');
+    const emailPreviewDiv = document.getElementById('email-preview');
+    let emailGroupsData = [];
+    try {
+        const emailGroupsDataElement = document.getElementById('email-groups-data-json');
+        if (emailGroupsDataElement) {
+            emailGroupsData = JSON.parse(emailGroupsDataElement.textContent || '[]');
+        }
+    } catch (e) {
+        console.error("Error parsing email groups data:", e);
+    }
+
+    function updateEmailPreview() {
+        const selectedId = parseInt(emailGroupSelect.value);
+        const selectedGroup = emailGroupsData.find(g => g.id === selectedId);
+
+        if (selectedGroup && selectedGroup.emails && selectedGroup.emails.length > 0) {
+            // Display emails as a list or comma-separated string
+            emailPreviewDiv.innerHTML = '<strong>Recipients:</strong><br>' + selectedGroup.emails.join('<br>'); 
+            // Or: emailPreviewDiv.textContent = 'Recipients: ' + selectedGroup.emails.join(', ');
+        } else if (selectedGroup) {
+            emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("No email addresses defined for this group.") }}</small>';
+        } else {
+            emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>';
+        }
+    }
+
+    // emailGroupSelect.addEventListener('change', updateEmailPreview);
+    $('#email_group_id').on('change', updateEmailPreview);
+
+    // Initial call to set preview if a group is pre-selected (though usually it won't be)
+    updateEmailPreview(); 
+
 });
 </script>
 

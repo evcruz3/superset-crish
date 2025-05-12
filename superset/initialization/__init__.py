@@ -507,15 +507,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         # Conditionally setup email views
         #
 
-        appbuilder.add_view(
-            AlertView,
-            "Alerts & Report",
-            label=__("Alerts & Reports"),
-            category="",
-            category_label="",
-            icon="fa-exclamation-triangle",
-            menu_cond=lambda: feature_flag_manager.is_feature_enabled("ALERT_REPORTS"),
-        )
 
         appbuilder.add_view(
             AnnotationLayerView,
@@ -562,6 +553,16 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category="Dissemination",
             category_label=__("Dissemination"),
             icon="fa-history",
+        )
+
+        appbuilder.add_view(
+            AlertView,
+            "Alerts & Report",
+            label=__("Alerts & Reports"),
+            category="",
+            category_label="",
+            icon="fa-exclamation-triangle",
+            menu_cond=lambda: feature_flag_manager.is_feature_enabled("ALERT_REPORTS"),
         )
 
     def init_app_in_ctx(self) -> None:
