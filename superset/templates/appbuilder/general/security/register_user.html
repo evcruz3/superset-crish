@@ -1,0 +1,28 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %} {# Import FAB's library for macros #}
+
+{% block content %}
+<div class="container">
+    <div id="registerbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <div class="panel-title">{{ _("Register for an Account") }}</div>
+            </div>
+            <div style="padding-top:30px" class="panel-body">
+                {#
+                   The original PublicFormView (which RegisterUserDBView inherits)
+                   passes a 'widgets' dictionary. The actual form widget is usually
+                   accessible via widgets.get('edit') or similar, or simply 'widgets'
+                   if the form_template is the widget itself.
+
+                   The _get_edit_widget method in SimpleFormView returns a dictionary:
+                   {'edit': self.edit_widget(form=form, fieldsets=self.edit_fieldsets,action_url=action_url, include_cols=self.edit_columns)}
+
+                   So we should render widgets.edit
+                #}
+                {{ widgets.edit()|safe }} {# Render the widget that contains the form #}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
