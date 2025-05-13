@@ -284,7 +284,7 @@ const DraggableItem = styled.div<DraggableItemProps>`
   
   /* Only apply box-shadow when not being dragged */
   box-shadow: ${({ theme, isDragging }) => 
-    !isDragging && theme.gridUnit >= 4 ? '0 1px 3px rgba(0,0,0,0.12)' : 'none'};
+    !isDragging && theme.gridUnit >= 4 ? '0 5px 15px rgba(0,0,0,0.15)' : 'none'}; // Increased shadow for non-dragging
 
   &:hover, &[data-dragging="true"] {
     background-color: ${({ theme }) => theme.colors.grayscale.light4};
@@ -294,7 +294,7 @@ const DraggableItem = styled.div<DraggableItemProps>`
   ${({ isDragging }) => isDragging && `
     transition: none;
     /* Stronger shadow while dragging */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12); // Increased shadow for dragging
   `}
 
   .layer-header {
@@ -614,7 +614,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
 
 // Add this styled component near the other styled components
 const LayersCardContent = styled.div`
-  padding: 1rem;
+  // padding: 1rem;
   max-height: 50vh;
   overflow-y: auto;
 
@@ -624,7 +624,7 @@ const LayersCardContent = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: ${({ theme }) => theme.colors.grayscale.light2};
+    background: ${({ theme }) => theme.colors.grayscale.light2}; // Re-added this line
     border-radius: 3px;
   }
 
@@ -636,7 +636,15 @@ const LayersCardContent = styled.div`
       background: ${({ theme }) => theme.colors.grayscale.base};
     }
   }
-`
+  // Add positioning and sizing directly here, remove the Card wrapper
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 300px; 
+  z-index: 1; 
+  // No background or shadow directly on LayersCardContent to make items appear floating
+  // The individual DraggableItem components will retain their background and shadow
+`;
 
 // Update the layer interface to include new properties
 interface ExtendedLayer extends Layer {
@@ -959,8 +967,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     selectedRegions: {},
     loadingState: {},
   });
-  const [selectedRegion, setSelectedRegion] = useState<FeedGeoJSONFeature | null>(null); // Use the specific type
-  const [pitch, setPitch] = useState<number>(0);
+  const [selectedRegion, setSelectedRegion] = useState<FeedGeoJSONFeature | null>(null);
   const [regionChartModalVisible, setRegionChartModalVisible] = useState<boolean>(false);
   const [regionChartModalContent, setRegionChartModalContent] = useState<React.ReactNode>(null);
   const [regionChartModalTitle, setRegionChartModalTitle] = useState<string>('');
@@ -1682,6 +1689,8 @@ const DeckMulti = (props: DeckMultiProps) => {
     const textLayers: Layer[] = [];
     const PITCH_SCALE_FACTOR = 1000; // Adjusted for potential visibility
 
+    const currentMapPitch = viewport?.pitch ?? 0; // Use viewport for pitch
+
     // Helper function to get region key from text data
     const getRegionKey = (d: any) => {
         const regionId = d.object?.properties?.ADM1 ||
@@ -1711,7 +1720,7 @@ const DeckMulti = (props: DeckMultiProps) => {
 
                 // Calculate dynamic elevation scale based on pitch AND layer order index
                 // Normalize pitch (0-60 degrees) to a 0-1 range, then apply factor and index
-                const normalizedPitch = (pitch ?? 0) * 2.5;
+                const normalizedPitch = currentMapPitch * 2.5;
                 const layerIndex = layerOrder.indexOf(id); // Get the index of the current layer
                 // count visible layers
                 // const countVisibleLayers = Object.values(visibleLayers).filter(Boolean).length;
@@ -1774,7 +1783,7 @@ const DeckMulti = (props: DeckMultiProps) => {
           });
         } else if (layerGroup && typeof layerGroup.clone === 'function') {
           // Handle single layer case (less common) - Ensure it's cloneable
-          const normalizedPitch = (viewport?.pitch ?? 0) / 60;
+          const normalizedPitch = currentMapPitch / 60;
           const layerIndex = layerOrder.indexOf(id);
           const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (layerIndex + 1);
           const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
@@ -1834,7 +1843,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       subSlicesLayers,
       formData.show_text_labels,
       props.payload.data.slices,
-      pitch, // Dependency remains
+      viewport, // ADDED viewport as dependency for pitch changes
   ]);
 
   // Effect to update layers when time changes
@@ -2036,11 +2045,8 @@ const DeckMulti = (props: DeckMultiProps) => {
       layers={orderedLayers}
       mapStyle={formData.mapbox_style}
       setControlValue={(control, value) => {
-        setControlValue(control, value)
-        if (control === 'viewport') {
-          // retain the zoom level
-          setPitch(value.pitch);
-        }
+        props.setControlValue(control, value);
+        // No longer setting local pitch state here
       }}
       onViewportChange={setViewport}
       height={height}
@@ -2250,123 +2256,104 @@ const DeckMulti = (props: DeckMultiProps) => {
           </div>
         </StyledTimelineSlider>
       )}
-      <Card style={{ 
-        position: 'absolute', 
-        top: '10px', 
-        left: '10px', 
-        width: '300px', 
-        zIndex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: '80vh' // This ensures the card itself doesn't exceed viewport
-      }}>
-        {/* <CardHeader>
-          <CardTitle>Layers</CardTitle>
-          <GuideText>
-            <span>• Drag layers to reorder</span>
-            <span>• Toggle visibility using the eye icon</span>
-            <span>• Adjust opacity using the slider</span>
-          </GuideText>
-        </CardHeader> */}
-        <LayersCardContent>
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="droppable">
-              {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  {layerOrder.map((id, index) => {
-                    console.log("[DEBUG] id: ", id);
-                    console.log("[DEBUG] index: ", index);
-                    const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === id)
-                    const layer = subSlicesLayers[id]?.[0] as ExtendedLayer
-                    const isVisible = visibleLayers[id]
-                    const loadingState = feedLayerState.loadingState[id]
-                    
-                    return (
-                      <Draggable
-                        key={id}
-                        draggableId={String(id)}
-                        index={index}
-                      >
-                        {(provided: DraggableProvided, draggableSnapshot: DraggableStateSnapshot) => (
-                          <DraggableItem
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            $isVisible={isVisible}
-                            isDragging={draggableSnapshot.isDragging}
-                            data-dragging={draggableSnapshot.isDragging}
-                          >
-                            <div className="layer-header" {...provided.dragHandleProps}>
-                              <span className="drag-handle">
-                                ☰
-                              </span>
-                              <span className="layer-name">
-                                {subslice?.slice_name}
-                                {loadingState?.loading && ' (Loading...)'}
-                                {loadingState?.error && ' (Load Failed)'}
-                              </span>
-                              <div className="header-controls">
-                                {layer && (
-                                  <div 
-                                    className="color-scale-preview"
-                                    style={{
-                                      background: isVisible && (layer as ExtendedLayer).colorScale
-                                        ? subslice?.form_data.categorical_column
-                                          ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[0])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(1, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(2, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])})`
-                                          : (layer as ExtendedLayer).extent
-                                            ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![0])}, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![1])})`
-                                            : '#e5e7eb'
-                                        : '#e5e7eb',
-                                      border: '1px solid #e5e7eb'
-                                    }}
-                                  />
-                                )}
-                                <span 
-                                  className="visibility-toggle"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    toggleLayerVisibility(id);
+      <LayersCardContent>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="droppable">
+            {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+              >
+                {layerOrder.map((id, index) => {
+                  console.log("[DEBUG] id: ", id);
+                  console.log("[DEBUG] index: ", index);
+                  const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === id)
+                  const layer = subSlicesLayers[id]?.[0] as ExtendedLayer
+                  const isVisible = visibleLayers[id]
+                  const loadingState = feedLayerState.loadingState[id]
+                  
+                  return (
+                    <Draggable
+                      key={id}
+                      draggableId={String(id)}
+                      index={index}
+                    >
+                      {(provided: DraggableProvided, draggableSnapshot: DraggableStateSnapshot) => (
+                        <DraggableItem
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          $isVisible={isVisible}
+                          isDragging={draggableSnapshot.isDragging}
+                          data-dragging={draggableSnapshot.isDragging}
+                        >
+                          <div className="layer-header" {...provided.dragHandleProps}>
+                            <span className="drag-handle">
+                              ☰
+                            </span>
+                            <span className="layer-name">
+                              {subslice?.slice_name}
+                              {loadingState?.loading && ' (Loading...)'}
+                              {loadingState?.error && ' (Load Failed)'}
+                            </span>
+                            <div className="header-controls">
+                              {layer && (
+                                <div 
+                                  className="color-scale-preview"
+                                  style={{
+                                    background: isVisible && (layer as ExtendedLayer).colorScale
+                                      ? subslice?.form_data.categorical_column
+                                        ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[0])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(1, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(2, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])})`
+                                        : (layer as ExtendedLayer).extent
+                                          ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![0])}, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![1])})`
+                                          : '#e5e7eb'
+                                      : '#e5e7eb',
+                                    border: '1px solid #e5e7eb'
                                   }}
-                                >
-                                  {isVisible ? (
-                                    <Icons.Eye iconSize="m" />
-                                  ) : (
-                                    <Icons.EyeSlash iconSize="m" />
-                                  )}
-                                </span>
+                                />
+                              )}
+                              <span 
+                                className="visibility-toggle"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  toggleLayerVisibility(id);
+                                }}
+                              >
+                                {isVisible ? (
+                                  <Icons.Eye iconSize="m" />
+                                ) : (
+                                  <Icons.EyeSlash iconSize="m" />
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          {isVisible && (
+                            <div className="layer-controls" onClick={(e) => e.stopPropagation()}>
+                              <div className="opacity-control">
+                                <span className="opacity-label">Opacity</span>
+                                <Slider
+                                  className="opacity-slider"
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  value={(layerOpacities[id] || 0) * 100}
+                                  onChange={(value: number) => handleOpacityChange(id, value / 100)}
+                                  tipFormatter={value => `${value}%`}
+                                />
                               </div>
                             </div>
-                            {isVisible && (
-                              <div className="layer-controls" onClick={(e) => e.stopPropagation()}>
-                                <div className="opacity-control">
-                                  <span className="opacity-label">Opacity</span>
-                                  <Slider
-                                    className="opacity-slider"
-                                    min={0}
-                                    max={100}
-                                    step={1}
-                                    value={(layerOpacities[id] || 0) * 100}
-                                    onChange={(value: number) => handleOpacityChange(id, value / 100)}
-                                    tipFormatter={value => `${value}%`}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </DraggableItem>
-                        )}
-                      </Draggable>
-                    )
-                  })}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        </LayersCardContent>
-      </Card>
+                          )}
+                        </DraggableItem>
+                      )}
+                    </Draggable>
+                  )
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+      </LayersCardContent>
       <LegendsContainer>
         {layerOrder
           .filter(id => visibleLayers[id])
