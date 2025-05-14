@@ -80,7 +80,7 @@ class DiarrheaPredictor:
             print("Database connection closed")
 
     def get_previous_cases(self, municipality, year, week):
-        """Get previous diarrhea cases from the database for a specific week."""
+        """Get the most recent available diarrhea cases from the database for a municipality up to a specific week."""
         try:
             # Get municipality code
             municipality_code = self.municipality_iso_codes.get(municipality)
@@ -88,8 +88,28 @@ class DiarrheaPredictor:
                 print(f"Warning: No ISO code found for {municipality}")
                 return 0
 
-            # Query to get sum of cases for the specified week
-            query = """
+            # Find the latest year and week with data up to the target year/week
+            query_latest_week = """
+            SELECT year, week_number
+            FROM tlhis_diseases
+            WHERE municipality_code = %s
+            AND (disease ILIKE %s OR disease ILIKE %s)
+            AND (year < %s OR (year = %s AND week_number <= %s))
+            ORDER BY year DESC, week_number DESC
+            LIMIT 1
+            """
+            self.cursor.execute(query_latest_week, (municipality_code, '%diarhea%', '%diarrhea%', year, year, week))
+            latest_week_data = self.cursor.fetchone()
+
+            if not latest_week_data:
+                # No data found up to this week, return 0
+                # print(f"No previous case data found for {municipality} up to {year}-W{week}") # Optional: for debugging
+                return 0
+
+            latest_year, latest_week = latest_week_data
+
+            # Query to get sum of cases for the identified latest week
+            query_cases = """
             SELECT COALESCE(SUM("totalCases"), 0) as total_cases
             FROM tlhis_diseases
             WHERE municipality_code = %s
@@ -98,13 +118,14 @@ class DiarrheaPredictor:
             AND (disease ILIKE %s OR disease ILIKE %s)
             """
             
-            self.cursor.execute(query, (municipality_code, year, week, '%diarhea%', '%diarrhea%'))
+            self.cursor.execute(query_cases, (municipality_code, latest_year, latest_week, '%diarhea%', '%diarrhea%'))
             result = self.cursor.fetchone()
             
+            # print(f"Using data from {latest_year}-W{latest_week} for target {year}-W{week} for {municipality}: {int(result[0]) if result else 0} cases") # Optional: for debugging
             return int(result[0]) if result else 0
             
         except Exception as e:
-            print(f"Error getting previous cases for {municipality}: {str(e)}")
+            print(f"Error getting previous cases for {municipality} up to {year}-W{week}: {str(e)}")
             # Rollback the transaction on error
             if self.conn:
                 self.conn.rollback()
