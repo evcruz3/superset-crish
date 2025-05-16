@@ -2,27 +2,236 @@
 {% import 'appbuilder/general/lib.html' as lib %} {# Import FAB's library for macros #}
 
 {% block content %}
-<div class="container">
-    <div id="registerbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
-        <div class="panel panel-primary">
-            <div class="panel-heading">
-                <div class="panel-title">{{ _("Register for an Account") }}</div>
-            </div>
-            <div style="padding-top:30px" class="panel-body">
-                {#
-                   The original PublicFormView (which RegisterUserDBView inherits)
-                   passes a 'widgets' dictionary. The actual form widget is usually
-                   accessible via widgets.get('edit') or similar, or simply 'widgets'
-                   if the form_template is the widget itself.
+<style>
+  /* Apply gradient to html/body to ensure full coverage */
+  html, body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
 
-                   The _get_edit_widget method in SimpleFormView returns a dictionary:
-                   {'edit': self.edit_widget(form=form, fieldsets=self.edit_fieldsets,action_url=action_url, include_cols=self.edit_columns)}
+  body {
+    /* Keep the background styling */
+    /* Use a gradient with soft colors and sharper stops for visible animated lines */
+    background: linear-gradient(135deg, #e9f5e9 40%, #e0f0f5 50%, #e9f5e9 60%); /* Light green - light cyan/blue - light green for contrast lines */
+    background-size: 400% 400%; /* Make background larger for animation */
+    background-repeat: no-repeat;
+    font-family: sans-serif;
+    animation: gradientShift 20s ease infinite; /* Slowed down animation slightly */
+  }
 
-                   So we should render widgets.edit
-                #}
-                {{ widgets.edit()|safe }} {# Render the widget that contains the form #}
+  .login-body-container { /* Use this to center the login box */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 90vh; /* Take most of viewport height, adjust if footer overlaps */
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .login-container {
+    /* Keep container styling */
+    background-color: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .top-logos, .bottom-logos {
+    /* Keep logo layout */
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+   .top-logos img, .top-logos span {
+    height: 40px;
+    margin: 5px 10px;
+   }
+
+  .top-logos .crish-logo { /* Updated name */
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.5em;
+  }
+   .top-logos .crish-logo img { /* Updated name */
+     margin-right: 8px;
+     height: 35px;
+   }
+
+  .bottom-logos img {
+    height: 35px;
+    margin: 10px 10px;
+    opacity: 0.8;
+  }
+
+  /* Style form based on original structure and target */
+  #loginbox {
+      margin-top: 0 !important; /* Override inline style */
+      max-width: 100%; /* Allow container to control width */
+      box-shadow: none; /* Remove default shadow if any */
+      border: none; /* Remove default border */
+      padding: 0;
+      width: auto; /* Reset from backup */
+      float: none; /* Reset from backup */
+  }
+
+  #loginbox .panel {
+      box-shadow: none;
+      border: none;
+  }
+
+  #loginbox .panel-heading {
+      display: none; /* Hide original title bar */
+  }
+  #loginbox .panel-body {
+      padding-top: 0 !important; /* Remove default padding */
+  }
+
+  .form-group { /* Add styling for form groups */
+    margin-bottom: 15px;
+    text-align: left;
+  }
+
+  .form-group label { /* Style labels like target */
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-control { /* Style inputs like target */
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease-in-out;
+    height: auto; /* Reset height */
+    box-shadow: none; /* Remove default shadows */
+  }
+  .form-control:focus {
+      border-color: #7e57c2;
+      outline: none;
+  }
+
+  /* Remove FAB input group styling */
+  .input-group .input-group-addon {
+      display: none;
+  }
+  .input-group {
+     width: 100%;
+  }
+
+  /* Remove default help block */
+  #loginbox .help-block {
+      display: none;
+  }
+
+  /* Style submit button */
+  .btn-primary {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    width: 100%;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    margin-top: 10px; /* Add some space */
+  }
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
+
+  /* Style bottom links */
+  .login-links {
+    margin-top: 15px;
+    font-size: 0.9em;
+  }
+  .login-links a {
+    color: #007bff;
+    text-decoration: none;
+  }
+   .login-links a:hover {
+      text-decoration: underline;
+   }
+   .login-links span {
+     color: #666;
+     margin-right: 5px;
+   }
+
+   /* Keep navbar visible by NOT hiding it */
+   /* .navbar { display: none; } */
+   h2 { display: none; } /* Hide any remaining default title */
+
+   /* --- Navbar Adjustments --- */
+   .navbar-brand img {
+       max-height: 30px; /* Adjust max height of navbar logo */
+       width: auto;
+       margin-top: -5px; /* Adjust vertical alignment if needed */
+   }
+   /* ------------------------- */
+
+   /* Style for the CRISH heading */
+   .crish-heading {
+       text-align: center;
+       margin-bottom: 25px; /* Add space below the heading */
+       font-size: 2em; /* Make it a bit larger */
+       color: #333; /* Dark grey color */
+       font-weight: bold;
+   }
+
+   /* Keyframes for the background animation */
+   @keyframes gradientShift {
+       0% { background-position: 0% 50%; }
+       50% { background-position: 100% 50%; }
+       100% { background-position: 0% 50%; }
+   }
+
+   /* Increase width of the label column in the registration form */
+   #loginbox .panel-body td.col-lg-2 {
+       width: 25%; /* From default col-lg-2 (16.67%) to a wider 30% */
+   }
+
+</style>
+
+<div class="login-body-container">
+    <div class="login-container">
+
+        <h3 class="crish-heading">{{ _("Register for an Account") }}</h3>
+
+        <div id="loginbox" class="mainbox"> {# Use "loginbox" id to match CSS from login_db.html #}
+            <div class="panel panel-primary">
+                <div class="panel-heading"> {# Kept for structure, hidden by CSS from login_db.html #}
+                    <div class="panel-title"></div> {# Title is now in crish-heading #}
+                </div>
+                <div class="panel-body"> {# padding-top is handled by CSS for #loginbox .panel-body #}
+                    {#
+                       The original PublicFormView (which RegisterUserDBView inherits)
+                       passes a 'widgets' dictionary. The actual form widget is usually
+                       accessible via widgets.get('edit') or similar, or simply 'widgets'
+                       if the form_template is the widget itself.
+
+                       The _get_edit_widget method in SimpleFormView returns a dictionary:
+                       {'edit': self.edit_widget(form=form, fieldsets=self.edit_fieldsets,action_url=action_url, include_cols=self.edit_columns)}
+
+                       So we should render widgets.edit
+                    #}
+                    {{ widgets.edit()|safe }} {# Render the widget that contains the form #}
+                </div>
             </div>
         </div>
-    </div>
-</div>
+
+    </div> {# End .login-container #}
+</div> {# End .login-body-container #}
 {% endblock %} 
