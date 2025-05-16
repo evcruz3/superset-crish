@@ -1714,19 +1714,23 @@ const DeckMulti = (props: DeckMultiProps) => {
             if (layer && typeof layer.clone === 'function') {
 
                 // if not visible, skip
+                // This check is technically redundant due to the .filter(id => visibleLayers[id]) above,
+                // but kept for clarity or if the filter is removed in the future.
                 if (!visibleLayers[id]) {
                   return;
                 }
 
-                // Calculate dynamic elevation scale based on pitch AND layer order index
+                // Calculate dynamic elevation scale based on pitch AND visible layer order index
                 // Normalize pitch (0-60 degrees) to a 0-1 range, then apply factor and index
                 const normalizedPitch = currentMapPitch * 2.5;
-                const layerIndex = layerOrder.indexOf(id); // Get the index of the current layer
-                // count visible layers
-                // const countVisibleLayers = Object.values(visibleLayers).filter(Boolean).length;
-                // get index of current layer when visible
-                // const visibleLayerIndex = layerOrder.findIndex(layer => visibleLayers[layer]);
-                const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (layerOrder.length - layerIndex); // Base elevation increases with layer order
+
+                // Filter layerOrder to get only visible layers for height calculation
+                const visibleLayerIds = layerOrder.filter(layerId => visibleLayers[layerId]);
+                const visibleLayerIndex = visibleLayerIds.indexOf(id); // Index within visible layers
+                const countVisibleLayers = visibleLayerIds.length;
+
+                // Base elevation increases with layer order among visible layers
+                const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (countVisibleLayers - visibleLayerIndex); 
 
                 // Use modelMatrix for elevation translation
                 const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
@@ -1784,10 +1788,17 @@ const DeckMulti = (props: DeckMultiProps) => {
         } else if (layerGroup && typeof layerGroup.clone === 'function') {
           // Handle single layer case (less common) - Ensure it's cloneable
           const normalizedPitch = currentMapPitch / 60;
-          const layerIndex = layerOrder.indexOf(id);
-          const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * (layerIndex + 1);
+          
+          // Filter layerOrder to get only visible layers for height calculation
+          const visibleLayerIds = layerOrder.filter(layerId => visibleLayers[layerId]);
+          const visibleLayerIndex = visibleLayerIds.indexOf(id); // Index within visible layers
+          // const countVisibleLayers = visibleLayerIds.length; // Not strictly needed here if we assume single visible layer or specific handling
+
+          // For a single layer, or if we want a consistent elevation when it's the only one visible
+          // We might use a fixed factor or (countVisibleLayers - visibleLayerIndex) which would be (1-0) = 1
+          const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * ( (visibleLayerIds.length > 0 && visibleLayerIndex !== -1) ? (visibleLayerIds.length - visibleLayerIndex) : 1);
           const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
-          console.log('[DEBUG] Single Layer ID:', id, 'Index:', layerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
+          console.log('[DEBUG] Single Layer ID:', id, 'Index (visible):', visibleLayerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
           const scaledLayer = layerGroup.clone({ modelMatrix });
           nonTextLayers.push(scaledLayer); // Assume it's a non-text layer if single
         } else if (layerGroup) {

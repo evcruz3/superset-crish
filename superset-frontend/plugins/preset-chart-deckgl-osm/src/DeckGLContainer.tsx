@@ -44,7 +44,7 @@ import { Viewport } from './utils/fitViewport';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { BitmapLayer } from '@deck.gl/layers';
 import React from 'react';
-import { PlusOutlined, MinusOutlined, CompassOutlined, ArrowLeftOutlined, ArrowRightOutlined, ArrowUpOutlined, ArrowDownOutlined, CopyOutlined } from '@ant-design/icons';
+import { PlusOutlined, MinusOutlined, CompassOutlined, ArrowLeftOutlined, ArrowRightOutlined, ArrowUpOutlined, ArrowDownOutlined, CopyOutlined, UndoOutlined, RedoOutlined } from '@ant-design/icons';
 
 const TICK = 250; // milliseconds
 const ZOOM_STEP = 0.5;
@@ -152,14 +152,14 @@ const MapControls: React.FC<MapControlsProps> = ({
 
       {/* Rotation Controls */}
       <div className="control-group control-row">
-        <button onClick={onRotateLeft} title="Rotate Left">
-          <ArrowLeftOutlined />
+        <button onClick={onRotateLeft} title="Rotate Left (U-turn Counter-Clockwise)">
+          <UndoOutlined />
         </button>
         <button onClick={onFullReset} title="Reset View (Position, Zoom, Bearing, Tilt)">
           <CompassOutlined style={{ transform: `rotate(${- (viewState.bearing || 0)}deg)` }} />
         </button>
-        <button onClick={onRotateRight} title="Rotate Right">
-          <ArrowRightOutlined />
+        <button onClick={onRotateRight} title="Rotate Right (U-turn Clockwise)">
+          <RedoOutlined />
         </button>
       </div>
 
