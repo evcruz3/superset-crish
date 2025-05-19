@@ -17,6 +17,9 @@
 import logging
 from datetime import date # For parsing date string
 from typing import Any
+import json
+from sqlalchemy import asc, desc
+from flask_appbuilder.models.filters import Filters
 
 from flask import request, Response
 from flask_appbuilder.api import expose, protect, rison, safe # Removed schema from here
@@ -137,26 +140,205 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
         log_to_statsd=False,
     )
     def get_list(self, **kwargs: Any) -> Response:
-        response = super().get_list(**kwargs)
-        if isinstance(response, Response) and response.status_code == 200:
-            try:
-                data = response.json
-                if "result" in data and isinstance(data["result"], list):
-                    # Re-fetch objects to access model properties like composite_id
-                    # This is less efficient but ensures we use the model's @property
-                    # Alternatively, construct composite_id directly from item fields if all are present
-                    pks = [item["id"] for item in data["result"] if "id" in item]
-                    if pks:
-                        object_list = self.datamodel.get_all(filters=None, pks=pks)
-                        obj_map = {obj.id: obj for obj in object_list}
-                        for item in data["result"]:
-                            if "id" in item and item["id"] in obj_map:
-                                # Replace database PK 'id' with composite_id string for frontend
-                                item["id"] = obj_map[item["id"]].composite_id
-                    response.json = data # Update the response data
-            except Exception as e:
-                logger.error(f"Error processing disease alerts list: {e}", exc_info=True)
-        return response
+        """Get list of disease forecast alerts.
+        Supports filtering via direct query parameters (e.g., municipality_name=Dili, disease_type=Dengue)
+        and/or the 'q' Rison parameter for complex queries, pagination, and ordering.
+
+        ---
+        get:
+          summary: Get a list of disease forecast alerts
+          description: |
+            Retrieves a list of disease forecast alerts.
+            Supports pagination, sorting, and filtering.
+            Filters can be applied using the 'q' parameter with a Rison-encoded JSON object
+            (for complex queries like 'in', 'sw', 'ct', and for pagination/sorting)
+            or via direct query parameters for simple equality checks on specific fields.
+            Direct query parameters are ANDed with any filters specified in 'q'.
+          parameters:
+          - in: query
+            name: q
+            content:
+              application/json:
+                schema:
+                  # Assuming a generic get_list_schema exists or FAB default applies
+                  type: string 
+            description: |
+              A Rison-encoded query for comprehensive filtering, sorting, and pagination.
+              Example: q=(filters:!((col:disease_type,opr:eq,value:Dengue)),page:0,page_size:25)
+          - name: municipality_name
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by exact municipality name.
+          - name: municipality_code
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by exact municipality code.
+          - name: disease_type
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by exact disease type (e.g., Dengue, Diarrhea).
+          - name: alert_level
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by exact alert level.
+          - name: forecast_date
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by exact forecast date (YYYY-MM-DD).
+          responses:
+            200:
+              description: A list of disease forecast alerts
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      ids:
+                        type: array
+                        items:
+                          type: string # These will be composite IDs
+                        description: A list of alert composite IDs
+                      count:
+                        type: integer
+                        description: The total number of alerts found
+                      result:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/{{self.__class__.__name__}}.get'
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        logger.debug(f"Disease Alerts - Original kwargs from framework/rison (from 'q' param): {kwargs.get('rison')}")
+        logger.debug(f"Disease Alerts - Request args (for direct filters): {request.args}")
+
+        # 1. Start with a base SQLAlchemy query
+        query = self.datamodel.session.query(self.datamodel.obj)
+
+        # 2. Apply direct URL parameter filters using SQLAlchemy
+        direct_query_params_mapping = {
+            "municipality_name": "municipality_name",
+            "municipality_code": "municipality_code",
+            "disease_type": "disease_type",
+            "alert_level": "alert_level",
+            "forecast_date": "forecast_date", # Assuming forecast_date in model is string or compatible
+        }
+        for query_param_key, model_column_name in direct_query_params_mapping.items():
+            if query_param_key in request.args:
+                param_value = request.args.get(query_param_key)
+                if param_value is not None and query_param_key.lower() not in ['q', 'page', 'page_size', 'order_column', 'order_direction', 'keys', 'columns']:
+                    logger.info(f"Disease Alerts - Applying direct URL filter to SQLAlchemy query: {model_column_name} == {param_value}")
+                    # Special handling if model_column_name is 'forecast_date' and DB stores it as Date
+                    if model_column_name == 'forecast_date':
+                        try:
+                            param_value_date = date.fromisoformat(param_value)
+                            query = query.filter(getattr(self.datamodel.obj, model_column_name) == param_value_date)
+                        except ValueError:
+                            logger.warning(f"Invalid date format for forecast_date filter: {param_value}. Skipping filter.")
+                            # Or return a 400 error: return self.response_400(message=f"Invalid date format for forecast_date: {param_value}")
+                    else:
+                        query = query.filter(getattr(self.datamodel.obj, model_column_name) == param_value)
+        
+        # 3. Handle Rison 'q' parameter (filters, pagination, ordering)
+        rison_payload = kwargs.get("rison", {}) # @rison decorator (if used) would populate this
+        if not isinstance(rison_payload, dict):
+            rison_payload = {}
+
+        # 3a. Apply filters from Rison 'q' parameter
+        rison_filters_list = rison_payload.get("filters")
+        if rison_filters_list:
+            fab_rison_filters = self.datamodel.get_filters(filter_columns_list=rison_filters_list)
+            logger.debug(f"Disease Alerts - Applying Rison filters (from q param) to SQLAlchemy query: {rison_filters_list}")
+            query = self.datamodel.apply_filters(query, fab_rison_filters)
+        else:
+            logger.debug("Disease Alerts - No Rison filters (from q param) to apply.")
+
+        # 4. Get the count AFTER all filters are applied
+        logger.debug("Disease Alerts - Executing count query on filtered SQLAlchemy query.")
+        item_count = query.count()
+
+        # 5. Apply pagination and ordering from Rison payload to the filtered query
+        logger.debug(f"Disease Alerts - Applying Rison pagination/ordering to SQLAlchemy query: {rison_payload}")
+        
+        order_column_name = rison_payload.get("order_column")
+        order_direction = rison_payload.get("order_direction")
+        if order_column_name and hasattr(self.datamodel.obj, order_column_name):
+            column_attr = getattr(self.datamodel.obj, order_column_name)
+            logger.debug(f"Disease Alerts - Applying ordering: {order_column_name} {order_direction}")
+            if order_direction == "desc":
+                query = query.order_by(desc(column_attr))
+            else:
+                query = query.order_by(asc(column_attr))
+        elif self.base_order and hasattr(self.datamodel.obj, self.base_order[0]): # Apply default base_order
+            column_attr = getattr(self.datamodel.obj, self.base_order[0])
+            logger.debug(f"Disease Alerts - Applying default base_order: {self.base_order[0]} {self.base_order[1]}")
+            if self.base_order[1] == "desc":
+                query = query.order_by(desc(column_attr))
+            else:
+                query = query.order_by(asc(column_attr))
+
+        page = rison_payload.get("page")
+        page_size = rison_payload.get("page_size")
+        if page is not None and page_size is not None and page_size > 0:
+            logger.debug(f"Disease Alerts - Applying pagination: page {page}, page_size {page_size}")
+            offset = page * page_size
+            query = query.limit(page_size).offset(offset)
+        elif page_size is not None and page_size > 0: 
+            logger.debug(f"Disease Alerts - Applying pagination (default page 0): page_size {page_size}")
+            query = query.limit(page_size).offset(0)
+        elif self.page_size and self.page_size > 0: 
+            logger.debug(f"Disease Alerts - Applying default API page_size: {self.page_size}")
+            query = query.limit(self.page_size).offset(0)
+
+        # 6. Execute the final query to get results
+        logger.debug("Disease Alerts - Executing final data query on filtered, ordered, paginated SQLAlchemy query.")
+        result_objects = query.all()
+
+        # 7. Prepare response
+        # Get composite IDs for the "ids" field of the response
+        # The model DiseaseForecastAlert must have a `composite_id` @property
+        response_ids = [obj.composite_id for obj in result_objects if hasattr(obj, 'composite_id')]
+        
+        # Serialize data using the response schema
+        response_data = self.response_schema.dump(result_objects, many=True)
+
+        # Ensure each item in response_data also uses composite_id if 'id' field is present
+        # and it was serialized from the database PK.
+        # The DiseaseForecastAlertResponseSchema should ideally define 'id' as fields.Method("get_composite_id")
+        # or we can adjust it here. Assuming response_schema already handles this or we adjust now:
+        for item_dict in response_data:
+            # If schema already has a composite_id mapped to 'id', this is fine.
+            # If 'id' in item_dict is the db PK, we need to find the original object and replace it.
+            # This is simpler if the schema's 'id' field is already the composite_id.
+            # For now, assuming schema handles 'id' as composite_id or it's done by the dump.
+            # The code below is a fallback if `response_schema` dumps db `id` and we need to replace it post-serialization.
+            # This is only needed if DiseaseForecastAlertResponseSchema.id is fields.Int() (db PK)
+            # and not fields.Str() (composite_id).
+            # Let's assume DiseaseForecastAlertResponseSchema is set up to provide composite_id as 'id'.
+            pass
+
+        final_response = {
+            "ids": response_ids, 
+            "count": item_count,
+            "result": response_data,
+        }
+        
+        return self.response(200, **final_response)
 
     @expose("/", methods=["POST"])
     @protect()

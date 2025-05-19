@@ -16,9 +16,10 @@
 # under the License.
 from typing import Any
 
-from marshmallow import fields, Schema
+from marshmallow import fields, Schema, validate
 from marshmallow.validate import Length, ValidationError
 
+# Schema for GET /_rison (bulk_delete)
 get_alert_ids_schema = {"type": "array", "items": {"type": "string"}}
 
 municipality_code_description = "Municipality ISO code (e.g., TL-DI for Dili)."
@@ -32,16 +33,43 @@ parameter_value_description = "The numerical value of the weather parameter that
 
 # Define the OpenAPI schema for the endpoints
 openapi_spec_methods_override = {
-    "get": {"get": {"summary": "Get a weather forecast alert"}},
-    "get_list": {
+    # Completely remove the "get_list" override. 
+    # Rely on @rison(get_list_schema) from api.py for its documentation.
+    "get": {
         "get": {
-            "summary": "Get a list of weather forecast alerts",
-            "description": "Gets a list of weather forecast alerts, use Rison or JSON query "
-            "parameters for filtering, sorting, pagination and "
-            " for selecting specific columns and metadata.",
+            "summary": "Get a weather forecast alert by its composite ID",
+            "description": "Fetches a single weather forecast alert using its composite ID of the form: municipality_code_forecast_date_weather_parameter."
         }
     },
-    "info": {"get": {"summary": "Get metadata information about this API resource"}},
+    "post": {
+        "post": {
+            "summary": "Create a new weather forecast alert"
+        }
+    },
+    "put": {
+        "put": {
+            "summary": "Update an existing weather forecast alert by composite ID"
+        }
+    },
+    "delete": {
+        "delete": {
+            "summary": "Delete a weather forecast alert by composite ID"
+        }
+    },
+    "bulk_delete": {
+        "delete": {
+            "summary": "Delete multiple weather forecast alerts by composite IDs",
+            "parameters": [
+                {
+                    "name": "q",
+                    "in": "query",
+                    "required": True,
+                    "schema": get_alert_ids_schema,
+                    "description": "A Rison-encoded list of composite alert IDs to delete. Example: q=(%27ID_ONE%27,%27ID_TWO%27)"
+                }
+            ],
+        }
+    },
 }
 
 
