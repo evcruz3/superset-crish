@@ -220,11 +220,13 @@
 
         {# START: Add Back button to top-left #}
         <div style="position: absolute; top: 15px; left: 15px;">
-            {{ lib.lnk_back() }}
+            <a href="{{ url_for('AuthDBView.login') }}" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title="{{_('Back to Login')}}">
+                <i class="fa fa-arrow-left"></i> {{ _('Back to Login') }}
+            </a>
         </div>
         {# END: Add Back button #}
 
-         <div class="top-logos">
+         <div class="top-logos" style="margin-top: 20px;">
             <img src="{{ url_for('static', filename='assets/images/crish/RDTL.svg') }}" alt="RDTL Logo">
             <img src="{{ url_for('static', filename='assets/images/crish/MOH.png') }}" alt="CRISH Logo">
             <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">

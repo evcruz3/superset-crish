@@ -312,6 +312,7 @@ APP_NAME = "Superset"
 
 # Specify the App icon
 APP_ICON = "/static/assets/images/Logos.png"
+APP_ICON_WIDTH = 150 # Define a width for the app icon
 
 # Specify where clicking the logo would take the user'
 # Default value of None will take you to '/superset/welcome'
