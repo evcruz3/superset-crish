@@ -5,12 +5,13 @@ from flask import redirect, url_for, request, flash, g # g for current user
 from markupsafe import Markup # Import Markup
 import json # Import the json library
 import logging # Add logging import
+from flask_appbuilder.security.decorators import protect, has_access # Ensure has_access is also imported if needed for SPA views
 
 from superset import appbuilder, db
 from superset.models.dissemination import EmailGroup, DisseminatedBulletinLog
 from superset.models.bulletins import Bulletin # For dropdown in dissemination form
 from superset.utils.core import send_email_smtp # For sending emails
-from superset.views.base import SupersetModelView, DeleteMixin
+from superset.views.base import SupersetModelView, DeleteMixin, BaseSupersetView # Import BaseSupersetView
 # Import the new form
 from .forms import DisseminationForm
 from superset.utils.pdf import generate_bulletin_pdf
@@ -283,6 +284,17 @@ class DisseminateBulletinView(BaseView):
             email_groups_json=email_groups_json_for_template, # Pass the email group JSON
             selected_bulletin=selected_bulletin_for_template # Pass the pre-selected bulletin details
         )
+
+class EmailGroupsSPAView(BaseSupersetView): # Inherit from BaseSupersetView
+    route_base = "/emailgroups" 
+    class_permission_name = "EmailGroups" # Define class permission name for consistency and potential future use
+    # default_view = "list" # default_view is not typically needed for BaseSupersetView SPA hosts
+    # allow_browser_login = True # Not typically needed for BaseSupersetView with @has_access
+
+    @expose("/list/")
+    @has_access # Use has_access for SPA views, usually tied to class_permission_name 'can_list' or a specific permission
+    def list(self):
+        return super().render_app_template()
 
 # Registration of views and menu items
 # This is usually done in a central place, e.g., where appbuilder is initialized.

@@ -163,6 +163,10 @@ const DiseaseForecasts = lazy(
   () => import('src/pages/DiseaseForecasts'),
 );
 
+const EmailGroupsPage = lazy(
+  () => import(/* webpackChunkName: "EmailGroupsPage" */ 'src/pages/EmailGroups'),
+);
+
 type Routes = {
   path: string;
   Component: ComponentType;
@@ -309,7 +313,10 @@ export const routes: Routes = [
     path: '/public_education/',
     Component: PublicEducationList,
   },
-
+  {
+    path: '/emailgroups/list/',
+    Component: EmailGroupsPage,
+  },
 ];
 
 if (isFeatureEnabled(FeatureFlag.TaggingSystem)) {

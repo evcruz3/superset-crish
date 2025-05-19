@@ -19,6 +19,7 @@ import rison from 'rison';
 import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
 import Tag from 'antd/es/tag';
+import { DownloadOutlined } from '@ant-design/icons';
 
 const PAGE_SIZE = 25;
 
@@ -134,6 +135,19 @@ function BulletinsAndAdvisories({
     BULLETIN_COLUMNS_TO_FETCH,
   );
 
+  const handleDownloadPdf = async (bulletinId: number, bulletinTitle: string) => {
+    console.log('handleDownloadPdf function entered for ID:', bulletinId, 'at', new Date().toISOString());
+    try {
+      // Direct navigation to trigger download
+      const pdfUrl = `/api/v1/bulletins_and_advisories/${bulletinId}/pdf/`;
+      window.location.href = pdfUrl;
+      // No need to add success toast here as the browser handles the download.
+    } catch (error) { // This catch might not even be hit if direct navigation works
+      console.error('Error initiating PDF download:', error);
+      addDangerToast(t('Failed to initiate PDF download. Please check the console for details.'));
+    }
+  };
+
   const handleBulletinDelete = async (bulletin: Bulletin) => {
     try {
       await SupersetClient.delete({
@@ -248,41 +262,12 @@ function BulletinsAndAdvisories({
             setEditModalVisible(true);
           };
           
-          const handleShareViaEmail = () => {
-            const subject = encodeURIComponent(`Bulletin: ${original.title}`);
-            let body = encodeURIComponent(
-              `Title: ${original.title}\n` +
-              `Advisory: ${original.advisory || ''}\n` +
-              `Risks: ${original.risks || ''}\n` +
-              `Safety Tips: ${original.safety_tips || ''}\n` +
-              `Hashtags: ${original.hashtags || ''}\n\n` +
-              `Shared from ${window.location.origin}`
-            );
-            window.location.href = `mailto:?subject=${subject}&body=${body}`;
-          };
-
           const handleDisseminate = () => {
             window.location.href = `/disseminatebulletin/form/?bulletin_id=${original.id}`;
           };
           
           return (
             <Actions className="actions">
-              <Tooltip
-                id="share-action-tooltip"
-                title={t('Share via Email')}
-                placement="bottom"
-              >
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="action-button"
-                  onClick={handleShareViaEmail}
-                  data-test="bulletin-share-action"
-                >
-                  <Icons.Email data-test="bulletin-email-icon" />
-                </span>
-              </Tooltip>
-              
               {hasPerm('can_write') && (
                 <>
                   <Tooltip
@@ -297,7 +282,26 @@ function BulletinsAndAdvisories({
                       onClick={handleDisseminate}
                       data-test="bulletin-disseminate-action"
                     >
-                      <Icons.Share data-test="bulletin-disseminate-icon" />
+                      <Icons.Email data-test="bulletin-disseminate-icon" />
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    id="download-pdf-action-tooltip"
+                    title={t('Download PDF')}
+                    placement="bottom"
+                  >
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="action-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Download button span clicked for ID:', original.id, 'at', new Date().toISOString());
+                        handleDownloadPdf(original.id, original.title);
+                      }}
+                      data-test="bulletin-download-pdf-action"
+                    >
+                      <DownloadOutlined data-test="bulletin-download-pdf-icon" />
                     </span>
                   </Tooltip>
                   <Tooltip
@@ -325,9 +329,9 @@ function BulletinsAndAdvisories({
                       tabIndex={0}
                       className="action-button"
                       onClick={handleDelete}
-                      data-test="dashboard-delete-action"
+                      data-test="bulletin-delete-action"
                     >
-                      <Icons.Trash data-test="dashboard-delete-icon" />
+                      <Icons.Trash data-test="bulletin-delete-icon" />
                     </span>
                   </Tooltip>
                 </>

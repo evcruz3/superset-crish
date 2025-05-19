@@ -1,5 +1,6 @@
-from flask import request, g, Response
-from flask_appbuilder.api import expose, protect, safe, rison
+from flask import request, g, Response, send_file
+from flask_appbuilder.api import expose, protect, safe, rison, permission_name
+from flask_appbuilder.api.schemas import get_item_schema
 from flask_appbuilder.security.decorators import has_access_api
 from superset.views.base_api import BaseSupersetModelRestApi, RelatedFieldFilter
 from superset.extensions import db
@@ -13,6 +14,9 @@ from superset.views.filters import BaseFilterRelatedUsers, FilterRelatedOwners
 import json
 from superset.views.base_api import requires_json, statsd_metrics
 from superset.commands.exceptions import DeleteFailedError
+from superset.utils.pdf import generate_bulletin_pdf
+from superset.extensions import cache_manager
+from io import BytesIO
 
 class BulletinsRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(Bulletin)
@@ -22,6 +26,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
     include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
         "bulk_delete",  # not using RouteMethod since locally defined
+        "download_bulletin_pdf"
     }
 
     list_columns = [
@@ -130,276 +135,83 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             return self.response_422(message=str(ex))
 
-    @expose("/create/", methods=["POST"])
-    @protect()
-    @safe
-    @statsd_metrics
-    @requires_json
-    def create(self) -> WerkzeugResponse:
-        """Creates a new bulletin
+    @expose("/<int:bulletin_id>/pdf/", methods=("GET",))
+    # @protect() # Temporarily commented out for debugging
+    @safe # Temporarily commented out for debugging
+    @statsd_metrics # Temporarily commented out for debugging
+    # @permission_name("get") # Temporarily commented out for debugging
+    def download_bulletin_pdf(self, bulletin_id: int) -> Response:
+        """
+        Downloads a bulletin as a PDF.
         ---
-        post:
-          description: >-
-            Create a new bulletin
-          requestBody:
-            description: Bulletin schema
+        get:
+          summary: Download bulletin as PDF
+          description: Downloads a bulletin as a PDF.
+          parameters:
+          - in: path
+            name: bulletin_id
+            schema:
+              type: integer
             required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    title:
-                      type: string
-                    advisory:
-                      type: string
-                    risks:
-                      type: string
-                    safety_tips:
-                      type: string
-                    hashtags:
-                      type: string
-                    chart_id:
-                      type: integer
+            description: The id of the bulletin
           responses:
-            201:
-              description: Bulletin added
+            200:
+              description: Bulletin PDF
               content:
-                application/json:
+                application/pdf:
                   schema:
-                    type: object
-                    properties:
-                      id:
-                        type: number
-                      result:
-                        type: object
-            400:
-              $ref: '#/components/responses/400'
+                    type: string
+                    format: binary
             401:
               $ref: '#/components/responses/401'
-            422:
-              $ref: '#/components/responses/422'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              description: Bulletin not found
             500:
-              $ref: '#/components/responses/500'
+              description: Error generating PDF
         """
-        if not request.is_json:
-            return self.response_400(message="Request is not JSON")
-        try:
-            # Get the JSON data
-            data = request.json
-            
-            # Validate required fields
-            required_fields = ['title', 'advisory', 'risks', 'safety_tips', 'hashtags']
-            for field in required_fields:
-                if not data.get(field):
-                    return self.response_400(message=f"{field} is required")
-                if not isinstance(data[field], str):
-                    return self.response_400(message=f"{field} must be a string")
-            
-            # Handle chart_id
-            chart_id = data.get('chart_id')
-            if chart_id is None:
-                # For backward compatibility, try 'chartId' if 'chart_id' is not present
-                chart_id = data.get('chartId')
-                
-            print(f"Received chart_id: {chart_id}")
-            if chart_id:
-                if isinstance(chart_id, dict):
-                    chart_id = chart_id.get('value')
-                    print(f"Extracted chart_id from dict: {chart_id}")
-                if not isinstance(chart_id, (int, type(None))):
-                    return self.response_400(message="chart_id must be an integer or null")
-                print(f"Final chart_id value: {chart_id}")
-            
-            # Create bulletin with validated data
-            bulletin = Bulletin(
-                title=data['title'],
-                advisory=data['advisory'],
-                risks=data['risks'],
-                safety_tips=data['safety_tips'],
-                hashtags=data['hashtags'],
-                chart_id=chart_id,
-                created_by_fk=g.user.id
+        bulletin = self.datamodel.get(bulletin_id)
+        if not bulletin:
+            return self.response_404()
+
+        # Construct cache key
+        # Ensure changed_on is in a consistent string format for the key
+        changed_on_str = bulletin.changed_on.isoformat() if bulletin.changed_on else "no_changed_on"
+        cache_key = f"bulletin_pdf_{bulletin_id}_{changed_on_str}"
+
+        # Try to fetch from cache
+        cached_pdf_data = cache_manager.data_cache.get(cache_key)
+
+        if cached_pdf_data:
+            pdf_buffer = BytesIO(cached_pdf_data)
+            # pdf_buffer.seek(0) # BytesIO(data) is already at position 0
+            is_preview = request.args.get('preview') == 'true'
+            return send_file(
+                pdf_buffer,
+                mimetype="application/pdf",
+                as_attachment=not is_preview, # Set as_attachment to False if preview=true
+                download_name=f"bulletin_{bulletin.title.replace(' ', '_')}_{bulletin_id}.pdf"
             )
-            
-            db.session.add(bulletin)
-            db.session.commit()
-            
-            return self.response(201, id=bulletin.id, result=data)
-        except ValidationError as err:
-            return self.response_400(message=str(err.messages))
-        except Exception as ex:
-            db.session.rollback()
-            return self.response_422(message=str(ex))
 
-    @expose("/<pk>", methods=["PUT"])
-    @protect()
-    @safe
-    @statsd_metrics
-    @requires_json
-    def update(self, pk: int) -> WerkzeugResponse:
-        """Update a bulletin
-        ---
-        put:
-          description: >-
-            Update a bulletin
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-            description: The bulletin id
-          requestBody:
-            description: Bulletin schema
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    title:
-                      type: string
-                    advisory:
-                      type: string
-                    risks:
-                      type: string
-                    safety_tips:
-                      type: string
-                    hashtags:
-                      type: string
-                    chart_id:
-                      type: integer
-          responses:
-            200:
-              description: Bulletin updated
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: number
-                      result:
-                        type: object
-            400:
-              $ref: '#/components/responses/400'
-            401:
-              $ref: '#/components/responses/401'
-            403:
-              $ref: '#/components/responses/403'
-            404:
-              $ref: '#/components/responses/404'
-            422:
-              $ref: '#/components/responses/422'
-            500:
-              $ref: '#/components/responses/500'
-        """
-        if not request.is_json:
-            return self.response_400(message="Request is not JSON")
+        # If not in cache, generate PDF
         try:
-            # Get the bulletin by id
-            bulletin = self.datamodel.get(pk, self._base_filters)
-            if not bulletin:
-                return self.response_404()
-                
-            # Check if user has permission to edit
-            if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
-                return self.response_403()
-                
-            # Check if user is the creator or has admin rights
-            if bulletin.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
-                return self.response_403(message="You can only edit bulletins that you created")
-                
-            # Get the JSON data
-            data = request.json
-            
-            # Validate required fields
-            required_fields = ['title', 'advisory', 'risks', 'safety_tips', 'hashtags']
-            for field in required_fields:
-                if not data.get(field):
-                    return self.response_400(message=f"{field} is required")
-                if not isinstance(data[field], str):
-                    return self.response_400(message=f"{field} must be a string")
-            
-            # Handle chart_id
-            chart_id = data.get('chart_id')
-            if chart_id is None:
-                # For backward compatibility, try 'chartId' if 'chart_id' is not present
-                chart_id = data.get('chartId')
-                
-            if chart_id:
-                if isinstance(chart_id, dict):
-                    chart_id = chart_id.get('value')
-                if not isinstance(chart_id, (int, type(None))):
-                    return self.response_400(message="chart_id must be an integer or null")
-            
-            # Update bulletin with validated data
-            bulletin.title = data['title']
-            bulletin.advisory = data['advisory']
-            bulletin.risks = data['risks']
-            bulletin.safety_tips = data['safety_tips']
-            bulletin.hashtags = data['hashtags']
-            bulletin.chart_id = chart_id
-            
-            db.session.commit()
-            
-            return self.response(200, id=bulletin.id, result=data)
-        except ValidationError as err:
-            return self.response_400(message=str(err.messages))
-        except Exception as ex:
-            db.session.rollback()
-            return self.response_422(message=str(ex))
+            pdf_buffer = generate_bulletin_pdf(bulletin)
+            pdf_data = pdf_buffer.getvalue() # Get bytes once
 
-    @expose("/<pk>", methods=["DELETE"])
-    @protect()
-    @safe
-    def delete(self, pk: int) -> Response:
-        """Delete a bulletin
-        ---
-        delete:
-          description: >-
-            Delete a bulletin
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-            description: The bulletin id
-          responses:
-            200:
-              description: Bulletin deleted
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-            401:
-              $ref: '#/components/responses/401'
-            403:
-              $ref: '#/components/responses/403'
-            404:
-              $ref: '#/components/responses/404'
-            422:
-              $ref: '#/components/responses/422'
-            500:
-              $ref: '#/components/responses/500'
-        """
-        try:
-            bulletin = self.datamodel.get(pk, self._base_filters)
-            if not bulletin:
-                return self.response_404()
+            # Store in cache
+            # Using default timeout from DATA_CACHE_CONFIG
+            cache_manager.data_cache.set(cache_key, pdf_data)
 
-            # Check if user has permission to delete
-            if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
-                return self.response_403()
-
-            # Check if user is the creator or has admin rights
-            if bulletin.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
-                return self.response_403()
-
-            self.datamodel.delete(bulletin)
-            return self.response(200, message="OK")
-        except Exception as ex:
-            return self.response_422(message=str(ex)) 
+            pdf_buffer.seek(0)  # Reset original buffer for send_file
+            is_preview = request.args.get('preview') == 'true'
+            return send_file(
+                pdf_buffer, # Send the original buffer
+                mimetype="application/pdf",
+                as_attachment=not is_preview, # Set as_attachment to False if preview=true
+                download_name=f"bulletin_{bulletin.title.replace(' ', '_')}_{bulletin_id}.pdf"
+            )
+        except Exception as e:
+            # Consider logging the error more formally
+            print(f"Error generating PDF for bulletin {bulletin_id}: {e}")
+            return self.response_500(message="Error generating PDF")

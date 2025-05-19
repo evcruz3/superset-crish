@@ -203,7 +203,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.weather_forecast_alerts.api import WeatherForecastAlertRestApi, WeatherDataPullRestApi
         from superset.disease_forecast_alerts.api import DiseaseForecastAlertRestApi, DiseasePipelineRunHistoryRestApi
         # Import Dissemination Views
-        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView
+        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView
+        from superset.dissemination.api import EmailGroupsRestApi
 
         set_app_error_handlers(self.superset_app)
 
@@ -250,6 +251,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(WeatherDataPullRestApi)
         appbuilder.add_api(DiseaseForecastAlertRestApi)
         appbuilder.add_api(DiseasePipelineRunHistoryRestApi)
+        appbuilder.add_api(EmailGroupsRestApi)
         #
         # Setup regular views
         #
@@ -530,13 +532,22 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         )
 
         # Dissemination Menu
+        # appbuilder.add_view(
+        #     EmailGroupModelView,
+        #     "Manage Email Groups",
+        #     label=__("Email Groups"),
+        #     category="Dissemination",
+        #     category_label=__("Dissemination"),
+        #     icon="fa-users",
+        # ) # Commented out old ModelView
         appbuilder.add_view(
-            EmailGroupModelView,
-            "Manage Email Groups",
-            label=__("Email Groups"),
+            EmailGroupsSPAView,       # Use the new SPA host view
+            "Email Groups List",      # View name for FAB (must be unique)
+            label=__("Email Groups"), # Label in UI
             category="Dissemination",
             category_label=__("Dissemination"),
-            icon="fa-users",
+            icon="fa-users-cog",       # Or fa-users
+            href='/emailgroups/list/'  # Path for the menu item
         )
         appbuilder.add_view(
             DisseminateBulletinView,

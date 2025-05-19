@@ -1,91 +1,328 @@
 {% extends "appbuilder/base.html" %}
 {% import 'appbuilder/general/lib.html' as lib %}
 
-{% block content %}
-<div class="container">
-    <h3>{{ _("Disseminate Bulletin by Email") }}</h3>
-    <br>
+{% block uncontained %}
+<style>
+  /* Removed .dissemination-card specific styles */
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+  .main-content-area {
+    background-color: #ffffff;
+    padding: 20px; /* Reverted to 20px padding on all sides */
+  }
 
-    {# Display form-wide errors if any (e.g., from flash messages on validation failure) #}
-    {% if form and form.errors and form.errors.get('__all__') %}
-        <div class="alert alert-danger">
-            <p>{{ _("Please correct the errors below:") }}</p>
-            <ul>
-                {% for error in form.errors['__all__'] %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-    {% endif %}
+  .main-content-area h3 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
 
-    <form method="POST" action="{{ url_for('DisseminateBulletinView.form') }}" id="disseminationForm">
-        {{ form.hidden_tag() }} {# Includes CSRF token #}
+  .dissemination-layout {
+    display: flex;
+    gap: 20px; /* Space between columns */
+  }
 
-        <div class="form-group {% if form.bulletin_id.errors %}has-error{% endif %}">
-            {{ form.bulletin_id.label(class_="control-label") }} <span style="color:red;">*</span>
-            {{ form.bulletin_id(class_="form-control select2", id="bulletin_id") }}
-            {% if form.bulletin_id.errors %}
-                <ul class="help-block list-unstyled">{% for error in form.bulletin_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-        </div>
+  .form-column {
+    flex: 1; /* Changed from 3 to 1 */
+    display: flex;
+    flex-direction: column;
+  }
 
-        {# Bulletin Preview Area - Re-adding this section #}
-        <div id="bulletin-preview-area" style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
-            <!-- <h5>{{ _("Bulletin Preview") }}</h5> -->
-            <div id="bulletin-preview-content">
-                <small class="text-muted">{{ _("Select a bulletin above.") }}</small>
-            </div>
-        </div>
+  .preview-column {
+    flex: 1; /* Changed from 2 to 1 */
+    display: flex;
+    flex-direction: column;
+  }
 
-        <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
-            {{ form.email_group_id.label(class_="control-label") }} <span style="color:red;">*</span>
-            {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
-            {% if form.email_group_id.errors %}
-                <ul class="help-block list-unstyled">{% for error in form.email_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-        </div>
+  /* Ensure preview area takes available height in its column */
+  #pdf-preview-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0; /* Adjusted from 24px as it's now in a column */
+    margin-bottom: 0; /* Adjusted from 24px */
+    border: 1px solid #f0f0f0;
+    border-radius: 2px;
+    padding: 10px;
+  }
 
-        {# Email Preview Area #}
-        <div id="email-preview" style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9; min-height: 40px; max-height: 150px; overflow-y: auto;">
-            <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
-        </div>
+  #pdf-preview-area h5 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
 
-        <div class="form-group {% if form.subject.errors %}has-error{% endif %}">
-            {{ form.subject.label(class_="control-label") }} <span style="color:red;">*</span>
-            {# Pre-fill subject if selected_bulletin is available #}
-            {% if selected_bulletin %}
-                {{ form.subject(class_="form-control", value=selected_bulletin.title ~ " - Advisory") }}
-            {% else %}
-                {{ form.subject(class_="form-control", id="subject") }}
-            {% endif %}
-            {% if form.subject.errors %}
-                <ul class="help-block list-unstyled">{% for error in form.subject.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-        </div>
+  #pdf-preview-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
 
-        <div class="form-group {% if form.message.errors %}has-error{% endif %}">
-            {{ form.message.label(class_="control-label") }} <span style="color:red;">*</span>
-            {# Always render an empty message field, do not pre-fill from selected_bulletin #}
-            {{ form.message(class_="form-control", rows="10", id="message") }}
-           
-            {% if form.message.errors %}
-                <ul class="help-block list-unstyled">{% for error in form.message.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-        </div>
-        
-        {{ form.submit(class_="btn btn-primary") if form else "<button type=\"submit\" class=\"btn btn-primary\">"+_("Disseminate")+"</button>" | safe }}
-        <a href="{{ url_for('DisseminatedBulletinLogModelView.list') }}" class="btn btn-default">{{ _("Cancel") }}</a>
-    </form>
+  #pdf-iframe {
+    flex-grow: 1; /* Make iframe fill available space in its container */
+    width: 100%;
+    border: none;
+    min-height: 500px; /* Ensure a minimum height */
+  }
+
+  .form-group {
+    margin-bottom: 24px; /* Ant Form item margin */
+  }
+
+  .form-group .control-label {
+    font-weight: 500; /* Bolder labels */
+    margin-bottom: 8px; /* Space between label and input */
+    display: block;
+  }
+
+  /* Styling for Select2 to somewhat mimic Ant Select */
+  .select2-container .select2-selection--single {
+    height: 32px; /* Ant Input height */
+    border-radius: 2px; /* Ant Input border-radius */
+    border: 1px solid #d9d9d9;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 30px;
+    padding-left: 11px; /* Ant Input padding */
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 30px;
+  }
+  
+  .form-control { /* For text inputs and textareas */
+    border-radius: 2px;
+    height: auto; /* Allow textarea to define its own height */
+    padding: 4px 11px; /* Ant Input padding */
+    border: 1px solid #d9d9d9;
+  }
+  
+  textarea.form-control {
+      min-height: 100px;
+  }
+
+  .btn {
+    border-radius: 2px;
+    padding: 5px 15px; /* Ant button padding (approx) */
+    font-size: 14px;
+  }
+  .btn-primary {
+    background-color: #1890ff; /* Ant primary color */
+    border-color: #1890ff;
+  }
+  .btn-primary:hover, .btn-primary:focus {
+    background-color: #40a9ff;
+    border-color: #40a9ff;
+  }
+  .btn-default {
+      border: 1px solid #d9d9d9;
+      color: rgba(0,0,0,.85);
+  }
+  .btn-default:hover, .btn-default:focus {
+      border-color: #40a9ff;
+      color: #40a9ff;
+  }
+  
+  /* Bulletin Preview Styling */
+  #bulletin-preview-area {
+    border: 1px solid #f0f0f0; /* Lighter border for preview sections */
+    border-radius: 2px;
+    background-color: #ffffff; /* White background */
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+
+  #bulletin-preview-area h6 { /* Preview Title */
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #333;
+  }
+
+  .bulletin-preview-section {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .bulletin-preview-section .section-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #555; /* Darker grey for section titles */
+    padding: 8px;
+    border-radius: 4px;
+    display: block;
+  }
+  
+  .bulletin-preview-section .section-content {
+    color: #666; /* Slightly lighter text for content */
+    padding: 8px 8px 0;
+    line-height: 1.6;
+    white-space: pre-wrap; /* Preserve line breaks from DB */
+  }
+  
+  /* Mimicking BulletinCard.tsx section title styles */
+  .bulletin-preview-section.advisory-section .section-title {
+      background-color: #e6f7ff; /* Antd primary-1 (light blue) */
+      border-left: 3px solid #91d5ff; /* Antd primary-3 */
+  }
+
+  .bulletin-preview-section.risks-section .section-title {
+      background-color: #fffbe6; /* Antd gold-1 (light yellow) */
+      border-left: 3px solid #ffe58f; /* Antd gold-3 */
+  }
+
+  .bulletin-preview-section.safety-tips-section .section-title {
+      background-color: #f6ffed; /* Antd green-1 (light green) */
+      border-left: 3px solid #b7eb8f; /* Antd green-3 */
+  }
+
+  .bulletin-preview-section.hashtags-section .section-title {
+      background-color: #f0f0f0; /* Neutral background */
+      border-left: 3px solid #bfbfbf; 
+  }
+  .bulletin-preview-section.hashtags-section .section-content .tag {
+      display: inline-block;
+      background-color: #e6f7ff; /* Match advisory section title for consistency or use a neutral tag color */
+      border: 1px solid #91d5ff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #0050b3; /* Darker blue for text */
+  }
+
+  #email-preview {
+    margin-bottom: 24px;
+    padding: 10px;
+    border: 1px solid #f0f0f0;
+    border-radius: 2px;
+    background-color: #fafafa;
+    min-height: 40px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  #email-preview strong {
+      display: block;
+      margin-bottom: 5px;
+  }
+
+  #pdf-preview-area {
+    border: 1px solid #f0f0f0;
+    border-radius: 2px;
+    padding: 10px;
+  }
+
+  #pdf-preview-area h5 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  #pdf-iframe {
+    width: 100%;
+    /* height: 500px; */ /* Height is now managed by flex-grow */
+    border: none;
+  }
+</style>
+
+<div class="main-content-area">
+  <h3>{{ _("Disseminate Bulletin by Email") }}</h3>
+
+  <div class="dissemination-layout">
+    <div class="form-column">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+              {% for category, message in messages %}
+                  <div class="alert alert-{{ category }}" role="alert">
+                      {{ message }}
+                  </div>
+              {% endfor %}
+          {% endif %}
+      {% endwith %}
+
+      {# Display form-wide errors if any (e.g., from flash messages on validation failure) #}
+      {% if form and form.errors and form.errors.get('__all__') %}
+          <div class="alert alert-danger">
+              <p>{{ _("Please correct the errors below:") }}</p>
+              <ul>
+                  {% for error in form.errors['__all__'] %}
+                      <li>{{ error }}</li>
+                  {% endfor %}
+              </ul>
+          </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('DisseminateBulletinView.form') }}" id="disseminationForm" style="display: flex; flex-direction: column; flex-grow: 1;">
+          {{ form.hidden_tag() }} {# Includes CSRF token #}
+
+          <div class="form-group {% if form.bulletin_id.errors %}has-error{% endif %}">
+              {{ form.bulletin_id.label(class_="control-label") }} <span style="color:red;">*</span>
+              {{ form.bulletin_id(class_="form-control select2", id="bulletin_id") }}
+              {% if form.bulletin_id.errors %}
+                  <ul class="help-block list-unstyled">{% for error in form.bulletin_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+          </div>
+
+          {# Bulletin Preview Area (Text) - REMOVED #}
+          <!-- 
+          <div id="bulletin-preview-area" style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
+              <div id="bulletin-preview-content">
+                  <small class="text-muted">{{ _("Select a bulletin above to see a preview.") }}</small>
+              </div>
+          </div>
+          -->
+
+          <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
+              {{ form.email_group_id.label(class_="control-label") }} <span style="color:red;">*</span>
+              {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
+              {% if form.email_group_id.errors %}
+                  <ul class="help-block list-unstyled">{% for error in form.email_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+          </div>
+
+          {# Email Preview Area #}
+          <div id="email-preview">
+              <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
+          </div>
+
+          <div class="form-group {% if form.subject.errors %}has-error{% endif %}" style="margin-top: 15px;">
+              {{ form.subject.label(class_="control-label") }} <span style="color:red;">*</span>
+              {% if selected_bulletin %}
+                  {{ form.subject(class_="form-control", value=selected_bulletin.title ~ " - Advisory") }}
+              {% else %}
+                  {{ form.subject(class_="form-control", id="subject") }}
+              {% endif %}
+              {% if form.subject.errors %}
+                  <ul class="help-block list-unstyled">{% for error in form.subject.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+          </div>
+
+          <div class="form-group {% if form.message.errors %}has-error{% endif %}">
+              {{ form.message.label(class_="control-label") }} <span style="color:red;">*</span>
+              {{ form.message(class_="form-control", rows="10", id="message") }}
+              {% if form.message.errors %}
+                  <ul class="help-block list-unstyled">{% for error in form.message.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+          </div>
+          
+          <div style="margin-top: auto;"> {# Push buttons to the bottom of the column #}
+            {{ form.submit(class_="btn btn-primary") if form else "<button type=\"submit\" class=\"btn btn-primary\">"+_("Disseminate")+"</button>" | safe }}
+            {# <a href="{{ url_for('DisseminatedBulletinLogModelView.list') }}" class="btn btn-default">{{ _("Cancel") }}</a> #} {# Cancel button removed #}
+          </div>
+      </form>
+    </div>
+
+    <div class="preview-column">
+      {# PDF Preview Area - Now in its own column #}
+      <div id="pdf-preview-area">
+          <h5>{{ _("PDF Preview") }}</h5>
+          <div id="pdf-preview-content">
+              <iframe id="pdf-iframe" title="PDF Preview"></iframe>
+              <small id="pdf-preview-placeholder" class="text-muted" style="text-align: center; padding: 20px;">{{ _("Select a bulletin to see its PDF preview.") }}</small>
+          </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {# Data for JavaScript pre-population #}
@@ -116,7 +353,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const bulletinSelect = document.getElementById('bulletin_id');
     const subjectInput = document.getElementById('subject');
     const messageTextarea = document.getElementById('message');
-    const bulletinPreviewContent = document.getElementById('bulletin-preview-content');
     let bulletinsData = [];
     try {
         const bulletinsDataElement = document.getElementById('bulletins-data-json');
@@ -127,8 +363,11 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error("Error parsing bulletins data:", e);
     }
     // Store original subject for comparison to avoid overwriting user edits
-    let originalSubject = subjectInput.value;
+    let originalSubject = subjectInput ? subjectInput.value : '';
     let isUserEditedSubject = false;
+    const pdfPreviewArea = document.getElementById('pdf-preview-area');
+    const pdfIframe = document.getElementById('pdf-iframe');
+    const pdfPlaceholder = document.getElementById('pdf-preview-placeholder');
 
     function escapeHtml(unsafe) {
         if (unsafe === null || typeof unsafe === 'undefined') return '';
@@ -141,70 +380,133 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function formatTextWithLineBreaks(text) {
-        if (!text) return 'N/A';
-        return text.split('\\n').map(line => escapeHtml(line)).join('<br>');
+        if (!text) return '<small class="text-muted">N/A</small>';
+        return escapeHtml(text).replace(/\\\\n/g, '<br>').replace(/\\n/g, '<br>');
     }
 
     // Function to update fields based on selected bulletin
     function updateFields() {
+        if (!bulletinSelect) return;
         const selectedId = parseInt(bulletinSelect.value);
         const selectedBulletin = bulletinsData.find(b => b.id === selectedId);
 
         if (selectedBulletin) {
             // Pre-fill subject
             const newSubject = `${selectedBulletin.title} - Advisory`;
-            if (!isUserEditedSubject || subjectInput.value === originalSubject) {
+            if (subjectInput && (!isUserEditedSubject || subjectInput.value === originalSubject)) {
                 subjectInput.value = newSubject;
                 originalSubject = newSubject;
             }
 
-            // Update bulletin preview
+            // Update text bulletin preview - REMOVED
+            /*
             if (bulletinPreviewContent) {
-                let previewHtml = `<h6>${escapeHtml(selectedBulletin.title) || 'N/A'}</h6>` +
-                                  `<p><strong>Advisory:</strong><br>${formatTextWithLineBreaks(selectedBulletin.advisory)}</p>` +
-                                  `<p><strong>Risks:</strong><br>${formatTextWithLineBreaks(selectedBulletin.risks)}</p>` +
-                                  `<p><strong>Safety Tips:</strong><br>${formatTextWithLineBreaks(selectedBulletin.safety_tips)}</p>`;
+                let previewHtml = `<h6>${escapeHtml(selectedBulletin.title) || 'N/A'}</h6>`;
+                
+                previewHtml += `<div class="bulletin-preview-section advisory-section">
+                                  <span class="section-title">{{ _("Advisory") }}</span>
+                                  <div class="section-content">${formatTextWithLineBreaks(selectedBulletin.advisory)}</div>
+                               </div>`;
+                
+                previewHtml += `<div class="bulletin-preview-section risks-section">
+                                  <span class="section-title">{{ _("Risks") }}</span>
+                                  <div class="section-content">${formatTextWithLineBreaks(selectedBulletin.risks)}</div>
+                               </div>`;
+                
+                previewHtml += `<div class="bulletin-preview-section safety-tips-section">
+                                  <span class="section-title">{{ _("Safety Tips") }}</span>
+                                  <div class="section-content">${formatTextWithLineBreaks(selectedBulletin.safety_tips)}</div>
+                               </div>`;
+
                 if(selectedBulletin.hashtags) {
-                    previewHtml += `<p><strong>Hashtags:</strong> ${escapeHtml(selectedBulletin.hashtags)}</p>`;
+                    const tagsArray = selectedBulletin.hashtags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                    if (tagsArray.length > 0) {
+                        previewHtml += `<div class="bulletin-preview-section hashtags-section">
+                                          <span class="section-title">{{ _("Hashtags") }}</span>
+                                          <div class="section-content">${tagsArray.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')}</div>
+                                       </div>`;
+                    }
                 }
                 bulletinPreviewContent.innerHTML = previewHtml;
+            }
+            */
+
+            // Update PDF preview
+            if (pdfIframe && pdfPlaceholder && selectedBulletin.id) {
+                const pdfUrl = `/api/v1/bulletins_and_advisories/${selectedBulletin.id}/pdf/?preview=true`;
+                pdfIframe.src = pdfUrl;
+                pdfIframe.style.display = 'block';
+                pdfPlaceholder.style.display = 'none';
+            } else if (pdfIframe && pdfPlaceholder) {
+                pdfIframe.src = 'about:blank';
+                pdfIframe.style.display = 'none';
+                pdfPlaceholder.style.display = 'block';
             }
 
         } else {
             // Clear subject
-            if (!isUserEditedSubject || subjectInput.value === originalSubject) {
+            if (subjectInput && (!isUserEditedSubject || subjectInput.value === originalSubject)) {
                 subjectInput.value = '';
                 originalSubject = '';
             }
             
-            // Clear or reset bulletin preview
+            // Clear or reset text bulletin preview - REMOVED
+            /*
             if (bulletinPreviewContent) {
                 bulletinPreviewContent.innerHTML = '<small class="text-muted">{{ _("Select a bulletin above to preview.") }}</small>';
+            }
+            */
+
+            // Clear PDF preview
+            if (pdfIframe && pdfPlaceholder) {
+                pdfIframe.src = 'about:blank'; // Clear the iframe content
+                pdfIframe.style.display = 'none';
+                pdfPlaceholder.style.display = 'block';
             }
         }
     }
 
-    // Listen for user edits
-    subjectInput.addEventListener('input', function() {
-        isUserEditedSubject = subjectInput.value !== originalSubject;
-    });
+    // Listen for user edits on subject
+    if (subjectInput) {
+        subjectInput.addEventListener('input', function() {
+            isUserEditedSubject = subjectInput.value !== originalSubject;
+        });
+    }
 
-    // Initial call to populate fields if a bulletin is pre-selected by the backend
-    if (bulletinSelect.value && parseInt(bulletinSelect.value) !== 0) {
-        originalSubject = subjectInput.value;
+    // Initial call to populate fields / set PDF preview state
+    if (bulletinSelect && bulletinSelect.value && parseInt(bulletinSelect.value) !== 0) {
+        if(subjectInput) originalSubject = subjectInput.value;
         updateFields(); 
     } else {
-        // If no bulletin is pre-selected, clear subject
-        if (!isUserEditedSubject) subjectInput.value = '';
-        originalSubject = '';
+        // If no bulletin is pre-selected, clear subject and ensure previews are in initial state
+        if (subjectInput && !isUserEditedSubject) subjectInput.value = '';
+        if(subjectInput) originalSubject = '';
         
-        // Ensure preview is in initial state
+        // Ensure text preview is in initial state - REMOVED
+        /*
         if (bulletinPreviewContent) {
             bulletinPreviewContent.innerHTML = '<small class="text-muted">{{ _("Select a bulletin above to preview.") }}</small>';
         }
+        */
+        if (pdfIframe && pdfPlaceholder) {
+            pdfIframe.src = 'about:blank';
+            pdfIframe.style.display = 'none';
+            pdfPlaceholder.style.display = 'block';
+        }
     }
 
-    $('#bulletin_id').on('change', updateFields);
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#bulletin_id').on('change', function() {
+            // Reset subject edit flag when bulletin changes, so new bulletin's subject populates correctly
+            isUserEditedSubject = false; 
+            updateFields();
+        });
+    } else if (bulletinSelect) {
+        bulletinSelect.addEventListener('change', function() {
+            isUserEditedSubject = false;
+            updateFields();
+        });
+    }
     // End Bulletin auto-population logic
     
     // Email Group Preview Logic

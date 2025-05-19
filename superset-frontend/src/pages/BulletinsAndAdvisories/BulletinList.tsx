@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Card, List, Tag } from 'antd';
+import { Card, List, Tag, Tooltip } from 'antd';
 import moment from 'moment';
 import { t, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
+import { DownloadOutlined, MailOutlined } from '@ant-design/icons';
 import BulletinChart from './BulletinChart';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import { Bulletin, BulletinApiResponse } from './types';
@@ -85,29 +86,61 @@ export default function BulletinList() {
     setSelectedBulletin(bulletin);
   };
 
+  const handleDownloadPdf = async (bulletinId: number, bulletinTitle: string) => {
+    try {
+      const response = await fetch(`/api/v1/bulletins_and_advisories/${bulletinId}/pdf/`);
+      if (!response.ok) {
+        // TODO: Add user-friendly error notification (e.g., Antd message.error)
+        console.error('Failed to download PDF', response.statusText);
+        throw new Error('Failed to download PDF');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const sanitizedTitle = (bulletinTitle || 'bulletin').replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
+      a.download = `bulletin_${sanitizedTitle}_${bulletinId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      // TODO: Add user-friendly error notification
+    }
+  };
+
   const renderBulletin = (bulletin: Bulletin) => (
     <List.Item>
       <StyledCard
         title={bulletin.title}
-        onClick={() => handleBulletinClick(bulletin)}
       >
-        <div className="bulletin-content">{bulletin.message}</div>
+        <div 
+          className="bulletin-content" 
+          onClick={() => handleBulletinClick(bulletin)} 
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleBulletinClick(bulletin);}}
+        >
+          {bulletin.advisory || ''}
+        </div>
         <p>
           <small>
-            {bulletin.hashtags.split(',').map(tag => (
+            {(bulletin.hashtags || '').split(',').map(tag => (
               <Tag key={tag}>{tag.trim()}</Tag>
             ))}
           </small>
         </p>
         <div className="bulletin-chart">
           {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
-            <BulletinChart chartId={bulletin.chart_id} />
+            bulletin.chart_id !== null ? <BulletinChart chartId={bulletin.chart_id} /> : null
           ) : (
             <div className="gradient-container" style={{ height: '100%', position: 'relative' }}>
               <ImageLoader
                 src={bulletin.thumbnail_url || ''}
                 fallback={bulletin.chart_id ? '/static/assets/images/chart-card-fallback.svg' : '/static/assets/images/placeholder-chart.png'}
-                isLoading={bulletin.chart_id && !bulletin.thumbnail_url}
+                isLoading={!!(bulletin.chart_id && !bulletin.thumbnail_url)}
                 position="top"
               />
             </div>
@@ -118,6 +151,28 @@ export default function BulletinList() {
             {t('Created by')} {bulletin.created_by.first_name} {bulletin.created_by.last_name} {' '}
             {moment(bulletin.created_on).fromNow()}
           </small>
+        </div>
+        <div style={{ marginTop: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <Tooltip title={t('Disseminate Bulletin')}>
+            <MailOutlined
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBulletinClick(bulletin);
+              }}
+              style={{ fontSize: '18px', cursor: 'pointer', color: '#555' }}
+              aria-label={t('Disseminate Bulletin')}
+            />
+          </Tooltip>
+          <Tooltip title={t('Download PDF')}>
+            <DownloadOutlined
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadPdf(bulletin.id, bulletin.title);
+              }}
+              style={{ fontSize: '18px', cursor: 'pointer', color: '#555' }}
+              aria-label={t('Download PDF')}
+            />
+          </Tooltip>
         </div>
       </StyledCard>
     </List.Item>
