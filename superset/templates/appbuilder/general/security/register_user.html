@@ -40,6 +40,7 @@
     width: 100%;
     text-align: center;
     overflow: hidden;
+    position: relative;
   }
 
   .top-logos, .bottom-logos {
@@ -52,7 +53,7 @@
   }
 
    .top-logos img, .top-logos span {
-    height: 40px;
+    height: 60px;
     margin: 5px 10px;
    }
 
@@ -64,11 +65,11 @@
   }
    .top-logos .crish-logo img { /* Updated name */
      margin-right: 8px;
-     height: 35px;
+     height: 60px;
    }
 
   .bottom-logos img {
-    height: 35px;
+    height: 60px;
     margin: 10px 10px;
     opacity: 0.8;
   }
@@ -203,10 +204,31 @@
        width: 25%; /* From default col-lg-2 (16.67%) to a wider 30% */
    }
 
+   .select2-container .select2-selection {
+     text-align: left;  /* Or 'center' for centered alignment */
+     padding-left: 16px;     /* Adjust padding if needed for better layout */
+   }
+   .select2-selection__placeholder {
+     color: #999;       /* Customize placeholder color if desired */
+     font-style: italic; /* Make it italic for emphasis */
+   }
+
 </style>
 
 <div class="login-body-container">
     <div class="login-container">
+
+        {# START: Add Back button to top-left #}
+        <div style="position: absolute; top: 15px; left: 15px;">
+            {{ lib.lnk_back() }}
+        </div>
+        {# END: Add Back button #}
+
+         <div class="top-logos">
+            <img src="{{ url_for('static', filename='assets/images/crish/RDTL.svg') }}" alt="RDTL Logo">
+            <img src="{{ url_for('static', filename='assets/images/crish/MOH.png') }}" alt="CRISH Logo">
+            <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
+        </div>
 
         <h3 class="crish-heading">{{ _("Register for an Account") }}</h3>
 
@@ -230,6 +252,12 @@
                     {{ widgets.edit()|safe }} {# Render the widget that contains the form #}
                 </div>
             </div>
+        </div>
+
+        <div class="bottom-logos">
+           <img src="{{ url_for('static', filename='assets/images/crish/GCF.svg') }}" alt="Green Climate Fund Logo">
+           <img src="{{ url_for('static', filename='assets/images/crish/UNEP.svg') }}" alt="UN Environment Programme Logo">
+           <img src="{{ url_for('static', filename='assets/images/crish/RIMES.svg') }}" alt="RIMES Logo">
         </div>
 
     </div> {# End .login-container #}

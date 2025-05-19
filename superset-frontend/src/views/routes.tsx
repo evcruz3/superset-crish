@@ -176,7 +176,7 @@ export const routes: Routes = [
     Component: WeatherForecasts
   },
   {
-    path: '/disease-forecasts',
+    path: '/disease-forecasts/',
     Component: DiseaseForecasts,
   },
   {
@@ -282,23 +282,23 @@ export const routes: Routes = [
     Component: SqlLab,
   },
   {
-    path: '/diseases/dengue',
+    path: '/diseases/dengue/',
     Component: Dengue,
   },
   {
-    path: '/diseases/diarrhea',
+    path: '/diseases/diarrhea/',
     Component: Diarrhea,
   },
   {
-    path: '/diseases/ari',
+    path: '/diseases/ari/',
     Component: AcuteRespiratoryInfection,
   },
   {
-    path: '/diseases/update',
+    path: '/diseases/update/',
     Component: UpdateCaseReports,
   },
   {
-    path: '/diseases',
+    path: '/diseases/',
     Component: Diseases,
   },
   {

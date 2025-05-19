@@ -39,6 +39,14 @@
             {% endif %}
         </div>
 
+        {# Bulletin Preview Area - Re-adding this section #}
+        <div id="bulletin-preview-area" style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
+            <!-- <h5>{{ _("Bulletin Preview") }}</h5> -->
+            <div id="bulletin-preview-content">
+                <small class="text-muted">{{ _("Select a bulletin above.") }}</small>
+            </div>
+        </div>
+
         <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
             {{ form.email_group_id.label(class_="control-label") }} <span style="color:red;">*</span>
             {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
@@ -48,7 +56,7 @@
         </div>
 
         {# Email Preview Area #}
-        <div id="email-preview" style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9; min-height: 40px;">
+        <div id="email-preview" style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9; min-height: 40px; max-height: 150px; overflow-y: auto;">
             <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
         </div>
 
@@ -67,24 +75,9 @@
 
         <div class="form-group {% if form.message.errors %}has-error{% endif %}">
             {{ form.message.label(class_="control-label") }} <span style="color:red;">*</span>
-            {# Pre-fill message if selected_bulletin is available #}
-            {% if selected_bulletin %}
-                {% set initial_message_html %}
-<h4>{{ selected_bulletin.title }}</h4>
-<p><strong>Advisory:</strong><br>{{ selected_bulletin.advisory.replace('\n', '<br>') if selected_bulletin.advisory else '' }}</p>
-<p><strong>Risks:</strong><br>{{ selected_bulletin.risks.replace('\n', '<br>') if selected_bulletin.risks else '' }}</p>
-<p><strong>Safety Tips:</strong><br>{{ selected_bulletin.safety_tips.replace('\n', '<br>') if selected_bulletin.safety_tips else '' }}</p>
-{% if selected_bulletin.hashtags %}
-<p><strong>Hashtags:</strong> {{ selected_bulletin.hashtags }}</p>
-{% endif %}
-                {% endset %}
-                {{ form.message(class_="form-control", rows=10, value=initial_message_html) }}
-            {% else %}
-                {{ form.message(class_="form-control", rows="10", id="message") }}
-            {% endif %}
-            <small class="form-text text-muted">
-                {{ _("You can customize the message here. JavaScript will attempt to pre-fill this based on the selected bulletin.") }}
-            </small>
+            {# Always render an empty message field, do not pre-fill from selected_bulletin #}
+            {{ form.message(class_="form-control", rows="10", id="message") }}
+           
             {% if form.message.errors %}
                 <ul class="help-block list-unstyled">{% for error in form.message.errors %}<li>{{ error }}</li>{% endfor %}</ul>
             {% endif %}
@@ -123,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const bulletinSelect = document.getElementById('bulletin_id');
     const subjectInput = document.getElementById('subject');
     const messageTextarea = document.getElementById('message');
+    const bulletinPreviewContent = document.getElementById('bulletin-preview-content');
     let bulletinsData = [];
     try {
         const bulletinsDataElement = document.getElementById('bulletins-data-json');
@@ -132,11 +126,24 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (e) {
         console.error("Error parsing bulletins data:", e);
     }
-    // Store original subject and message for comparison to avoid overwriting user edits
+    // Store original subject for comparison to avoid overwriting user edits
     let originalSubject = subjectInput.value;
-    let originalMessage = messageTextarea.value;
     let isUserEditedSubject = false;
-    let isUserEditedMessage = false;
+
+    function escapeHtml(unsafe) {
+        if (unsafe === null || typeof unsafe === 'undefined') return '';
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    function formatTextWithLineBreaks(text) {
+        if (!text) return 'N/A';
+        return text.split('\\n').map(line => escapeHtml(line)).join('<br>');
+    }
 
     // Function to update fields based on selected bulletin
     function updateFields() {
@@ -144,34 +151,35 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedBulletin = bulletinsData.find(b => b.id === selectedId);
 
         if (selectedBulletin) {
-            // Pre-fill subject only if not edited by user or if it matches previous prefill
+            // Pre-fill subject
             const newSubject = `${selectedBulletin.title} - Advisory`;
             if (!isUserEditedSubject || subjectInput.value === originalSubject) {
                 subjectInput.value = newSubject;
-                originalSubject = newSubject; // Update original prefill reference
+                originalSubject = newSubject;
             }
 
-            // Construct and pre-fill message only if not edited by user or if it matches previous prefill
-            let defaultMessage = `<h4>${selectedBulletin.title}</h4>\n` +
-                               `<p><strong>Advisory:</strong><br>${selectedBulletin.advisory ? selectedBulletin.advisory.replace(/\n/g, '<br>') : ''}</p>\n` +
-                               `<p><strong>Risks:</strong><br>${selectedBulletin.risks ? selectedBulletin.risks.replace(/\n/g, '<br>') : ''}</p>\n` +
-                               `<p><strong>Safety Tips:</strong><br>${selectedBulletin.safety_tips ? selectedBulletin.safety_tips.replace(/\n/g, '<br>') : ''}</p>`;
-            if(selectedBulletin.hashtags) {
-                defaultMessage += `\n<p><strong>Hashtags:</strong> ${selectedBulletin.hashtags}</p>`;
+            // Update bulletin preview
+            if (bulletinPreviewContent) {
+                let previewHtml = `<h6>${escapeHtml(selectedBulletin.title) || 'N/A'}</h6>` +
+                                  `<p><strong>Advisory:</strong><br>${formatTextWithLineBreaks(selectedBulletin.advisory)}</p>` +
+                                  `<p><strong>Risks:</strong><br>${formatTextWithLineBreaks(selectedBulletin.risks)}</p>` +
+                                  `<p><strong>Safety Tips:</strong><br>${formatTextWithLineBreaks(selectedBulletin.safety_tips)}</p>`;
+                if(selectedBulletin.hashtags) {
+                    previewHtml += `<p><strong>Hashtags:</strong> ${escapeHtml(selectedBulletin.hashtags)}</p>`;
+                }
+                bulletinPreviewContent.innerHTML = previewHtml;
             }
-            if (!isUserEditedMessage || messageTextarea.value === originalMessage) {
-                messageTextarea.value = defaultMessage;
-                originalMessage = defaultMessage; // Update original prefill reference
-            }
+
         } else {
-            // Clear if "-- Select --" is chosen and not user-edited
+            // Clear subject
             if (!isUserEditedSubject || subjectInput.value === originalSubject) {
                 subjectInput.value = '';
                 originalSubject = '';
             }
-            if (!isUserEditedMessage || messageTextarea.value === originalMessage) {
-                messageTextarea.value = '';
-                originalMessage = '';
+            
+            // Clear or reset bulletin preview
+            if (bulletinPreviewContent) {
+                bulletinPreviewContent.innerHTML = '<small class="text-muted">{{ _("Select a bulletin above to preview.") }}</small>';
             }
         }
     }
@@ -180,30 +188,23 @@ document.addEventListener('DOMContentLoaded', function () {
     subjectInput.addEventListener('input', function() {
         isUserEditedSubject = subjectInput.value !== originalSubject;
     });
-    messageTextarea.addEventListener('input', function() {
-        isUserEditedMessage = messageTextarea.value !== originalMessage;
-    });
 
     // Initial call to populate fields if a bulletin is pre-selected by the backend
-    // The backend now handles the initial pre-selection of bulletin_id in the form object
-    // and passes selected_bulletin, so Jinja handles initial HTML value for subject/message.
-    // The JS below primarily handles dynamic changes if the user changes the dropdown.
-
-    // If a bulletin was pre-selected by the backend, set the initial originalSubject and originalMessage
-    // based on what Jinja rendered, so the JS doesn't immediately overwrite it or think it's user-edited.
     if (bulletinSelect.value && parseInt(bulletinSelect.value) !== 0) {
         originalSubject = subjectInput.value;
-        originalMessage = messageTextarea.value;
+        updateFields(); 
     } else {
-        // If no bulletin is pre-selected (or placeholder is selected), clear fields via JS
-        // unless they were somehow pre-filled by browser
+        // If no bulletin is pre-selected, clear subject
         if (!isUserEditedSubject) subjectInput.value = '';
-        if (!isUserEditedMessage) messageTextarea.value = '';
         originalSubject = '';
-        originalMessage = '';
+        
+        // Ensure preview is in initial state
+        if (bulletinPreviewContent) {
+            bulletinPreviewContent.innerHTML = '<small class="text-muted">{{ _("Select a bulletin above to preview.") }}</small>';
+        }
     }
 
-    bulletinSelect.addEventListener('change', updateFields);
+    $('#bulletin_id').on('change', updateFields);
     // End Bulletin auto-population logic
     
     // Email Group Preview Logic

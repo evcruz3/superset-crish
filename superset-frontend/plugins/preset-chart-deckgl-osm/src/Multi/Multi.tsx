@@ -957,7 +957,7 @@ const DeckMulti = (props: DeckMultiProps) => {
   const [viewport, setViewport] = useState<Viewport>()
   const [subSlicesLayers, setSubSlicesLayers] = useState<Record<number, Layer[]>>({})
   const [visibleLayers, setVisibleLayers] = useState<{ [key: number]: boolean }>({})
-  const [layerOpacities, setLayerOpacities] = useState<{ [key: number]: number }>({})
+  // const [layerOpacities, setLayerOpacities] = useState<{ [key: number]: number }>({})
   const [layerOrder, setLayerOrder] = useState<number[]>([])
   const [currentTime, setCurrentTime] = useState<Date>()
   const [timeRange, setTimeRange] = useState<[Date, Date] | null>(null)
@@ -1158,7 +1158,7 @@ const DeckMulti = (props: DeckMultiProps) => {
           currentTime,
           allData: originalLayerData, // Pass original data here if needed by generator
         },
-        opacity: layerOpacities[subslice.slice_id] ?? 1.0,
+        opacity: 1.0, // Opacity is now fixed at 1.0
         // Define properties explicitly, even if undefined initially
         geoJson: undefined,
         selectionOptions: undefined,
@@ -1415,7 +1415,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       props.datasource,
       setTooltip,
       currentTime,
-      layerOpacities,
+      // layerOpacities, // Opacity is no longer a dependency
       temporalData,
       feedLayerState.geoJson, // Only need geoJson here, selection handled elsewhere
       // props.payload.data.slices, // Avoid dependency if possible, use args
@@ -1562,12 +1562,12 @@ const DeckMulti = (props: DeckMultiProps) => {
       
       // Set all layers to invisible initially
       const initialVisibility: { [key: number]: boolean } = {}
-      const initialOpacities: { [key: number]: number } = {}
+      // const initialOpacities: { [key: number]: number } = {}
       orderedSlices.forEach((subslice: { slice_id: number } & JsonObject, index: number) => {
         console.log("[DEUG] index and slice id:", index, subslice.slice_id, subslice);
         // Make the first layer (index 0) visible, all others invisible
         initialVisibility[subslice.slice_id] = index === 0
-        initialOpacities[subslice.slice_id] = 1.0
+        // initialOpacities[subslice.slice_id] = 1.0
         
         // Load GeoJSON for Feed layers
         if (subslice.form_data.viz_type === 'deck_feed' && subslice.form_data.select_country) {
@@ -1578,7 +1578,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       console.log("[DEBUG] initialVisibility: ", initialVisibility);
       
       setVisibleLayers(initialVisibility)
-      setLayerOpacities(initialOpacities)
+      // setLayerOpacities(initialOpacities)
       
       // Load all layers but only the visible ones will be rendered
       orderedSlices.forEach((subslice: { slice_id: number } & JsonObject) => {
@@ -1930,24 +1930,6 @@ const DeckMulti = (props: DeckMultiProps) => {
   //   setVisibleLayers(initialVisibility)
   //   setLayerOpacities(initialOpacities)
   // }, [props.payload.data.slices])
-
-  const handleOpacityChange = (layerId: number, value: number) => {
-    setLayerOpacities(prev => ({
-      ...prev,
-      [layerId]: value
-    }))
-
-    // Force layer recreation with new opacity
-    const subslice = props.payload.data.slices.find((slice: { slice_id: number }) => slice.slice_id === layerId)
-    if (subslice && visibleLayers[layerId]) {
-      const filters = [
-        ...(subslice.form_data.filters || []),
-        ...(props.formData.filters || []),
-        ...(props.formData.extra_filters || []),
-      ]
-      loadLayer(subslice, filters)
-    }
-  }
 
   // Add selection state management functions
   // const handleFeedLayerSelection = useCallback((sliceId: number, region: SelectedRegion | null) => {
@@ -2338,6 +2320,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                               </span>
                             </div>
                           </div>
+                          {/*
                           {isVisible && (
                             <div className="layer-controls" onClick={(e) => e.stopPropagation()}>
                               <div className="opacity-control">
@@ -2347,13 +2330,14 @@ const DeckMulti = (props: DeckMultiProps) => {
                                   min={0}
                                   max={100}
                                   step={1}
-                                  value={(layerOpacities[id] || 0) * 100}
-                                  onChange={(value: number) => handleOpacityChange(id, value / 100)}
+                                  // value={(layerOpacities[id] || 0) * 100} // Opacity state removed
+                                  // onChange={(value: number) => handleOpacityChange(id, value / 100)} // Handler removed
                                   tipFormatter={value => `${value}%`}
                                 />
                               </div>
                             </div>
                           )}
+                          */}
                         </DraggableItem>
                       )}
                     </Draggable>

@@ -9,7 +9,6 @@ class DiseasesView(BaseSupersetView):
     
     route_base = "/diseases"
     default_view = "diseases"
-
     @expose("/")
     @has_access
     def diseases(self):

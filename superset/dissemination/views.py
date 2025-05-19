@@ -2,7 +2,9 @@ from flask_appbuilder import ModelView, expose, BaseView
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import lazy_gettext as _
 from flask import redirect, url_for, request, flash, g # g for current user
+from markupsafe import Markup # Import Markup
 import json # Import the json library
+import logging # Add logging import
 
 from superset import appbuilder, db
 from superset.models.dissemination import EmailGroup, DisseminatedBulletinLog
@@ -62,13 +64,67 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
 
     list_title = _("Disseminated Bulletin Logs")
     show_title = _("Show Dissemination Log")
-    # Typically, logs are not added or edited directly via UI this way
-    # add_title = _("Add Dissemination Log")
-    # edit_title = _("Edit Dissemination Log")
+   
     can_add = False
     can_edit = False
 
+    # Ensure default sort order is by sent_at descending
+    order_columns = ['sent_at']
+    order_direction = 'desc'
+    page_size = 25 # Add page size for pagination
+
     list_columns = ["bulletin", "email_group", "sent_at", "status", "subject_sent", "disseminated_by"]
+
+    # Custom formatters
+    def format_sent_at(value=None) -> str: # Make value argument optional
+        if not value:
+            logging.warning("format_sent_at received None for value.")
+            return _("[No Date]") # Placeholder for missing date
+        try:
+            return value.strftime('%a, %d %b, %Y %H:%M:%S')
+        except AttributeError:
+            logging.warning(f"format_sent_at received non-datetime value: {value!r} of type {type(value)}")
+            return _("[Invalid Date]")
+
+    def format_status_as_chip(status=None) -> Markup: # Make status argument optional
+        if not status:
+            logging.warning("format_status_as_chip received None or empty for status.")
+            return Markup(_('[No Status]')) # Or return Markup('') if preferred
+        
+        status_str = str(status) # Ensure status is a string
+        status_lower = status_str.lower()
+        chip_class = "label-default" # Default chip style
+        if status_lower == "success":
+            chip_class = "label-success"
+        elif status_lower == "failed":
+            chip_class = "label-danger"
+        elif status_lower == "pending":
+            chip_class = "label-warning"
+        elif status_lower == "partial_success": # Assuming this status exists
+            chip_class = "label-info"
+        
+        return Markup(f'<span class="label {chip_class}">{status_str.upper()}</span>')
+
+    def format_bulletin_with_icon(bulletin=None) -> Markup: # Make bulletin argument optional
+        if not bulletin:
+            logging.warning("format_bulletin_with_icon received None for bulletin.")
+            return Markup(_('[No Bulletin Data]'))
+
+        bulletin_title = getattr(bulletin, 'title', None)
+        bulletin_id = getattr(bulletin, 'id', '[Unknown ID]')
+
+        if not bulletin_title:
+            logging.warning(f"format_bulletin_with_icon: Bulletin (ID: {bulletin_id}) has no title.")
+            bulletin_title = _('[Unknown Title]')
+        
+        return Markup(f'<i class="fa fa-file-text-o" aria-hidden="true"></i> {bulletin_title}')
+
+    formatters_columns = {
+        'sent_at': format_sent_at,
+        'status': format_status_as_chip,
+        'bulletin': format_bulletin_with_icon
+    }
+    
     show_fieldsets = [
         (
             _("Log Details"),

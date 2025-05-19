@@ -1,11 +1,15 @@
 from flask_appbuilder.security.forms import RegisterUserDBForm
 from flask_babel import lazy_gettext
-from wtforms import StringField, SelectField
-from wtforms.validators import DataRequired
+from wtforms import StringField, SelectField, PasswordField
+from wtforms.validators import DataRequired, Email, EqualTo
 # Import the original RegisterUserDBView directly
 from flask_appbuilder.security.registerviews import RegisterUserDBView as FabRegisterUserDBView
 # Import base UserDBModelView
 from flask_appbuilder.security.views import UserDBModelView as FabUserDBModelView # Corrected import alias
+from flask_appbuilder.widgets import FormWidget
+from flask_appbuilder.forms import DynamicForm
+from flask_appbuilder.fieldwidgets import BS3TextFieldWidget, BS3PasswordFieldWidget, Select2Widget
+from flask_wtf.recaptcha import RecaptchaField
 import uuid # Import uuid
 from werkzeug.security import generate_password_hash # Import for password hashing
 import logging # Add logging import
@@ -18,11 +22,27 @@ from .custom_user_models import CustomUser, CustomRegisterUser
 
 
 # Define the custom form class FIRST
-class CustomRegisterUserDBForm(RegisterUserDBForm):
+class CustomRegisterUserDBForm(DynamicForm):
     """
-    Custom registration form with additional fields
+    Custom registration form with additional fields in a specific order.
     """
-    # Add your custom fields here
+    # Standard fields from original RegisterUserDBForm
+    username = StringField(
+        lazy_gettext("User Name"), # Note: Superset's default might use email as username. If so, this field might be redundant or handled differently.
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+    first_name = StringField(
+        lazy_gettext("First Name"),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+    last_name = StringField(
+        lazy_gettext("Last Name"),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+    # Custom fields inserted in the desired order
     gender = SelectField(
         lazy_gettext('Gender'),
         choices=[
@@ -33,7 +53,8 @@ class CustomRegisterUserDBForm(RegisterUserDBForm):
             ('Other', 'Other'),
             ('Prefer not to say', 'Prefer not to say')
         ],
-        validators=[DataRequired()]
+        validators=[DataRequired()],
+        widget=Select2Widget()
     )
     age_range = SelectField(
         lazy_gettext('Age Range'),
@@ -47,9 +68,36 @@ class CustomRegisterUserDBForm(RegisterUserDBForm):
             ('55-64', '55-64'),
             ('65 or Over', '65 or Over')
         ],
-        validators=[DataRequired()]
+        validators=[DataRequired()],
+        widget=Select2Widget()
     )
-    # You can add more fields as needed
+    email = StringField(
+        lazy_gettext("Email"),
+        validators=[DataRequired(), Email()],
+        widget=BS3TextFieldWidget(),
+    )
+    password = PasswordField(
+        lazy_gettext("Password"),
+        description=lazy_gettext(
+            "Please use a good password policy,"
+            " this application does not check this for you"
+        ),
+        validators=[DataRequired()], # Consider adding PasswordComplexityValidator() if FAB version supports it here
+        widget=BS3PasswordFieldWidget(),
+    )
+    conf_password = PasswordField(
+        lazy_gettext("Confirm Password"),
+        description=lazy_gettext("Please rewrite the password to confirm"),
+        validators=[EqualTo("password", message=lazy_gettext("Passwords must match"))],
+        widget=BS3PasswordFieldWidget(),
+    )
+    recaptcha = RecaptchaField()
+    # You can add more fields as needed if they were in the original form
+
+
+# Define your custom form widget
+class RegisterUserFormWidget(FormWidget):
+    template = 'appbuilder/general/security/widgets/register_form_widget.html' # <--- YOUR NEW WIDGET TEMPLATE
 
 
 # Define your custom registration view inheriting from the original SECOND
@@ -58,6 +106,7 @@ class CustomRegisterUserDBView(FabRegisterUserDBView):
     form_template = "appbuilder/general/security/register_user.html"
     # Explicitly set the form class to use - NOW it's defined
     form = CustomRegisterUserDBForm
+    edit_widget = RegisterUserFormWidget # <--- ASSIGN YOUR CUSTOM WIDGET HERE
 
 
 # Define your custom UserDBModelView
