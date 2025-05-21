@@ -137,13 +137,14 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         Handles uploading multiple image attachments and their captions.
         Saves them as BulletinImageAttachment records.
         Deletes old attachments if they are removed or replaced.
+        Checks for S3 bucket existence and creates it if necessary.
         """
-        # Process files like image_attachment_file_0, image_attachment_file_1, ...
-        # Process captions like image_caption_0, image_caption_1, ...
-        # Process existing attachment IDs to update/delete: existing_attachment_id_0, existing_attachment_caption_0
-
         s3_bucket = current_app.config.get('S3_BUCKET')
         s3_client = _get_s3_client()
+
+        if not s3_bucket:
+            current_app.logger.error("S3_BUCKET is not configured in the application settings. Cannot perform S3 operations.")
+            raise ValueError("S3_BUCKET is not configured, which is required for file uploads.")
 
         # --- Handling existing attachments (for updates) ---
         if is_update:
@@ -188,6 +189,43 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             # db.session.flush() # Flush deletions before adding new ones if needed, or commit at end
 
         # --- Handling new file uploads ---
+        # Check if there are any new files to upload before attempting bucket operations
+        has_new_files_to_upload = any(
+            key.startswith("image_attachment_file_") and request.files[key] and request.files[key].filename
+            for key in request.files
+        )
+
+        if has_new_files_to_upload:
+            if not s3_client: # Should ideally not happen if _get_s3_client is robust
+                 current_app.logger.error("S3 client is not available. Cannot check or create bucket.")
+                 raise ConnectionError("S3 client could not be initialized.")
+
+            try:
+                current_app.logger.debug(f"Checking if S3 bucket '{s3_bucket}' exists.")
+                s3_client.head_bucket(Bucket=s3_bucket)
+                current_app.logger.info(f"S3 bucket '{s3_bucket}' already exists.")
+            except ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code')
+                http_status_code = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+                
+                # Check for NoSuchBucket (common in MinIO/older SDKs) or 404 (common in AWS S3 for head_bucket on non-existent bucket)
+                if error_code == 'NoSuchBucket' or http_status_code == 404:
+                    current_app.logger.info(f"S3 bucket '{s3_bucket}' does not exist. Attempting to create it...")
+                    try:
+                        # For MinIO, region is typically not needed for create_bucket.
+                        # For AWS S3, you might need to specify a region if not us-east-1 or if client isn't configured for a specific region:
+                        # e.g., s3_client.create_bucket(Bucket=s3_bucket, CreateBucketConfiguration={'LocationConstraint': 'your-aws-region'})
+                        s3_client.create_bucket(Bucket=s3_bucket)
+                        current_app.logger.info(f"S3 bucket '{s3_bucket}' created successfully.")
+                    except ClientError as ce:
+                        current_app.logger.error(f"Failed to create S3 bucket '{s3_bucket}': {ce}")
+                        # Propagate a clear error message to the client/logs
+                        raise Exception(f"S3 bucket '{s3_bucket}' could not be created. Please check S3 permissions and configuration. Original error: {str(ce)}") from ce
+                else:
+                    # Some other ClientError occurred when trying to check for the bucket.
+                    current_app.logger.error(f"Unexpected error when checking for S3 bucket '{s3_bucket}': {e}")
+                    raise # Re-raise the original unexpected S3 error
+
         i = 0
         while True:
             image_file = request.files.get(f"image_attachment_file_{i}")
