@@ -24,6 +24,8 @@ import os
 from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+import boto3
+from botocore.exceptions import ClientError
 
 from superset.commands.report.exceptions import ReportSchedulePdfFailedError
 
@@ -63,6 +65,36 @@ def generate_bulletin_pdf(bulletin):
     # Import here to avoid circular imports
     from superset import app
     
+    logger.info(f"Generating PDF for bulletin ID: {getattr(bulletin, 'id', 'N/A')}, Title: {getattr(bulletin, 'title', 'N/A')}")
+
+    # --- S3/MinIO Client Initialization ---
+    s3_client = None
+    s3_bucket_name = app.config.get('S3_BUCKET')
+    s3_endpoint_url = app.config.get('S3_ENDPOINT_URL')
+    s3_access_key = app.config.get('S3_ACCESS_KEY')
+    s3_secret_key = app.config.get('S3_SECRET_KEY')
+    # boto3 might also need region_name, use_ssl, verify, and addressing_style (e.g., 'path' for MinIO)
+    # For MinIO, endpoint_url is crucial.
+    # s3_addressing_style = app.config.get('S3_ADDRESSING_STYLE', 'path') # common for MinIO
+
+    if s3_bucket_name and s3_endpoint_url and s3_access_key and s3_secret_key:
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=s3_access_key,
+                aws_secret_access_key=s3_secret_key,
+                endpoint_url=s3_endpoint_url,
+                # region_name can be omitted if not relevant for MinIO setup or if endpoint_url includes it implicitly
+                # config=boto3.session.Config(signature_version='s3v4', s3={'addressing_style': s3_addressing_style}) # More specific config if needed
+            )
+            logger.info("S3 client initialized successfully.")
+        except Exception as e:
+            logger.error(f"Failed to initialize S3 client: {e}", exc_info=True)
+            s3_client = None # Ensure client is None if init fails
+    else:
+        logger.warning("S3 client configuration missing. Cannot fetch images from S3/MinIO.")
+
+
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
@@ -261,6 +293,190 @@ def generate_bulletin_pdf(bulletin):
             y = draw_section(y, title, content_text, section_style["bg"], section_style["border"])
             y -= 0.1*inch # spacing between sections
     
+    # --- Attached Images ---
+    if hasattr(bulletin, 'image_attachments') and bulletin.image_attachments and s3_client: # Check for s3_client
+        logger.info(f"Found {len(bulletin.image_attachments)} image attachment objects for bulletin ID: {bulletin.id}.")
+        
+        attachments_to_process = bulletin.image_attachments # This is now a list of BulletinImageAttachment objects
+
+        if not attachments_to_process:
+             logger.info(f"No image attachment objects to process for bulletin ID: {bulletin.id}")
+        else:
+            logger.info(f"Processing {len(attachments_to_process)} image attachment objects for bulletin ID: {bulletin.id}")
+            attachments_section_title_text = "Attached Images"
+            p.setFont("Helvetica-Bold", 14)
+            # Use a unique variable name for title lines here
+            attachment_title_lines = split_text_to_lines(attachments_section_title_text, content_width, "Helvetica-Bold", 14)
+            
+            current_font_size_for_section_title = 14
+            leading_for_section_title = current_font_size_for_section_title * 1.2
+            # Calculate height needed for the title block including its bottom padding
+            needed_height_for_attachments_title_block = (len(attachment_title_lines) * leading_for_section_title) + (0.15 * inch)
+
+            if y - needed_height_for_attachments_title_block < margin_bottom:
+                p.showPage()
+                p.setFont("Helvetica-Bold", current_font_size_for_section_title) # Reset font
+                y = height - margin_top
+                
+            for line_text in attachment_title_lines:
+                # This inner check is mostly for multi-line titles, unlikely for "Attached Images" but robust
+                if y - leading_for_section_title < margin_bottom:
+                     p.showPage()
+                     p.setFont("Helvetica-Bold", current_font_size_for_section_title)
+                     y = height - margin_top
+                line_width_for_section_title = p.stringWidth(line_text, "Helvetica-Bold", current_font_size_for_section_title)
+                p.drawString(margin_left + (content_width - line_width_for_section_title) / 2, y - current_font_size_for_section_title, line_text)
+                y -= leading_for_section_title
+            y -= 0.15 * inch # Space after the "Attached Images" title
+
+            for attachment_idx, attachment in enumerate(attachments_to_process):
+                img_data = None
+                object_key = attachment.s3_key
+                image_caption = attachment.caption # Get caption from the attachment object
+                
+                filename_for_fallback_caption = os.path.basename(object_key) # Fallback if caption is empty
+
+                try:
+                    logger.info(f"Attempting to fetch S3 object: Bucket='{s3_bucket_name}', Key='{object_key}' for attachment ID {attachment.id}")
+                    s3_response = s3_client.get_object(Bucket=s3_bucket_name, Key=object_key)
+                    img_data = s3_response['Body'].read()
+                    logger.info(f"Successfully fetched S3 object '{object_key}'. Data length: {len(img_data)}")
+
+                    if not img_data:
+                        logger.warning(f"S3 object '{object_key}' has no data.")
+                        continue
+                        
+                    logger.info(f"Processing S3 attachment #{attachment_idx} (ID: {attachment.id}): Key: {object_key}, Caption: '{image_caption}', Fallback Filename: {filename_for_fallback_caption}")
+
+                    supported_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp')
+                    if not object_key.lower().endswith(supported_extensions):
+                        logger.warning(f"Skipping S3 object with unsupported extension: {object_key} (Attachment ID: {attachment.id}, Attachment #{attachment_idx})")
+                        continue
+                    
+                    # Initial BytesIO from attachment data
+                    img_bytes_io_source = BytesIO(img_data)
+                    pil_img = PILImage.open(img_bytes_io_source)
+                    logger.info(f"S3 Attachment #{attachment_idx}, Key: {object_key}: Opened with PIL. Original mode: {pil_img.mode}, Size: {pil_img.size}")
+                    
+                    # Prepare a BytesIO buffer that will hold the final image data for ReportLab
+                    final_img_data_for_reportlab_io = BytesIO()
+
+                    if pil_img.mode == 'RGBA':
+                        # Create an RGB image with a white background
+                        background = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+                        # Paste the RGBA image onto the white background using the alpha channel as a mask
+                        alpha_channel = pil_img.split()[3] if len(pil_img.split()) == 4 else None
+                        if alpha_channel:
+                            background.paste(pil_img, (0, 0), alpha_channel)
+                        else: # Fallback if no alpha channel (e.g. misidentified RGBA)
+                            background.paste(pil_img, (0,0))
+                        pil_img = background # pil_img is now the RGB image
+                        pil_img.save(final_img_data_for_reportlab_io, format='PNG')
+                        logger.info(f"S3 Attachment #{attachment_idx}, Key: {object_key}: Converted RGBA to RGB and saved to PNG buffer.")
+                    elif pil_img.mode != 'RGB':
+                        pil_img = pil_img.convert('RGB') # pil_img is now the RGB image
+                        pil_img.save(final_img_data_for_reportlab_io, format='PNG')
+                        logger.info(f"S3 Attachment #{attachment_idx}, Key: {object_key}: Converted from mode {pil_img.mode} to RGB and saved to PNG buffer.")
+                    else: # Already RGB
+                        pil_img.save(final_img_data_for_reportlab_io, format='PNG') # Save to ensure it's in a common format like PNG
+                        logger.info(f"S3 Attachment #{attachment_idx}, Key: {object_key}: Already RGB. Saved to PNG buffer.")
+
+                    final_img_data_for_reportlab_io.seek(0)
+                    # Now pil_img is an RGB PIL.Image object, and final_img_data_for_reportlab_io contains its data as PNG.
+                    img_original_width, img_original_height = pil_img.size
+
+                    if img_original_width == 0 or img_original_height == 0:
+                        logger.warning(f"Skipping S3 attachment with zero dimensions after processing: {object_key} (Attachment ID: {attachment.id}, Attachment #{attachment_idx})")
+                        continue
+                    
+                    # The logger line for Original WxH etc. was removed in a previous step, let's ensure it's correct
+                    logger.info(f"S3 Attachment #{attachment_idx} (ID: {attachment.id}), Key: {object_key}: Original WxH: {img_original_width}x{img_original_height}, Scaled WxH: {img_original_width}x{img_original_height}, Scale Factor: {1.0}")
+
+                    max_render_width = content_width
+                    max_render_height = height * 0.5 # Image takes max 50% of page height
+                    
+                    scale_factor = 1.0
+                    if img_original_width > 0 and img_original_height > 0 : # Avoid division by zero
+                        width_ratio = max_render_width / img_original_width
+                        height_ratio = max_render_height / img_original_height
+                        scale_factor = min(width_ratio, height_ratio, 1.0) # Don't scale up if image is small
+                    
+                    scaled_width = img_original_width * scale_factor
+                    scaled_height = img_original_height * scale_factor
+                    
+                    caption_height = 0
+                    current_caption_text = image_caption if image_caption and image_caption.strip() else filename_for_fallback_caption
+
+                    if current_caption_text:
+                        caption_font_size = 8
+                        caption_leading = caption_font_size * 1.2
+                        caption_height = caption_leading + (0.05 * inch) # text + small padding below
+                    
+                    total_item_height_needed = scaled_height + caption_height + (0.15 * inch) # image + caption + padding after image item
+
+                    if y - total_item_height_needed < margin_bottom:
+                        p.showPage()
+                        y = height - margin_top
+                    
+                    img_x_centered = margin_left + (content_width - scaled_width) / 2
+                    
+                    reportlab_img = ImageReader(final_img_data_for_reportlab_io)
+
+                    logger.info(f"S3 Attachment #{attachment_idx}, Key: {object_key}: Attempting to drawImage at y={y}, scaled_height={scaled_height}")
+                    p.drawImage(reportlab_img, img_x_centered, y - scaled_height, 
+                                width=scaled_width, height=scaled_height, 
+                                preserveAspectRatio=True, mask='auto')
+                    y -= scaled_height
+                    
+                    if current_caption_text:
+                        p.setFont("Helvetica-Oblique", caption_font_size)
+                        # Small space between image and caption
+                        y -= (caption_font_size * 0.2) 
+                        caption_y_pos = y - caption_font_size 
+                        
+                        # Ensure caption itself does not cause an unnecessary page break if image just fit
+                        if caption_y_pos < margin_bottom :
+                            p.showPage()
+                            y = height - margin_top
+                            # re-calculate y pos for caption on new page
+                            y -= (caption_font_size * 0.2)
+                            caption_y_pos = y - caption_font_size
+
+                        p.drawCentredString(margin_left + content_width / 2, caption_y_pos, current_caption_text)
+                        y = caption_y_pos - (0.05 * inch) # Space after caption text
+
+                    y -= 0.15 * inch # Padding after the entire image item (image + caption)
+                    
+                except ClientError as e:
+                    logger.error(f"S3 ClientError processing object key '{object_key}' (Attachment ID: {attachment.id}) for PDF: {e}", exc_info=True)
+                    error_message_text = f"[Error loading image: {filename_for_fallback_caption}]"
+                    error_font_size = 8
+                    error_leading = error_font_size * 1.2
+                    if y - error_leading < margin_bottom: 
+                        p.showPage()
+                        y = height - margin_top
+                    p.setFont("Helvetica", error_font_size)
+                    p.drawString(margin_left, y - error_font_size, error_message_text)
+                    y -= (error_leading + (0.05 * inch)) # Space after error message
+                except Exception as e: # Catch other general exceptions during PIL processing etc.
+                    logger.error(f"Error processing S3 attachment (ID: {attachment.id}, Key: {object_key}, Caption: '{image_caption}') for PDF: {e}", exc_info=True)
+                    # Draw an error message in the PDF for this specific image
+                    error_message_text = f"[Error processing image: {filename_for_fallback_caption}]"
+                    error_font_size = 8
+                    error_leading = error_font_size * 1.2
+                    if y - error_leading < margin_bottom: 
+                        p.showPage()
+                        y = height - margin_top
+                    p.setFont("Helvetica", error_font_size)
+                    p.drawString(margin_left, y - error_font_size, error_message_text)
+                    y -= (error_leading + (0.05 * inch)) # Space after error message
+
+        y -= 0.1 * inch # Final padding after all attachments, before next section (e.g., Hashtags)
+    elif not s3_client:
+        logger.warning(f"S3 client not initialized. Cannot process image_attachments for bulletin ID: {getattr(bulletin, 'id', 'N/A')}")
+    else: # bulletin.image_attachments is None or empty (or now an empty list)
+        logger.info(f"No image attachments found or bulletin.image_attachments is empty for bulletin ID: {getattr(bulletin, 'id', 'N/A')}")
+    
     # --- Hashtags ---
     if bulletin.hashtags and bulletin.hashtags.strip():
         title = "Hashtags"
@@ -285,4 +501,5 @@ def generate_bulletin_pdf(bulletin):
     p.showPage()
     p.save()
     buffer.seek(0)
+    logger.info(f"PDF generation complete for bulletin ID: {getattr(bulletin, 'id', 'N/A')}. PDF size: {len(buffer.getvalue())} bytes.")
     return buffer

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Tag, Button } from 'antd';
+import { Modal, Tag, Button, Carousel, Image as AntImage } from 'antd';
 import { styled, t, isFeatureEnabled, FeatureFlag, SupersetClient } from '@superset-ui/core';
 import moment from 'moment';
-import { Bulletin } from './types';
+import { Bulletin, ImageAttachment } from './types';
 import BulletinChart from './BulletinChart';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import EditBulletinModal from './EditBulletinModal';
@@ -18,6 +18,7 @@ const BULLETIN_COLUMNS = [
   'safety_tips',
   'hashtags',
   'chart_id',
+  'image_attachments',
   'created_by.first_name',
   'created_by.last_name',
   'created_on',
@@ -96,6 +97,50 @@ const StyledModal = styled(Modal)`
     
     .anticon {
       margin-right: ${({ theme }) => theme.gridUnit}px;
+    }
+  }
+
+  .bulletin-attachment-image-detail {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
+    border-radius: ${({ theme }) => theme.borderRadius}px;
+  }
+
+  // Custom styles for Carousel arrows
+  .ant-carousel {
+    .slick-prev,
+    .slick-next {
+      font-size: ${({ theme }) => theme.typography.sizes.xl}px; // Increase icon size
+      color: ${({ theme }) => theme.colors.grayscale.light5}; // Arrow color
+      background-color: rgba(0, 0, 0, 0.3); // Semi-transparent background
+      border-radius: 50%;
+      width: 30px; // Ensure a decent size for the background
+      height: 30px;
+      line-height: 30px; // Center icon if needed
+      z-index: 10; // Ensure they are above images
+      transition: background-color 0.3s ease, color 0.3s ease;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.5);
+        color: ${({ theme }) => theme.colors.grayscale.light2};
+      }
+    }
+
+    .slick-prev {
+      left: 10px; // Adjust position from edge
+    }
+
+    .slick-next {
+      right: 10px; // Adjust position from edge
+    }
+
+    .slick-dots li button {
+        background: ${({ theme }) => theme.colors.primary.base}; // Make dots more visible too
+    }
+    .slick-dots li.slick-active button {
+        background: ${({ theme }) => theme.colors.primary.dark1};
     }
   }
 `;
@@ -303,13 +348,52 @@ export default function BulletinDetailModal({
             ))}
           </div>
         )}
+
+        {updatedBulletin?.image_attachments && updatedBulletin.image_attachments.length > 0 && (
+          <div className="bulletin-section">
+            <div className="section-title">{t('Attachments')}</div>
+            {updatedBulletin.image_attachments.length === 1 ? (
+              <div style={{ marginBottom: '16px' }}>
+                <AntImage
+                  width="100%"
+                  style={{ maxHeight: '400px', objectFit: 'contain', borderRadius: '4px' }}
+                  src={updatedBulletin.image_attachments[0].url}
+                  alt={updatedBulletin.image_attachments[0].caption || 'Attachment'}
+                />
+                {updatedBulletin.image_attachments[0].caption && (
+                  <p style={{ textAlign: 'center', marginTop: '8px', fontStyle: 'italic' }}>
+                    {updatedBulletin.image_attachments[0].caption}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Carousel autoplay dotPosition="top">
+                {updatedBulletin.image_attachments.map((attachment: ImageAttachment) => (
+                  <div key={attachment.id} style={{ textAlign: 'center' }}>
+                    <AntImage
+                      width="100%"
+                      style={{ maxHeight: '400px', objectFit: 'contain' }}
+                      src={attachment.url}
+                      alt={attachment.caption || 'Attachment'}
+                    />
+                    {attachment.caption && (
+                      <p style={{ marginTop: '8px', fontStyle: 'italic' }}>
+                        {attachment.caption}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </Carousel>
+            )}
+          </div>
+        )}
       </StyledModal>
 
       {updatedBulletin && (
         <EditBulletinModal
-          visible={editModalVisible}
-          onClose={() => setEditModalVisible(false)}
-          onSuccess={handleEditSuccess}
+          isOpen={editModalVisible}
+          toggle={() => setEditModalVisible(!editModalVisible)}
+          onBulletinUpdated={handleEditSuccess}
           bulletin={updatedBulletin}
         />
       )}

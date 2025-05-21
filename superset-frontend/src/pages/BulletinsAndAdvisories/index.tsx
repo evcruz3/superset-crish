@@ -39,6 +39,7 @@ const BULLETIN_COLUMNS_TO_FETCH = [
   'safety_tips',
   'hashtags',
   'chart_id',
+  'image_attachments',
   'created_by.first_name',
   'created_by.last_name',
   'created_on',
@@ -492,21 +493,21 @@ function BulletinsAndAdvisories({
       </ConfirmStatusChange>
 
       <CreateBulletinModal
-        visible={createModalVisible}
-        onClose={() => setCreateModalVisible(false)}
-        onSuccess={() => {
+        isOpen={createModalVisible}
+        toggle={() => setCreateModalVisible(false)}
+        onBulletinCreated={() => {
           setCreateModalVisible(false);
           refreshData();
         }}
       />
 
       <EditBulletinModal
-        visible={editModalVisible}
-        onClose={() => {
+        isOpen={editModalVisible}
+        toggle={() => {
           setEditModalVisible(false);
           setBulletinToEdit(null);
         }}
-        onSuccess={() => {
+        onBulletinUpdated={() => {
           setEditModalVisible(false);
           setBulletinToEdit(null);
           refreshData();

@@ -71,6 +71,14 @@ CACHE_CONFIG = {
 }
 DATA_CACHE_CONFIG = CACHE_CONFIG
 
+# MinIO/S3 Storage for Attachments
+S3_BUCKET = os.getenv('S3_BUCKET', 'crish-attachments') # Default bucket name
+S3_ENDPOINT_URL = os.getenv('S3_ENDPOINT_URL', 'http://minio:9000') # Docker service name 'minio' and its API port
+S3_ACCESS_KEY = os.getenv('MINIO_ROOT_USER') # Should be defined in docker/.env
+S3_SECRET_KEY = os.getenv('MINIO_ROOT_PASSWORD') # Should be defined in docker/.env
+S3_PRESIGNED_URL_EXPIRATION = int(os.getenv('S3_PRESIGNED_URL_EXPIRATION', 3600)) # In seconds (1 hour)
+S3_ADDRESSING_STYLE = os.getenv('S3_ADDRESSING_STYLE', 'path') # 'path' or 'virtual'
+S3_PUBLIC_ENDPOINT_URL = os.getenv('S3_PUBLIC_ENDPOINT_URL', 'http://localhost:9090') # For frontend access
 
 class CeleryConfig:
     broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"

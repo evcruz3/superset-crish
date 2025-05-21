@@ -286,10 +286,33 @@ services:
     restart: "no"
     user: "root"
 
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z # You can use 'latest' or a specific version
+    container_name: superset_minio
+    env_file:
+      - path: docker/.env # default (assuming MINIO_ROOT_USER and MINIO_ROOT_PASSWORD will be here)
+        required: true
+      - path: docker/.env-local # optional override
+        required: false
+    ports:
+      - "9090:9000" # API port changed
+      - "9091:9001" # Console port changed
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
 volumes:
   superset_home:
     external: false
   db_home:
     external: false
   redis:
+    external: false
+  minio_data: # New volume for MinIO
     external: false

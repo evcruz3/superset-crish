@@ -140,6 +140,15 @@ const StyledCard = styled(Card)`
     }
   }
 
+  .bulletin-attachment-image {
+    width: 100%;
+    max-height: 250px; // Adjust as needed
+    object-fit: cover; // Or 'contain' based on preference
+    margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
+    border-radius: ${({ theme }) => theme.borderRadius}px;
+    flex-shrink: 0;
+  }
+
   .bulletin-hashtags {
     margin-top: auto;
     padding-top: ${({ theme }) => theme.gridUnit * 2}px;
@@ -214,7 +223,8 @@ export default function BulletinCard({
         filters: [{ col: 'id', opr: 'eq', value: bulletin.id }],
         columns: [
           'id', 'title', 'advisory', 'risks', 'safety_tips', 'hashtags', 
-          'chart_id', 'created_by.first_name', 'created_by.last_name', 
+          'chart_id', 'image_attachments',
+          'created_by.first_name', 'created_by.last_name', 
           'created_on', 'changed_on'
         ],
       });
@@ -259,6 +269,16 @@ export default function BulletinCard({
             </>
           )}
         </div>
+
+        {/* Display the first image attachment if available */}
+        {localBulletin.image_attachments && localBulletin.image_attachments.length > 0 && localBulletin.image_attachments[0].url && (
+          <img 
+            src={localBulletin.image_attachments[0].url} 
+            alt={localBulletin.image_attachments[0].caption || t('Bulletin Attachment')} 
+            className="bulletin-attachment-image" 
+          />
+        )}
+
         <div className="bulletin-content">
           <div className="bulletin-section advisory-section">
             <div className="section-title">{t('Advisory')}</div>
@@ -301,6 +321,8 @@ export default function BulletinCard({
       </StyledCard>
       <BulletinDetailModal 
         bulletin={showModal ? localBulletin : null}
+        // Pass the entire image_attachments array to the detail modal
+        // bulletinImageUrl={localBulletin.image_attachments_url} // Old prop
         onClose={() => setShowModal(false)}
         hasPerm={hasPerm}
         refreshData={handleLocalRefresh}

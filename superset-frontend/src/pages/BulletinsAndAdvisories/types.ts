@@ -3,6 +3,22 @@ export interface CreatedBy {
   last_name: string;
 }
 
+export interface User {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
+export interface ImageAttachment {
+  id: number;
+  s3_key: string;
+  caption?: string;
+  url: string;
+  created_on?: string;
+  changed_on?: string;
+  file?: File; // For client-side handling of new uploads
+}
+
 export interface Bulletin {
   id: number;
   title: string;
@@ -10,11 +26,11 @@ export interface Bulletin {
   risks: string;
   safety_tips: string;
   hashtags: string;
-  chart_id: number | null;
-  thumbnail_url?: string;
-  created_by: CreatedBy;
-  created_on: string;
-  changed_on: string;
+  chart_id?: number;
+  created_by?: User;
+  created_on?: string;
+  changed_on?: string;
+  image_attachments?: ImageAttachment[]; // Updated from string to ImageAttachment[]
 }
 
 export interface BulletinApiResponse {
@@ -29,4 +45,19 @@ export interface CreateBulletinPayload {
   safety_tips: string;
   hashtags: string;
   chart_id: number | null;
+}
+
+export interface BulletinFormData {
+  title: string;
+  advisory: string;
+  risks: string;
+  safety_tips: string;
+  hashtags: string;
+  chart_id?: number | null;
+  image_attachments?: string | null;
+  image_attachment_file?: File | null;
+}
+
+export interface BulletinSortOption {
+  // ... existing code ...
 } 

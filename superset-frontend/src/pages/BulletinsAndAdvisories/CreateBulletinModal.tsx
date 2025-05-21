@@ -1,240 +1,434 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Modal, Form, Input } from 'antd';
-import { SupersetClient, t, useTheme, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
+import React, { useState, useEffect } from 'react';
+import { Modal, Form, Input, Button, Upload, Alert, Select as AntdSelect, Spin } from 'antd';
+import { UploadOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { SupersetClient, t, JsonObject } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { AsyncSelect } from 'src/components';
-import { getClientErrorObject } from '@superset-ui/core';
+import { Bulletin } from './types';
+import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface';
 import rison from 'rison';
-import { SelectValue, LabeledValue as AntLabeledValue } from 'antd/lib/select';
-import { CreateBulletinPayload } from './types';
-import styled from 'styled-components';
-import ImageLoader from 'src/components/ListViewCard/ImageLoader';
-
-const ThumbnailPreview = styled.div`
-  margin-top: 16px;
-  text-align: center;
-  height: 200px;
-  position: relative;
-  
-  .gradient-container {
-    position: relative;
-    height: 100%;
-  }
-`;
+import { LabeledValue } from 'antd/lib/select';
 
 interface CreateBulletinModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  isOpen: boolean;
+  toggle: () => void;
+  onBulletinCreated: (bulletin: Bulletin) => void;
+  chartId?: number;
 }
 
-interface ChartOption {
-  value: number;
-  label: string;
-  thumbnail_url?: string;
+interface ChartRecord {
+  id: number;
+  slice_name: string;
 }
 
-// Use Ant Design's types for the select values
-type SelectLabeledValue = AntLabeledValue & {
+interface ChartOption extends LabeledValue {
   value: number;
-  thumbnail_url?: string;
-};
+  label: React.ReactNode;
+}
 
-export default function CreateBulletinModal({
-  visible,
-  onClose,
-  onSuccess,
-}: CreateBulletinModalProps) {
-  const [form] = Form.useForm<CreateBulletinPayload>();
-  const [loading, setLoading] = useState(false);
-  const [selectedChart, setSelectedChart] = useState<ChartOption | null>(null);
+interface AttachmentState {
+  uid: string;
+  file?: File;
+  caption: string;
+  fileList: UploadFile[];
+}
+
+const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
+  isOpen,
+  toggle,
+  onBulletinCreated,
+  chartId: initialChartId,
+}) => {
+  const [form] = Form.useForm();
   const { addSuccessToast, addDangerToast } = useToasts();
-  const theme = useTheme();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChartSelect = (value: SelectValue, option: any) => {
-    console.log('handleChartSelect called with:', { value, option });
-    
-    if (!value || typeof value === 'string') {
-      setSelectedChart(null);
-      form.setFieldsValue({ 
-        chart_id: null
-      });
-      return;
+  const [imageAttachments, setImageAttachments] = useState<AttachmentState[]>([]);
+  const [isChartSelectorModalOpen, setIsChartSelectorModalOpen] = useState(false);
+  const [selectedChartForThumbnail, setSelectedChartForThumbnail] = useState<LabeledValue | null>(null);
+  const [chartThumbnailPreviewUrl, setChartThumbnailPreviewUrl] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      form.resetFields();
+      setImageAttachments([{ uid: `new_${Date.now()}`, caption: '', fileList: [] }]);
+      setError(null);
+      setIsLoading(false);
+      setIsChartSelectorModalOpen(false);
+      setSelectedChartForThumbnail(null);
+      setChartThumbnailPreviewUrl(null);
+      setIsPreviewLoading(false);
     }
+  }, [isOpen, form, addDangerToast]);
 
-    const labeledValue = value as SelectLabeledValue;
-    const chartId = Number(labeledValue.value);
-    
-    const selectedValue = {
-      value: chartId,
-      label: labeledValue.label as string,
-      thumbnail_url: option?.thumbnail_url
-    };
-    
-    setSelectedChart(selectedValue);
-    form.setFieldsValue({ 
-      chart_id: chartId
-    });
+  const handleAddAttachment = () => {
+    setImageAttachments([...imageAttachments, { uid: `new_${Date.now()}`, caption: '', fileList: [] }]);
   };
 
-  const loadChartOptions = useMemo(() => async (search: string, page: number, pageSize: number) => {
-    console.log('loadChartOptions called with:', { search, page, pageSize });
+  const handleRemoveAttachment = (index: number) => {
+    const newAttachments = [...imageAttachments];
+    newAttachments.splice(index, 1);
+    setImageAttachments(newAttachments);
+  };
+
+  const handleFileChange = (index: number, info: UploadChangeParam<UploadFile>) => {
+    const newAttachments = [...imageAttachments];
+    newAttachments[index].fileList = [...info.fileList];
+    if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
+      newAttachments[index].file = info.fileList[0].originFileObj as File;
+    } else {
+      newAttachments[index].file = undefined;
+    }
+    setImageAttachments(newAttachments);
+  };
+
+  const handleCaptionChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const newAttachments = [...imageAttachments];
+    newAttachments[index].caption = event.target.value;
+    setImageAttachments(newAttachments);
+  };
+
+  const loadChartOptions = async (search: string, page: number, pageSize: number): Promise<{data: LabeledValue[], totalCount: number}> => {
     const query = rison.encode_uri({
       filters: search ? [{ col: 'slice_name', opr: 'ct', value: search }] : [],
-      order_column: 'changed_on_delta_humanized',
-      order_direction: 'desc',
       page,
       page_size: pageSize,
     });
-    
     try {
       const response = await SupersetClient.get({
         endpoint: `/api/v1/chart/?q=${query}`,
       });
-      
-      const { result, count } = response.json;
-      const mappedData = result.map((chart: any) => ({
-        value: String(chart.id),
-        label: chart.slice_name,
-        thumbnail_url: chart.thumbnail_url,
-      }));
-      
+      const chartData = response.json.result as ChartRecord[];
+      const chartCount = response.json.count as number;
       return {
-        data: mappedData,
-        totalCount: count,
+        data: chartData.map((chart: ChartRecord) => ({
+          value: chart.id,
+          label: chart.slice_name,
+          key: String(chart.id),
+        })),
+        totalCount: chartCount,
       };
-    } catch (error) {
-      console.error('Failed to load charts:', error);
-      addDangerToast(t('Failed to load charts'));
-      return {
-        data: [],
-        totalCount: 0,
-      };
+    } catch (err) {
+      console.error('Error loading charts:', err);
+      addDangerToast(t('Error loading charts'));
+      return { data: [], totalCount: 0 };
     }
-  }, [addDangerToast]);
-
-  // Remove the debug effects that might cause unnecessary re-renders
-  const selectRef = useRef(null);
+  };
 
   const handleSubmit = async () => {
     try {
-      setLoading(true);
       const values = await form.validateFields();
-      
-      const payload = {
-        title: values.title || '',
-        advisory: values.advisory || '',
-        risks: values.risks || '',
-        safety_tips: values.safety_tips || '',
-        hashtags: values.hashtags || '',
-        chart_id: values.chart_id
-      };
-      
-      await SupersetClient.post({
-        endpoint: '/api/v1/bulletins_and_advisories/',
-        jsonPayload: payload,
+      setIsLoading(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append('title', values.title);
+      formData.append('advisory', values.advisory);
+      formData.append('risks', values.risks);
+      formData.append('safety_tips', values.safety_tips);
+      formData.append('hashtags', values.hashtags || '');
+
+      imageAttachments.forEach((attachment, index) => {
+        if (attachment.file) {
+          formData.append(`image_attachment_file_${index}`, attachment.file);
+          formData.append(`image_caption_${index}`, attachment.caption);
+        }
       });
-      
-      addSuccessToast(t('Bulletin created successfully'));
-      form.resetFields();
-      setSelectedChart(null);
-      onSuccess();
-    } catch (error) {
-      console.log(error);
-      const errorMessage = await getClientErrorObject(error);
-      addDangerToast(errorMessage.message || t('Failed to create bulletin'));
+
+      const response = await SupersetClient.post({
+        endpoint: '/api/v1/bulletins_and_advisories/',
+        body: formData,
+        headers: {},
+      });
+
+      const newBulletin = response.json.result as Bulletin;
+      addSuccessToast(t('Bulletin created successfully!'));
+      onBulletinCreated(newBulletin);
+      toggle();
+    } catch (error: any) {
+      console.error('Error creating bulletin:', error);
+      let detailedMessage = t('Failed to create bulletin.');
+      if (error.response && error.response.data && error.response.data.message) {
+        detailedMessage = error.response.data.message;
+      } else if (error.message) {
+        detailedMessage = error.message;
+      }
+      setError(detailedMessage);
+      addDangerToast(detailedMessage);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleModalClose = () => {
+    toggle();
+  };
+
+  const handleChartSelectedAsAttachment = async (option: LabeledValue | undefined) => {
+    if (option && option.value) {
+      const chartId = option.value as number;
+      const chartName = option.label as string;
+      try {
+        const chartDetailsResponse = await SupersetClient.get({
+          endpoint: `/api/v1/chart/${chartId}`,
+        });
+        const chartResult = chartDetailsResponse.json.result;
+        const digest = chartResult.digest;
+
+        if (!digest) {
+          addDangerToast(t('Could not retrieve chart digest for thumbnail.'));
+          return;
+        }
+
+        const thumbnailUrl = `/api/v1/chart/${chartId}/thumbnail/${digest}/`;
+
+        const response = await fetch(thumbnailUrl);
+        if (!response.ok) {
+          throw new Error(t('Failed to fetch chart thumbnail image. Status: ') + response.status);
+        }
+        const imageBlob = await response.blob();
+        const fileName = `${chartName.replace(/[^a-zA-Z0-9]/g, '_')}_thumbnail.png`;
+        const imageFile = new File([imageBlob], fileName, { type: imageBlob.type || 'image/png' });
+
+        const newAttachment: AttachmentState = {
+          uid: `chart_thumb_${chartId}_${Date.now()}`,
+          file: imageFile,
+          caption: chartName,
+          fileList: [{
+            uid: `chart_thumb_file_${chartId}_${Date.now()}`,
+            name: fileName,
+            status: 'done',
+            originFileObj: imageFile,
+            url: URL.createObjectURL(imageFile),
+            size: imageFile.size,
+            type: imageFile.type,
+          }],
+        };
+
+        setImageAttachments(prevAttachments => {
+          const firstEmptyIndex = prevAttachments.findIndex(att => !att.file && att.caption === '' && att.fileList.length === 0);
+          if (firstEmptyIndex === 0 && prevAttachments.length === 1 && !prevAttachments[0].file) {
+            return [newAttachment];
+          }
+          return [...prevAttachments, newAttachment];
+        });
+
+        addSuccessToast(t('Chart thumbnail added as an image attachment.'));
+
+      } catch (err) {
+        console.error('Error fetching chart thumbnail:', err);
+        addDangerToast(t('Failed to add chart thumbnail as attachment. ') + (err instanceof Error ? err.message : ''));
+      }
     }
   };
 
   return (
-    <Modal
-      title={t('Create New Bulletin')}
-      visible={visible}
-      onCancel={onClose}
-      confirmLoading={loading}
-      onOk={handleSubmit}
-      width={800}
-    >
-      <Form form={form} layout="vertical">
-        <Form.Item
-          name="title"
-          label={t('Title')}
-          rules={[{ required: true, message: t('Title is required') }]}
-        >
-          <Input />
-        </Form.Item>
+    <>
+      <Modal
+        title={t('Create New Bulletin')}
+        visible={isOpen}
+        onCancel={handleModalClose}
+        onOk={handleSubmit}
+        confirmLoading={isLoading}
+        destroyOnClose
+        width={800}
+        footer={[
+          <Button key="back" onClick={handleModalClose}>
+            {t('Cancel')}
+          </Button>,
+          <Button key="submit" type="primary" loading={isLoading} onClick={handleSubmit}>
+            {t('Create Bulletin')}
+          </Button>,
+        ]}
+      >
+        {error && <Alert message={error} type="error" showIcon closable onClose={() => setError(null)} className="mb-3" />}
+        <Form form={form} layout="vertical" name="create_bulletin_form">
+          <Form.Item
+            name="title"
+            label={t('Title')}
+            rules={[{ required: true, message: t('Title is required') }]}
+          >
+            <Input maxLength={500} />
+          </Form.Item>
+          <Form.Item
+            name="advisory"
+            label={t('Advisory')}
+            rules={[{ required: true, message: t('Advisory is required') }]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item
+            name="risks"
+            label={t('Risks')}
+            rules={[{ required: true, message: t('Risks are required') }]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item
+            name="safety_tips"
+            label={t('Safety Tips')}
+            rules={[{ required: true, message: t('Safety Tips are required') }]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item name="hashtags" label={t('Hashtags (comma-separated)')}>
+            <Input maxLength={500} />
+          </Form.Item>
 
-        <Form.Item
-          name="advisory"
-          label={t('Advisory')}
-          rules={[{ required: true, message: t('Advisory is required') }]}
-        >
-          <Input.TextArea rows={4} />
-        </Form.Item>
+          <Form.Item label={t('Image Attachments (Optional)')}>
+            {imageAttachments.map((attachment, index) => (
+              <div key={attachment.uid} className="mb-3 p-3 border rounded" style={{ borderColor: '#d9d9d9'}}>
+                <Form.Item
+                  label={`${t('Image File')} ${index + 1}`}
+                >
+                  <Upload
+                    name={`image_file_${index}`}
+                    listType="picture"
+                    fileList={attachment.fileList}
+                    beforeUpload={() => false}
+                    onChange={(info: UploadChangeParam<UploadFile>) => handleFileChange(index, info)}
+                    onRemove={() => {
+                       const newAttachments = [...imageAttachments];
+                       if(newAttachments[index].file) {
+                           newAttachments[index].file = undefined;
+                       }
+                       newAttachments[index].fileList = [];
+                       setImageAttachments(newAttachments);
+                    }}
+                    maxCount={1}
+                  >
+                    <Button icon={<UploadOutlined />}>{t('Click to select image')}</Button>
+                  </Upload>
+                </Form.Item>
+                <Form.Item
+                  label={`${t('Image Caption')} ${index + 1}`}
+                >
+                  <Input
+                    value={attachment.caption}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleCaptionChange(index, e)}
+                    placeholder={t('Enter caption for the image')}
+                  />
+                </Form.Item>
+                {imageAttachments.length > 0 && (
+                  <Button
+                    icon={<DeleteOutlined />}
+                    danger
+                    onClick={() => handleRemoveAttachment(index)}
+                    style={{ marginTop: '8px' }}
+                  >
+                    {t('Remove This Attachment')}
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button
+              type="dashed"
+              onClick={handleAddAttachment}
+              icon={<PlusOutlined />}
+              style={{ marginTop: '10px', marginRight: '10px' }}
+            >
+              {t('Add File Attachment')}
+            </Button>
+            <Button
+              type="dashed"
+              onClick={() => setIsChartSelectorModalOpen(true)}
+              icon={<PlusOutlined />}
+              style={{ marginTop: '10px'}}
+            >
+              {t('Add Chart Thumbnail')}
+            </Button>
+          </Form.Item>
+           <div style={{ fontSize: '0.8em', color: 'gray', marginTop: '20px' }}>
+              {t('Fields marked with an asterisk (*) are required.')}
+            </div>
+        </Form>
+      </Modal>
 
-        <Form.Item
-          name="risks"
-          label={t('Risks')}
-          rules={[{ required: true, message: t('Risks are required') }]}
-        >
-          <Input.TextArea rows={4} />
-        </Form.Item>
-
-        <Form.Item
-          name="safety_tips"
-          label={t('Safety Tips')}
-          rules={[{ required: true, message: t('Safety tips are required') }]}
-        >
-          <Input.TextArea rows={4} />
-        </Form.Item>
-
-        <Form.Item
-          name="hashtags"
-          label={t('Hashtags')}
-          rules={[{ required: true, message: t('At least one hashtag is required') }]}
-          help={t('Separate multiple hashtags with commas')}
-        >
-          <Input />
-        </Form.Item>
-
-        <Form.Item
-          name="chart_id"
-          label={t('Associated Chart')}
-          getValueFromEvent={(val: SelectValue) => {
-            if (!val || typeof val === 'string') return null;
-            const labeledValue = val as SelectLabeledValue;
-            return Number(labeledValue.value);
-          }}
-        >
+      <Modal
+        title={t('Select Chart for Thumbnail')}
+        visible={isChartSelectorModalOpen}
+        onOk={() => {
+          if (selectedChartForThumbnail) {
+            handleChartSelectedAsAttachment(selectedChartForThumbnail);
+          }
+          setIsChartSelectorModalOpen(false);
+          setSelectedChartForThumbnail(null);
+          setChartThumbnailPreviewUrl(null);
+          setIsPreviewLoading(false);
+        }}
+        onCancel={() => {
+          setIsChartSelectorModalOpen(false);
+          setSelectedChartForThumbnail(null);
+          setChartThumbnailPreviewUrl(null);
+          setIsPreviewLoading(false);
+        }}
+        confirmLoading={isLoading}
+        okButtonProps={{ disabled: !selectedChartForThumbnail }}
+        destroyOnClose
+      >
+        <div style={{ width: '100%' }}>
           <AsyncSelect
-            ref={selectRef}
             allowClear
-            showSearch
             labelInValue
-            placeholder={t('Select a chart')}
-            onChange={handleChartSelect}
+            value={selectedChartForThumbnail || undefined}
+            onChange={async (value: any) => {
+              setSelectedChartForThumbnail(value as LabeledValue | null);
+              if (value && value.value) {
+                setIsPreviewLoading(true);
+                setChartThumbnailPreviewUrl(null);
+                try {
+                  const chartId = value.value as number;
+                  const chartDetailsResponse = await SupersetClient.get({
+                    endpoint: `/api/v1/chart/${chartId}`,
+                  });
+                  const chartResult = chartDetailsResponse.json.result;
+                  const digest = chartResult.digest;
+                  if (digest) {
+                    setChartThumbnailPreviewUrl(`/api/v1/chart/${chartId}/thumbnail/${digest}/?force=true`);
+                  } else {
+                    addDangerToast(t('Could not retrieve chart digest for thumbnail preview.'));
+                    setChartThumbnailPreviewUrl(null);
+                  }
+                } catch (err) {
+                  console.error('Error fetching chart details for preview:', err);
+                  addDangerToast(t('Failed to load chart thumbnail preview.'));
+                  setChartThumbnailPreviewUrl(null);
+                } finally {
+                  setIsPreviewLoading(false);
+                }
+              } else {
+                setChartThumbnailPreviewUrl(null);
+                setIsPreviewLoading(false);
+              }
+            }}
             options={loadChartOptions}
-            value={selectedChart ? {
-              value: String(selectedChart.value),
-              label: selectedChart.label
-            } : undefined}
-            dropdownRender={menu => menu}
+            placeholder={t('Search for a chart')}
           />
-        </Form.Item>
-
-        {selectedChart?.thumbnail_url && (
-          <ThumbnailPreview>
-            <ImageLoader
-              src={selectedChart.thumbnail_url}
-              fallback="/static/assets/images/chart-card-fallback.svg"
-              isLoading={false}
-              position="top"
+        </div>
+        {isPreviewLoading && <div style={{ textAlign: 'center', margin: '10px' }}><Spin /> <p>{t('Loading preview...')}</p></div>}
+        {chartThumbnailPreviewUrl && !isPreviewLoading && (
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <img 
+              src={chartThumbnailPreviewUrl} 
+              alt={t('Chart thumbnail preview')} 
+              style={{ maxWidth: '100%', maxHeight: '200px', border: '1px solid #f0f0f0' }} 
+              onError={() => {
+                addDangerToast(t('Thumbnail image not available or still generating. Try adding the chart to see if it becomes available.'));
+                setChartThumbnailPreviewUrl(null);
+              }}
             />
-          </ThumbnailPreview>
+          </div>
         )}
-      </Form>
-    </Modal>
+        {!isPreviewLoading && !chartThumbnailPreviewUrl && selectedChartForThumbnail && (
+          <div style={{ marginTop: '15px', textAlign: 'center', color: 'grey' }}>
+            {t('No preview available or chart has no thumbnail.')}
+          </div>
+        )}
+      </Modal>
+    </>
   );
-} 
+};
+
+export default CreateBulletinModal; 
