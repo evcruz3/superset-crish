@@ -174,7 +174,7 @@ services:
     user: "root"
 
   minio:
-    image: minio/minio:jessestuart/minio:latest # You can update this version if desired
+    image: jessestuart/minio:latest # You can update this version if desired
     container_name: superset_minio
     env_file:
       - path: docker/.env # default
