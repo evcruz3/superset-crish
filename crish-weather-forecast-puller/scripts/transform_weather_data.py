@@ -337,7 +337,7 @@ def process_weather_files():
     
     return dataframes
 
-def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, municipality_name, municipality_code, geojson_path, alert_value):
+def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, municipality_name, municipality_code, geojson_path, alert_value, parameter_unit):
     """
     Generates a choropleth map image of the forecast for a specific parameter and date.
     Colors municipalities by alert level.
@@ -393,7 +393,7 @@ def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, 
         except ValueError:
             formatted_title_date = forecast_date_str # Fallback to original if parsing fails
 
-        ax.set_title(f'{parameter_name} Forecast for Timor-Leste - {formatted_title_date}\nAlert in {municipality_name} (Value: {alert_value:.2f})', fontsize=15)
+        ax.set_title(f'{parameter_name} Forecast for Timor-Leste - {formatted_title_date}\nAlert in {municipality_name} ({parameter_name}: {alert_value:.2f} {parameter_unit})', fontsize=15)
         ax.set_axis_off()
         plt.tight_layout()
 
@@ -655,7 +655,8 @@ def ingest_to_postgresql(dataframes):
                                             alert_row['municipality_name'],
                                             alert_row['municipality_code'],
                                             GEOJSON_FILE_PATH,
-                                            alert_row['parameter_value']
+                                            alert_row['parameter_value'],
+                                            parameter_unit
                                         )
                                         if map_image_buffer:
                                             map_s3_key = f"bulletin_charts/map_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"

@@ -303,32 +303,6 @@ def generate_bulletin_pdf(bulletin):
              logger.info(f"No image attachment objects to process for bulletin ID: {bulletin.id}")
         else:
             logger.info(f"Processing {len(attachments_to_process)} image attachment objects for bulletin ID: {bulletin.id}")
-            attachments_section_title_text = "Attached Images"
-            p.setFont("Helvetica-Bold", 14)
-            # Use a unique variable name for title lines here
-            attachment_title_lines = split_text_to_lines(attachments_section_title_text, content_width, "Helvetica-Bold", 14)
-            
-            current_font_size_for_section_title = 14
-            leading_for_section_title = current_font_size_for_section_title * 1.2
-            # Calculate height needed for the title block including its bottom padding
-            needed_height_for_attachments_title_block = (len(attachment_title_lines) * leading_for_section_title) + (0.15 * inch)
-
-            if y - needed_height_for_attachments_title_block < margin_bottom:
-                p.showPage()
-                p.setFont("Helvetica-Bold", current_font_size_for_section_title) # Reset font
-                y = height - margin_top
-                
-            for line_text in attachment_title_lines:
-                # This inner check is mostly for multi-line titles, unlikely for "Attached Images" but robust
-                if y - leading_for_section_title < margin_bottom:
-                     p.showPage()
-                     p.setFont("Helvetica-Bold", current_font_size_for_section_title)
-                     y = height - margin_top
-                line_width_for_section_title = p.stringWidth(line_text, "Helvetica-Bold", current_font_size_for_section_title)
-                p.drawString(margin_left + (content_width - line_width_for_section_title) / 2, y - current_font_size_for_section_title, line_text)
-                y -= leading_for_section_title
-            y -= 0.15 * inch # Space after the "Attached Images" title
-
             for attachment_idx, attachment in enumerate(attachments_to_process):
                 img_data = None
                 object_key = attachment.s3_key
