@@ -35,7 +35,7 @@ class DisseminatedBulletinLog(Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     bulletin_id = Column(Integer, ForeignKey('bulletins.id'), nullable=False)
-    email_group_id = Column(Integer, ForeignKey('email_groups.id'), nullable=False)
+    email_group_id = Column(Integer, ForeignKey('email_groups.id'), nullable=True)
     
     sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     # Status: e.g., "SUCCESS", "PARTIAL_SUCCESS", "FAILED", "PENDING"
@@ -47,6 +47,9 @@ class DisseminatedBulletinLog(Model):
     details = Column(Text, nullable=True) 
 
     disseminated_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=False)
+
+    # New field to store the channel of dissemination
+    channel = Column(String(50), nullable=True) # e.g., 'email', 'facebook', 'email_and_facebook'
 
     # Relationships
     bulletin = relationship('Bulletin', foreign_keys=[bulletin_id])

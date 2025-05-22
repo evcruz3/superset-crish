@@ -80,6 +80,14 @@ S3_PRESIGNED_URL_EXPIRATION = int(os.getenv('S3_PRESIGNED_URL_EXPIRATION', 3600)
 S3_ADDRESSING_STYLE = os.getenv('S3_ADDRESSING_STYLE', 'path') # 'path' or 'virtual'
 S3_PUBLIC_ENDPOINT_URL = os.getenv('S3_PUBLIC_ENDPOINT_URL', 'http://localhost:9090') # For frontend access
 
+# Facebook Dissemination Configuration
+FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID', 1370637347489550)
+FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', 'cc2efa39adad057cac3d04606993e391')
+FACEBOOK_PAGE_ID = os.getenv('FACEBOOK_PAGE_ID', 656750690853001)
+FACEBOOK_ACCESS_TOKEN = os.getenv('FACEBOOK_ACCESS_TOKEN', 'EAATelmA2hw4BOxobrJAkJYNQxiLEC27jggJCFLAjZAVjUd1zmLmehTe2HT98yZAYzD5mTzKUa8GU9ZCXfr310YKIQFY8jzUi5Pm7I1leZCOrCVFg9Ih70Ug0ngbZB4tmaI6FZApQ23r0fnxTSmxiP4ZASYBoDurWtc4nTThLcoMNwtBPMfJduioAdehezeUdeKfcZBpDfaix28yd65kPBZB7eboK4QEF6aZAZCmnuHU')
+# Optional: Default message template for Facebook posts
+FACEBOOK_DEFAULT_MESSAGE_TEMPLATE = os.getenv('FACEBOOK_DEFAULT_MESSAGE_TEMPLATE', "New Bulletin: {title} - Read more at {url}")
+
 class CeleryConfig:
     broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"
     imports = (

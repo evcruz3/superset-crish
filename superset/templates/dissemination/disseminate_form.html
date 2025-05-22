@@ -223,10 +223,32 @@
     /* height: 500px; */ /* Height is now managed by flex-grow */
     border: none;
   }
+
+  .channel-options {
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+  }
+  .channel-options .form-group {
+      margin-bottom: 0; /* Remove default bottom margin for checkbox groups */
+  }
+  .channel-options label {
+      margin-right: 15px; /* Space out checkboxes */
+  }
+  .channel-options input[type="checkbox"] {
+      margin-right: 5px;
+  }
+
+  /* Style to hide elements */
+  .hidden-field {
+      display: none;
+  }
 </style>
 
 <div class="main-content-area">
-  <h3>{{ _("Disseminate Bulletin by Email") }}</h3>
+  <h3>{{ _("Disseminate Bulletin") }}</h3>
 
   <div class="dissemination-layout">
     <div class="form-column">
@@ -263,51 +285,62 @@
               {% endif %}
           </div>
 
-          {# Bulletin Preview Area (Text) - REMOVED #}
-          <!-- 
-          <div id="bulletin-preview-area" style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
-              <div id="bulletin-preview-content">
-                  <small class="text-muted">{{ _("Select a bulletin above to see a preview.") }}</small>
+          {# Dissemination Channels #}
+          <div class="form-group channel-options {% if form.dissemination_channels.errors %}has-error{% endif %}">
+              {{ form.dissemination_channels.label(class_="control-label") }} <span style="color:red;">*</span>
+              <div>
+              {% for subfield in form.dissemination_channels %}
+                  <label for="{{ subfield.id }}">
+                      {{ subfield(id=subfield.id) }} {{ subfield.label.text }}
+                  </label>
+              {% endfor %}
               </div>
-          </div>
-          -->
-
-          <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
-              {{ form.email_group_id.label(class_="control-label") }} <span style="color:red;">*</span>
-              {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
-              {% if form.email_group_id.errors %}
-                  <ul class="help-block list-unstyled">{% for error in form.email_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              <small class="text-muted">{{ form.dissemination_channels.description }}</small>
+              {% if form.dissemination_channels.errors %}
+                  <ul class="help-block list-unstyled">{% for error in form.dissemination_channels.errors %}<li>{{ error }}</li>{% endfor %}</ul>
               {% endif %}
           </div>
 
-          {# Email Preview Area #}
-          <div id="email-preview">
-              <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
-          </div>
+          {# Email Specific Fields - to be shown/hidden by JS #}
+          <div id="email-specific-fields">
+              <div id="email-group-container"> {# WRAPPED for easier JS targeting #}
+                  <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
+                      {{ form.email_group_id.label(class_="control-label") }} <span id="email-group-required-star" style="color:red;" class="hidden-field">*</span>
+                      {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
+                      {% if form.email_group_id.errors %}
+                          <ul class="help-block list-unstyled">{% for error in form.email_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                      {% endif %}
+                  </div>
 
-          <div class="form-group {% if form.subject.errors %}has-error{% endif %}" style="margin-top: 15px;">
-              {{ form.subject.label(class_="control-label") }} <span style="color:red;">*</span>
-              {% if selected_bulletin %}
-                  {{ form.subject(class_="form-control", value=selected_bulletin.title ~ " - Advisory") }}
-              {% else %}
-                  {{ form.subject(class_="form-control", id="subject") }}
-              {% endif %}
-              {% if form.subject.errors %}
-                  <ul class="help-block list-unstyled">{% for error in form.subject.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-              {% endif %}
-          </div>
+                  <div id="email-preview" class="form-group">
+                      <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
+                  </div>
+              </div>
 
-          <div class="form-group {% if form.message.errors %}has-error{% endif %}">
-              {{ form.message.label(class_="control-label") }} <span style="color:red;">*</span>
-              {{ form.message(class_="form-control", rows="10", id="message") }}
-              {% if form.message.errors %}
-                  <ul class="help-block list-unstyled">{% for error in form.message.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-              {% endif %}
-          </div>
+              <div class="form-group {% if form.subject.errors %}has-error{% endif %}" style="margin-top: 15px;">
+                  {{ form.subject.label(class_="control-label") }} <span id="email-subject-required-star" style="color:red;" class="hidden-field">*</span>
+                  {% if selected_bulletin %}
+                      {{ form.subject(class_="form-control", value=selected_bulletin.title ~ " - Advisory", id="subject") }}
+                  {% else %}
+                      {{ form.subject(class_="form-control", id="subject") }}
+                  {% endif %}
+                  {% if form.subject.errors %}
+                      <ul class="help-block list-unstyled">{% for error in form.subject.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                  {% endif %}
+              </div>
+
+              <div class="form-group {% if form.message.errors %}has-error{% endif %}">
+                  {{ form.message.label(class_="control-label") }} <span id="email-message-required-star" style="color:red;" class="hidden-field">*</span>
+                  {{ form.message(class_="form-control", rows="10", id="message") }}
+                   <small class="text-muted">{{ _("This content will be used for the email body. For Facebook, this message combined with the subject will form the post caption.") }}</small>
+                  {% if form.message.errors %}
+                      <ul class="help-block list-unstyled">{% for error in form.message.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                  {% endif %}
+              </div>
+          </div> {# End email-specific-fields #}
           
-          <div style="margin-top: auto;"> {# Push buttons to the bottom of the column #}
+          <div style="margin-top: auto;"> 
             {{ form.submit(class_="btn btn-primary") if form else "<button type=\"submit\" class=\"btn btn-primary\">"+_("Disseminate")+"</button>" | safe }}
-            {# <a href="{{ url_for('DisseminatedBulletinLogModelView.list') }}" class="btn btn-default">{{ _("Cancel") }}</a> #} {# Cancel button removed #}
           </div>
       </form>
     </div>
@@ -335,6 +368,18 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Remove 'required' attribute from individual channel checkboxes
+    // to prevent unwanted client-side validation messages for the group.
+    // Server-side DataRequired validator handles the "at-least-one-selected" rule.
+    const emailChannelCheckbox = document.getElementById('dissemination_channels-0');
+    if (emailChannelCheckbox) {
+        emailChannelCheckbox.removeAttribute('required');
+    }
+    const facebookChannelCheckbox = document.getElementById('dissemination_channels-1');
+    if (facebookChannelCheckbox) {
+        facebookChannelCheckbox.removeAttribute('required');
+    }
+
     // Initialize Select2
     if (typeof $ !== 'undefined' && $.fn.select2) {
         $('#bulletin_id').select2({
@@ -368,6 +413,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const pdfPreviewArea = document.getElementById('pdf-preview-area');
     const pdfIframe = document.getElementById('pdf-iframe');
     const pdfPlaceholder = document.getElementById('pdf-preview-placeholder');
+
+    // ADDED: Variables for message textarea state
+    let originalMessage = messageTextarea ? messageTextarea.value : '';
+    let isUserEditedMessage = false;
 
     function escapeHtml(unsafe) {
         if (unsafe === null || typeof unsafe === 'undefined') return '';
@@ -431,6 +480,27 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             */
 
+            // ADDED: Pre-fill message textarea
+            if (messageTextarea && (!isUserEditedMessage || messageTextarea.value === originalMessage)) {
+                const advisoryText = selectedBulletin.advisory ? selectedBulletin.advisory.toString() : "";
+                const risksText = selectedBulletin.risks ? selectedBulletin.risks.toString() : "";
+                const safetyTipsText = selectedBulletin.safety_tips ? selectedBulletin.safety_tips.toString() : "";
+                
+                let messageContent = [];
+                if (advisoryText) {
+                    messageContent.push(`ADVISORY:\n${advisoryText}`);
+                }
+                if (risksText) {
+                    messageContent.push(`RISKS:\n${risksText}`);
+                }
+                if (safetyTipsText) {
+                    messageContent.push(`SAFETY TIPS:\n${safetyTipsText}`);
+                }
+                const finalMessage = messageContent.join('\n\n').trim();
+                messageTextarea.value = finalMessage;
+                originalMessage = finalMessage;
+            }
+
             // Update PDF preview
             if (pdfIframe && pdfPlaceholder && selectedBulletin.id) {
                 const pdfUrl = `/api/v1/bulletins_and_advisories/${selectedBulletin.id}/pdf/?preview=true`;
@@ -457,6 +527,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             */
 
+            // ADDED: Clear message textarea
+            if (messageTextarea && (!isUserEditedMessage || messageTextarea.value === originalMessage)) {
+                messageTextarea.value = '';
+                originalMessage = '';
+            }
+
             // Clear PDF preview
             if (pdfIframe && pdfPlaceholder) {
                 pdfIframe.src = 'about:blank'; // Clear the iframe content
@@ -473,9 +549,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ADDED: Listen for user edits on message
+    if (messageTextarea) {
+        messageTextarea.addEventListener('input', function() {
+            isUserEditedMessage = messageTextarea.value !== originalMessage;
+        });
+    }
+
     // Initial call to populate fields / set PDF preview state
     if (bulletinSelect && bulletinSelect.value && parseInt(bulletinSelect.value) !== 0) {
         if(subjectInput) originalSubject = subjectInput.value;
+        if(messageTextarea) originalMessage = messageTextarea.value; // Initialize originalMessage
         updateFields(); 
     } else {
         // If no bulletin is pre-selected, clear subject and ensure previews are in initial state
@@ -499,11 +583,13 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#bulletin_id').on('change', function() {
             // Reset subject edit flag when bulletin changes, so new bulletin's subject populates correctly
             isUserEditedSubject = false; 
+            isUserEditedMessage = false; // ADDED: Reset message edit flag too
             updateFields();
         });
     } else if (bulletinSelect) {
         bulletinSelect.addEventListener('change', function() {
             isUserEditedSubject = false;
+            isUserEditedMessage = false; // ADDED: Reset message edit flag too
             updateFields();
         });
     }
@@ -523,13 +609,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateEmailPreview() {
+        if (!emailGroupSelect || !emailPreviewDiv) return;
         const selectedId = parseInt(emailGroupSelect.value);
         const selectedGroup = emailGroupsData.find(g => g.id === selectedId);
 
         if (selectedGroup && selectedGroup.emails && selectedGroup.emails.length > 0) {
-            // Display emails as a list or comma-separated string
-            emailPreviewDiv.innerHTML = '<strong>Recipients:</strong><br>' + selectedGroup.emails.join('<br>'); 
-            // Or: emailPreviewDiv.textContent = 'Recipients: ' + selectedGroup.emails.join(', ');
+            emailPreviewDiv.innerHTML = '<strong>{{ _("Recipients:") }}</strong><br>' + selectedGroup.emails.join('<br>'); 
         } else if (selectedGroup) {
             emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("No email addresses defined for this group.") }}</small>';
         } else {
@@ -537,11 +622,66 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // emailGroupSelect.addEventListener('change', updateEmailPreview);
-    $('#email_group_id').on('change', updateEmailPreview);
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#email_group_id').on('change', updateEmailPreview);
+    } else if (emailGroupSelect) {
+        emailGroupSelect.addEventListener('change', updateEmailPreview);
+    }
+    updateEmailPreview();
 
-    // Initial call to set preview if a group is pre-selected (though usually it won't be)
-    updateEmailPreview(); 
+    // Channel selection logic
+    const disseminationChannelsCheckboxes = document.querySelectorAll('input[name="dissemination_channels"]');
+    const emailGroupContainer = document.getElementById('email-group-container'); // ADDED
+    // const emailPreviewDiv = document.getElementById('email-preview'); // Already present, ensure it's used - REMOVE THIS REDECLARATION
+    // const emailSpecificFieldsDiv = document.getElementById('email-specific-fields'); // REMOVED - No longer toggling the whole div
+    const emailGroupRequiredStar = document.getElementById('email-group-required-star');
+    const emailSubjectRequiredStar = document.getElementById('email-subject-required-star');
+    const emailMessageRequiredStar = document.getElementById('email-message-required-star');
+
+
+    function toggleEmailFields() {
+        let emailChannelSelected = false;
+        let facebookChannelSelected = false; // ADDED: to check for Facebook channel
+
+        disseminationChannelsCheckboxes.forEach(function(checkbox) {
+            if (checkbox.value === 'email' && checkbox.checked) {
+                emailChannelSelected = true;
+            }
+            if (checkbox.value === 'facebook' && checkbox.checked) { // ADDED: Check for Facebook
+                facebookChannelSelected = true;
+            }
+        });
+
+        // Toggle Email Group and Preview
+        if (emailChannelSelected) {
+            if(emailGroupContainer) emailGroupContainer.classList.remove('hidden-field');
+            if(emailPreviewDiv) emailPreviewDiv.classList.remove('hidden-field');
+            if(emailGroupRequiredStar) emailGroupRequiredStar.classList.remove('hidden-field');
+        } else {
+            if(emailGroupContainer) emailGroupContainer.classList.add('hidden-field');
+            if(emailPreviewDiv) emailPreviewDiv.classList.add('hidden-field');
+            if(emailGroupRequiredStar) emailGroupRequiredStar.classList.add('hidden-field');
+        }
+
+        // Toggle Subject and Message required stars based on Email OR Facebook
+        if (emailChannelSelected || facebookChannelSelected) {
+            if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.remove('hidden-field');
+            if(emailMessageRequiredStar) emailMessageRequiredStar.classList.remove('hidden-field');
+        } else {
+            if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.add('hidden-field');
+            if(emailMessageRequiredStar) emailMessageRequiredStar.classList.add('hidden-field');
+        }
+
+        // The main email-specific-fields div is no longer toggled here
+        // It remains visible to show Subject and Message if Facebook is selected
+    }
+
+    disseminationChannelsCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', toggleEmailFields);
+    });
+
+    // Initial call to set visibility based on pre-selected channels
+    toggleEmailFields();
 
 });
 </script>

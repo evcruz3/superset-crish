@@ -349,7 +349,7 @@ function EmailGroups({
         refreshData={refreshData}
         addSuccessToast={addSuccessToast}
         addDangerToast={addDangerToast}
-        defaultViewMode="card"
+        defaultViewMode="table"
       />
     </>
   );

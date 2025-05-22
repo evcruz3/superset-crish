@@ -1,10 +1,14 @@
 from flask_appbuilder import ModelView, expose, BaseView
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import lazy_gettext as _
-from flask import redirect, url_for, request, flash, g # g for current user
+from flask import redirect, url_for, request, flash, g, current_app # g for current user, current_app for config
 from markupsafe import Markup # Import Markup
 import json # Import the json library
 import logging # Add logging import
+
+# Setup logger for this module
+logger = logging.getLogger(__name__)
+
 from flask_appbuilder.security.decorators import protect, has_access # Ensure has_access is also imported if needed for SPA views
 
 from superset import appbuilder, db
@@ -15,6 +19,11 @@ from superset.views.base import SupersetModelView, DeleteMixin, BaseSupersetView
 # Import the new form
 from .forms import DisseminationForm
 from superset.utils.pdf import generate_bulletin_pdf
+# Import Facebook utils
+from .facebook_utils import get_facebook_graph_api, upload_single_photo_to_facebook, create_facebook_feed_post # New imports
+import boto3 # For S3 interaction
+from botocore.exceptions import ClientError # For S3 error handling
+import os # For path joining if needed for temporary files
 
 # Import for celery task if we define it here or in a tasks.py file
 # from .tasks import send_bulletin_email_task
@@ -190,24 +199,22 @@ class DisseminateBulletinView(BaseView):
     def form(self):
         form = DisseminationForm()
         bulletins_query = db.session.query(Bulletin).order_by(Bulletin.created_on.desc()).all()
-        email_groups_query = db.session.query(EmailGroup).order_by(EmailGroup.name).all() # Renamed variable
+        email_groups_query = db.session.query(EmailGroup).order_by(EmailGroup.name).all()
         bulletins_json_for_template = self._bulletins_to_json(bulletins_query)
-        email_groups_json_for_template = self._email_groups_to_json(email_groups_query) # Generate JSON for email groups
+        email_groups_json_for_template = self._email_groups_to_json(email_groups_query)
 
         form.bulletin_id.choices = [ (b.id, b.title) for b in bulletins_query ]
         form.bulletin_id.choices.insert(0, (0, _('-- Select a Bulletin --')))
-        form.email_group_id.choices = [ (g.id, g.name) for g in email_groups_query ] # Use renamed variable
+        form.email_group_id.choices = [ (g.id, g.name) for g in email_groups_query ]
         form.email_group_id.choices.insert(0, (0, _('-- Select an Email Group --')))
 
         selected_bulletin_for_template = None
 
         if request.method == "GET":
-            # Check for bulletin_id from query parameter for pre-selection
             preselect_bulletin_id_str = request.args.get('bulletin_id')
             if preselect_bulletin_id_str:
                 try:
                     preselect_bulletin_id = int(preselect_bulletin_id_str)
-                    # Check if this ID is valid and in our choices
                     if any(b.id == preselect_bulletin_id for b in bulletins_query):
                         form.bulletin_id.data = preselect_bulletin_id
                         selected_bulletin_for_template = db.session.query(Bulletin).get(preselect_bulletin_id)
@@ -216,73 +223,281 @@ class DisseminateBulletinView(BaseView):
                 except ValueError:
                     flash(_("Invalid bulletin ID format."), "warning")
             
-            # Ensure default placeholder if no valid pre-selection or other data
             if form.bulletin_id.data is None or form.bulletin_id.data == 0:
-                form.bulletin_id.data = 0 # Default to placeholder
+                form.bulletin_id.data = 0
             if form.email_group_id.data is None:
-                form.email_group_id.data = 0
+                 # Set default for email group only if not pre-selecting channels or if email is a default channel
+                if not form.dissemination_channels.data or 'email' in form.dissemination_channels.data:
+                    form.email_group_id.data = 0
+            
+            # Pre-select channels if specified in query params (e.g., ?channels=email,facebook)
+            preselect_channels_str = request.args.get('channels')
+            if preselect_channels_str:
+                preselect_channels = [channel.strip() for channel in preselect_channels_str.split(',')]
+                valid_channels = [choice[0] for choice in form.dissemination_channels.choices]
+                form.dissemination_channels.data = [ch for ch in preselect_channels if ch in valid_channels]
+            elif not form.dissemination_channels.data: # Default to email if no preselection
+                form.dissemination_channels.data = ['email']
+
 
         if form.validate_on_submit():
             bulletin_id = form.bulletin_id.data
-            email_group_id = form.email_group_id.data
-            subject = form.subject.data
-            message = form.message.data  # This is now the email body
-
-            # Fetch the bulletin and email group
-            bulletin = db.session.query(Bulletin).get(bulletin_id)
-            email_group = db.session.query(EmailGroup).get(email_group_id) # Use correct variable
-
-            # Generate PDF attachment
-            pdf_buffer = generate_bulletin_pdf(bulletin)
-            pdf_filename = f"{bulletin.title}.pdf"
-            pdf_data = pdf_buffer.read()
-
-            # Prepare email recipients
-            recipient_emails_str = email_group.emails
-            recipient_list = [e.strip() for e in recipient_emails_str.split(',') if e.strip()]
-
-            try:
-                # Use the pdf parameter for PDF attachments
-                send_email_smtp(
-                    to=",".join(recipient_list),
-                    subject=subject,
-                    html_content=message,  # Use the message field as the email body
-                    pdf={pdf_filename: pdf_data},  # Correct format for PDF attachment
-                    config=appbuilder.app.config
-                )
-                log_entry = DisseminatedBulletinLog(
-                    bulletin_id=bulletin.id,
-                    email_group_id=email_group.id,
-                    subject_sent=subject,
-                    message_body_sent=message,
-                    disseminated_by_fk=g.user.id if g.user else None,
-                    status="SUCCESS"
-                )
-                db.session.add(log_entry)
-                db.session.commit()
-                flash(_("Bulletin disseminated successfully to group '%(group_name)s'.", group_name=email_group.name), "info")
-            except Exception as e:
-                db.session.rollback()
-                if 'log_entry' in locals() and log_entry.id:
-                    log_entry.status = "FAILED"
-                    log_entry.details = str(e)
-                    db.session.commit()
-                flash(_("Error disseminating bulletin: %(error)s", error=str(e)), "danger")
+            dissemination_channels = form.dissemination_channels.data # List of selected channels e.g. ['email', 'facebook']
             
+            bulletin = db.session.query(Bulletin).get(bulletin_id)
+            if not bulletin:
+                flash(_("Selected bulletin not found."), "danger")
+                return redirect(url_for("DisseminateBulletinView.form"))
+
+            email_success = False
+            facebook_success = False
+            log_entries = []
+            processed_channels = []
+
+            # --- Email Dissemination ---
+            if 'email' in dissemination_channels:
+                processed_channels.append('email')
+                email_group_id = form.email_group_id.data
+                subject = form.subject.data
+                message_body = form.message.data # Renamed for clarity
+
+                email_group = db.session.query(EmailGroup).get(email_group_id)
+                if not email_group:
+                    flash(_("Selected email group not found for Email dissemination."), "danger")
+                else:
+                    try:
+                        pdf_buffer = generate_bulletin_pdf(bulletin)
+                        pdf_filename = f"{bulletin.title.replace(' ', '_')}.pdf"
+                        pdf_data = pdf_buffer.read()
+                        
+                        recipient_emails_str = email_group.emails
+                        recipient_list = [e.strip() for e in recipient_emails_str.split(',') if e.strip()]
+
+                        if not recipient_list:
+                             raise ValueError("No recipients found in the selected email group.")
+
+                        send_email_smtp(
+                            to=",".join(recipient_list),
+                            subject=subject,
+                            html_content=message_body,
+                            pdf={pdf_filename: pdf_data},
+                            config=current_app.config
+                        )
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            email_group_id=email_group.id, # Log email group for email channel
+                            subject_sent=subject,
+                            message_body_sent=message_body,
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="SUCCESS",
+                            channel="email"
+                        ))
+                        email_success = True
+                    except Exception as e:
+                        logging.error(f"Error disseminating bulletin via Email: {e}", exc_info=True)
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            email_group_id=email_group.id if email_group else None,
+                            subject_sent=subject if subject else "N/A for failed email",
+                            message_body_sent=message_body if message_body else "N/A for failed email",
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="FAILED",
+                            details=f"Email Error: {str(e)}",
+                            channel="email"
+                        ))
+            
+            # --- Facebook Dissemination ---
+            if 'facebook' in dissemination_channels:
+                processed_channels.append('facebook')
+                fb_access_token = current_app.config.get('FACEBOOK_ACCESS_TOKEN')
+                fb_page_id = current_app.config.get('FACEBOOK_PAGE_ID')
+
+                if not fb_access_token or not fb_page_id:
+                    logging.error("Facebook Access Token or Page ID is not configured.")
+                    flash(_("Facebook dissemination is not configured correctly (missing Access Token or Page ID)."), "warning")
+                    log_entries.append(DisseminatedBulletinLog(
+                        bulletin_id=bulletin.id,
+                        disseminated_by_fk=g.user.id if g.user else None,
+                        status="FAILED",
+                        details="Facebook configuration missing (Token or Page ID).",
+                        channel="facebook",
+                        subject_sent=form.subject.data if form.subject.data else f"FB Post attempt for: {bulletin.title}",
+                        message_body_sent="Configuration Error"
+                    ))
+                else:
+                    # Content for Facebook post from form
+                    fb_subject_from_form = form.subject.data
+                    fb_message_from_form = form.message.data
+                    facebook_page_post_content = f"{fb_subject_from_form}\n\n{fb_message_from_form}"
+                    
+                    uploaded_fb_photo_ids = []
+                    image_upload_errors = []
+                    # The main_fb_post_message is now facebook_page_post_content
+                    # main_fb_post_message = bulletin.title
+                    # if bulletin.advisory:
+                    #     main_fb_post_message += "\n\n" + bulletin.advisory
+                    # main_fb_post_message = main_fb_post_message[:1500] # Truncate if too long for a main post
+
+                    try:
+                        graph = get_facebook_graph_api(fb_access_token)
+
+                        # Step 1: Upload all images as unpublished photos with their captions
+                        if bulletin.image_attachments and len(bulletin.image_attachments) > 0:
+                            s3_bucket_name = current_app.config.get('S3_BUCKET')
+                            s3_endpoint_url = current_app.config.get('S3_ENDPOINT_URL')
+                            s3_access_key = current_app.config.get('S3_ACCESS_KEY')
+                            s3_secret_key = current_app.config.get('S3_SECRET_KEY')
+                            s3_region = current_app.config.get('S3_REGION')
+
+                            if not s3_bucket_name:
+                                raise ValueError("S3_BUCKET is not configured for image attachments.")
+
+                            s3_client = boto3.client(
+                                's3',
+                                aws_access_key_id=s3_access_key,
+                                aws_secret_access_key=s3_secret_key,
+                                endpoint_url=s3_endpoint_url,
+                                region_name=s3_region
+                            )
+                            
+                            for attachment in bulletin.image_attachments:
+                                s3_image_url_for_download = None
+                                try:
+                                    s3_object_key = attachment.s3_key
+                                    if not s3_object_key:
+                                        logger.warning(f"Attachment ID {attachment.id} missing s3_key, skipping.")
+                                        image_upload_errors.append(f"Attachment ID {attachment.id}: missing s3_key.")
+                                        continue
+
+                                    s3_image_url_for_download = s3_client.generate_presigned_url(
+                                        'get_object',
+                                        Params={'Bucket': s3_bucket_name, 'Key': s3_object_key},
+                                        ExpiresIn=300 
+                                    )
+                                    logger.info(f"Generated S3 presigned URL for attachment {s3_object_key}: {s3_image_url_for_download}")
+                                    
+                                    photo_caption = attachment.caption or bulletin.title # Use attachment caption or fallback
+                                    
+                                    fb_photo_id = upload_single_photo_to_facebook(
+                                        graph=graph,
+                                        page_id=fb_page_id,
+                                        image_caption=photo_caption,
+                                        image_url=s3_image_url_for_download,
+                                        published=False # Upload as unpublished first
+                                    )
+                                    uploaded_fb_photo_ids.append(fb_photo_id)
+                                    logger.info(f"Uploaded attachment {s3_object_key} to FB, photo ID: {fb_photo_id}")
+                                except Exception as e_img:
+                                    attachment_identifier = getattr(attachment, 's3_key', 'N/A') # Get identifier safely
+                                    logger.error(f"Error processing/uploading attachment {attachment_identifier} to Facebook: {e_img}", exc_info=True)
+                                    image_upload_errors.append(f"Img '{attachment_identifier}': {str(e_img)[:100]}")
+                        
+                        # Step 2: Create the main feed post, attaching the unpublished photos
+                        post_id = create_facebook_feed_post(
+                            graph=graph,
+                            page_id=fb_page_id,
+                            message=facebook_page_post_content, # Use combined content from form
+                            attached_media_ids=uploaded_fb_photo_ids if uploaded_fb_photo_ids else None
+                        )
+                        
+                        log_details = f"Facebook Post ID: {post_id}."
+                        if uploaded_fb_photo_ids:
+                            photo_ids_str = ', '.join(map(str, uploaded_fb_photo_ids))
+                            log_details += f" Attached Photo IDs: {photo_ids_str}."
+                        if image_upload_errors:
+                            image_errors_str = '; '.join(image_upload_errors)
+                            log_details += f" Image Upload Errors: {image_errors_str}."
+                            # If there were image errors but the main post succeeded, consider it partial success or flag warning.
+                            # For now, main post success dictates overall FB success for this log entry.
+
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="SUCCESS" if not image_upload_errors else "PARTIAL_SUCCESS", # Mark as partial if some images failed
+                            details=log_details,
+                            channel="facebook",
+                            subject_sent=fb_subject_from_form,
+                            message_body_sent=fb_message_from_form[:1000] 
+                        ))
+                        facebook_success = True
+
+                    except Exception as e:
+                        logging.error(f"Error disseminating bulletin via Facebook: {e}", exc_info=True)
+                        # Ensure fb_caption is defined or use a fallback for the log
+                        # current_fb_message_for_log = main_fb_post_message if 'main_fb_post_message' in locals() else "N/A for failed Facebook post"
+                        # Correctly join image errors in the exception log details
+                        image_errors_details_str = '; '.join(image_upload_errors) if image_upload_errors else 'None'
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="FAILED",
+                            details=f"Facebook Error: {str(e)}. Image Errors: {image_errors_details_str}",
+                            channel="facebook",
+                            subject_sent=fb_subject_from_form if 'fb_subject_from_form' in locals() else "N/A",
+                            message_body_sent=fb_message_from_form[:1000] if 'fb_message_from_form' in locals() else "N/A"
+                        ))
+                        # facebook_success remains False
+
+            # --- Save all log entries ---
+            if log_entries:
+                try:
+                    db.session.add_all(log_entries)
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logging.error(f"Error saving dissemination logs: {e}", exc_info=True)
+                    flash(_("Critical error: Failed to save dissemination log(s). Please check system logs."), "danger")
+
+
+            # --- Flash overall status message ---
+            final_log_channel = ",".join(sorted(list(set(processed_channels)))) # e.g. "email,facebook"
+            
+            if dissemination_channels: # Only flash messages if channels were selected
+                if 'email' in dissemination_channels and 'facebook' in dissemination_channels:
+                    if email_success and facebook_success:
+                        flash(_("Bulletin disseminated successfully to Email and Facebook."), "success")
+                    else:
+                        # Detailed message construction
+                        msg_parts = []
+                        if email_success: 
+                            msg_parts.append(str(_("Email: Success.")))
+                        else: 
+                            error_detail = next((log.details for log in log_entries if log.channel == 'email' and log.status == 'FAILED'), 'Unknown error')
+                            msg_parts.append(str(_("Email: Failed (%(error)s).", error=error_detail)))
+                        
+                        if facebook_success: 
+                            msg_parts.append(str(_("Facebook: Success.")))
+                        else: 
+                            error_detail = next((log.details for log in log_entries if log.channel == 'facebook' and log.status == 'FAILED'), 'Unknown error')
+                            msg_parts.append(str(_("Facebook: Failed (%(error)s).", error=error_detail)))
+                        flash(str(_("Dissemination Result: ")) + " ".join(msg_parts), "warning" if not (email_success and facebook_success) else "info")
+
+                elif 'email' in dissemination_channels:
+                    if email_success:
+                        flash(_("Bulletin disseminated successfully via Email."), "success")
+                    else:
+                        error_detail = next((log.details for log in log_entries if log.channel == 'email' and log.status == 'FAILED'), 'Unknown error')
+                        flash(_("Failed to disseminate bulletin via Email (%(error)s).", error=error_detail), "danger")
+                elif 'facebook' in dissemination_channels:
+                    if facebook_success:
+                        flash(_("Bulletin disseminated successfully to Facebook."), "success")
+                    else:
+                        error_detail = next((log.details for log in log_entries if log.channel == 'facebook' and log.status == 'FAILED'), 'Unknown error')
+                        flash(_("Failed to disseminate bulletin to Facebook (%(error)s).", error=error_detail), "danger")
+
             return redirect(url_for("DisseminatedBulletinLogModelView.list"))
+        
         elif request.method == "POST": # Form validation failed
-            # Errors are in form.errors and will be displayed by the template
             flash(_("Please correct the errors below and try again."), "danger")
 
-        # For GET request or if form validation failed on POST
         return self.render_template(
             "dissemination/disseminate_form.html", 
             form=form,
             bulletins=bulletins_query, 
-            email_groups=email_groups_query, # Pass the query result (optional, could remove if unused)
+            email_groups=email_groups_query,
             bulletins_json=bulletins_json_for_template,
-            email_groups_json=email_groups_json_for_template, # Pass the email group JSON
-            selected_bulletin=selected_bulletin_for_template # Pass the pre-selected bulletin details
+            email_groups_json=email_groups_json_for_template,
+            selected_bulletin=selected_bulletin_for_template
         )
 
 class EmailGroupsSPAView(BaseSupersetView): # Inherit from BaseSupersetView

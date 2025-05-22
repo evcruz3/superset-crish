@@ -13,4 +13,5 @@ services:
         required: false
     volumes:
       - .:/app
+      - ../superset-frontend/plugins/preset-chart-deckgl-osm/src/layers/Country/countries/timorleste.geojson:/app/config/timorleste.geojson:ro
     restart: unless-stopped 

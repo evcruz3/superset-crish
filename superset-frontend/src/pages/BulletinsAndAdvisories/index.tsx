@@ -292,29 +292,6 @@ function BulletinsAndAdvisories({
         accessor: 'title',
       },
       {
-        Cell: ({ row: { original } }: any) => {
-          if (!original.hashtags) {
-            return null;
-          }
-          const tags = original.hashtags
-            .split(',')
-            .map((tag: string) => tag.trim())
-            .filter((tag: string) => tag.length > 0);
-          
-          return (
-            <>
-              {tags.map((tag: string) => (
-                <Tag key={tag} style={{ marginBottom: '4px', marginRight: '4px' }}>
-                  {tag}
-                </Tag>
-              ))}
-            </>
-          );
-        },
-        Header: t('Hashtags'),
-        accessor: 'hashtags',
-      },
-      {
         Cell: ({ row: { original } }: any) => (
           <FacePile 
             users={[{
@@ -446,14 +423,14 @@ function BulletinsAndAdvisories({
         operator: FilterOperator.Contains,
         debounceTime: 300,
       },
-      {
-        Header: t('Hashtags'),
-        id: 'hashtags',
-        key: 'hashtags',
-        input: 'search',
-        operator: FilterOperator.Contains,
-        debounceTime: 300,
-      },
+      // {
+      //   Header: t('Hashtags'),
+      //   id: 'hashtags',
+      //   key: 'hashtags',
+      //   input: 'search',
+      //   operator: FilterOperator.Contains,
+      //   debounceTime: 300,
+      // },
     ],
     [],
   );
