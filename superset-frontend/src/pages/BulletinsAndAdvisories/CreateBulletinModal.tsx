@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, Upload, Alert, Select as AntdSelect, Spin } from 'antd';
+import { Modal, Form, Input, Button, Upload, Alert, Select as AntdSelect, Spin, Card } from 'antd';
 import { UploadOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { SupersetClient, t, JsonObject } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
@@ -53,7 +53,7 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       form.resetFields();
-      setImageAttachments([{ uid: `new_${Date.now()}`, caption: '', fileList: [] }]);
+      setImageAttachments([]);
       setError(null);
       setIsLoading(false);
       setIsChartSelectorModalOpen(false);
@@ -78,8 +78,10 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
     newAttachments[index].fileList = [...info.fileList];
     if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
       newAttachments[index].file = info.fileList[0].originFileObj as File;
+      newAttachments[index].caption = '';
     } else {
       newAttachments[index].file = undefined;
+      newAttachments[index].caption = '';
     }
     setImageAttachments(newAttachments);
   };
@@ -279,7 +281,32 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
 
           <Form.Item label={t('Image Attachments (Optional)')}>
             {imageAttachments.map((attachment, index) => (
-              <div key={attachment.uid} className="mb-3 p-3 border rounded" style={{ borderColor: '#d9d9d9'}}>
+              <Card
+                key={attachment.uid}
+                title={`${t('Image Attachment')} ${index + 1}`}
+                className="mb-3"
+                extra={
+                  imageAttachments.length > 0 && (
+                    <Button
+                      icon={<DeleteOutlined />}
+                      danger
+                      onClick={() => handleRemoveAttachment(index)}
+                    >
+                      {t('Remove')}
+                    </Button>
+                  )
+                }
+              >
+                {attachment.fileList[0]?.url && (
+                  <div className="mb-2">
+                    <img
+                      src={attachment.fileList[0].url}
+                      alt={attachment.caption || 'Preview'}
+                      style={{ maxHeight: '250px', width: 'auto', display: 'block', marginBottom: '10px', border: '1px solid #f0f0f0' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                )}
                 <Form.Item
                   label={`${t('Image File')} ${index + 1}`}
                 >
@@ -289,14 +316,7 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
                     fileList={attachment.fileList}
                     beforeUpload={() => false}
                     onChange={(info: UploadChangeParam<UploadFile>) => handleFileChange(index, info)}
-                    onRemove={() => {
-                       const newAttachments = [...imageAttachments];
-                       if(newAttachments[index].file) {
-                           newAttachments[index].file = undefined;
-                       }
-                       newAttachments[index].fileList = [];
-                       setImageAttachments(newAttachments);
-                    }}
+                    showUploadList={{ showRemoveIcon: false }}
                     maxCount={1}
                   >
                     <Button icon={<UploadOutlined />}>{t('Click to select image')}</Button>
@@ -311,17 +331,7 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
                     placeholder={t('Enter caption for the image')}
                   />
                 </Form.Item>
-                {imageAttachments.length > 0 && (
-                  <Button
-                    icon={<DeleteOutlined />}
-                    danger
-                    onClick={() => handleRemoveAttachment(index)}
-                    style={{ marginTop: '8px' }}
-                  >
-                    {t('Remove This Attachment')}
-                  </Button>
-                )}
-              </div>
+              </Card>
             ))}
             <Button
               type="dashed"

@@ -202,9 +202,11 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.health_facilities.api import HealthFacilitiesRestApi
         from superset.weather_forecast_alerts.api import WeatherForecastAlertRestApi, WeatherDataPullRestApi
         from superset.disease_forecast_alerts.api import DiseaseForecastAlertRestApi, DiseasePipelineRunHistoryRestApi
+        from superset.air_quality_forecasts.api import AirQualityForecastRestApi
         # Import Dissemination Views
         from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView
         from superset.dissemination.api import EmailGroupsRestApi
+        from superset.views.air_quality_forecasts import AirQualityForecastView
 
         set_app_error_handlers(self.superset_app)
 
@@ -252,6 +254,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(DiseaseForecastAlertRestApi)
         appbuilder.add_api(DiseasePipelineRunHistoryRestApi)
         appbuilder.add_api(EmailGroupsRestApi)
+        appbuilder.add_api(AirQualityForecastRestApi)
         #
         # Setup regular views
         #
@@ -282,6 +285,15 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             "Disease Forecasts",
             label=__("Disease Forecasts"),
             icon="fa-virus",
+            category="",
+            category_icon="",
+        )
+
+        appbuilder.add_view(
+            AirQualityForecastView,
+            "Air Quality Forecasts",
+            label=__("Air Quality Forecasts"),
+            icon="fa-wind",
             category="",
             category_icon="",
         )

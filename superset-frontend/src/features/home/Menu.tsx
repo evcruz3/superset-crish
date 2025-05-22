@@ -144,6 +144,17 @@ const StyledHeader = styled.header`
           }
         }
       }
+      .ant-menu-overflowed-submenu {
+        .ant-menu-submenu-title {
+          display: flex;
+          align-items: center;
+          height: 100%;
+          span {
+            font-size: ${theme.typography.sizes.xl}px;
+            line-height: 1;
+          }
+        }
+      }
   `}
 `;
 const globalStyles = (theme: SupersetTheme) => css`

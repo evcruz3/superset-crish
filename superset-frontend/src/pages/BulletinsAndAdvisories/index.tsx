@@ -17,10 +17,11 @@ import { SupersetClient } from '@superset-ui/core';
 import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
 import rison from 'rison';
 import FacePile from 'src/components/FacePile';
-import { Tooltip } from 'src/components/Tooltip';
+import { Tooltip, Dropdown, Menu, Button } from 'antd';
 import Tag from 'antd/es/tag';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, MailOutlined, MoreOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Carousel } from 'antd';
+import cx from 'classnames';
 
 const PAGE_SIZE = 25;
 
@@ -106,8 +107,18 @@ const FeedCardWrapper = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
   border-radius: ${({ theme }) => theme.borderRadius}px;
   padding: ${({ theme }) => theme.gridUnit * 4}px;
-  margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+
+  &:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &.card-selected {
+    border-color: ${({ theme }) => theme.colors.primary.base};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary.light2}, 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
 
   .feed-card-title {
     font-size: ${({ theme }) => theme.typography.sizes.l}px;
@@ -187,6 +198,25 @@ const FeedCardWrapper = styled.div`
       margin-bottom: ${({ theme }) => theme.gridUnit * 1}px;
     }
   }
+`;
+
+// New styled components for FeedCard actions
+const FeedActionsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.gridUnit * 2}px;
+  margin-left: ${({ theme }) => theme.gridUnit * 4}px;
+  flex-shrink: 0; // Prevent shrinking when card content is long
+`;
+
+const FeedActionButton = styled(Button)`
+  // Styling for individual action buttons in the feed view
+  // e.g., to ensure consistent sizing or appearance
+  // width: 32px;
+  // height: 32px;
+  // display: flex;
+  // align-items: center;
+  // justify-content: center;
 `;
 
 function BulletinsAndAdvisories({ 
@@ -453,121 +483,188 @@ function BulletinsAndAdvisories({
     [bulkSelectEnabled, hasPerm, refreshData],
   );
 
-  const renderFeedCard = useCallback((bulletin: Bulletin) => {
+  const renderFeedCard = useCallback((bulletin: Bulletin & { isSelected?: boolean }) => {
     if (!bulletin) {
       return null;
     }
+    const { isSelected } = bulletin;
     const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()).filter(tag => tag) || [];
 
-    return (
-      <FeedCardWrapper>
-        <div className="feed-card-title">{bulletin.title}</div>
-        <div className="feed-card-meta">
-          {bulletin.created_by && (
-            <span>
-              {t('Posted by %s %s', bulletin.created_by.first_name, bulletin.created_by.last_name)}
-              {' • '}
-            </span>
-          )}
-          {bulletin.created_on && (
-            <span>
-              {t('Created %s', moment(bulletin.created_on).fromNow())}
-            </span>
-          )}
-          {bulletin.changed_on && bulletin.changed_on !== bulletin.created_on && (
-            <span>
-              {' • '}
-              {t('Updated %s', moment(bulletin.changed_on).fromNow())}
-            </span>
-          )}
-        </div>
+    // console.log(`Rendering FeedCard: ${bulletin.title}, isSelected: ${isSelected}, bulkSelectEnabled: ${bulkSelectEnabled}`); // DEBUG
 
-        {bulletin.image_attachments && bulletin.image_attachments.length > 0 && (
-          <div className="feed-card-attachments feed-card-section">
-            <div className="section-title">{t('Attachments')}</div>
-            {bulletin.image_attachments.length === 1 ? (
-              <div>
-                <img
-                  className="feed-card-attachment-image"
-                  src={bulletin.image_attachments[0].url}
-                  alt={bulletin.image_attachments[0].caption || 'Attachment'}
-                />
-                {bulletin.image_attachments[0].caption && (
-                  <p className="attachment-caption">{bulletin.image_attachments[0].caption}</p>
-                )}
-              </div>
-            ) : (
-              <Carousel autoplay dotPosition="top">
-                {bulletin.image_attachments.map(attachment => (
-                  <div key={attachment.id}>
-                    <img
-                      className="feed-card-attachment-image"
-                      src={attachment.url}
-                      alt={attachment.caption || 'Attachment'}
-                    />
-                    {attachment.caption && (
-                      <p className="attachment-caption">{attachment.caption}</p>
-                    )}
-                  </div>
-                ))}
-              </Carousel>
+    const handleEdit = () => {
+      setBulletinToEdit(bulletin);
+      setEditModalVisible(true);
+    };
+
+    const handleDelete = () => {
+      setBulletinToDelete(bulletin);
+    };
+
+    const handleDisseminate = () => {
+      window.location.href = `/disseminatebulletin/form/?bulletin_id=${bulletin.id}`;
+    };
+
+    const menu = (
+      <Menu>
+        {hasPerm('can_write') && (
+          <Menu.Item key="edit" icon={<EditOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleEdit(); }}>
+            {t('Edit')}
+          </Menu.Item>
+        )}
+        {hasPerm('can_write') && (
+          <Menu.Item key="delete" icon={<DeleteOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleDelete(); }}>
+            {t('Delete')}
+          </Menu.Item>
+        )}
+      </Menu>
+    );
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+        <FeedCardWrapper 
+          style={{ flexGrow: 1, minWidth: 0 }}
+          className={cx({ 'card-selected': bulkSelectEnabled && isSelected })}
+        >
+          <div className="feed-card-title" onClick={() => { setBulletinToView(bulletin); setDetailModalVisible(true); }} style={{cursor: 'pointer'}}>{bulletin.title}</div>
+          <div className="feed-card-meta">
+            {bulletin.created_by && (
+              <span>
+                {t('Posted by %s %s', bulletin.created_by.first_name, bulletin.created_by.last_name)}
+                {' • '}
+              </span>
+            )}
+            {bulletin.created_on && (
+              <span>
+                {t('Created %s', moment(bulletin.created_on).fromNow())}
+              </span>
+            )}
+            {bulletin.changed_on && bulletin.changed_on !== bulletin.created_on && (
+              <span>
+                {' • '}
+                {t('Updated %s', moment(bulletin.changed_on).fromNow())}
+              </span>
             )}
           </div>
-        )}
 
-        {bulletin.advisory && (
-          <div className="feed-card-section">
-            <div className="section-title">{t('Advisory')}</div>
-            <div className="section-content">
-              {bulletin.advisory.split('\\n').map((line, index, arr) => (
-                <React.Fragment key={index}>
-                  {line}
-                  {index < arr.length - 1 && <br />}
-                </React.Fragment>
+          {bulletin.image_attachments && bulletin.image_attachments.length > 0 && (
+            <div className="feed-card-attachments feed-card-section">
+              <div className="section-title">{t('Attachments')}</div>
+              {bulletin.image_attachments.length === 1 ? (
+                <div>
+                  <img
+                    className="feed-card-attachment-image"
+                    src={bulletin.image_attachments[0].url}
+                    alt={bulletin.image_attachments[0].caption || 'Attachment'}
+                  />
+                  {bulletin.image_attachments[0].caption && (
+                    <p className="attachment-caption">{bulletin.image_attachments[0].caption}</p>
+                  )}
+                </div>
+              ) : (
+                <Carousel autoplay dotPosition="top">
+                  {bulletin.image_attachments.map(attachment => (
+                    <div key={attachment.id}>
+                      <img
+                        className="feed-card-attachment-image"
+                        src={attachment.url}
+                        alt={attachment.caption || 'Attachment'}
+                      />
+                      {attachment.caption && (
+                        <p className="attachment-caption">{attachment.caption}</p>
+                      )}
+                    </div>
+                  ))}
+                </Carousel>
+              )}
+            </div>
+          )}
+
+          {bulletin.advisory && (
+            <div className="feed-card-section">
+              <div className="section-title">{t('Advisory')}</div>
+              <div className="section-content">
+                {bulletin.advisory.split('\\n').map((line, index, arr) => (
+                  <React.Fragment key={index}>
+                    {line}
+                    {index < arr.length - 1 && <br />}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bulletin.risks && (
+            <div className="feed-card-section">
+              <div className="section-title">{t('Risks')}</div>
+              <div className="section-content">
+                {bulletin.risks.split('\\n').map((line, index, arr) => (
+                  <React.Fragment key={index}>
+                    {line}
+                    {index < arr.length - 1 && <br />}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bulletin.safety_tips && (
+            <div className="feed-card-section">
+              <div className="section-title">{t('Safety Tips')}</div>
+              <div className="section-content">
+                {bulletin.safety_tips.split('\\n').map((line, index, arr) => (
+                  <React.Fragment key={index}>
+                    {line}
+                    {index < arr.length - 1 && <br />}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hashtags.length > 0 && (
+            <div className="feed-card-hashtags feed-card-section">
+              <div className="section-title">{t('Hashtags')}</div>
+              {hashtags.map(tag => (
+                <Tag key={tag}>#{tag}</Tag>
               ))}
             </div>
-          </div>
-        )}
-
-        {bulletin.risks && (
-          <div className="feed-card-section">
-            <div className="section-title">{t('Risks')}</div>
-            <div className="section-content">
-              {bulletin.risks.split('\\n').map((line, index, arr) => (
-                <React.Fragment key={index}>
-                  {line}
-                  {index < arr.length - 1 && <br />}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {bulletin.safety_tips && (
-          <div className="feed-card-section">
-            <div className="section-title">{t('Safety Tips')}</div>
-            <div className="section-content">
-              {bulletin.safety_tips.split('\\n').map((line, index, arr) => (
-                <React.Fragment key={index}>
-                  {line}
-                  {index < arr.length - 1 && <br />}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {hashtags.length > 0 && (
-          <div className="feed-card-hashtags feed-card-section">
-            <div className="section-title">{t('Hashtags')}</div>
-            {hashtags.map(tag => (
-              <Tag key={tag}>#{tag}</Tag>
-            ))}
-          </div>
-        )}
-      </FeedCardWrapper>
+          )}
+        </FeedCardWrapper>
+        <FeedActionsContainer>
+          <Tooltip title={t('Disseminate Bulletin')}>
+            <FeedActionButton
+              icon={<MailOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDisseminate();
+              }}
+              aria-label={t('Disseminate Bulletin')}
+            />
+          </Tooltip>
+          <Tooltip title={t('Download PDF')}>
+            <FeedActionButton
+              icon={<DownloadOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadPdf(bulletin.id, bulletin.title);
+              }}
+              aria-label={t('Download PDF')}
+            />
+          </Tooltip>
+          {hasPerm('can_write') && (
+            <Dropdown overlay={menu} trigger={['click']}>
+              <FeedActionButton
+                icon={<MoreOutlined />}
+                onClick={e => e.stopPropagation()}
+                aria-label={t('More actions')}
+              />
+            </Dropdown>
+          )}
+        </FeedActionsContainer>
+      </div>
     );
-  }, []);
+  }, [hasPerm, refreshData, addDangerToast, addSuccessToast, setBulletinToEdit, setEditModalVisible, setBulletinToDelete, setBulletinToView, setDetailModalVisible, bulkSelectEnabled]);
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
   

@@ -163,6 +163,10 @@ const DiseaseForecasts = lazy(
   () => import('src/pages/DiseaseForecasts'),
 );
 
+const AirQualityForecasts = lazy(
+  () => import('src/pages/AirQualityForecasts'),
+);
+
 const EmailGroupsPage = lazy(
   () => import(/* webpackChunkName: "EmailGroupsPage" */ 'src/pages/EmailGroups'),
 );
@@ -182,6 +186,10 @@ export const routes: Routes = [
   {
     path: '/disease-forecasts/',
     Component: DiseaseForecasts,
+  },
+  {
+    path: '/air-quality-forecasts/',
+    Component: AirQualityForecasts,
   },
   {
     path: '/facilities/update/',

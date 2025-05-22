@@ -129,23 +129,10 @@ const FeedContentContainer = styled.div`
 
 const FeedItemWrapper = styled.div`
   ${({ theme }) => `
-    border: 1px solid ${theme.colors.grayscale.light2};
     border-radius: ${theme.borderRadius * 2}px;
     width: 100%;
-    max-width: 750px; // Slightly adjusted max-width
+    max-width: 750px;
     height: auto;
-    background-color: ${theme.colors.grayscale.light5};
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
-
-    &:hover {
-       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    &.card-selected {
-      border-color: ${theme.colors.primary.base};
-      box-shadow: 0 0 0 2px ${theme.colors.primary.light2}, 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
     &.bulk-select {
       cursor: pointer;
     }
@@ -182,10 +169,8 @@ export default function FeedCollection({
     <FeedPageContainer>
       {rows.length > 0 && (
         <FeedSidebar>
-          {/* <h4>{t('Feed Navigation')}</h4> */}
           {rows.map(row => {
             const original = row.original as FeedItem;
-            // Attempt to find a title or name property for display, fallback to row index
             const displayLabel = original?.title || original?.name || original?.label || t('Item %(itemNumber)s', { itemNumber: row.index + 1 });
             return (
               <SidebarItem
@@ -205,8 +190,6 @@ export default function FeedCollection({
             const placeholderItem = {
               id: `placeholder-${i}`,
               loading: true,
-              // Add other optional fields from FeedItem as undefined if renderCard expects them
-              // title: undefined, name: undefined, label: undefined,
             } as FeedItem & { loading?: boolean; showThumbnails?: boolean };
             return (
               <FeedItemWrapper key={`placeholder-wrapper-${i}`}>
@@ -221,14 +204,13 @@ export default function FeedCollection({
               <FeedItemWrapper
                 id={`feed-item-${row.id}`}
                 className={cx({
-                  'card-selected': bulkSelectEnabled && row.isSelected,
                   'bulk-select': bulkSelectEnabled,
                 })}
                 key={row.id}
                 onClick={e => handleBulkSelectClick(e, row.toggleRowSelected)}
                 role="none"
               >
-                {renderCard({ ...(row.original as FeedItem), loading, showThumbnails })}
+                {renderCard({ ...(row.original as FeedItem), loading, showThumbnails, isSelected: row.isSelected })}
               </FeedItemWrapper>
             );
           })}

@@ -28,8 +28,8 @@ do
   filename="${file%.*}"
   if [ $extension == "po" ]
   then
-    echo "po2json --domain superset --format jed1.x $file $filename.json"
-    po2json --domain superset --format jed1.x $file $filename.json
-    prettier --write $filename.json
+    echo "npx po2json --domain superset --format jed1.x $file $filename.json"
+    npx po2json --domain superset --format jed1.x $file $filename.json
+    npx prettier --write $filename.json
   fi
 done

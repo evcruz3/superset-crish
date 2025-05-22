@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, Form, Input, Button, Upload, Alert, Spin, Select as AntdSelect } from 'antd';
+import { Modal, Form, Input, Button, Upload, Alert, Spin, Select as AntdSelect, Card } from 'antd';
 import { UploadOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { SupersetClient, t, JsonObject } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
@@ -150,6 +150,8 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
     }
 
     currentAttachment.fileList = [...info.fileList];
+    currentAttachment.caption = ''; // Clear caption regardless of action
+
     if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
       currentAttachment.file = info.fileList[0].originFileObj as File;
       currentAttachment.previewUrl = URL.createObjectURL(info.fileList[0].originFileObj as File);
@@ -381,14 +383,27 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
 
               <Form.Item label={t('Image Attachments')}>
                 {imageAttachments.map((attachment, index) => (
-                  <div key={attachment.uid} className="mb-3 p-3 border rounded" style={{ borderColor: '#d9d9d9'}}>
-                    <Form.Item label={`${attachment.isNew ? t('New Image File') : t('Existing Image')} ${index + 1}`}>
+                  <Card
+                    key={attachment.uid}
+                    title={`${attachment.isNew ? t('New Image Attachment') : t('Existing Image')} ${index + 1}`}
+                    className="mb-3"
+                    extra={
+                      <Button
+                        icon={<DeleteOutlined />}
+                        danger
+                        onClick={() => handleRemoveAttachment(index)}
+                      >
+                        {t('Remove Block')}
+                      </Button>
+                    }
+                  >
+                    <Form.Item label={attachment.isNew ? t('Select Image File') : t('Current Image File')}>
                       {attachment.previewUrl && (
                           <div className="mb-2">
-                              <img 
-                                  src={attachment.previewUrl} 
-                                  alt={attachment.caption || 'Preview'} 
-                                  style={{ maxWidth: '200px', maxHeight: '200px', display: 'block', marginBottom: '8px' }} 
+                              <img
+                                  src={attachment.previewUrl}
+                                  alt={attachment.caption || 'Preview'}
+                                  style={{ maxHeight: '250px', width: 'auto', display: 'block', marginBottom: '10px', border: '1px solid #f0f0f0' }}
                               />
                           </div>
                       )}
@@ -398,15 +413,7 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
                         fileList={attachment.fileList} // Controlled by state
                         beforeUpload={() => false} // We handle upload via FormData
                         onChange={(info) => handleFileChange(index, info)}
-                        onRemove={() => { 
-                          const newAttachments = [...imageAttachments];
-                          const current = newAttachments[index];
-                          if (current.isNew && current.previewUrl) URL.revokeObjectURL(current.previewUrl);
-                          current.file = undefined;
-                          current.previewUrl = current.isNew ? undefined : current.previewUrl; 
-                          current.fileList = [];
-                          setImageAttachments(newAttachments);
-                        }}
+                        showUploadList={{ showRemoveIcon: false }} // Explicitly hide the remove icon
                         maxCount={1}
                       >
                         <Button icon={<UploadOutlined />}>
@@ -414,7 +421,7 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
                         </Button>
                       </Upload>
                       {!attachment.isNew && attachment.s3_key && (
-                          <small className="text-muted"> {t('Current file:')} {attachment.s3_key.split('/').pop()}</small>
+                          <small className="text-muted"> {t('Current filename:')} {attachment.s3_key.split('/').pop()}</small>
                       )}
                     </Form.Item>
                     <Form.Item label={`${t('Image Caption')} ${index + 1}`}>
@@ -424,15 +431,7 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
                         placeholder={t('Enter caption for the image')}
                       />
                     </Form.Item>
-                    <Button
-                      icon={<DeleteOutlined />}
-                      danger
-                      onClick={() => handleRemoveAttachment(index)} 
-                      style={{ marginTop: '8px' }}
-                    >
-                      {t('Remove This Attachment Block')}
-                    </Button>
-                  </div>
+                  </Card>
                 ))}
                 <Button
                   type="dashed"

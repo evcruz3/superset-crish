@@ -26,6 +26,7 @@ export interface Bulletin {
   risks: string;
   safety_tips: string;
   hashtags: string;
+  thumbnail_url?: string | null;
   created_by?: User;
   created_on?: string;
   changed_on?: string;

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Card, List, Tag, Tooltip } from 'antd';
+import { Card, List, Tag, Tooltip, Dropdown, Menu, Button } from 'antd';
 import moment from 'moment';
 import { t, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
-import { DownloadOutlined, MailOutlined } from '@ant-design/icons';
-import BulletinChart from './BulletinChart';
+import { DownloadOutlined, MailOutlined, MoreOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import { Bulletin, BulletinApiResponse } from './types';
 import { styled } from '@superset-ui/core';
@@ -72,121 +71,185 @@ const StyledCard = styled(Card)`
   }
 `;
 
-export default function BulletinList() {
-  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+// New styled component for the actions container
+const ActionsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.gridUnit * 2}px;
+  margin-left: ${({ theme }) => theme.gridUnit * 4}px;
+`;
+
+const ActionButton = styled(Button)`
+  // Ensure buttons have consistent width if desired or let them size by content
+  // Example: width: 32px; 
+  // display: flex;
+  // align-items: center;
+  // justify-content: center;
+`;
+
+export interface BulletinListProps {
+  bulletins: Bulletin[];
+  total: number;
+  loading: boolean;
+  onPageChange: (page: number) => void;
+  onBulletinClick: (bulletin: Bulletin) => void;
+  onDownloadPdf: (bulletinId: number, bulletinTitle: string) => void;
+  onEditBulletin: (bulletin: Bulletin) => void; // Added for edit action
+  onDeleteBulletin: (bulletin: Bulletin) => void; // Added for delete action
+  // Add any other props passed from the parent, like hasPerm
+  hasPerm?: (permission: string) => boolean;
+}
+
+export default function BulletinList({
+  bulletins,
+  total,
+  loading,
+  onPageChange,
+  onBulletinClick,
+  onDownloadPdf,
+  onEditBulletin,
+  onDeleteBulletin,
+  hasPerm,
+}: BulletinListProps) {
+  // Removed local state as it's now passed via props
+  // const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  // const [total, setTotal] = useState(0);
+  // const [loading, setLoading] = useState(false);
   const [selectedBulletin, setSelectedBulletin] = useState<Bulletin | null>(null);
 
-  const handlePageChange = async (page: number) => {
-    // TODO: Implement pagination logic
-  };
-
-  const handleBulletinClick = (bulletin: Bulletin) => {
+  // Renamed to avoid conflict if parent also has this
+  const handleLocalBulletinClick = (bulletin: Bulletin) => {
     setSelectedBulletin(bulletin);
+    onBulletinClick(bulletin); // Call prop passed from parent
   };
 
-  const handleDownloadPdf = async (bulletinId: number, bulletinTitle: string) => {
-    try {
-      const response = await fetch(`/api/v1/bulletins_and_advisories/${bulletinId}/pdf/`);
-      if (!response.ok) {
-        // TODO: Add user-friendly error notification (e.g., Antd message.error)
-        console.error('Failed to download PDF', response.statusText);
-        throw new Error('Failed to download PDF');
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const sanitizedTitle = (bulletinTitle || 'bulletin').replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
-      a.download = `bulletin_${sanitizedTitle}_${bulletinId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      // TODO: Add user-friendly error notification
-    }
+  // Placeholder for edit action, should be handled by parent
+  const handleEdit = (bulletin: Bulletin, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEditBulletin(bulletin);
   };
 
-  const renderBulletin = (bulletin: Bulletin) => (
-    <List.Item>
-      <StyledCard
-        title={bulletin.title}
-      >
-        <div 
-          className="bulletin-content" 
-          onClick={() => handleBulletinClick(bulletin)} 
-          style={{ cursor: 'pointer' }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleBulletinClick(bulletin);}}
-        >
-          {bulletin.advisory || ''}
-        </div>
-        <p>
-          <small>
-            {(bulletin.hashtags || '').split(',').map(tag => (
-              <Tag key={tag}>{tag.trim()}</Tag>
-            ))}
-          </small>
-        </p>
-        <div className="bulletin-chart">
-          {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
-            bulletin.chart_id !== null ? <BulletinChart chartId={bulletin.chart_id} /> : null
-          ) : (
-            <div className="gradient-container" style={{ height: '100%', position: 'relative' }}>
-              <ImageLoader
-                src={bulletin.thumbnail_url || ''}
-                fallback={bulletin.chart_id ? '/static/assets/images/chart-card-fallback.svg' : '/static/assets/images/placeholder-chart.png'}
-                isLoading={!!(bulletin.chart_id && !bulletin.thumbnail_url)}
-                position="top"
-              />
+  // Placeholder for delete action, should be handled by parent
+  const handleDelete = (bulletin: Bulletin, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDeleteBulletin(bulletin);
+  };
+
+
+  const renderBulletin = (bulletin: Bulletin) => {
+    const menu = (
+      <Menu>
+        {hasPerm && hasPerm('can_write') && (
+          <Menu.Item key="edit" icon={<EditOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleEdit(bulletin, e.domEvent as any); }}>
+            {t('Edit')}
+          </Menu.Item>
+        )}
+        {hasPerm && hasPerm('can_write') && (
+          <Menu.Item key="delete" icon={<DeleteOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleDelete(bulletin, e.domEvent as any); }}>
+            {t('Delete')}
+          </Menu.Item>
+        )}
+      </Menu>
+    );
+
+    return (
+      <List.Item>
+        <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start' }}>
+          <StyledCard
+            style={{ flexGrow: 1 }} // Make card take available space
+            title={bulletin.title}
+          >
+            <div 
+              className="bulletin-content" 
+              onClick={() => handleLocalBulletinClick(bulletin)} 
+              style={{ cursor: 'pointer' }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLocalBulletinClick(bulletin);}}
+            >
+              {bulletin.advisory || ''}
             </div>
-          )}
+            <p>
+              <small>
+                {(bulletin.hashtags || '').split(',').map(tag => (
+                  <Tag key={tag}>{tag.trim()}</Tag>
+                ))}
+              </small>
+            </p>
+            <div className="bulletin-chart">
+              {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
+                null
+              ) : (
+                <div className="gradient-container" style={{ height: '100%', position: 'relative' }}>
+                  <ImageLoader
+                    src={bulletin.thumbnail_url || ''}
+                    fallback={'/static/assets/images/placeholder-chart.png'}
+                    isLoading={!!(!bulletin.thumbnail_url)}
+                    position="top"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="bulletin-meta">
+              <small>
+                {t('Created by')} {bulletin.created_by?.first_name} {bulletin.created_by?.last_name} {' '}
+                {moment(bulletin.created_on).fromNow()}
+              </small>
+            </div>
+            {/* Moved actions outside the card to ActionsContainer */}
+          </StyledCard>
+          <ActionsContainer>
+            <Tooltip title={t('Disseminate Bulletin')}>
+              <ActionButton // Using styled Button
+                icon={<MailOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Assuming handleBulletinClick opens a modal or similar, 
+                  // which might be relevant before disseminate
+                  handleLocalBulletinClick(bulletin); 
+                  // Add actual dissemination logic if different from just opening details
+                  // For example, directly call a disseminate function:
+                  // handleDisseminate(bulletin); 
+                }}
+                aria-label={t('Disseminate Bulletin')}
+              />
+            </Tooltip>
+            <Tooltip title={t('Download PDF')}>
+              <ActionButton // Using styled Button
+                icon={<DownloadOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownloadPdf(bulletin.id, bulletin.title);
+                }}
+                aria-label={t('Download PDF')}
+              />
+            </Tooltip>
+            {(hasPerm && hasPerm('can_write')) && ( // Conditionally render "More" actions
+              <Dropdown overlay={menu} trigger={['click']}>
+                <ActionButton // Using styled Button
+                  icon={<MoreOutlined />}
+                  onClick={e => e.stopPropagation()} // Prevent card click
+                  aria-label={t('More actions')}
+                />
+              </Dropdown>
+            )}
+          </ActionsContainer>
         </div>
-        <div className="bulletin-meta">
-          <small>
-            {t('Created by')} {bulletin.created_by.first_name} {bulletin.created_by.last_name} {' '}
-            {moment(bulletin.created_on).fromNow()}
-          </small>
-        </div>
-        <div style={{ marginTop: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <Tooltip title={t('Disseminate Bulletin')}>
-            <MailOutlined
-              onClick={(e) => {
-                e.stopPropagation();
-                handleBulletinClick(bulletin);
-              }}
-              style={{ fontSize: '18px', cursor: 'pointer', color: '#555' }}
-              aria-label={t('Disseminate Bulletin')}
-            />
-          </Tooltip>
-          <Tooltip title={t('Download PDF')}>
-            <DownloadOutlined
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadPdf(bulletin.id, bulletin.title);
-              }}
-              style={{ fontSize: '18px', cursor: 'pointer', color: '#555' }}
-              aria-label={t('Download PDF')}
-            />
-          </Tooltip>
-        </div>
-      </StyledCard>
-    </List.Item>
-  );
+      </List.Item>
+    );
+  };
+
 
   return (
     <>
       <List
         dataSource={bulletins}
         renderItem={renderBulletin}
+        loading={loading} // Pass loading prop
         pagination={{
-          pageSize: 10,
-          total: total,
-          onChange: handlePageChange,
+          pageSize: 10, // Consider making this a prop or constant
+          total, // Pass total prop
+          onChange: onPageChange, // Pass onPageChange prop
         }}
       />
       <BulletinDetailModal
