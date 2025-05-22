@@ -147,6 +147,7 @@ services:
     container_name: superset_weather_forecast_puller
     volumes:
       - ./crish-weather-forecast-puller/data:/app/data
+      - ./superset-frontend/plugins/preset-chart-deckgl-osm/src/layers/Country/countries/timorleste.geojson:/app/config/timorleste.geojson:ro
     env_file:
       - path: docker/.env # default
         required: true
