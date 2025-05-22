@@ -3,8 +3,6 @@ import { Modal, Tag, Button, Carousel, Image as AntImage } from 'antd';
 import { styled, t, isFeatureEnabled, FeatureFlag, SupersetClient } from '@superset-ui/core';
 import moment from 'moment';
 import { Bulletin, ImageAttachment } from './types';
-import BulletinChart from './BulletinChart';
-import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import EditBulletinModal from './EditBulletinModal';
 import Icons from 'src/components/Icons';
 import rison from 'rison';
@@ -17,15 +15,12 @@ const BULLETIN_COLUMNS = [
   'risks',
   'safety_tips',
   'hashtags',
-  'chart_id',
   'image_attachments',
   'created_by.first_name',
   'created_by.last_name',
   'created_on',
   'changed_on',
 ];
-
-const FALLBACK_THUMBNAIL_URL = '/static/assets/images/chart-card-fallback.svg';
 
 const StyledModal = styled(Modal)`
   .bulletin-title-container {
@@ -158,7 +153,6 @@ export default function BulletinDetailModal({
   hasPerm = () => false,
   refreshData = () => {},
 }: BulletinDetailModalProps) {
-  const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [updatedBulletin, setUpdatedBulletin] = useState<Bulletin | null>(bulletin);
 
@@ -166,32 +160,6 @@ export default function BulletinDetailModal({
   useEffect(() => {
     setUpdatedBulletin(bulletin);
   }, [bulletin]);
-
-  useEffect(() => {
-    const fetchThumbnailUrl = async () => {
-      if (updatedBulletin?.chart_id) {
-        try {
-          const response = await SupersetClient.get({
-            endpoint: `/api/v1/chart/${updatedBulletin.chart_id}`,
-          });
-          const chartData = response.json.result;
-          if (chartData.thumbnail_url) {
-            const fullThumbnailUrl = chartData.thumbnail_url.startsWith('/')
-              ? `${window.location.origin}${chartData.thumbnail_url}`
-              : chartData.thumbnail_url;
-            setThumbnailUrl(fullThumbnailUrl);
-          }
-        } catch (error) {
-          // Handle error silently and fallback to BulletinChart
-          setThumbnailUrl('');
-        }
-      } else {
-        setThumbnailUrl('');
-      }
-    };
-
-    fetchThumbnailUrl();
-  }, [updatedBulletin?.chart_id]);
 
   const handleEditSuccess = async () => {
     try {
@@ -290,65 +258,8 @@ export default function BulletinDetailModal({
             </>
           )}
         </div>
-        <div className="bulletin-section">
-          <div className="section-title">{t('Advisory')}</div>
-          <div className="section-content">
-            {updatedBulletin.advisory?.split('\\n').map((line, index, arr) => (
-              <React.Fragment key={index}>
-                {line}
-                {index < arr.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-        <div className="bulletin-section">
-          <div className="section-title">{t('Risks')}</div>
-          <div className="section-content">
-            {updatedBulletin.risks?.split('\\n').map((line, index, arr) => (
-              <React.Fragment key={index}>
-                {line}
-                {index < arr.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-        <div className="bulletin-section">
-          <div className="section-title">{t('Safety Tips')}</div>
-          <div className="section-content">
-            {updatedBulletin.safety_tips?.split('\\n').map((line, index, arr) => (
-              <React.Fragment key={index}>
-                {line}
-                {index < arr.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-        <div className="bulletin-chart">
-          {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
-            updatedBulletin.chart_id ? (
-              <BulletinChart chartId={updatedBulletin.chart_id} />
-            ) : (
-              <div style={{ height: '400px' }}></div>
-            )
-          ) : updatedBulletin.chart_id ? (
-            <ImageLoader
-              src={thumbnailUrl || ''}
-              fallback={FALLBACK_THUMBNAIL_URL}
-              isLoading={!!updatedBulletin.chart_id && !thumbnailUrl}
-              position="top"
-            />
-          ) : (
-            <div style={{ height: '400px' }}></div>
-          )}
-        </div>
-        {hashtags.length > 0 && (
-          <div className="bulletin-hashtags">
-            {hashtags.map(tag => (
-              <Tag key={tag}>#{tag}</Tag>
-            ))}
-          </div>
-        )}
 
+        {/* Image Attachments Section */}
         {updatedBulletin?.image_attachments && updatedBulletin.image_attachments.length > 0 && (
           <div className="bulletin-section">
             <div className="section-title">{t('Attachments')}</div>
@@ -385,6 +296,54 @@ export default function BulletinDetailModal({
                 ))}
               </Carousel>
             )}
+          </div>
+        )}
+
+        {/* Advisory Section */}
+        <div className="bulletin-section">
+          <div className="section-title">{t('Advisory')}</div>
+          <div className="section-content">
+            {updatedBulletin.advisory?.split('\\n').map((line, index, arr) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < arr.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Risks Section */}
+        <div className="bulletin-section">
+          <div className="section-title">{t('Risks')}</div>
+          <div className="section-content">
+            {updatedBulletin.risks?.split('\\n').map((line, index, arr) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < arr.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Safety Tips Section */}
+        <div className="bulletin-section">
+          <div className="section-title">{t('Safety Tips')}</div>
+          <div className="section-content">
+            {updatedBulletin.safety_tips?.split('\\n').map((line, index, arr) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < arr.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+        
+        {/* Hashtags Section */}
+        {hashtags.length > 0 && (
+          <div className="bulletin-hashtags">
+            {hashtags.map(tag => (
+              <Tag key={tag}>#{tag}</Tag>
+            ))}
           </div>
         )}
       </StyledModal>

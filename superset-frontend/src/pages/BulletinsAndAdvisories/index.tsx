@@ -20,6 +20,7 @@ import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
 import Tag from 'antd/es/tag';
 import { DownloadOutlined } from '@ant-design/icons';
+import { Carousel } from 'antd';
 
 const PAGE_SIZE = 25;
 
@@ -98,6 +99,93 @@ const StyledListView = styled(ListView<Bulletin>)`
 
   tr:hover .actions {
     visibility: visible;
+  }
+`;
+
+const FeedCardWrapper = styled.div`
+  border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
+  background-color: ${({ theme }) => theme.colors.grayscale.light5};
+
+  .feed-card-title {
+    font-size: ${({ theme }) => theme.typography.sizes.l}px;
+    font-weight: ${({ theme }) => theme.typography.weights.bold};
+    margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
+  }
+
+  .feed-card-meta {
+    color: ${({ theme }) => theme.colors.grayscale.base};
+    font-size: ${({ theme }) => theme.typography.sizes.s}px;
+    margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
+  }
+
+  .feed-card-section {
+    margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
+    white-space: pre-wrap; // Handles \n for newlines
+
+    .section-title {
+      font-weight: ${({ theme }) => theme.typography.weights.bold};
+      margin-bottom: ${({ theme }) => theme.gridUnit * 1}px;
+      font-size: ${({ theme }) => theme.typography.sizes.m}px;
+    }
+
+    .section-content {
+      font-size: ${({ theme }) => theme.typography.sizes.s}px;
+      white-space: pre-wrap;
+    }
+  }
+
+  .feed-card-attachments {
+    margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
+    .feed-card-attachment-image {
+      width: 100%;
+      max-height: 300px; // Adjust as needed
+      object-fit: cover;
+      border-radius: ${({ theme }) => theme.borderRadius}px;
+      margin-bottom: ${({ theme }) => theme.gridUnit * 1}px;
+    }
+    .attachment-caption {
+      font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+      color: ${({ theme }) => theme.colors.grayscale.base};
+      text-align: center;
+      margin-top: ${({ theme }) => theme.gridUnit}px;
+    }
+  }
+   // Custom styles for Carousel arrows
+  .ant-carousel {
+    .slick-prev,
+    .slick-next {
+      font-size: ${({ theme }) => theme.typography.sizes.l}px;
+      color: ${({ theme }) => theme.colors.grayscale.light5};
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      line-height: 25px;
+      z-index: 1;
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+    }
+    .slick-prev { left: 5px; }
+    .slick-next { right: 5px; }
+    .slick-dots li button {
+        background: ${({ theme }) => theme.colors.primary.base};
+    }
+    .slick-dots li.slick-active button {
+        background: ${({ theme }) => theme.colors.primary.dark1};
+    }
+  }
+
+
+  .feed-card-hashtags {
+    margin-top: ${({ theme }) => theme.gridUnit * 2}px;
+    .ant-tag {
+      margin-right: ${({ theme }) => theme.gridUnit * 1}px;
+      margin-bottom: ${({ theme }) => theme.gridUnit * 1}px;
+    }
   }
 `;
 
@@ -388,6 +476,122 @@ function BulletinsAndAdvisories({
     [bulkSelectEnabled, hasPerm, refreshData],
   );
 
+  const renderFeedCard = useCallback((bulletin: Bulletin) => {
+    if (!bulletin) {
+      return null;
+    }
+    const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()).filter(tag => tag) || [];
+
+    return (
+      <FeedCardWrapper>
+        <div className="feed-card-title">{bulletin.title}</div>
+        <div className="feed-card-meta">
+          {bulletin.created_by && (
+            <span>
+              {t('Posted by %s %s', bulletin.created_by.first_name, bulletin.created_by.last_name)}
+              {' • '}
+            </span>
+          )}
+          {bulletin.created_on && (
+            <span>
+              {t('Created %s', moment(bulletin.created_on).fromNow())}
+            </span>
+          )}
+          {bulletin.changed_on && bulletin.changed_on !== bulletin.created_on && (
+            <span>
+              {' • '}
+              {t('Updated %s', moment(bulletin.changed_on).fromNow())}
+            </span>
+          )}
+        </div>
+
+        {bulletin.image_attachments && bulletin.image_attachments.length > 0 && (
+          <div className="feed-card-attachments feed-card-section">
+            <div className="section-title">{t('Attachments')}</div>
+            {bulletin.image_attachments.length === 1 ? (
+              <div>
+                <img
+                  className="feed-card-attachment-image"
+                  src={bulletin.image_attachments[0].url}
+                  alt={bulletin.image_attachments[0].caption || 'Attachment'}
+                />
+                {bulletin.image_attachments[0].caption && (
+                  <p className="attachment-caption">{bulletin.image_attachments[0].caption}</p>
+                )}
+              </div>
+            ) : (
+              <Carousel autoplay dotPosition="top">
+                {bulletin.image_attachments.map(attachment => (
+                  <div key={attachment.id}>
+                    <img
+                      className="feed-card-attachment-image"
+                      src={attachment.url}
+                      alt={attachment.caption || 'Attachment'}
+                    />
+                    {attachment.caption && (
+                      <p className="attachment-caption">{attachment.caption}</p>
+                    )}
+                  </div>
+                ))}
+              </Carousel>
+            )}
+          </div>
+        )}
+
+        {bulletin.advisory && (
+          <div className="feed-card-section">
+            <div className="section-title">{t('Advisory')}</div>
+            <div className="section-content">
+              {bulletin.advisory.split('\\n').map((line, index, arr) => (
+                <React.Fragment key={index}>
+                  {line}
+                  {index < arr.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {bulletin.risks && (
+          <div className="feed-card-section">
+            <div className="section-title">{t('Risks')}</div>
+            <div className="section-content">
+              {bulletin.risks.split('\\n').map((line, index, arr) => (
+                <React.Fragment key={index}>
+                  {line}
+                  {index < arr.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {bulletin.safety_tips && (
+          <div className="feed-card-section">
+            <div className="section-title">{t('Safety Tips')}</div>
+            <div className="section-content">
+              {bulletin.safety_tips.split('\\n').map((line, index, arr) => (
+                <React.Fragment key={index}>
+                  {line}
+                  {index < arr.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {hashtags.length > 0 && (
+          <div className="feed-card-hashtags feed-card-section">
+            <div className="section-title">{t('Hashtags')}</div>
+            {hashtags.map(tag => (
+              <Tag key={tag}>#{tag}</Tag>
+            ))}
+          </div>
+        )}
+      </FeedCardWrapper>
+    );
+  }, []);
+
   const subMenuButtons: SubMenuProps['buttons'] = [];
   
   if (hasPerm('can_write')) {
@@ -487,6 +691,7 @@ function BulletinsAndAdvisories({
             loading={loading}
             pageSize={PAGE_SIZE}
             renderCard={renderCard}
+            renderFeedCard={renderFeedCard}
             defaultViewMode="table"
           />
         )}

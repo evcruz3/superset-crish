@@ -27,6 +27,7 @@ import Pagination from 'src/components/Pagination';
 import TableCollection from 'src/components/TableCollection';
 import BulkTagModal from 'src/features/tags/BulkTagModal';
 import CardCollection from './CardCollection';
+import FeedCollection from './FeedCollection';
 import FilterControls from './Filters';
 import { CardSortSelect } from './CardSortSelect';
 import {
@@ -173,8 +174,8 @@ const ViewModeToggle = ({
   mode,
   setMode,
 }: {
-  mode: 'table' | 'card';
-  setMode: (mode: 'table' | 'card') => void;
+  mode: 'table' | 'card' | 'feed';
+  setMode: (mode: 'table' | 'card' | 'feed') => void;
 }) => (
   <ViewModeContainer>
     <div
@@ -187,6 +188,17 @@ const ViewModeToggle = ({
       className={cx('toggle-button', { active: mode === 'card' })}
     >
       <Icons.CardView />
+    </div>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={e => {
+        e.currentTarget.blur();
+        setMode('feed');
+      }}
+      className={cx('toggle-button', { active: mode === 'feed' })}
+    >
+      <Icons.FeedView />
     </div>
     <div
       role="button"
@@ -225,6 +237,7 @@ export interface ListViewProps<T extends object = any> {
   disableBulkSelect?: () => void;
   renderBulkSelectCopy?: (selects: any[]) => ReactNode;
   renderCard?: (row: T & { loading: boolean }) => ReactNode;
+  renderFeedCard?: (row: T & { loading: boolean }) => ReactNode;
   cardSortSelectOptions?: Array<CardSortSelectOption>;
   defaultViewMode?: ViewModeType;
   highlightRowId?: number;
@@ -251,6 +264,7 @@ function ListView<T extends object = any>({
   disableBulkSelect = () => {},
   renderBulkSelectCopy = selected => t('%s Selected', selected.length),
   renderCard,
+  renderFeedCard,
   showThumbnails,
   cardSortSelectOptions,
   defaultViewMode = 'card',
@@ -287,7 +301,7 @@ function ListView<T extends object = any>({
     initialPageSize,
     initialSort,
     initialFilters: filters,
-    renderCard: Boolean(renderCard),
+    renderCard: Boolean(renderCard || renderFeedCard),
     defaultViewMode,
   });
   const allowBulkTagActions = bulkTagResourceName && enableBulkTag;
@@ -314,7 +328,7 @@ function ListView<T extends object = any>({
     }
   }, [query.filters]);
 
-  const cardViewEnabled = Boolean(renderCard);
+  const cardViewEnabled = Boolean(renderCard || renderFeedCard);
   const [showBulkTagModal, setShowBulkTagModal] = useState<boolean>(false);
 
   useEffect(() => {
@@ -426,6 +440,16 @@ function ListView<T extends object = any>({
               bulkSelectEnabled={bulkSelectEnabled}
               prepareRow={prepareRow}
               renderCard={renderCard}
+              rows={rows}
+              loading={loading}
+              showThumbnails={showThumbnails}
+            />
+          )}
+          {viewMode === 'feed' && (
+            <FeedCollection
+              bulkSelectEnabled={bulkSelectEnabled}
+              prepareRow={prepareRow}
+              renderCard={renderFeedCard || renderCard}
               rows={rows}
               loading={loading}
               showThumbnails={showThumbnails}

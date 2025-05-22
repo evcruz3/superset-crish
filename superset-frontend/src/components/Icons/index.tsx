@@ -89,6 +89,7 @@ const IconFileNames = [
   'favorite-selected',
   'favorite_small_selected',
   'favorite-unselected',
+  'feed_view',
   'field_abc',
   'field_boolean',
   'field_date',

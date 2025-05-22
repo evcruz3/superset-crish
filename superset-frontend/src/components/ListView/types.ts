@@ -63,7 +63,7 @@ export interface Filter {
 
 export type Filters = Filter[];
 
-export type ViewModeType = 'card' | 'table';
+export type ViewModeType = 'card' | 'table' | 'feed';
 
 export interface FilterValue {
   id: string;

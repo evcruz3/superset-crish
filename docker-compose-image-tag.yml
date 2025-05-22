@@ -123,6 +123,7 @@ services:
     container_name: superset_disease_predictor
     volumes:
       - ./crish-disease-predictor:/app
+      - ./superset-frontend/plugins/preset-chart-deckgl-osm/src/layers/Country/countries/timorleste.geojson:/app/config/timorleste.geojson:ro
     env_file:
       - path: docker/.env # default
         required: true

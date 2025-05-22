@@ -173,15 +173,18 @@ def main():
             weekly_averages = puller.compute_weekly_averages(historical_data)
             all_weekly_averages[municipality] = weekly_averages
         
-        # Get forecast data for next week
-        forecast_data = puller.get_forecast_weather(municipality)
-        if forecast_data:
-            # Save raw forecast data
-            puller.save_data(municipality, forecast_data, "forecast")
+        try:    
+            # Get forecast data for next week
+            forecast_data = puller.get_forecast_weather(municipality)
+            if forecast_data:
+                # Save raw forecast data
+                puller.save_data(municipality, forecast_data, "forecast")
             
-            # Compute and store weekly forecast
-            forecast_weekly = puller.compute_weekly_averages(forecast_data)
-            all_forecast_data[municipality] = forecast_weekly
+                # Compute and store weekly forecast
+                forecast_weekly = puller.compute_weekly_averages(forecast_data)
+                all_forecast_data[municipality] = forecast_weekly
+        except Exception as e:
+            print(f"Error getting forecast data for {municipality}: {str(e)}")
             
         # Respect API rate limits
         time.sleep(1)
