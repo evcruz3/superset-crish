@@ -185,21 +185,21 @@ services:
       retries: 3
     restart: unless-stopped
 
-  minio-init:
-    image: minio/mc
-    container_name: superset_minio_init
-    depends_on:
-      minio:
-        condition: service_healthy
-    env_file:
-      - path: docker/.env # For MINIO_ROOT_USER, MINIO_ROOT_PASSWORD, S3_BUCKET
-        required: true
-      - path: docker/.env-local # optional override
-        required: false
-    entrypoint: /app/docker/minio-init-bucket.sh
-    volumes:
-      - ./docker/minio-init-bucket.sh:/app/docker/minio-init-bucket.sh:ro
-    restart: "no"
+  # minio-init:
+  #   image: minio/mc
+  #   container_name: superset_minio_init
+  #   depends_on:
+  #     minio:
+  #       condition: service_healthy
+  #   env_file:
+  #     - path: docker/.env # For MINIO_ROOT_USER, MINIO_ROOT_PASSWORD, S3_BUCKET
+  #       required: true
+  #     - path: docker/.env-local # optional override
+  #       required: false
+  #   entrypoint: /app/docker/minio-init-bucket.sh
+  #   volumes:
+  #     - ./docker/minio-init-bucket.sh:/app/docker/minio-init-bucket.sh:ro
+  #   restart: "no"
 
 volumes:
   superset_home:

@@ -9,4 +9,5 @@ services:
     env_file: .env
     volumes:
       - ./data:/app/data
+      - /Users/ericksoncruz/Documents/RIMES/superset/superset-frontend/plugins/preset-chart-deckgl-osm/src/layers/Country/countries/timorleste.geojson:/app/config/timorleste.geojson:ro
     restart: unless-stopped 

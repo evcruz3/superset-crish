@@ -1,14 +1,69 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import os
 import polars as pl
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
+import matplotlib.pyplot as plt
+import geopandas
+import io
+import boto3 # Uncommented boto3
 
 # Load environment variables
 load_dotenv()
+
+# S3 Configuration from environment variables
+S3_BUCKET_NAME = os.getenv("S3_BUCKET")
+S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL")
+S3_ACCESS_KEY = os.getenv("MINIO_ROOT_USER") # Or specific S3 access key if not MinIO root
+S3_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD") # Or specific S3 secret key
+S3_ADDRESSING_STYLE = os.getenv("S3_ADDRESSING_STYLE", "auto") # Default to auto, but path for MinIO
+
+s3_client = None
+if S3_BUCKET_NAME and S3_ENDPOINT_URL and S3_ACCESS_KEY and S3_SECRET_KEY:
+    s3_client = boto3.client(
+        's3',
+        endpoint_url=S3_ENDPOINT_URL,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
+        config=boto3.session.Config(s3={'addressing_style': S3_ADDRESSING_STYLE})
+    )
+    print(f"S3 client initialized for endpoint: {S3_ENDPOINT_URL}, bucket: {S3_BUCKET_NAME}")
+elif S3_BUCKET_NAME: # If only bucket is defined, assume standard AWS S3 with IAM role or env vars
+    s3_client = boto3.client('s3')
+    print(f"S3 client initialized for AWS (standard, bucket: {S3_BUCKET_NAME})")
+else:
+    print("S3 client not initialized. Missing S3_BUCKET or other S3 configuration variables.")
+
+# WMO-inspired alert level color mapping
+ALERT_LEVEL_COLORS = {
+    'Extreme Danger': '#FF0000',  # Red
+    'Danger': '#FFA500',          # Orange
+    'Extreme Caution': '#FFFF00', # Yellow
+    'Normal': '#008000',          # Green
+    'Missing data': '#D3D3D3'     # Light grey for missing data
+}
+
+# --- Define GeoJSON path ---
+# Standard in-container path
+CONTAINER_GEOJSON_PATH = Path("/app/config/timorleste.geojson")
+
+# Development/fallback path (adjust if your dev structure is different)
+# This assumes the script is in crish-weather-forecast-puller/scripts
+# and the workspace root is /Users/ericksoncruz/Documents/RIMES/superset/
+DEV_GEOJSON_PATH = Path(__file__).resolve().parent.parent.parent / "superset-frontend/plugins/preset-chart-deckgl-osm/src/layers/Country/countries/timorleste.geojson"
+
+GEOJSON_FILE_PATH = None
+if CONTAINER_GEOJSON_PATH.exists():
+    GEOJSON_FILE_PATH = str(CONTAINER_GEOJSON_PATH)
+    print(f"Using GeoJSON from container path: {GEOJSON_FILE_PATH}")
+elif DEV_GEOJSON_PATH.exists():
+    GEOJSON_FILE_PATH = str(DEV_GEOJSON_PATH)
+    print(f"Using GeoJSON from development path: {GEOJSON_FILE_PATH}")
+else:
+    print(f"ERROR: GeoJSON file not found at container path ({CONTAINER_GEOJSON_PATH}) or development path ({DEV_GEOJSON_PATH}). Maps cannot be generated.")
 
 def get_day_name(date_str):
     """Convert ISO date string to day name."""
@@ -60,6 +115,22 @@ def calculate_heat_index(tmax_df, rh_df):
         'municipality_code',
         'municipality_name'
     ])
+
+def get_alert_level_for_value(parameter_name, value):
+    """Determines the alert level based on parameter name and value."""
+    if parameter_name == 'Heat Index':
+        if value > 42: return 'Extreme Danger'
+        if value > 40: return 'Danger'
+        if value >= 36: return 'Extreme Caution'
+    elif parameter_name == 'Rainfall':
+        if value > 60: return 'Extreme Danger'
+        if value > 25: return 'Danger'
+        if value >= 15: return 'Extreme Caution'
+    elif parameter_name == 'Wind Speed':
+        if value > 80: return 'Extreme Danger'
+        if value > 60: return 'Danger'
+        if value >= 40: return 'Extreme Caution'
+    return 'Normal'
 
 def transform_weather_data(input_file):
     """Transform weather JSON data into database-friendly format using Polars."""
@@ -266,6 +337,174 @@ def process_weather_files():
     
     return dataframes
 
+def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, municipality_name, municipality_code, geojson_path, alert_value):
+    """
+    Generates a choropleth map image of the forecast for a specific parameter and date.
+    Colors municipalities by alert level.
+    """
+    try:
+        gdf = geopandas.read_file(geojson_path)
+        daily_forecast_df = forecast_df.filter(pl.col("forecast_date") == forecast_date_str)
+        
+        if 'value' not in daily_forecast_df.columns:
+            print(f"Error: 'value' column not found in daily_forecast_df for map generation of {parameter_name}.")
+            return None
+        if 'weather_parameter' not in daily_forecast_df.columns:
+            print(f"Error: 'weather_parameter' column not found in daily_forecast_df for map generation of {parameter_name}.")
+            return None
+
+        # Apply the get_alert_level_for_value function row-wise
+        # Ensure that the function is robust and handles potential errors if a row doesn't have expected fields.
+        alert_levels_calculated = []
+        for row in daily_forecast_df.iter_rows(named=True):
+            # iter_rows(named=True) requires Polars >= 0.19.3. If older, use .to_dicts() and iterate.
+            # Assuming 'weather_parameter' and 'value' are present as ensured by checks above.
+            alert_levels_calculated.append(get_alert_level_for_value(row['weather_parameter'], row['value']))
+        
+        daily_forecast_with_levels_df = daily_forecast_df.with_columns([
+            pl.Series("alert_level_calculated", alert_levels_calculated)
+        ])
+
+        daily_forecast_pd_df = daily_forecast_with_levels_df.to_pandas()
+        merged_gdf = gdf.merge(daily_forecast_pd_df, left_on='ISO', right_on='municipality_code', how='left')
+
+        merged_gdf['color'] = merged_gdf['alert_level_calculated'].map(lambda x: ALERT_LEVEL_COLORS.get(x, ALERT_LEVEL_COLORS['Missing data']))
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+        merged_gdf.plot(color=merged_gdf['color'], ax=ax, edgecolor='black', linewidth=0.5)
+        
+        legend_handles = [
+            plt.Rectangle((0,0),1,1, color=color, label=level) 
+            for level, color in ALERT_LEVEL_COLORS.items() if level != 'Missing data'
+        ]
+        if merged_gdf['value'].isnull().any():
+             legend_handles.append(plt.Rectangle((0,0),1,1, color=ALERT_LEVEL_COLORS['Missing data'], label='Missing data'))
+
+        ax.legend(handles=legend_handles, title="Alert Levels", loc="lower right")
+
+        highlight_gdf = merged_gdf[merged_gdf['ISO'] == municipality_code]
+        if not highlight_gdf.empty:
+            highlight_gdf.plot(ax=ax, facecolor='none', edgecolor='blue', linewidth=2.5, linestyle='--')
+
+        # Format the date for the title
+        try:
+            parsed_title_date = datetime.strptime(forecast_date_str, '%Y-%m-%d')
+            formatted_title_date = parsed_title_date.strftime('%d %B, %Y')
+        except ValueError:
+            formatted_title_date = forecast_date_str # Fallback to original if parsing fails
+
+        ax.set_title(f'{parameter_name} Forecast for Timor-Leste - {formatted_title_date}\nAlert in {municipality_name} (Value: {alert_value:.2f})', fontsize=15)
+        ax.set_axis_off()
+        plt.tight_layout()
+
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=100)
+        plt.close(fig)
+        img_buffer.seek(0)
+        return img_buffer
+    except Exception as e:
+        print(f"Error generating forecast map image for {parameter_name} on {forecast_date_str}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def generate_forecast_table_image(forecast_df, parameter_name, forecast_date_str, municipality_name):
+    """
+    Generates an image of a table with all available forecast data for the specific 
+    parameter and municipality.
+    """
+    try:
+        # Filter data for the municipality for all available dates
+        table_data_df = forecast_df.filter(
+            (pl.col("municipality_name") == municipality_name)
+        ).select(["forecast_date", "value"]).sort("forecast_date")
+
+        if table_data_df.is_empty():
+            print(f"No data for {municipality_name} for table generation of {parameter_name}.")
+            return None
+
+        num_rows = table_data_df.height
+        fig_height = max(3, num_rows * 0.5)
+
+        fig, ax = plt.subplots(figsize=(8, fig_height))
+        ax.axis('tight')
+        ax.axis('off')
+        
+        col_labels = ['Date', f'{parameter_name} Value']
+        
+        # Get data as list of lists (rows)
+        raw_table_content = table_data_df.to_pandas().values.tolist()
+        
+        # Format the content: dates in first col, floats in second col
+        formatted_table_content = []
+        for row_data in raw_table_content:
+            formatted_row = []
+            # Format date (first element)
+            if isinstance(row_data[0], str):
+                try:
+                    formatted_row.append(datetime.strptime(row_data[0], '%Y-%m-%d').strftime('%d %B, %Y'))
+                except ValueError:
+                    formatted_row.append(row_data[0]) # Keep original if parsing fails
+            else:
+                formatted_row.append(row_data[0]) # Should be a string, but as a fallback
+            
+            # Format value (second element)
+            if len(row_data) > 1 and isinstance(row_data[1], (float, int)):
+                formatted_row.append(f"{row_data[1]:.2f}")
+            elif len(row_data) > 1:
+                formatted_row.append(row_data[1]) # Keep original if not float/int
+            else:
+                formatted_row.append("") # Placeholder if no second element
+            
+            formatted_table_content.append(formatted_row)
+        
+        unit = ""
+        if "Temperature" in parameter_name or "Heat Index" in parameter_name: unit = " (°C)"
+        elif "Rainfall" in parameter_name: unit = " (mm)"
+        elif "Wind Speed" in parameter_name: unit = " (km/h)"
+        col_labels[1] = f'{parameter_name} Value{unit}'
+
+        table = ax.table(cellText=formatted_table_content, colLabels=col_labels, cellLoc='center', loc='center')
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.2, 1.2)
+
+        ax.set_title(f'{parameter_name} Forecast for {municipality_name}', fontsize=12, pad=20)
+        
+        plt.tight_layout()
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=100)
+        plt.close(fig)
+        img_buffer.seek(0)
+        return img_buffer
+    except Exception as e:
+        print(f"Error generating forecast table image for {parameter_name} in {municipality_name}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def upload_image_to_s3(image_buffer, s3_key, bucket_name):
+    """
+    Uploads an image buffer to S3.
+    Returns the S3 key if successful, None otherwise.
+    """
+    if not s3_client or not bucket_name:
+        print("S3 client or bucket name not configured. Skipping S3 upload.")
+        # To allow flow without S3 for local testing, we can return the key
+        # but in a real scenario, you might want to return None or raise an error.
+        print(f"DEV MODE: Returning key '{s3_key}' without actual S3 upload.")
+        return s3_key 
+
+    try:
+        s3_client.put_object(Bucket=bucket_name, Key=s3_key, Body=image_buffer, ContentType='image/png')
+        print(f"Successfully uploaded {s3_key} to S3 bucket {bucket_name}.")
+        return s3_key
+    except Exception as e:
+        print(f"Error uploading {s3_key} to S3 bucket {bucket_name}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 def ingest_to_postgresql(dataframes):
     """Ingest dataframes into PostgreSQL database using Polars write_database with ADBC."""
     # Construct PostgreSQL connection URI from environment variables with fallbacks
@@ -296,7 +535,6 @@ def ingest_to_postgresql(dataframes):
                     
                     # Create bulletins for Danger or Extreme Danger alerts
                     if df.shape[0] > 0:
-                        # Filter for high severity alerts only (Danger or Extreme Danger)
                         high_severity_alerts = df.filter(
                             (pl.col('alert_level') == 'Danger') | 
                             (pl.col('alert_level') == 'Extreme Danger')
@@ -304,16 +542,26 @@ def ingest_to_postgresql(dataframes):
                         
                         if high_severity_alerts.shape[0] > 0:
                             print(f"Creating bulletins for {high_severity_alerts.shape[0]} high severity weather alerts")
-                            
-                            # Convert to pandas for easier processing with psycopg2
                             alerts_to_process = high_severity_alerts.to_pandas()
                             
-                            # Create bulletins for each significant alert
                             with conn.cursor() as cur:
-                                for _, alert in alerts_to_process.iterrows():
+                                for _, alert_row in alerts_to_process.iterrows():
+                                    # Original forecast date string from the DataFrame
+                                    original_forecast_date_str = alert_row['forecast_date'] # This is YYYY-MM-DD
+                                    
+                                    # Create a formatted date for display purposes (e.g., title, captions)
+                                    # This should be done once from the original string.
+                                    try:
+                                        parsed_forecast_date = datetime.strptime(original_forecast_date_str, '%Y-%m-%d')
+                                        formatted_display_date = parsed_forecast_date.strftime('%d %B, %Y')
+                                    except ValueError:
+                                        # If parsing fails (should not happen if data is clean), use original as fallback for display
+                                        formatted_display_date = original_forecast_date_str 
+                                        print(f"Warning: Could not parse date {original_forecast_date_str} for display formatting.")
+
                                     # Build the safety tips based on alert type
                                     safety_tips = ""
-                                    if alert['weather_parameter'] == 'Heat Index':
+                                    if alert_row['weather_parameter'] == 'Heat Index':
                                         safety_tips = (
                                             "• Stay hydrated by drinking plenty of water\n"
                                             "• Avoid outdoor activities during the hottest part of the day\n"
@@ -321,7 +569,7 @@ def ingest_to_postgresql(dataframes):
                                             "• Check on vulnerable individuals like elderly and children regularly\n"
                                             "• Know the signs of heat-related illness (dizziness, nausea, headache)"
                                         )
-                                    elif alert['weather_parameter'] == 'Rainfall':
+                                    elif alert_row['weather_parameter'] == 'Rainfall':
                                         safety_tips = (
                                             "• Avoid flood-prone areas and crossing flooded roads\n"
                                             "• Secure your home against water damage\n"
@@ -329,7 +577,7 @@ def ingest_to_postgresql(dataframes):
                                             "• Follow evacuation orders if issued\n"
                                             "• Stay informed through local weather updates"
                                         )
-                                    elif alert['weather_parameter'] == 'Wind Speed':
+                                    elif alert_row['weather_parameter'] == 'Wind Speed':
                                         safety_tips = (
                                             "• Secure or bring inside loose outdoor items\n"
                                             "• Stay away from damaged buildings, power lines, and trees\n"
@@ -338,30 +586,31 @@ def ingest_to_postgresql(dataframes):
                                             "• If traveling, be aware of potential road hazards"
                                         )
                                     
-                                    # Format date for title
-                                    forecast_date = datetime.fromisoformat(alert['forecast_date'])
-                                    formatted_date = forecast_date.strftime('%B %d, %Y')
+                                    title = f"{alert_row['alert_level']} Weather Alert: {alert_row['weather_parameter']} in {alert_row['municipality_name']} ({formatted_display_date})"
                                     
-                                    # Create bulletin title
-                                    title = f"{alert['alert_level']} Weather Alert: {alert['weather_parameter']} in {alert['municipality_name']} ({formatted_date})"
-                                    
-                                    # Create advisory text
+                                    parameter_value = round(alert_row['parameter_value'], 2)
+
+                                    parameter_unit = ""
+                                    if alert_row['weather_parameter'] == 'Heat Index': parameter_unit = "°C"
+                                    elif alert_row['weather_parameter'] == 'Rainfall': parameter_unit = "mm"
+                                    elif alert_row['weather_parameter'] == 'Wind Speed': parameter_unit = "km/h"
+
                                     advisory = (
-                                        f"{alert['alert_title']} for {alert['municipality_name']} on {formatted_date}.\n\n"
-                                        f"{alert['alert_message']}\n\n"
-                                        f"Parameter value: {alert['parameter_value']}"
+                                        f"{alert_row['alert_title']} for {alert_row['municipality_name']} on {formatted_display_date}.\n\n"
+                                        f"{alert_row['alert_message']}\n\n"
+                                        f"{alert_row['weather_parameter']}: {parameter_value} {parameter_unit}"
                                     )
                                     
                                     # Create risks section
                                     risks = ""
-                                    if alert['weather_parameter'] == 'Heat Index':
+                                    if alert_row['weather_parameter'] == 'Heat Index':
                                         risks = (
                                             "• Heat stroke and heat exhaustion\n"
                                             "• Dehydration\n"
                                             "• Increased vulnerability for elderly, children, and those with chronic illnesses\n"
                                             "• Possible impacts on infrastructure and services"
                                         )
-                                    elif alert['weather_parameter'] == 'Rainfall':
+                                    elif alert_row['weather_parameter'] == 'Rainfall':
                                         risks = (
                                             "• Flooding in low-lying areas\n"
                                             "• Landslides in mountainous regions\n"
@@ -369,7 +618,7 @@ def ingest_to_postgresql(dataframes):
                                             "• Travel disruptions\n"
                                             "• Possible damage to crops and infrastructure"
                                         )
-                                    elif alert['weather_parameter'] == 'Wind Speed':
+                                    elif alert_row['weather_parameter'] == 'Wind Speed':
                                         risks = (
                                             "• Flying debris causing injuries\n"
                                             "• Damage to structures and vegetation\n"
@@ -379,10 +628,69 @@ def ingest_to_postgresql(dataframes):
                                         )
                                     
                                     # Create hashtags
-                                    hashtags = f"weather,alert,{alert['weather_parameter'].lower().replace(' ', '')},{alert['municipality_name'].lower()}"
+                                    hashtags = f"weather,alert,{alert_row['weather_parameter'].lower().replace(' ', '')},{alert_row['municipality_name'].lower()}"
                                     
+                                    bulletin_s3_image_keys = []
+                                    parameter_source_table = None
+                                    if alert_row['weather_parameter'] == 'Heat Index': parameter_source_table = 'heat_index_daily_region'
+                                    elif alert_row['weather_parameter'] == 'Rainfall': parameter_source_table = 'rainfall_daily_weighted_average'
+                                    elif alert_row['weather_parameter'] == 'Wind Speed': parameter_source_table = 'ws_daily_avg_region'
+                                    
+                                    full_parameter_df_for_charts = None
+                                    if parameter_source_table and parameter_source_table in dataframes:
+                                        full_parameter_df_for_charts = dataframes[parameter_source_table].with_columns(
+                                            pl.lit(alert_row['weather_parameter']).alias("weather_parameter")
+                                        )
+
+                                    actual_s3_bucket = os.getenv("S3_BUCKET")
+                                    if not actual_s3_bucket: print("ERROR: S3_BUCKET environment variable not set. Cannot upload chart images.")
+
+                                    if full_parameter_df_for_charts is not None and GEOJSON_FILE_PATH and actual_s3_bucket:
+                                        # 1. Forecast Map Image
+                                        # Pass the original YYYY-MM-DD date string to chart functions
+                                        map_image_buffer = generate_forecast_map_image(
+                                            full_parameter_df_for_charts, 
+                                            alert_row['weather_parameter'], 
+                                            original_forecast_date_str, # Use original string
+                                            alert_row['municipality_name'],
+                                            alert_row['municipality_code'],
+                                            GEOJSON_FILE_PATH,
+                                            alert_row['parameter_value']
+                                        )
+                                        if map_image_buffer:
+                                            map_s3_key = f"bulletin_charts/map_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"
+                                            uploaded_map_key = upload_image_to_s3(map_image_buffer, map_s3_key, bucket_name=actual_s3_bucket) 
+                                            if uploaded_map_key:
+                                                bulletin_s3_image_keys.append({
+                                                    "key": uploaded_map_key, 
+                                                    "caption": f"{alert_row['weather_parameter']} forecast map for {alert_row['municipality_name']} on {formatted_display_date}" # Use display date for caption
+                                                })
+
+                                        # 2. Forecast Table Image
+                                        table_image_buffer = generate_forecast_table_image(
+                                            full_parameter_df_for_charts,
+                                            alert_row['weather_parameter'], 
+                                            original_forecast_date_str, # Use original string
+                                            alert_row['municipality_name']
+                                        )
+                                        if table_image_buffer:
+                                            table_s3_key = f"bulletin_charts/table_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"
+                                            uploaded_table_key = upload_image_to_s3(table_image_buffer, table_s3_key, bucket_name=actual_s3_bucket)
+                                            if uploaded_table_key:
+                                                bulletin_s3_image_keys.append({
+                                                    "key": uploaded_table_key, 
+                                                    "caption": f"{alert_row['weather_parameter']} forecast table for {alert_row['municipality_name']}" # Display date is implicit in table content
+                                                })
+                                    else:
+                                        if not GEOJSON_FILE_PATH:
+                                            print("Skipping map generation as GeoJSON_FILE_PATH is not set or file not found.")
+                                        if full_parameter_df_for_charts is None:
+                                            print(f"Skipping chart generation as source data for {alert_row['weather_parameter']} is not available.")
+                                        if not actual_s3_bucket:
+                                            print("Skipping chart image S3 upload as S3_BUCKET is not set.")
+
                                     # Insert bulletin record
-                                    sql = """
+                                    bulletin_insert_sql = """
                                     INSERT INTO bulletins (
                                         title, advisory, hashtags, created_by_fk, 
                                         created_on, changed_on, risks, safety_tips
@@ -390,18 +698,38 @@ def ingest_to_postgresql(dataframes):
                                     """
                                     
                                     current_time = datetime.now()
-                                    cur.execute(sql, (
-                                        title,
-                                        advisory,
+                                    cur.execute(bulletin_insert_sql, (
+                                        title, # Uses formatted_display_date
+                                        advisory, # Uses formatted_display_date
                                         hashtags,
-                                        1,  # Admin user ID as requested
+                                        1, 
                                         current_time,
                                         current_time,
-                                        risks,
-                                        safety_tips
+                                        risks, # Uses alert_row data
+                                        safety_tips # Uses alert_row data
                                     ))
+                                    cur.execute("SELECT lastval()")
+                                    bulletin_id = cur.fetchone()[0]
+                                    print(f"Created bulletin: {title} with ID: {bulletin_id}")
+
+                                    # --- Insert image attachments if any ---
+                                    if bulletin_id and bulletin_s3_image_keys:
+                                        attachment_insert_sql = """
+                                        INSERT INTO bulletin_image_attachments (
+                                            bulletin_id, s3_key, caption, created_on, changed_on
+                                        ) VALUES (%s, %s, %s, %s, %s)
+                                        """
+                                        for img_data in bulletin_s3_image_keys:
+                                            cur.execute(attachment_insert_sql, (
+                                                bulletin_id,
+                                                img_data["key"],
+                                                img_data["caption"],
+                                                current_time,
+                                                current_time
+                                            ))
+                                            print(f"  Attached image: {img_data['key']} to bulletin {bulletin_id}")
                                     
-                                    print(f"Created bulletin: {title}")
+                            print(f"Finished processing bulletins for high severity alerts.")
                 
                 # Write DataFrame to database using Polars native method with ADBC
                 rows_affected = df.write_database(

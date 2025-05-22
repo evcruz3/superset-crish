@@ -5,4 +5,7 @@ psycopg2-binary>=2.9.9,<3
 pyarrow>=18.1.0,<19
 adbc-driver-manager>=1.2.0
 adbc-driver-postgresql>=1.2.0
-git+https://github.com/nzahasan/dataex-client.git@8516eea9000bf2b3637caecca31b703b4dcef737 
+git+https://github.com/nzahasan/dataex-client.git@8516eea9000bf2b3637caecca31b703b4dcef737
+matplotlib
+geopandas
+boto3 
