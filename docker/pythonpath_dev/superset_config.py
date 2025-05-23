@@ -81,12 +81,21 @@ S3_ADDRESSING_STYLE = os.getenv('S3_ADDRESSING_STYLE', 'path') # 'path' or 'virt
 S3_PUBLIC_ENDPOINT_URL = os.getenv('S3_PUBLIC_ENDPOINT_URL', 'http://localhost:9090') # For frontend access
 
 # Facebook Dissemination Configuration
-FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID', 1370637347489550)
-FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', 'cc2efa39adad057cac3d04606993e391')
-FACEBOOK_PAGE_ID = os.getenv('FACEBOOK_PAGE_ID', 656750690853001)
-FACEBOOK_ACCESS_TOKEN = os.getenv('FACEBOOK_ACCESS_TOKEN', 'EAATelmA2hw4BO46EMdKOqNaKgCUTe1QRGkxbi7KSw2kFc7dvYzvtt4YF6QkPV5GMb7a8lZAx6LZBOj2LIaydE65ArTnG8xc7qBFyUTrJiN2lhzmDZAFuwJcJhuRLztlhO527EV6XXX2AojQwOHZCXp8mRFhyuZADxIZAlZB3NHslblSHQsolQ4kkfqaUCn1TZAxJlvDWYl89ZAe3hG9kRvk4DEhtaZCzREOkkFuUxq')
+FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID')
+FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET')
+FACEBOOK_PAGE_ID = os.getenv('FACEBOOK_PAGE_ID')
+FACEBOOK_ACCESS_TOKEN = os.getenv('FACEBOOK_ACCESS_TOKEN')
 # Optional: Default message template for Facebook posts
 FACEBOOK_DEFAULT_MESSAGE_TEMPLATE = os.getenv('FACEBOOK_DEFAULT_MESSAGE_TEMPLATE', "New Bulletin: {title} - Read more at {url}")
+
+# ----------------------------------------------------
+# WhatsApp Dissemination Configuration
+# ----------------------------------------------------
+WHATSAPP_CLOUD_API_VERSION = os.getenv("WHATSAPP_CLOUD_API_VERSION", "v22.0") # Using the version from your curl
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID") # Your Phone Number ID
+WHATSAPP_BUSINESS_ACCOUNT_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID") # Your WhatsApp Business Account ID
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN") # IMPORTANT: Replace with your actual token
+WHATSAPP_DEFAULT_TEMPLATE_NAME = os.getenv("WHATSAPP_DEFAULT_TEMPLATE_NAME", "bulletin_alert") 
 
 class CeleryConfig:
     broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"

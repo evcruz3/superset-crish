@@ -30,12 +30,34 @@ class EmailGroup(Model):
     def __repr__(self):
         return self.name
 
+class WhatsAppGroup(Model):
+    __tablename__ = 'whatsapp_groups'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False, unique=True)
+    # Storing phone numbers as a comma-separated string. 
+    # Ensure numbers include country codes and are validated appropriately before saving if possible.
+    phone_numbers = Column(Text, nullable=True) 
+    description = Column(Text, nullable=True)
+
+    created_on = Column(DateTime, default=datetime.utcnow, nullable=False)
+    changed_on = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=True)
+    changed_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=True)
+
+    created_by = relationship('User', foreign_keys=[created_by_fk])
+    changed_by = relationship('User', foreign_keys=[changed_by_fk])
+
+    def __repr__(self):
+        return self.name
+
 class DisseminatedBulletinLog(Model):
     __tablename__ = 'disseminated_bulletin_logs'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     bulletin_id = Column(Integer, ForeignKey('bulletins.id'), nullable=False)
     email_group_id = Column(Integer, ForeignKey('email_groups.id'), nullable=True)
+    whatsapp_group_id = Column(Integer, ForeignKey('whatsapp_groups.id'), nullable=True)
     
     sent_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     # Status: e.g., "SUCCESS", "PARTIAL_SUCCESS", "FAILED", "PENDING"
@@ -54,10 +76,11 @@ class DisseminatedBulletinLog(Model):
     # Relationships
     bulletin = relationship('Bulletin', foreign_keys=[bulletin_id])
     email_group = relationship('EmailGroup', foreign_keys=[email_group_id])
+    whatsapp_group = relationship('WhatsAppGroup', foreign_keys=[whatsapp_group_id])
     disseminated_by = relationship('User', foreign_keys=[disseminated_by_fk])
 
     def __repr__(self):
-        return f"Log for Bulletin ID: {self.bulletin_id} to Group ID: {self.email_group_id} at {self.sent_at}"
+        return f"Log for Bulletin ID: {self.bulletin_id} to Group ID: {self.email_group_id or self.whatsapp_group_id} at {self.sent_at}"
 
 # You might need to add these models to Superset's models/__init__.py
 # so they are recognized by Flask-AppBuilder / Alembic for migrations. 

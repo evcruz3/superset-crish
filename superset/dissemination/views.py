@@ -5,6 +5,7 @@ from flask import redirect, url_for, request, flash, g, current_app # g for curr
 from markupsafe import Markup # Import Markup
 import json # Import the json library
 import logging # Add logging import
+import re # Add re import at the top of the file
 
 # Setup logger for this module
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 from flask_appbuilder.security.decorators import protect, has_access # Ensure has_access is also imported if needed for SPA views
 
 from superset import appbuilder, db
-from superset.models.dissemination import EmailGroup, DisseminatedBulletinLog
+from superset.models.dissemination import EmailGroup, DisseminatedBulletinLog, WhatsAppGroup
 from superset.models.bulletins import Bulletin # For dropdown in dissemination form
 from superset.utils.core import send_email_smtp # For sending emails
 from superset.views.base import SupersetModelView, DeleteMixin, BaseSupersetView # Import BaseSupersetView
@@ -21,6 +22,8 @@ from .forms import DisseminationForm
 from superset.utils.pdf import generate_bulletin_pdf
 # Import Facebook utils
 from .facebook_utils import get_facebook_graph_api, upload_single_photo_to_facebook, create_facebook_feed_post # New imports
+# Import WhatsApp utils
+from .whatsapp_utils import send_whatsapp_message # Added WhatsApp import
 import boto3 # For S3 interaction
 from botocore.exceptions import ClientError # For S3 error handling
 import os # For path joining if needed for temporary files
@@ -65,6 +68,46 @@ class EmailGroupModelView(SupersetModelView, DeleteMixin):
             item.changed_by_fk = g.user.id
 
     def pre_update(self, item: "EmailGroup") -> None:
+        if g.user:
+            item.changed_by_fk = g.user.id
+
+class WhatsAppGroupModelView(SupersetModelView, DeleteMixin):
+    datamodel = SQLAInterface(WhatsAppGroup) # Use WhatsAppGroup model
+    route_base = "/whatsappgroups"
+
+    list_title = _("Manage WhatsApp Groups")
+    show_title = _("Show WhatsApp Group")
+    add_title = _("Add WhatsApp Group")
+    edit_title = _("Edit WhatsApp Group")
+
+    list_columns = ["name", "description", "created_by", "changed_on"]
+    show_fieldsets = [
+        (
+            _("Summary"),
+            {"fields": ["name", "description", "phone_numbers"]},
+        ),
+        (
+            _("Audit Trail"),
+            {"fields": ["created_by", "created_on", "changed_by", "changed_on"], "expanded": False},
+        ),
+    ]
+    add_columns = ["name", "description", "phone_numbers"]
+    edit_columns = ["name", "description", "phone_numbers"]
+    search_columns = ["name", "description", "phone_numbers", "created_by"]
+    label_columns = {
+        "name": _("Group Name"),
+        "description": _("Description"),
+        "phone_numbers": _("Phone Numbers (comma-separated, e.g., +1234567890)"),
+        "created_by": _("Created By"),
+        "changed_on": _("Changed On"),
+    }
+
+    def pre_add(self, item: "WhatsAppGroup") -> None:
+        if g.user:
+            item.created_by_fk = g.user.id
+            item.changed_by_fk = g.user.id
+
+    def pre_update(self, item: "WhatsAppGroup") -> None:
         if g.user:
             item.changed_by_fk = g.user.id
 
@@ -195,18 +238,35 @@ class DisseminateBulletinView(BaseView):
             })
         return json.dumps(output)
 
+    def _whatsapp_groups_to_json(self, whatsapp_groups_list): # New method for WhatsApp groups
+        """ Converts a list of WhatsAppGroup objects to a JSON string for the template. """
+        output = []
+        for group in whatsapp_groups_list:
+            phone_numbers_list = [p.strip() for p in (group.phone_numbers or "").split(',') if p.strip()]
+            output.append({
+                "id": group.id,
+                "name": group.name,
+                "phone_numbers": phone_numbers_list
+            })
+        return json.dumps(output)
+
     @expose("/form/", methods=["GET", "POST"])
     def form(self):
         form = DisseminationForm()
         bulletins_query = db.session.query(Bulletin).order_by(Bulletin.created_on.desc()).all()
         email_groups_query = db.session.query(EmailGroup).order_by(EmailGroup.name).all()
+        whatsapp_groups_query = db.session.query(WhatsAppGroup).order_by(WhatsAppGroup.name).all() # Query WhatsApp groups
+        
         bulletins_json_for_template = self._bulletins_to_json(bulletins_query)
         email_groups_json_for_template = self._email_groups_to_json(email_groups_query)
+        whatsapp_groups_json_for_template = self._whatsapp_groups_to_json(whatsapp_groups_query) # JSON for WhatsApp groups
 
         form.bulletin_id.choices = [ (b.id, b.title) for b in bulletins_query ]
         form.bulletin_id.choices.insert(0, (0, _('-- Select a Bulletin --')))
         form.email_group_id.choices = [ (g.id, g.name) for g in email_groups_query ]
         form.email_group_id.choices.insert(0, (0, _('-- Select an Email Group --')))
+        form.whatsapp_group_id.choices = [ (g.id, g.name) for g in whatsapp_groups_query ] # Populate WhatsApp group choices
+        form.whatsapp_group_id.choices.insert(0, (0, _('-- Select a WhatsApp Group --')))
 
         selected_bulletin_for_template = None
 
@@ -230,6 +290,10 @@ class DisseminateBulletinView(BaseView):
                 if not form.dissemination_channels.data or 'email' in form.dissemination_channels.data:
                     form.email_group_id.data = 0
             
+            if form.whatsapp_group_id.data is None: # Set default for WhatsApp group
+                if not form.dissemination_channels.data or 'whatsapp' in form.dissemination_channels.data:
+                    form.whatsapp_group_id.data = 0
+            
             # Pre-select channels if specified in query params (e.g., ?channels=email,facebook)
             preselect_channels_str = request.args.get('channels')
             if preselect_channels_str:
@@ -251,6 +315,7 @@ class DisseminateBulletinView(BaseView):
 
             email_success = False
             facebook_success = False
+            whatsapp_success = False # Initialize WhatsApp success status
             log_entries = []
             processed_channels = []
 
@@ -438,6 +503,214 @@ class DisseminateBulletinView(BaseView):
                         ))
                         # facebook_success remains False
 
+            # --- WhatsApp Dissemination ---
+            if 'whatsapp' in dissemination_channels:
+                processed_channels.append('whatsapp')
+                logger.info("Processing WhatsApp dissemination channel.")
+
+                wa_phone_id_config = current_app.config.get('WHATSAPP_PHONE_NUMBER_ID') # Renamed to avoid clash
+                wa_token_config = current_app.config.get('WHATSAPP_ACCESS_TOKEN') # Renamed
+                wa_template_name_config = current_app.config.get('WHATSAPP_DEFAULT_TEMPLATE_NAME', 'bulletin_alert') # Renamed
+                # wa_recipients_config = current_app.config.get('WHATSAPP_BULLETIN_RECIPIENTS', []) # No longer used from config here
+                
+                whatsapp_group_id_form = form.whatsapp_group_id.data # Get from form
+                selected_whatsapp_group = db.session.query(WhatsAppGroup).get(whatsapp_group_id_form)
+
+                if not selected_whatsapp_group or not selected_whatsapp_group.phone_numbers:
+                    error_msg = "Selected WhatsApp group not found or has no phone numbers."
+                    logger.error(error_msg)
+                    flash(_(error_msg), "danger")
+                    log_entries.append(DisseminatedBulletinLog(
+                        bulletin_id=bulletin.id,
+                        whatsapp_group_id=whatsapp_group_id_form if whatsapp_group_id_form else None,
+                        disseminated_by_fk=g.user.id if g.user else None,
+                        status="FAILED",
+                        details=error_msg,
+                        channel="whatsapp",
+                        subject_sent=f"WhatsApp attempt for: {bulletin.title} (Template: {wa_template_name_config})",
+                        message_body_sent="WhatsApp Group Error"
+                    ))
+                # Check essential configs like token and phone ID, template name
+                elif not wa_phone_id_config or not wa_token_config or wa_token_config == "YOUR_PERMANENT_SYSTEM_USER_ACCESS_TOKEN_PLEASE_REPLACE" or not wa_template_name_config:
+                    missing_configs = []
+                    if not wa_phone_id_config: missing_configs.append("WHATSAPP_PHONE_NUMBER_ID from config")
+                    if not wa_token_config or wa_token_config == "YOUR_PERMANENT_SYSTEM_USER_ACCESS_TOKEN_PLEASE_REPLACE":
+                        missing_configs.append("WHATSAPP_ACCESS_TOKEN from config (ensure it's replaced)")
+                    if not wa_template_name_config: missing_configs.append("WHATSAPP_DEFAULT_TEMPLATE_NAME from config")
+                    
+                    error_msg = f"WhatsApp dissemination is not configured correctly in system settings. Missing: {', '.join(missing_configs)}."
+                    logger.error(error_msg)
+                    flash(_(error_msg), "warning")
+                    log_entries.append(DisseminatedBulletinLog(
+                        bulletin_id=bulletin.id,
+                        whatsapp_group_id=whatsapp_group_id_form,
+                        disseminated_by_fk=g.user.id if g.user else None,
+                        status="FAILED",
+                        details=error_msg,
+                        channel="whatsapp",
+                        subject_sent=f"WhatsApp attempt for: {bulletin.title} (Template: {wa_template_name_config})",
+                        message_body_sent="System Configuration Error"
+                    ))
+                else:
+                    wa_recipients_list = [p.strip() for p in selected_whatsapp_group.phone_numbers.split(',') if p.strip()]
+                    if not wa_recipients_list:
+                        error_msg = f"No valid phone numbers found in WhatsApp group '{selected_whatsapp_group.name}'."
+                        logger.error(error_msg)
+                        flash(_(error_msg), "danger")
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            whatsapp_group_id=whatsapp_group_id_form,
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="FAILED",
+                            details=error_msg,
+                            channel="whatsapp",
+                            subject_sent=f"WhatsApp attempt for: {bulletin.title} (Template: {wa_template_name_config})",
+                            message_body_sent="Empty Group Recipient List"
+                        ))
+                    else:
+                        success_count = 0
+                        failure_count = 0
+                        whatsapp_log_details = []
+
+                        wa_subject = form.subject.data
+                        wa_message = form.message.data
+
+                        # --- Parsing logic for wa_message ---
+                        parsed_content = {
+                            'advisory': '',
+                            'risks': '',
+                            'safety_tips': ''
+                        }
+                        if wa_message:
+                            # Use regex to split the message by known headers, keeping the headers for context if needed
+                            # This pattern looks for the headers and captures the text until the next header or end of string
+                            # It assumes headers are uppercase and followed by a colon, possibly newlines/spaces.
+                            
+                            # Simpler approach: Split and then find sections.
+                            # This is less reliant on perfect regex and order, but assumes keywords exist.
+                            # Convert message to uppercase for case-insensitive keyword matching
+                            message_upper = wa_message.upper()
+                            
+                            advisory_keyword = "ADVISORY:"
+                            risks_keyword = "RISKS:"
+                            safety_tips_keyword = "SAFETY TIPS:"
+
+                            advisory_start_idx = message_upper.find(advisory_keyword)
+                            risks_start_idx = message_upper.find(risks_keyword)
+                            safety_tips_start_idx = message_upper.find(safety_tips_keyword)
+
+                            # Create a list of found keywords and their start indices
+                            sections = []
+                            if advisory_start_idx != -1:
+                                sections.append((advisory_start_idx, advisory_keyword, 'advisory'))
+                            if risks_start_idx != -1:
+                                sections.append((risks_start_idx, risks_keyword, 'risks'))
+                            if safety_tips_start_idx != -1:
+                                sections.append((safety_tips_start_idx, safety_tips_keyword, 'safety_tips'))
+                            
+                            # Sort sections by their start index to process them in order
+                            sections.sort()
+
+                            for i, (start_idx, keyword, section_key) in enumerate(sections):
+                                content_start = start_idx + len(keyword)
+                                content_end = None
+                                if i + 1 < len(sections): # If there's a next section
+                                    content_end = sections[i+1][0] # End before the next section starts
+                                
+                                section_text = wa_message[content_start:content_end].strip()
+                                parsed_content[section_key] = section_text
+                            
+                            # If no keywords found, put the whole message into advisory as a fallback
+                            if not sections and wa_message.strip():
+                                parsed_content['advisory'] = wa_message.strip()
+                                logger.info("WhatsApp message keywords (ADVISORY, RISKS, SAFETY TIPS) not found. Using entire message for advisory part.")
+
+                        # --- End parsing logic ---
+
+                        def sanitize_whatsapp_text(text_content):
+                            if not text_content: return "" 
+                            processed_text = text_content.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+                            processed_text = processed_text.replace('\t', ' ')
+                            processed_text = ' '.join(processed_text.split())
+                            return processed_text
+
+                        sanitized_subject = sanitize_whatsapp_text(wa_subject)
+                        sanitized_advisory = sanitize_whatsapp_text(parsed_content['advisory'])
+                        sanitized_risks = sanitize_whatsapp_text(parsed_content['risks'])
+                        sanitized_safety_tips = sanitize_whatsapp_text(parsed_content['safety_tips'])
+                        
+                        MAX_HEADER_LENGTH = 60 
+                        # Assume body parts also have a significant limit, e.g., 250-300 chars each, verify with your template!
+                        # WhatsApp often quotes ~1024 for the whole body, but individual {{n}} can be less.
+                        # For safety, let's use a moderate limit per section. ADJUST THESE!
+                        MAX_BODY_PARAM_LENGTH = 300 
+
+                        truncated_subject = (sanitized_subject[:MAX_HEADER_LENGTH-3] + '...') if len(sanitized_subject) > MAX_HEADER_LENGTH else sanitized_subject
+                        truncated_advisory = (sanitized_advisory[:MAX_BODY_PARAM_LENGTH-3] + '...') if len(sanitized_advisory) > MAX_BODY_PARAM_LENGTH else sanitized_advisory
+                        truncated_risks = (sanitized_risks[:MAX_BODY_PARAM_LENGTH-3] + '...') if len(sanitized_risks) > MAX_BODY_PARAM_LENGTH else sanitized_risks
+                        truncated_safety_tips = (sanitized_safety_tips[:MAX_BODY_PARAM_LENGTH-3] + '...') if len(sanitized_safety_tips) > MAX_BODY_PARAM_LENGTH else sanitized_safety_tips
+
+                        # Assumes template {{1}} for subject, {{2}} for advisory, {{3}} for risks, {{4}} for safety_tips
+                        template_params = [
+                            truncated_subject, 
+                            truncated_advisory, 
+                            truncated_risks, 
+                            truncated_safety_tips
+                        ]
+                        # Filter out empty strings if a section was not present and your template can't handle empty params
+                        # However, it's often better if the template itself is designed to look okay with empty params.
+                        # template_params = [p for p in template_params if p] # Optional: if empty strings cause issues
+
+                        for recipient_phone in wa_recipients_list:
+                            try:
+                                logger.info(f"Sending WhatsApp to {recipient_phone} using template {wa_template_name_config} with params: {template_params}")
+                                sent, response = send_whatsapp_message(
+                                    recipient_phone_number=recipient_phone,
+                                    message_template_name=wa_template_name_config,
+                                    template_params=template_params, 
+                                    access_token=wa_token_config,
+                                    phone_number_id=wa_phone_id_config
+                                )
+                                if sent:
+                                    success_count += 1
+                                    whatsapp_log_details.append(f"Sent to {recipient_phone}: Success (MsgID: {response.get('messages', [{}])[0].get('id', 'N/A')}).")
+                                    logger.info(f"WhatsApp message sent to {recipient_phone}. Response: {response}")
+                                else:
+                                    failure_count += 1
+                                    error_detail = response if isinstance(response, dict) else {"error": str(response)}
+                                    whatsapp_log_details.append(f"Sent to {recipient_phone}: Failed ({error_detail.get('error', {}).get('message', 'Unknown API error')}).")
+                                    logger.error(f"Failed to send WhatsApp message to {recipient_phone}. Response: {response}")
+                            except Exception as e_wa:
+                                failure_count += 1
+                                logger.error(f"Exception sending WhatsApp to {recipient_phone}: {e_wa}", exc_info=True)
+                                whatsapp_log_details.append(f"Sent to {recipient_phone}: Failed (Exception: {str(e_wa)}).")
+
+                        final_status = "FAILED"
+                        if success_count > 0 and failure_count == 0:
+                            final_status = "SUCCESS"
+                            whatsapp_success = True
+                        elif success_count > 0 and failure_count > 0:
+                            final_status = "PARTIAL_SUCCESS"
+                            whatsapp_success = True # Still mark as overall success for the channel if at least one went through
+                        
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            whatsapp_group_id=selected_whatsapp_group.id, # Log the group ID
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status=final_status,
+                            details="; ".join(whatsapp_log_details),
+                            channel="whatsapp",
+                            # For WhatsApp, subject/message_body are less direct. Log template info.
+                            subject_sent=f"WhatsApp Template: {wa_template_name_config} (Subject: {sanitized_subject[:100]}...)", 
+                            message_body_sent=f"Recipients: {len(wa_recipients_list)}. Advisory: {truncated_advisory[:50]}... Risks: {truncated_risks[:50]}... Tips: {truncated_safety_tips[:50]}... Success: {success_count}, Failed: {failure_count}."
+                        ))
+                        if final_status == "SUCCESS":
+                            logger.info("All WhatsApp messages disseminated successfully.")
+                        elif final_status == "PARTIAL_SUCCESS":
+                            logger.warning(f"WhatsApp dissemination partially successful: {success_count} sent, {failure_count} failed.")
+                        else:
+                            logger.error(f"All WhatsApp messages failed to disseminate. Failures: {failure_count}.")
+
             # --- Save all log entries ---
             if log_entries:
                 try:
@@ -453,37 +726,54 @@ class DisseminateBulletinView(BaseView):
             final_log_channel = ",".join(sorted(list(set(processed_channels)))) # e.g. "email,facebook"
             
             if dissemination_channels: # Only flash messages if channels were selected
-                if 'email' in dissemination_channels and 'facebook' in dissemination_channels:
-                    if email_success and facebook_success:
-                        flash(_("Bulletin disseminated successfully to Email and Facebook."), "success")
-                    else:
-                        # Detailed message construction
-                        msg_parts = []
-                        if email_success: 
-                            msg_parts.append(str(_("Email: Success.")))
-                        else: 
-                            error_detail = next((log.details for log in log_entries if log.channel == 'email' and log.status == 'FAILED'), 'Unknown error')
-                            msg_parts.append(str(_("Email: Failed (%(error)s).", error=error_detail)))
-                        
-                        if facebook_success: 
-                            msg_parts.append(str(_("Facebook: Success.")))
-                        else: 
-                            error_detail = next((log.details for log in log_entries if log.channel == 'facebook' and log.status == 'FAILED'), 'Unknown error')
-                            msg_parts.append(str(_("Facebook: Failed (%(error)s).", error=error_detail)))
-                        flash(str(_("Dissemination Result: ")) + " ".join(msg_parts), "warning" if not (email_success and facebook_success) else "info")
+                # Determine overall success for each processed channel for consolidated messaging
+                email_channel_processed = 'email' in processed_channels
+                facebook_channel_processed = 'facebook' in processed_channels
+                whatsapp_channel_processed = 'whatsapp' in processed_channels
 
-                elif 'email' in dissemination_channels:
+                # Consolidate success/failure messages
+                results_summary = []
+                any_failures = False
+
+                if email_channel_processed:
                     if email_success:
-                        flash(_("Bulletin disseminated successfully via Email."), "success")
+                        results_summary.append(str(_("Email: Success.")))
                     else:
                         error_detail = next((log.details for log in log_entries if log.channel == 'email' and log.status == 'FAILED'), 'Unknown error')
-                        flash(_("Failed to disseminate bulletin via Email (%(error)s).", error=error_detail), "danger")
-                elif 'facebook' in dissemination_channels:
-                    if facebook_success:
-                        flash(_("Bulletin disseminated successfully to Facebook."), "success")
+                        results_summary.append(str(_("Email: Failed (%(error)s).", error=error_detail)))
+                        any_failures = True
+                
+                if facebook_channel_processed:
+                    # For Facebook, check if log status is SUCCESS or PARTIAL_SUCCESS for overall success
+                    fb_log_entry = next((log for log in log_entries if log.channel == 'facebook'), None)
+                    fb_final_status = fb_log_entry.status if fb_log_entry else "FAILED"
+
+                    if fb_final_status == "SUCCESS" or fb_final_status == "PARTIAL_SUCCESS":
+                        results_summary.append(str(_("Facebook: Success (%(status)s).", status=fb_final_status)))
                     else:
-                        error_detail = next((log.details for log in log_entries if log.channel == 'facebook' and log.status == 'FAILED'), 'Unknown error')
-                        flash(_("Failed to disseminate bulletin to Facebook (%(error)s).", error=error_detail), "danger")
+                        error_detail = fb_log_entry.details if fb_log_entry else 'Unknown error'
+                        results_summary.append(str(_("Facebook: Failed (%(error)s).", error=error_detail)))
+                        any_failures = True
+
+                if whatsapp_channel_processed:
+                    wa_log_entry = next((log for log in log_entries if log.channel == 'whatsapp'), None)
+                    wa_final_status = wa_log_entry.status if wa_log_entry else "FAILED"
+                    
+                    if whatsapp_success: # Relies on whatsapp_success being True for SUCCESS or PARTIAL_SUCCESS
+                        results_summary.append(str(_("WhatsApp: Success (%(status)s).", status=wa_final_status)))
+                    else:
+                        error_detail = wa_log_entry.details if wa_log_entry else 'Unknown error'
+                        results_summary.append(str(_("WhatsApp: Failed (%(error)s).", error=error_detail)))
+                        any_failures = True
+
+                if results_summary:
+                    final_message = str(_("Dissemination Result: ")) + " ".join(results_summary)
+                    if any_failures:
+                        flash(final_message, "warning")
+                    else:
+                        flash(final_message, "success")
+                elif not processed_channels: # Should not happen if form validates, but as a fallback
+                     flash(_("No channels were processed."), "info")
 
             return redirect(url_for("DisseminatedBulletinLogModelView.list"))
         
@@ -495,8 +785,10 @@ class DisseminateBulletinView(BaseView):
             form=form,
             bulletins=bulletins_query, 
             email_groups=email_groups_query,
+            whatsapp_groups=whatsapp_groups_query, # Pass WhatsApp groups to template
             bulletins_json=bulletins_json_for_template,
             email_groups_json=email_groups_json_for_template,
+            whatsapp_groups_json=whatsapp_groups_json_for_template, # Pass JSON to template
             selected_bulletin=selected_bulletin_for_template
         )
 

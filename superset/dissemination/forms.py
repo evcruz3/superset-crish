@@ -18,11 +18,19 @@ class DisseminationForm(FlaskForm):
         ],
         coerce=int # Ensure value is coerced to an integer
     )
+    whatsapp_group_id = SelectField(
+        _("Select WhatsApp Group"), 
+        validators=[
+            Optional()
+        ],
+        coerce=int # Ensure value is coerced to an integer
+    )
     dissemination_channels = SelectMultipleField(
         'Dissemination Channels',
         choices=[
             ('email', 'Email'),
-            ('facebook', 'Facebook')
+            ('facebook', 'Facebook'),
+            ('whatsapp', 'WhatsApp')
         ],
         widget=widgets.ListWidget(prefix_label=False),
         option_widget=widgets.CheckboxInput(),
@@ -57,22 +65,33 @@ class DisseminationForm(FlaskForm):
                 return False
             # Subject and Message for email are handled by the combined check below
         
-        # Check for Subject and Message if email or facebook is selected
-        if 'email' in channels or 'facebook' in channels:
+        if 'whatsapp' in channels: # Added validation for WhatsApp group
+            if not self.whatsapp_group_id.data or self.whatsapp_group_id.data == 0:
+                self.whatsapp_group_id.errors.append("WhatsApp Group is required if 'WhatsApp' channel is selected.")
+                # Intentionally not returning False immediately to collect all errors for selected channels first
+                # The final return False will be handled after all checks for subject/message are also done.
+        
+        # Check for Subject and Message if email or facebook or whatsapp is selected
+        if 'email' in channels or 'facebook' in channels or 'whatsapp' in channels:
             if not self.subject.data:
-                self.subject.errors.append("Subject is required if 'Email' or 'Facebook' channel is selected.")
+                self.subject.errors.append("Subject is required if 'Email', 'Facebook', or 'WhatsApp' channel is selected.")
                 # No early return here, collect all errors for subject/message
             if not self.message.data:
-                self.message.errors.append("Message Body is required if 'Email' or 'Facebook' channel is selected.")
+                self.message.errors.append("Message Body is required if 'Email', 'Facebook', or 'WhatsApp' channel is selected.")
             
             # If any of the above checks failed for subject/message, return False
             if self.subject.errors or self.message.errors:
                  # Check if email_group_id also has errors and only return False if all checks for selected channels are done
-                if 'email' in channels and self.email_group_id.errors:
+                if ('email' in channels and self.email_group_id.errors) or \
+                   ('whatsapp' in channels and self.whatsapp_group_id.errors): # Added WhatsApp group error check here
                     return False
-                elif not ('email' in channels and self.email_group_id.errors): # if email is not a channel or email_group_id is fine
+                elif not (('email' in channels and self.email_group_id.errors) or 
+                          ('whatsapp' in channels and self.whatsapp_group_id.errors)): 
                     return False
 
+        # If only whatsapp group has an error, but subject/message are fine
+        if 'whatsapp' in channels and self.whatsapp_group_id.errors and not (self.subject.errors or self.message.errors):
+            return False
 
         if not channels: # Should be caught by DataRequired on the field itself, but as a safeguard
             self.dissemination_channels.errors.append("At least one dissemination channel must be selected.")

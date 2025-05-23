@@ -199,7 +199,7 @@ export default function BulletinList({
             {/* Moved actions outside the card to ActionsContainer */}
           </StyledCard>
           <ActionsContainer>
-            <Tooltip title={t('Disseminate Bulletin')}>
+            {(hasPerm && hasPerm('can_write')) && <Tooltip title={t('Disseminate Bulletin')}>
               <ActionButton // Using styled Button
                 icon={<MailOutlined />}
                 onClick={(e) => {
@@ -213,7 +213,7 @@ export default function BulletinList({
                 }}
                 aria-label={t('Disseminate Bulletin')}
               />
-            </Tooltip>
+            </Tooltip>}
             <Tooltip title={t('Download PDF')}>
               <ActionButton // Using styled Button
                 icon={<DownloadOutlined />}

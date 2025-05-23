@@ -204,7 +204,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.disease_forecast_alerts.api import DiseaseForecastAlertRestApi, DiseasePipelineRunHistoryRestApi
         from superset.air_quality_forecasts.api import AirQualityForecastRestApi
         # Import Dissemination Views
-        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView
+        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView, WhatsAppGroupModelView
         from superset.dissemination.api import EmailGroupsRestApi
         from superset.views.air_quality_forecasts import AirQualityForecastView
 
@@ -560,6 +560,14 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category_label=__("Dissemination"),
             icon="fa-users-cog",       # Or fa-users
             href='/emailgroups/list/'  # Path for the menu item
+        )
+        appbuilder.add_view(
+            WhatsAppGroupModelView,
+            "Manage WhatsApp Groups",
+            label=__("WhatsApp Groups"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-whatsapp",
         )
         appbuilder.add_view(
             DisseminateBulletinView,

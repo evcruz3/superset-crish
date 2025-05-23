@@ -190,7 +190,8 @@
       color: #0050b3; /* Darker blue for text */
   }
 
-  #email-preview {
+  #email-preview,
+  #whatsapp-recipients-preview { /* Added #whatsapp-recipients-preview here */
     margin-bottom: 24px;
     padding: 10px;
     border: 1px solid #f0f0f0;
@@ -201,7 +202,8 @@
     overflow-y: auto;
     font-size: 13px;
   }
-  #email-preview strong {
+  #email-preview strong,
+  #whatsapp-recipients-preview strong { /* Added #whatsapp-recipients-preview here */
       display: block;
       margin-bottom: 5px;
   }
@@ -301,6 +303,22 @@
               {% endif %}
           </div>
 
+          {# WhatsApp Specific Fields - to be shown/hidden by JS #}
+          <div id="whatsapp-specific-fields" class="hidden-field"> {# Initially hidden #}
+              <div id="whatsapp-group-container">
+                  <div class="form-group {% if form.whatsapp_group_id.errors %}has-error{% endif %}">
+                      {{ form.whatsapp_group_id.label(class_="control-label") }} <span id="whatsapp-group-required-star" style="color:red;" class="hidden-field">*</span>
+                      {{ form.whatsapp_group_id(class_="form-control select2", id="whatsapp_group_id") }}
+                      {% if form.whatsapp_group_id.errors %}
+                          <ul class="help-block list-unstyled">{% for error in form.whatsapp_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                      {% endif %}
+                  </div>
+                  <div id="whatsapp-recipients-preview" class="form-group">
+                      <small class="text-muted">{{ _("Select a WhatsApp group to see recipient count.") }}</small>
+                  </div>
+              </div>
+          </div> {# End whatsapp-specific-fields #}
+
           {# Email Specific Fields - to be shown/hidden by JS #}
           <div id="email-specific-fields">
               <div id="email-group-container"> {# WRAPPED for easier JS targeting #}
@@ -339,6 +357,8 @@
               </div>
           </div> {# End email-specific-fields #}
           
+          
+          
           <div style="margin-top: auto;"> 
             {{ form.submit(class_="btn btn-primary") if form else "<button type=\"submit\" class=\"btn btn-primary\">"+_("Disseminate")+"</button>" | safe }}
           </div>
@@ -365,6 +385,9 @@
 <script id="email-groups-data-json" type="application/json">
     {{ email_groups_json | safe if email_groups_json else "[]" }}
 </script>
+<script id="whatsapp-groups-data-json" type="application/json">
+    {{ whatsapp_groups_json | safe if whatsapp_groups_json else "[]" }}
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -388,7 +411,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         $('#email_group_id').select2({
             placeholder: "{{ _('-- Select an Email Group --') }}",
-            allowClear: true
+            allowClear: true,
+            width: '100%'
+        });
+        $('#whatsapp_group_id').select2({ // Initialize Select2 for WhatsApp Group
+            placeholder: "{{ _('-- Select a WhatsApp Group --') }}",
+            allowClear: true,
+            width: '100%'
         });
     } else {
         console.warn('Select2 not available for disseminate_form.html');
@@ -629,26 +658,67 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     updateEmailPreview();
 
+    // WhatsApp Group Preview Logic
+    const whatsappGroupSelect = document.getElementById('whatsapp_group_id');
+    const whatsappRecipientsPreviewDiv = document.getElementById('whatsapp-recipients-preview');
+    let whatsappGroupsData = [];
+    try {
+        const whatsappGroupsDataElement = document.getElementById('whatsapp-groups-data-json');
+        if (whatsappGroupsDataElement) {
+            whatsappGroupsData = JSON.parse(whatsappGroupsDataElement.textContent || '[]');
+        }
+    } catch (e) {
+        console.error("Error parsing WhatsApp groups data:", e);
+    }
+
+    function updateWhatsAppRecipientsPreview() {
+        if (!whatsappGroupSelect || !whatsappRecipientsPreviewDiv) return;
+        const selectedId = parseInt(whatsappGroupSelect.value);
+        const selectedGroup = whatsappGroupsData.find(g => g.id === selectedId);
+
+        if (selectedGroup && selectedGroup.phone_numbers && selectedGroup.phone_numbers.length > 0) {
+            // Listing phone numbers, similar to email preview.
+            // Consider privacy implications if phone numbers are sensitive.
+            whatsappRecipientsPreviewDiv.innerHTML = `<strong>{{ _("Recipients:") }}</strong><br>${selectedGroup.phone_numbers.join('<br>')}`;
+        } else if (selectedGroup) {
+            whatsappRecipientsPreviewDiv.innerHTML = '<small class="text-muted">{{ _("No phone numbers defined for this group.") }}</small>';
+        } else {
+            whatsappRecipientsPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Select a WhatsApp group to see recipient count.") }}</small>';
+        }
+    }
+
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#email_group_id').on('change', updateEmailPreview);
+        $('#whatsapp_group_id').on('change', updateWhatsAppRecipientsPreview); // Add listener for WhatsApp group
+    } else {
+        if (emailGroupSelect) emailGroupSelect.addEventListener('change', updateEmailPreview);
+        if (whatsappGroupSelect) whatsappGroupSelect.addEventListener('change', updateWhatsAppRecipientsPreview);
+    }
+    updateWhatsAppRecipientsPreview(); // Initial call
+
     // Channel selection logic
     const disseminationChannelsCheckboxes = document.querySelectorAll('input[name="dissemination_channels"]');
-    const emailGroupContainer = document.getElementById('email-group-container'); // ADDED
-    // const emailPreviewDiv = document.getElementById('email-preview'); // Already present, ensure it's used - REMOVE THIS REDECLARATION
-    // const emailSpecificFieldsDiv = document.getElementById('email-specific-fields'); // REMOVED - No longer toggling the whole div
+    const emailGroupContainer = document.getElementById('email-group-container');
+    const whatsappSpecificFieldsDiv = document.getElementById('whatsapp-specific-fields'); // Added for WhatsApp
+    const whatsappGroupRequiredStar = document.getElementById('whatsapp-group-required-star'); // Added for WhatsApp
     const emailGroupRequiredStar = document.getElementById('email-group-required-star');
     const emailSubjectRequiredStar = document.getElementById('email-subject-required-star');
     const emailMessageRequiredStar = document.getElementById('email-message-required-star');
 
-
     function toggleEmailFields() {
         let emailChannelSelected = false;
-        let facebookChannelSelected = false; // ADDED: to check for Facebook channel
+        let facebookChannelSelected = false; 
+        let whatsappChannelSelected = false; // ADDED: to check for WhatsApp channel
 
         disseminationChannelsCheckboxes.forEach(function(checkbox) {
             if (checkbox.value === 'email' && checkbox.checked) {
                 emailChannelSelected = true;
             }
-            if (checkbox.value === 'facebook' && checkbox.checked) { // ADDED: Check for Facebook
+            if (checkbox.value === 'facebook' && checkbox.checked) { 
                 facebookChannelSelected = true;
+            }
+            if (checkbox.value === 'whatsapp' && checkbox.checked) { // ADDED: Check for WhatsApp
+                whatsappChannelSelected = true;
             }
         });
 
@@ -663,8 +733,17 @@ document.addEventListener('DOMContentLoaded', function () {
             if(emailGroupRequiredStar) emailGroupRequiredStar.classList.add('hidden-field');
         }
 
-        // Toggle Subject and Message required stars based on Email OR Facebook
-        if (emailChannelSelected || facebookChannelSelected) {
+        // Toggle WhatsApp Group and Preview
+        if (whatsappChannelSelected) {
+            if(whatsappSpecificFieldsDiv) whatsappSpecificFieldsDiv.classList.remove('hidden-field');
+            if(whatsappGroupRequiredStar) whatsappGroupRequiredStar.classList.remove('hidden-field');
+        } else {
+            if(whatsappSpecificFieldsDiv) whatsappSpecificFieldsDiv.classList.add('hidden-field');
+            if(whatsappGroupRequiredStar) whatsappGroupRequiredStar.classList.add('hidden-field');
+        }
+
+        // Toggle Subject and Message required stars based on Email OR Facebook OR WhatsApp
+        if (emailChannelSelected || facebookChannelSelected || whatsappChannelSelected) { // ADDED WhatsApp condition
             if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.remove('hidden-field');
             if(emailMessageRequiredStar) emailMessageRequiredStar.classList.remove('hidden-field');
         } else {
