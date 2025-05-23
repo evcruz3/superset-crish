@@ -174,5 +174,22 @@ module.exports = newManifest => {
         response.end(e.stack);
       }
     },
+    onProxyReq(proxyReq, req, res) {
+      const originalProto = req.connection.encrypted ? 'https' : 'http';
+      proxyReq.setHeader('X-Forwarded-Proto', originalProto);
+      console.log(`[PROXY_REQ] Set X-Forwarded-Proto: ${originalProto}`);
+
+      if (req.headers.host) {
+        proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
+        console.log(`[PROXY_REQ] Set X-Forwarded-Host: ${req.headers.host}`);
+      }
+      
+      console.log('\n[PROXY_REQ] Headers being sent to backend (localhost:8088):');
+      const headers = proxyReq.getHeaders();
+      for (const key in headers) {
+        console.log(`  ${key}: ${headers[key]}`);
+      }
+      console.log('[PROXY_REQ] End of headers.\n');
+    },
   };
 };

@@ -194,7 +194,7 @@ export default function AirQualityForecastsPage() {
       setError(null);
       try {
         const response = await SupersetClient.get({
-          endpoint: `/api/v1/air_quality_forecast/?municipality_code=${selectedMunicipality}&days=10`,
+          endpoint: `/api/v1/air_quality_forecast/forecasts?municipality_code=${selectedMunicipality}&days=10`,
         });
         setForecastData(response.json.result);
       } catch (e) {
@@ -225,7 +225,7 @@ export default function AirQualityForecastsPage() {
         }
 
         const mapDataResponse = await SupersetClient.get({
-          endpoint: `/api/v1/air_quality_forecast/?map_data=true&forecast_date=${selectedDate.format('YYYY-MM-DD')}`,
+          endpoint: `/api/v1/air_quality_forecast/map?forecast_date=${selectedDate.format('YYYY-MM-DD')}`,
         });
         setMapForecastData(mapDataResponse.json.result);
 
@@ -248,7 +248,7 @@ export default function AirQualityForecastsPage() {
       setTrendlineError(null);
       try {
         const response = await SupersetClient.get({
-          endpoint: `/api/v1/air_quality_forecast/?data_type=trendline&municipalities=${selectedTrendMunicipalities.join(',')}&pollutants=${selectedTrendPollutants.join(',')}&days=7`,
+          endpoint: `/api/v1/air_quality_forecast/trends?municipalities=${selectedTrendMunicipalities.join(',')}&pollutants=${selectedTrendPollutants.join(',')}&days=7`,
         });
         const apiData = response.json.result;
         setTrendlineData(apiData);

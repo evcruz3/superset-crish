@@ -8,10 +8,12 @@ from superset.models.dissemination import EmailGroup
 from superset.views.base_api import BaseSupersetModelRestApi, statsd_metrics
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.commands.exceptions import DeleteFailedError
+from superset.dissemination.schemas import EmailGroupSchema, DisseminationUserSchema
 
 class EmailGroupsRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(EmailGroup)
     resource_name = "email_groups"
+    openapi_spec_tag = "CRISH Email Groups"
     allow_browser_login = True
     class_permission_name = "EmailGroups"  # New permission name
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
@@ -37,6 +39,10 @@ class EmailGroupsRestApi(BaseSupersetModelRestApi):
     show_columns = list_columns
     add_columns = ["name", "description", "emails"]
     edit_columns = ["id", "name", "description", "emails"]
+
+    # Define explicit schemas for responses
+    show_model_schema = EmailGroupSchema()
+    list_model_schema = EmailGroupSchema() # For single item in list, FAB handles `many=True` for actual list response
 
     order_columns = [
         "name",

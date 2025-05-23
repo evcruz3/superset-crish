@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 class UpdateCaseReportsRestApi(BaseSupersetApi):
     resource_name = "update_case_reports"
+    openapi_spec_tag = "CRISH Update Case Reports"
     allow_browser_login = True
 
     def __init__(self):

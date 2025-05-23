@@ -202,6 +202,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.health_facilities.api import HealthFacilitiesRestApi
         from superset.weather_forecast_alerts.api import WeatherForecastAlertRestApi, WeatherDataPullRestApi
         from superset.disease_forecast_alerts.api import DiseaseForecastAlertRestApi, DiseasePipelineRunHistoryRestApi
+        from superset.weather_forecasts.api import WeatherForecastsApi
+        from superset.air_quality_forecasts import models as air_quality_models
         from superset.air_quality_forecasts.api import AirQualityForecastRestApi
         # Import Dissemination Views
         from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView, WhatsAppGroupModelView
@@ -213,6 +215,18 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         #
         # Setup API views
         #
+        appbuilder.add_api(UpdateFacilitiesRestApi)
+        appbuilder.add_api(UpdateCaseReportsRestApi)
+        appbuilder.add_api(BulletinsRestApi)
+        appbuilder.add_api(PublicEducationRestApi)
+        appbuilder.add_api(HealthFacilitiesRestApi)
+        appbuilder.add_api(WeatherForecastAlertRestApi)
+        appbuilder.add_api(WeatherDataPullRestApi)
+        appbuilder.add_api(DiseaseForecastAlertRestApi)
+        appbuilder.add_api(DiseasePipelineRunHistoryRestApi)
+        appbuilder.add_api(WeatherForecastsApi)
+        appbuilder.add_api(AirQualityForecastRestApi)
+        appbuilder.add_api(EmailGroupsRestApi)
         appbuilder.add_api(AnnotationRestApi)
         appbuilder.add_api(AnnotationLayerRestApi)
         appbuilder.add_api(AsyncEventsRestApi)
@@ -244,17 +258,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(SavedQueryRestApi)
         appbuilder.add_api(TagRestApi)
         appbuilder.add_api(SqlLabRestApi)
-        appbuilder.add_api(UpdateFacilitiesRestApi)
-        appbuilder.add_api(UpdateCaseReportsRestApi)
-        appbuilder.add_api(BulletinsRestApi)
-        appbuilder.add_api(PublicEducationRestApi)
-        appbuilder.add_api(HealthFacilitiesRestApi)
-        appbuilder.add_api(WeatherForecastAlertRestApi)
-        appbuilder.add_api(WeatherDataPullRestApi)
-        appbuilder.add_api(DiseaseForecastAlertRestApi)
-        appbuilder.add_api(DiseasePipelineRunHistoryRestApi)
-        appbuilder.add_api(EmailGroupsRestApi)
-        appbuilder.add_api(AirQualityForecastRestApi)
+        
         #
         # Setup regular views
         #

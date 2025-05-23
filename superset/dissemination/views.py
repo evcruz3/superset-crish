@@ -27,6 +27,7 @@ from .whatsapp_utils import send_whatsapp_message # Added WhatsApp import
 import boto3 # For S3 interaction
 from botocore.exceptions import ClientError # For S3 error handling
 import os # For path joining if needed for temporary files
+import requests # Added for making HTTP requests for webhook
 
 # Import for celery task if we define it here or in a tasks.py file
 # from .tasks import send_bulletin_email_task
@@ -316,6 +317,7 @@ class DisseminateBulletinView(BaseView):
             email_success = False
             facebook_success = False
             whatsapp_success = False # Initialize WhatsApp success status
+            mobile_app_broadcast_success = False # Initialize Mobile App Broadcast success status
             log_entries = []
             processed_channels = []
 
@@ -711,6 +713,72 @@ class DisseminateBulletinView(BaseView):
                         else:
                             logger.error(f"All WhatsApp messages failed to disseminate. Failures: {failure_count}.")
 
+            # --- Mobile App Broadcast Dissemination ---
+            if 'mobile_app_broadcast' in dissemination_channels:
+                processed_channels.append('mobile_app_broadcast')
+                logger.info("Processing Mobile App Broadcast dissemination channel.")
+                webhook_url = current_app.config.get("MOBILE_APP_BROADCAST_WEBHOOK_URL")
+                webhook_secret = current_app.config.get("MOBILE_APP_BROADCAST_SECRET") # Optional secret for auth
+
+                if not webhook_url or webhook_url == "YOUR_MOBILE_APP_WEBHOOK_URL_HERE":
+                    error_msg = "Mobile App Broadcast is not configured correctly: MOBILE_APP_BROADCAST_WEBHOOK_URL is missing or not set."
+                    logger.error(error_msg)
+                    flash(_(error_msg), "warning")
+                    log_entries.append(DisseminatedBulletinLog(
+                        bulletin_id=bulletin.id,
+                        disseminated_by_fk=g.user.id if g.user else None,
+                        status="FAILED",
+                        details=error_msg,
+                        channel="mobile_app_broadcast",
+                        subject_sent=f"Mobile App Broadcast attempt for: {bulletin.title}",
+                        message_body_sent="Configuration Error"
+                    ))
+                else:
+                    try:
+                        payload = {
+                            "bulletin_id": bulletin.id,
+                            "title": bulletin.title,
+                            "advisory": bulletin.advisory,
+                            "risks": bulletin.risks,
+                            "safety_tips": bulletin.safety_tips,
+                            "hashtags": bulletin.hashtags,
+                            # Potentially add a deep link URL if your app supports it
+                            # "deep_link_url": f"yourapp://bulletin/{bulletin.id}"
+                        }
+                        headers = {"Content-Type": "application/json"}
+                        if webhook_secret:
+                            headers["X-Broadcast-Secret"] = webhook_secret
+                        
+                        response = requests.post(webhook_url, json=payload, headers=headers, timeout=10) # 10 second timeout
+                        response.raise_for_status()  # Raises an HTTPError for bad responses (4XX or 5XX)
+                        
+                        mobile_app_broadcast_success = True
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="SUCCESS",
+                            details=f"Successfully sent broadcast to mobile app webhook. Response: {response.status_code}",
+                            channel="mobile_app_broadcast",
+                            subject_sent=bulletin.title,
+                            message_body_sent=json.dumps(payload) # Log the sent payload
+                        ))
+                        logger.info(f"Mobile App Broadcast sent successfully for bulletin {bulletin.id}. Response: {response.status_code}")
+                    except requests.exceptions.RequestException as e_broadcast:
+                        logger.error(f"Error sending Mobile App Broadcast for bulletin {bulletin.id}: {e_broadcast}", exc_info=True)
+                        details = f"Webhook call failed: {str(e_broadcast)}"
+                        if e_broadcast.response is not None:
+                            details += f" - Status: {e_broadcast.response.status_code} - Body: {e_broadcast.response.text[:200]}" # Truncate body
+                        
+                        log_entries.append(DisseminatedBulletinLog(
+                            bulletin_id=bulletin.id,
+                            disseminated_by_fk=g.user.id if g.user else None,
+                            status="FAILED",
+                            details=details,
+                            channel="mobile_app_broadcast",
+                            subject_sent=bulletin.title,
+                            message_body_sent=json.dumps(payload) if 'payload' in locals() else "Payload not generated"
+                        ))
+
             # --- Save all log entries ---
             if log_entries:
                 try:
@@ -730,6 +798,7 @@ class DisseminateBulletinView(BaseView):
                 email_channel_processed = 'email' in processed_channels
                 facebook_channel_processed = 'facebook' in processed_channels
                 whatsapp_channel_processed = 'whatsapp' in processed_channels
+                mobile_app_broadcast_channel_processed = 'mobile_app_broadcast' in processed_channels # New check
 
                 # Consolidate success/failure messages
                 results_summary = []
@@ -764,6 +833,15 @@ class DisseminateBulletinView(BaseView):
                     else:
                         error_detail = wa_log_entry.details if wa_log_entry else 'Unknown error'
                         results_summary.append(str(_("WhatsApp: Failed (%(error)s).", error=error_detail)))
+                        any_failures = True
+                
+                if mobile_app_broadcast_channel_processed:
+                    if mobile_app_broadcast_success:
+                        results_summary.append(str(_("Mobile App Broadcast: Success.")))
+                    else:
+                        mab_log_entry = next((log for log in log_entries if log.channel == 'mobile_app_broadcast' and log.status == 'FAILED'), None)
+                        error_detail = mab_log_entry.details if mab_log_entry else 'Unknown error'
+                        results_summary.append(str(_("Mobile App Broadcast: Failed (%(error)s).", error=error_detail)))
                         any_failures = True
 
                 if results_summary:

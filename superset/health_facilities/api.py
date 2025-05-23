@@ -71,6 +71,7 @@ bounds_facility_rison_schema = {
 
 class HealthFacilitiesRestApi(BaseSupersetModelRestApi):
     resource_name = "health_facilities"
+    openapi_spec_tag = "CRISH Health Facilities"
     allow_browser_login = True
     datamodel = SQLAInterface(HealthFacility)
     class_permission_name = "HealthFacilities"

@@ -44,7 +44,7 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(PublicEducationPost)
     resource_name = "public_education"
     allow_browser_login = True
-    openapi_spec_tag = "Public Education"
+    openapi_spec_tag = "CRISH Public Education"
     class_permission_name = "PublicEducation"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
     include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {

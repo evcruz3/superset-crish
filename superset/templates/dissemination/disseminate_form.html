@@ -394,14 +394,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Remove 'required' attribute from individual channel checkboxes
     // to prevent unwanted client-side validation messages for the group.
     // Server-side DataRequired validator handles the "at-least-one-selected" rule.
-    const emailChannelCheckbox = document.getElementById('dissemination_channels-0');
-    if (emailChannelCheckbox) {
-        emailChannelCheckbox.removeAttribute('required');
-    }
-    const facebookChannelCheckbox = document.getElementById('dissemination_channels-1');
-    if (facebookChannelCheckbox) {
-        facebookChannelCheckbox.removeAttribute('required');
-    }
+    const disseminationChannelsCheckboxes = document.querySelectorAll('input[name="dissemination_channels"]');
+    disseminationChannelsCheckboxes.forEach(function(checkbox) {
+        checkbox.removeAttribute('required');
+    });
 
     // Initialize Select2
     if (typeof $ !== 'undefined' && $.fn.select2) {
@@ -697,7 +693,6 @@ document.addEventListener('DOMContentLoaded', function () {
     updateWhatsAppRecipientsPreview(); // Initial call
 
     // Channel selection logic
-    const disseminationChannelsCheckboxes = document.querySelectorAll('input[name="dissemination_channels"]');
     const emailGroupContainer = document.getElementById('email-group-container');
     const whatsappSpecificFieldsDiv = document.getElementById('whatsapp-specific-fields'); // Added for WhatsApp
     const whatsappGroupRequiredStar = document.getElementById('whatsapp-group-required-star'); // Added for WhatsApp
@@ -709,6 +704,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let emailChannelSelected = false;
         let facebookChannelSelected = false; 
         let whatsappChannelSelected = false; // ADDED: to check for WhatsApp channel
+        let mobileAppBroadcastChannelSelected = false; // ADDED for Mobile App Broadcast
 
         disseminationChannelsCheckboxes.forEach(function(checkbox) {
             if (checkbox.value === 'email' && checkbox.checked) {
@@ -719,6 +715,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (checkbox.value === 'whatsapp' && checkbox.checked) { // ADDED: Check for WhatsApp
                 whatsappChannelSelected = true;
+            }
+            if (checkbox.value === 'mobile_app_broadcast' && checkbox.checked) { // ADDED: Check for Mobile App Broadcast
+                mobileAppBroadcastChannelSelected = true;
             }
         });
 
@@ -743,9 +742,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Toggle Subject and Message required stars based on Email OR Facebook OR WhatsApp
-        if (emailChannelSelected || facebookChannelSelected || whatsappChannelSelected) { // ADDED WhatsApp condition
+        // If Mobile App Broadcast is the ONLY channel selected, Subject/Message might not be required.
+        // Modify this logic if Subject/Message are still desired for Mobile App Broadcast payload.
+        if (emailChannelSelected || facebookChannelSelected || whatsappChannelSelected) { 
             if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.remove('hidden-field');
             if(emailMessageRequiredStar) emailMessageRequiredStar.classList.remove('hidden-field');
+        } else if (mobileAppBroadcastChannelSelected && !(emailChannelSelected || facebookChannelSelected || whatsappChannelSelected)) {
+            // If only mobile app broadcast is selected, hide subject/message required stars (assuming they are not strictly needed for payload)
+            if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.add('hidden-field');
+            if(emailMessageRequiredStar) emailMessageRequiredStar.classList.add('hidden-field');
         } else {
             if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.add('hidden-field');
             if(emailMessageRequiredStar) emailMessageRequiredStar.classList.add('hidden-field');

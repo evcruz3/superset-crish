@@ -110,7 +110,7 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
     }
     
     # OpenAPI spec customizations
-    openapi_spec_tag = "Disease Forecast Alerts"
+    openapi_spec_tag = "CRISH Disease Forecast Alerts"
     openapi_spec_methods = openapi_spec_methods_override
 
     def _parse_composite_id(self, composite_id_str: str) -> dict[str, Any] | None:
@@ -582,7 +582,7 @@ class DiseasePipelineRunHistoryRestApi(BaseSupersetModelRestApi):
     edit_model_schema = DiseasePipelineRunHistoryPutSchema()
     response_schema = DiseasePipelineRunHistoryResponseSchema()
 
-    openapi_spec_tag = "Disease Forecast Alerts" # Keep under the same tag or create a new one e.g., "Disease Pipeline Monitoring"
+    openapi_spec_tag = "CRISH Disease Forecast Alerts" # Keep under the same tag or create a new one e.g., "Disease Pipeline Monitoring"
     # If creating a new tag, it would need to be defined in Superset's OpenAPI config.
     # For simplicity, let's group it with Disease Forecast Alerts for now.
 

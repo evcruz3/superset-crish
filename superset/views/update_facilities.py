@@ -35,6 +35,7 @@ def allowed_file(filename):
 
 class UpdateFacilitiesRestApi(BaseSupersetApi):
     resource_name = "update_facilities"
+    openapi_spec_tag = "CRISH Update Facilities"
     allow_browser_login = True
     class_permission_name = "UpdateFacilities"
     base_permissions = [

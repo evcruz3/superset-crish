@@ -129,7 +129,7 @@ class WeatherForecastAlertRestApi(BaseSupersetModelRestApi):
         "get_alert_ids_schema": get_alert_ids_schema,
     }
     
-    openapi_spec_tag = "Weather Forecast Alerts"
+    openapi_spec_tag = "CRISH Weather Forecast Alerts"
     openapi_spec_methods = openapi_spec_methods_override
 
     @expose("/", methods=["GET"])
@@ -525,7 +525,7 @@ class WeatherDataPullRestApi(BaseSupersetModelRestApi):
     
     base_order = ("pulled_at", "desc")
     
-    openapi_spec_tag = "Weather Data Pull History"
+    openapi_spec_tag = "CRISH Weather Data Pull History"
     
     @expose("/", methods=["POST"])
     @protect()

@@ -51,6 +51,7 @@ def _get_s3_client_for_presigning():
 class BulletinsRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(Bulletin)
     resource_name = "bulletins_and_advisories"
+    openapi_spec_tag = "CRISH Bulletins and Advisories"
     allow_browser_login = True
     class_permission_name = "BulletinsAndAdvisories"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
