@@ -13,6 +13,7 @@ from typing import Dict, Any, List
 from flask_appbuilder.api import Schema as FABSchema # Alias to avoid confusion
 from flask_babel import lazy_gettext as _
 from datetime import date
+from marshmallow import validate
 
 # Base Schema for common fields and to handle the composite ID
 class BaseWeatherParameterSchema(FABSchema):
@@ -118,10 +119,15 @@ class WeatherParameterListResponseSchema(FABSchema):
     # `result` will be a list of one of the specific parameter schemas, handled in API method.
     # This schema is generic; actual item schema varies.
     result = fields.List(fields.Dict(), description="List of weather parameter records.")
+    page = fields.Integer(description="Current page number.", dump_only=True)
+    page_size = fields.Integer(description="Number of items per page.", dump_only=True)
+    total_pages = fields.Integer(description="Total number of pages.", dump_only=True)
+    next_page_url = fields.String(description="URL for the next page, if any.", dump_only=True, allow_none=True)
+    prev_page_url = fields.String(description="URL for the previous page, if any.", dump_only=True, allow_none=True)
 
 # --- Rison schema for `q` parameter in GET list requests ---
 # This can be common for all parameter types if filtering fields are the same.
-get_list_rison_schema = {
+get_list_rison_schema_dict = { # Renamed to avoid conflict, will be removed later if not used
     "type": "object",
     "properties": {
         "page": {"type": "integer", "default": 0, "minimum": 0},
@@ -146,6 +152,29 @@ get_list_rison_schema = {
         }
     }
 }
+
+class GetListRisonFiltersSchema(Schema):
+    col = fields.String(required=True, description="Column to filter on. E.g., municipality_code, forecast_date, value")
+    opr = fields.String(required=True, description="Filter operator. E.g., eq, gt, lt, date_eq, date_gt, date_lt")
+    # Allow value to be of multiple types, Marshmallow handles this with a base field type
+    # For OpenAPI generation, this might need specific handling or be documented as 'oneOf' if supported,
+    # or kept general. For simplicity, using fields.Raw which allows any type.
+    value = fields.Raw(required=True, description="Value to filter by.")
+
+class GetListRisonSchema(Schema):
+    page = fields.Integer(default=0, validate=validate.Range(min=0), description="Page number for pagination.")
+    page_size = fields.Integer(default=25, validate=validate.Range(min=1, max=200), description="Number of items per page.")
+    order_column = fields.String(
+        default="forecast_date",
+        validate=validate.OneOf(["forecast_date", "municipality_code", "municipality_name", "day_name", "value"]),
+        description="Column to sort by."
+    )
+    order_direction = fields.String(
+        default="desc",
+        validate=validate.OneOf(["asc", "desc"]),
+        description="Sort direction."
+    )
+    filters = fields.List(fields.Nested(GetListRisonFiltersSchema), description="List of filters to apply.")
 
 # Overrides for OpenAPI spec generation if needed (e.g., for custom actions)
 openapi_spec_methods_override = {

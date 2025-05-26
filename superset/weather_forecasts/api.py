@@ -41,7 +41,7 @@ from superset.weather_forecasts.schemas import (
     TminDailyTminRegionSchema,
     TminDailyTminRegionPostSchema,
     WeatherParameterListResponseSchema,
-    get_list_rison_schema,
+    GetListRisonSchema,
     BaseWeatherParameterSchema
 )
 
@@ -138,15 +138,48 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
         # Pagination (simplified, enhance with Rison payload)
         page = int(request.args.get("page", 0))
-        page_size = int(request.args.get("page_size", 25))
+        page_size_str = request.args.get("page_size", "25")
+        page_size = int(page_size_str) if page_size_str.lstrip('-').isdigit() else 25 # handles potential negative for 'all'
+        
+        total_pages = 0
+        actual_page_size = page_size
+
         if page_size > 0:
+            total_pages = (item_count + page_size - 1) // page_size  # Ceiling division
             offset = page * page_size
             query = query.limit(page_size).offset(offset)
+            actual_page_size = page_size
+        elif page_size == -1: # Requesting all items
+            total_pages = 1 if item_count > 0 else 0
+            actual_page_size = item_count if item_count > 0 else 0 # Or some large number if item_count is 0?
+        # else page_size is 0 or invalid, effectively no pagination or default by DB if not handled by limit/offset
 
         results = query.all()
         schema = schema_class()
         list_response_schema = WeatherParameterListResponseSchema()
-        return self.response(200, **list_response_schema.dump({"count": item_count, "result": schema.dump(results, many=True)}))
+
+        response_data = {
+            "count": item_count,
+            "result": schema.dump(results, many=True),
+            "page": page,
+            "page_size": actual_page_size, # Use actual_page_size determined above
+            "total_pages": total_pages,
+            "next_page_url": None,
+            "prev_page_url": None
+        }
+
+        base_url = request.base_url
+        query_params = request.args.copy()
+
+        if (page + 1) < total_pages and page_size > 0:
+            query_params["page"] = page + 1
+            response_data["next_page_url"] = f"{base_url}?{query_params.to_dict(flat=False)}"
+        
+        if page > 0 and total_pages > 0 and page_size > 0:
+            query_params["page"] = page - 1
+            response_data["prev_page_url"] = f"{base_url}?{query_params.to_dict(flat=False)}"
+
+        return self.response(200, **list_response_schema.dump(response_data))
 
     # --- Wind Speed Endpoints ---
     @expose("/wind_speed", methods=["GET"])
@@ -166,19 +199,31 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/get_list_rison_schema'
+                    $ref: '#/components/schemas/GetListRisonSchema'
             - name: municipality_code
               in: query
               schema: { type: string }
+              description: Filter by exact municipality code (eg TL-DI)
             - name: municipality_name
               in: query
               schema: { type: string }
+              description: Filter by exact municipality name. (eg Dili)
             - name: forecast_date
               in: query
               schema: { type: string, format: date }
+              description: Filter by forecast date (eg 2025-05-26)
             - name: days_range
               in: query
               schema: { type: integer, default: 1, minimum: 1 }
+              description: Filter by number of days to forecast (eg 1)
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed).
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 }
+              description: Number of results per page. Set to -1 to retrieve all results.
           responses:
             200:
               description: List of wind speed forecasts
@@ -399,19 +444,31 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/get_list_rison_schema'
+                    $ref: '#/components/schemas/GetListRisonSchema'
             - name: municipality_code
               in: query
               schema: { type: string }
+              description: Filter by exact municipality code (eg TL-DI)
             - name: municipality_name
               in: query
               schema: { type: string }
+              description: Filter by exact municipality name. (eg Dili)
             - name: forecast_date
               in: query
               schema: { type: string, format: date }
+              description: Filter by forecast date (eg 2025-05-26)
             - name: days_range
               in: query
               schema: { type: integer, default: 1, minimum: 1 }
+              description: Filter by number of days to forecast (eg 1)
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed).
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 }
+              description: Number of results per page. Set to -1 to retrieve all results.
           responses:
             200:
               description: List of heat index forecasts
@@ -569,19 +626,31 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/get_list_rison_schema'
+                    $ref: '#/components/schemas/GetListRisonSchema'
             - name: municipality_code
               in: query
               schema: { type: string }
+              description: Filter by exact municipality code (eg TL-DI)
             - name: municipality_name
               in: query
               schema: { type: string }
+              description: Filter by exact municipality name. (eg Dili)
             - name: forecast_date
               in: query
               schema: { type: string, format: date }
+              description: Filter by forecast date (eg 2025-05-26)
             - name: days_range
               in: query
               schema: { type: integer, default: 1, minimum: 1 }
+              description: Filter by number of days to forecast (eg 1)
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed).
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 }
+              description: Number of results per page. Set to -1 to retrieve all results.
           responses:
             200:
               description: List of rainfall forecasts
@@ -739,19 +808,31 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/get_list_rison_schema'
+                    $ref: '#/components/schemas/GetListRisonSchema'
             - name: municipality_code
               in: query
               schema: { type: string }
+              description: Filter by exact municipality code (eg TL-DI)
             - name: municipality_name
               in: query
               schema: { type: string }
+              description: Filter by exact municipality name. (eg Dili)
             - name: forecast_date
               in: query
               schema: { type: string, format: date }
+              description: Filter by forecast date (eg 2025-05-26)
             - name: days_range
               in: query
               schema: { type: integer, default: 1, minimum: 1 }
+              description: Filter by number of days to forecast (eg 1)
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed).
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 }
+              description: Number of results per page. Set to -1 to retrieve all results.
           responses:
             200:
               description: List of relative humidity forecasts
@@ -909,19 +990,31 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/get_list_rison_schema'
+                    $ref: '#/components/schemas/GetListRisonSchema'
             - name: municipality_code
               in: query
               schema: { type: string }
+              description: Filter by exact municipality code (eg TL-DI)
             - name: municipality_name
               in: query
               schema: { type: string }
+              description: Filter by exact municipality name. (eg Dili)
             - name: forecast_date
               in: query
               schema: { type: string, format: date }
+              description: Filter by forecast date (eg 2025-05-26)
             - name: days_range
               in: query
               schema: { type: integer, default: 1, minimum: 1 }
+              description: Filter by number of days to forecast (eg 1)
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed).
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 }
+              description: Number of results per page. Set to -1 to retrieve all results.
           responses:
             200:
               description: List of max temperature forecasts
@@ -1079,19 +1172,31 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/get_list_rison_schema'
+                    $ref: '#/components/schemas/GetListRisonSchema'
             - name: municipality_code
               in: query
               schema: { type: string }
+              description: Filter by exact municipality code (eg TL-DI)
             - name: municipality_name
               in: query
               schema: { type: string }
+              description: Filter by exact municipality name. (eg Dili)
             - name: forecast_date
               in: query
               schema: { type: string, format: date }
+              description: Filter by forecast date (eg 2025-05-26)
             - name: days_range
               in: query
               schema: { type: integer, default: 1, minimum: 1 }
+              description: Filter by number of days to forecast (eg 1)
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed).
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 }
+              description: Number of results per page. Set to -1 to retrieve all results.
           responses:
             200:
               description: List of min temperature forecasts
@@ -1240,6 +1345,7 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         TmaxDailyTmaxRegionSchema, TmaxDailyTmaxRegionPostSchema,
         TminDailyTminRegionSchema, TminDailyTminRegionPostSchema,
         WeatherParameterListResponseSchema,
+        GetListRisonSchema,
     )
 
 # Helper to parse date string, returning None if invalid
