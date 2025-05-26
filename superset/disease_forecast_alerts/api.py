@@ -195,6 +195,20 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             schema:
               type: string
             description: Filter by exact forecast date (YYYY-MM-DD).
+          - name: page
+            in: query
+            required: false
+            schema:
+              type: integer
+              default: 0
+            description: "Page number for pagination (0-indexed). Used if not specified in 'q'."
+          - name: page_size
+            in: query
+            required: false
+            schema:
+              type: integer
+              default: 25
+            description: "Number of results per page. Used if not specified in 'q'. Set to -1 to retrieve all results."
           responses:
             200:
               description: A list of disease forecast alerts
@@ -215,6 +229,21 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
                         type: array
                         items:
                           $ref: '#/components/schemas/{{self.__class__.__name__}}.get'
+                      page:
+                        type: integer
+                        description: Current page number.
+                      page_size:
+                        type: integer
+                        description: Number of items per page.
+                      total_pages:
+                        type: integer
+                        description: Total number of pages.
+                      next_page_url:
+                        type: [string, "null"]
+                        description: URL for the next page, if any.
+                      prev_page_url:
+                        type: [string, "null"]
+                        description: URL for the previous page, if any.
             400:
               $ref: '#/components/responses/400'
             401:
@@ -294,16 +323,37 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
 
         page = rison_payload.get("page")
         page_size = rison_payload.get("page_size")
-        if page is not None and page_size is not None and page_size > 0:
+
+        # If not in Rison, try direct query args
+        if page is None:
+            page = int(request.args.get("page", 0))
+        if page_size is None:
+            page_size_str = request.args.get("page_size", str(self.page_size or 25))
+            try:
+                page_size = int(page_size_str)
+            except ValueError:
+                page_size = self.page_size or 25
+
+        actual_page_size = page_size
+        total_pages = 0
+
+        if page_size > 0:
             logger.debug(f"Disease Alerts - Applying pagination: page {page}, page_size {page_size}")
+            total_pages = (item_count + page_size - 1) // page_size  # Ceiling division
             offset = page * page_size
             query = query.limit(page_size).offset(offset)
-        elif page_size is not None and page_size > 0: 
-            logger.debug(f"Disease Alerts - Applying pagination (default page 0): page_size {page_size}")
-            query = query.limit(page_size).offset(0)
-        elif self.page_size and self.page_size > 0: 
+            actual_page_size = page_size
+        elif page_size == -1:  # Requesting all items
+            logger.debug(f"Disease Alerts - Attempting to retrieve all items (page_size: -1)")
+            total_pages = 1 if item_count > 0 else 0
+            actual_page_size = item_count if item_count > 0 else 0
+            # No limit/offset needed when fetching all
+        elif self.page_size and self.page_size > 0 and page_size is None: # Fallback to default
             logger.debug(f"Disease Alerts - Applying default API page_size: {self.page_size}")
-            query = query.limit(self.page_size).offset(0)
+            total_pages = (item_count + self.page_size - 1) // self.page_size
+            offset = (page or 0) * self.page_size
+            query = query.limit(self.page_size).offset(offset)
+            actual_page_size = self.page_size
 
         # 6. Execute the final query to get results
         logger.debug("Disease Alerts - Executing final data query on filtered, ordered, paginated SQLAlchemy query.")
@@ -336,7 +386,43 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             "ids": response_ids, 
             "count": item_count,
             "result": response_data,
+            "page": page if page is not None else 0,
+            "page_size": actual_page_size,
+            "total_pages": total_pages,
+            "next_page_url": None,
+            "prev_page_url": None,
         }
+
+        # Generate prev/next URLs
+        if item_count > 0 and page_size > 0: # Only generate if paginating
+            base_url = request.base_url
+            other_direct_params = { 
+                k: v for k, v in request.args.items() 
+                if k not in ['q', 'page', 'page_size'] 
+            }
+
+            def build_url_with_params(target_page, current_page_size):
+                temp_query_params = request.args.copy()
+                temp_query_params["page"] = target_page
+                temp_query_params["page_size"] = current_page_size
+                if 'q' in temp_query_params: # If q was part of original, it might contain its own page/page_size
+                    # We need to be careful not to create conflicting pagination params.
+                    # Simplest is to remove q if we are now using direct page/page_size for link.
+                    # Or, ideally, parse q, update page/page_size in q, and re-encode q.
+                    # For now, let's prioritize direct params for link generation simplicity.
+                    del temp_query_params['q']
+                
+                # Add back other direct params not part of pagination, if any, that were not in q
+                for k, v in other_direct_params.items():
+                        temp_query_params[k] = v
+                return f"{base_url}?{temp_query_params.to_dict(flat=False)}"
+
+            current_page_for_logic = page if page is not None else 0
+            if (current_page_for_logic + 1) < total_pages:
+                final_response["next_page_url"] = build_url_with_params(current_page_for_logic + 1, actual_page_size)
+            
+            if current_page_for_logic > 0 and total_pages > 0:
+                final_response["prev_page_url"] = build_url_with_params(current_page_for_logic - 1, actual_page_size)
         
         return self.response(200, **final_response)
 
