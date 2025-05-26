@@ -29,3 +29,8 @@ async_timeout>=4.0.0,<5.0.0
 # submitted a PR to relax deps in 11/2024
 # https://github.com/microsoft/playwright-python/pull/2669
 greenlet==3.0.3
+
+# Pin PyJWT to a version compatible with Flask-JWT-Extended 4.x
+# to avoid "Subject must be a string" error.
+# Versions >=2.8.0 (especially 2.10.x) have known issues.
+PyJWT==2.7.0
