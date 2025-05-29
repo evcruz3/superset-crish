@@ -308,7 +308,7 @@
               <div id="whatsapp-group-container">
                   <div class="form-group {% if form.whatsapp_group_id.errors %}has-error{% endif %}">
                       {{ form.whatsapp_group_id.label(class_="control-label") }} <span id="whatsapp-group-required-star" style="color:red;" class="hidden-field">*</span>
-                      {{ form.whatsapp_group_id(class_="form-control select2", id="whatsapp_group_id") }}
+                      {{ form.whatsapp_group_id(class_="form-control select2-multiple", multiple="multiple", id="whatsapp_group_id", style="width: 100%;") }}
                       {% if form.whatsapp_group_id.errors %}
                           <ul class="help-block list-unstyled">{% for error in form.whatsapp_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
                       {% endif %}
@@ -322,16 +322,18 @@
           {# Email Specific Fields - to be shown/hidden by JS #}
           <div id="email-specific-fields">
               <div id="email-group-container"> {# WRAPPED for easier JS targeting #}
-                  <div class="form-group {% if form.email_group_id.errors %}has-error{% endif %}">
-                      {{ form.email_group_id.label(class_="control-label") }} <span id="email-group-required-star" style="color:red;" class="hidden-field">*</span>
-                      {{ form.email_group_id(class_="form-control select2", id="email_group_id") }}
-                      {% if form.email_group_id.errors %}
-                          <ul class="help-block list-unstyled">{% for error in form.email_group_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                  <div class="form-group {% if form.email_group_ids.errors %}has-error{% endif %}">
+                      {{ form.email_group_ids.label(class_="control-label") }} <span id="email-group-required-star" style="color:red;" class="hidden-field">*</span>
+                      {# Render SelectMultipleField as a multi-select dropdown enhanced by Select2 #}
+                      {{ form.email_group_ids(class_="form-control select2-multiple", multiple="multiple", id="email_group_ids", style="width: 100%;") }} 
+                      <small class="text-muted">{{ form.email_group_ids.description }}</small>
+                      {% if form.email_group_ids.errors %}
+                          <ul class="help-block list-unstyled">{% for error in form.email_group_ids.errors %}<li>{{ error }}</li>{% endfor %}</ul>
                       {% endif %}
                   </div>
 
                   <div id="email-preview" class="form-group">
-                      <small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>
+                      <small class="text-muted">{{ _("Select email group(s) to see combined recipients.") }}</small>
                   </div>
               </div>
 
@@ -405,13 +407,14 @@ document.addEventListener('DOMContentLoaded', function () {
             placeholder: "{{ _('-- Select a Bulletin --') }}",
             allowClear: true
         });
-        $('#email_group_id').select2({
-            placeholder: "{{ _('-- Select an Email Group --') }}",
+        // Initialize Select2 for multi-select email groups
+        $('#email_group_ids').select2({
+            placeholder: "{{ _('-- Select Email Group(s) --') }}",
             allowClear: true,
-            width: '100%'
+            width: '100%' // Ensure it takes full width
         });
         $('#whatsapp_group_id').select2({ // Initialize Select2 for WhatsApp Group
-            placeholder: "{{ _('-- Select a WhatsApp Group --') }}",
+            placeholder: "{{ _('-- Select WhatsApp Group(s) --') }}", // Changed placeholder
             allowClear: true,
             width: '100%'
         });
@@ -621,7 +624,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // End Bulletin auto-population logic
     
     // Email Group Preview Logic
-    const emailGroupSelect = document.getElementById('email_group_id');
+    const emailGroupMultiSelect = document.getElementById('email_group_ids'); // For Select2 multi-select dropdown
+
     const emailPreviewDiv = document.getElementById('email-preview');
     let emailGroupsData = [];
     try {
@@ -634,25 +638,44 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateEmailPreview() {
-        if (!emailGroupSelect || !emailPreviewDiv) return;
-        const selectedId = parseInt(emailGroupSelect.value);
-        const selectedGroup = emailGroupsData.find(g => g.id === selectedId);
+        if (!emailPreviewDiv || !emailGroupMultiSelect) return;
 
-        if (selectedGroup && selectedGroup.emails && selectedGroup.emails.length > 0) {
-            emailPreviewDiv.innerHTML = '<strong>{{ _("Recipients:") }}</strong><br>' + selectedGroup.emails.join('<br>'); 
-        } else if (selectedGroup) {
-            emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("No email addresses defined for this group.") }}</small>';
+        let selectedGroupIds = [];
+        // Logic for Select2 multi-select dropdown
+        selectedGroupIds = Array.from(emailGroupMultiSelect.selectedOptions).map(option => parseInt(option.value));
+        
+        let combinedEmails = new Set();
+        let anyGroupSelected = false;
+
+        selectedGroupIds.forEach(selectedId => {
+            const selectedGroup = emailGroupsData.find(g => g.id === selectedId);
+            if (selectedGroup) {
+                anyGroupSelected = true;
+                if (selectedGroup.emails && selectedGroup.emails.length > 0) {
+                    selectedGroup.emails.forEach(email => combinedEmails.add(email));
+                }
+            }
+        });
+
+        if (anyGroupSelected) {
+            if (combinedEmails.size > 0) {
+                emailPreviewDiv.innerHTML = '<strong>{{ _("Combined Unique Recipients:") }}</strong><br>' + Array.from(combinedEmails).join('<br>');
+            } else {
+                emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Selected group(s) have no email addresses defined.") }}</small>';
+            }
         } else {
-            emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Select an email group to see recipients.") }}</small>';
+            emailPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Select email group(s) to see combined recipients.") }}</small>';
         }
     }
 
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#email_group_id').on('change', updateEmailPreview);
-    } else if (emailGroupSelect) {
-        emailGroupSelect.addEventListener('change', updateEmailPreview);
+    // If using Select2 multi-select, use its change event:
+    if (typeof $ !== 'undefined' && $.fn.select2 && emailGroupMultiSelect) {
+        $(emailGroupMultiSelect).on('change', updateEmailPreview);
+    } else if (emailGroupMultiSelect) { // Fallback for non-Select2 if needed
+        emailGroupMultiSelect.addEventListener('change', updateEmailPreview);
     }
-    updateEmailPreview();
+
+    updateEmailPreview(); // Initial call
 
     // WhatsApp Group Preview Logic
     const whatsappGroupSelect = document.getElementById('whatsapp_group_id');
@@ -668,26 +691,39 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateWhatsAppRecipientsPreview() {
-        if (!whatsappGroupSelect || !whatsappRecipientsPreviewDiv) return;
-        const selectedId = parseInt(whatsappGroupSelect.value);
-        const selectedGroup = whatsappGroupsData.find(g => g.id === selectedId);
+        if (!whatsappRecipientsPreviewDiv || !whatsappGroupSelect) return;
 
-        if (selectedGroup && selectedGroup.phone_numbers && selectedGroup.phone_numbers.length > 0) {
-            // Listing phone numbers, similar to email preview.
-            // Consider privacy implications if phone numbers are sensitive.
-            whatsappRecipientsPreviewDiv.innerHTML = `<strong>{{ _("Recipients:") }}</strong><br>${selectedGroup.phone_numbers.join('<br>')}`;
-        } else if (selectedGroup) {
-            whatsappRecipientsPreviewDiv.innerHTML = '<small class="text-muted">{{ _("No phone numbers defined for this group.") }}</small>';
+        let selectedGroupIds = Array.from(whatsappGroupSelect.selectedOptions).map(option => parseInt(option.value));
+        let combinedPhoneNumbers = new Set();
+        let anyGroupSelected = false;
+
+        selectedGroupIds.forEach(selectedId => {
+            const selectedGroup = whatsappGroupsData.find(g => g.id === selectedId);
+            if (selectedGroup) {
+                anyGroupSelected = true;
+                if (selectedGroup.phone_numbers && selectedGroup.phone_numbers.length > 0) {
+                    selectedGroup.phone_numbers.forEach(number => combinedPhoneNumbers.add(number));
+                }
+            }
+        });
+
+        if (anyGroupSelected) {
+            if (combinedPhoneNumbers.size > 0) {
+                // For privacy, show count instead of numbers if preferred.
+                // whatsappRecipientsPreviewDiv.innerHTML = `<strong>{{ _("Total Unique Recipients:") }}</strong> ${combinedPhoneNumbers.size}`;
+                whatsappRecipientsPreviewDiv.innerHTML = '<strong>{{ _("Combined Unique Recipients:") }}</strong><br>' + Array.from(combinedPhoneNumbers).join('<br>');
+            } else {
+                whatsappRecipientsPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Selected group(s) have no phone numbers defined.") }}</small>';
+            }
         } else {
-            whatsappRecipientsPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Select a WhatsApp group to see recipient count.") }}</small>';
+            whatsappRecipientsPreviewDiv.innerHTML = '<small class="text-muted">{{ _("Select WhatsApp group(s) to see combined recipients.") }}</small>';
         }
     }
 
     if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#email_group_id').on('change', updateEmailPreview);
-        $('#whatsapp_group_id').on('change', updateWhatsAppRecipientsPreview); // Add listener for WhatsApp group
+        // No longer need to listen to individual checkboxes for email group preview
+        $('#whatsapp_group_id').on('change', updateWhatsAppRecipientsPreview);
     } else {
-        if (emailGroupSelect) emailGroupSelect.addEventListener('change', updateEmailPreview);
         if (whatsappGroupSelect) whatsappGroupSelect.addEventListener('change', updateWhatsAppRecipientsPreview);
     }
     updateWhatsAppRecipientsPreview(); // Initial call

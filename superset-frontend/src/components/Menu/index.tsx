@@ -99,6 +99,11 @@ const StyledNav = styled(AntdMenu)`
   line-height: 51px;
   border: none;
 
+  // Ensure horizontal menus don't wrap, allowing overflow indicator to work correctly
+  &.ant-menu-horizontal {
+    flex-wrap: nowrap;
+  }
+
   & > .ant-menu-item,
   & > .ant-menu-submenu {
     vertical-align: inherit;

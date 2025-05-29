@@ -761,6 +761,31 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.security_manager_class = custom_sm
         appbuilder.init_app(self.superset_app, db.session)
 
+        # Explicitly register custom security views after AppBuilder and SecurityManager are initialized
+        # This ensures appbuilder.sm is the fully initialized CustomSecurityManager instance
+        try:
+            if hasattr(appbuilder.sm, 'forgotpasswordview_class'):
+                forgot_password_view_class = appbuilder.sm.forgotpasswordview_class
+                appbuilder.add_view_no_menu(forgot_password_view_class()) # Register instance
+                logger.info(f"Successfully registered custom view: {forgot_password_view_class.__name__}")
+            else:
+                logger.warning(
+                    "CustomSecurityManager does not have 'forgotpasswordview_class' attribute."
+                )
+
+            if hasattr(appbuilder.sm, 'resetpasswordconfirmview_class'):
+                reset_password_confirm_view_class = appbuilder.sm.resetpasswordconfirmview_class
+                appbuilder.add_view_no_menu(reset_password_confirm_view_class()) # Register instance
+                logger.info(
+                    f"Successfully registered custom view: {reset_password_confirm_view_class.__name__}"
+                )
+            else:
+                logger.warning(
+                    "CustomSecurityManager does not have 'resetpasswordconfirmview_class' attribute."
+                )
+        except Exception as e:
+            logger.error(f"Error registering custom security views in configure_fab: {e}", exc_info=True)
+
     def configure_url_map_converters(self) -> None:
         #
         # Doing local imports here as model importing causes a reference to

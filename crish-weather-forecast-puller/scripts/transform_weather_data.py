@@ -598,7 +598,7 @@ def ingest_to_postgresql(dataframes):
                                     advisory = (
                                         f"{alert_row['alert_title']} for {alert_row['municipality_name']} on {formatted_display_date}.\n\n"
                                         f"{alert_row['alert_message']}\n\n"
-                                        f"{alert_row['weather_parameter']}: {parameter_value} {parameter_unit}"
+                                        f"{alert_row['weather_parameter']}: {parameter_value} {parameter_unit} ({alert_row['alert_level']})"
                                     )
                                     
                                     # Create risks section

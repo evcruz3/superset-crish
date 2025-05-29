@@ -315,7 +315,7 @@ export function Menu({
     <StyledHeader className="top" id="main-menu" role="navigation">
       <Global styles={globalStyles(theme)} />
       <Row>
-        <Col md={16} xs={24}>
+        <Col md={20} xs={24} style={{ display: 'flex', alignItems: 'center' }}>
           <Tooltip
             id="brand-tooltip"
             placement="bottomLeft"
@@ -342,6 +342,8 @@ export function Menu({
             data-test="navbar-top"
             className="main-nav"
             selectedKeys={activeTabs}
+            overflowedIndicator={<Icons.MoreHoriz />}
+            style={{ flex: '1 1 auto', minWidth: 0 /* Important for flex shrink */ }}
           >
             {menu.map((item, index) => {
               const props = {
@@ -364,7 +366,7 @@ export function Menu({
             })}
           </DropdownMenu>
         </Col>
-        <Col md={8} xs={24}>
+        <Col md={4} xs={24}>
           <RightMenu
             align={screens.md ? 'flex-end' : 'flex-start'}
             settings={settings}

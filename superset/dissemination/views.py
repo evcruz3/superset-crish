@@ -122,15 +122,14 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
     can_add = False
     can_edit = False
 
-    # Ensure default sort order is by sent_at descending
     order_columns = ['sent_at']
     order_direction = 'desc'
-    page_size = 25 # Add page size for pagination
+    page_size = 25
 
-    list_columns = ["bulletin", "email_group", "sent_at", "status", "subject_sent", "disseminated_by"]
+    list_columns = ["bulletin", "associated_email_group_names", "associated_whatsapp_group_names", "sent_at", "status", "subject_sent", "disseminated_by"]
 
     # Custom formatters
-    def format_sent_at(value=None) -> str: # Make value argument optional
+    def format_sent_at(value=None) -> str:
         if not value:
             logging.warning("format_sent_at received None for value.")
             return _("[No Date]") # Placeholder for missing date
@@ -140,7 +139,7 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
             logging.warning(f"format_sent_at received non-datetime value: {value!r} of type {type(value)}")
             return _("[Invalid Date]")
 
-    def format_status_as_chip(status=None) -> Markup: # Make status argument optional
+    def format_status_as_chip(status=None) -> Markup:
         if not status:
             logging.warning("format_status_as_chip received None or empty for status.")
             return Markup(_('[No Status]')) # Or return Markup('') if preferred
@@ -159,7 +158,7 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
         
         return Markup(f'<span class="label {chip_class}">{status_str.upper()}</span>')
 
-    def format_bulletin_with_icon(bulletin=None) -> Markup: # Make bulletin argument optional
+    def format_bulletin_with_icon(bulletin=None) -> Markup:
         if not bulletin:
             logging.warning("format_bulletin_with_icon received None for bulletin.")
             return Markup(_('[No Bulletin Data]'))
@@ -176,28 +175,21 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
     formatters_columns = {
         'sent_at': format_sent_at,
         'status': format_status_as_chip,
-        'bulletin': format_bulletin_with_icon
+        'bulletin': format_bulletin_with_icon,
     }
     
     show_fieldsets = [
         (
             _("Log Details"),
-            {"fields": ["bulletin", "email_group", "sent_at", "status", "subject_sent", "message_body_sent", "details", "disseminated_by"]},
+            {"fields": ["bulletin", "associated_email_group_names", "associated_whatsapp_group_names", "sent_at", "status", "subject_sent", "message_body_sent", "details", "disseminated_by"]},
         ),
     ]
-    # Original problematic search_columns:
-    # search_columns = ["bulletin.title", "email_group.name", "status", "subject_sent", "disseminated_by.first_name", "disseminated_by.last_name"]
-    
-    # Simplified search_columns to avoid the KeyError. 
-    # Searching on related fields like 'bulletin.title' will require a different approach or a FAB version/patch that handles it.
     search_columns = ["status", "subject_sent"] 
-    # You can also add relationship fields if they are directly searchable by their string representation, e.g., "bulletin", "email_group", "disseminated_by"
-    # However, to keep it minimal for fixing the startup error, starting with direct attributes.
-    # Consider adding back relationship names if needed, e.g. search_columns = ["status", "subject_sent", "bulletin", "email_group"]
 
     label_columns = {
         "bulletin": _("Bulletin Title"),
-        "email_group": _("Email Group"),
+        "associated_email_group_names": _("Email Groups"),
+        "associated_whatsapp_group_names": _("WhatsApp Groups"),
         "sent_at": _("Sent At"),
         "status": _("Status"),
         "subject_sent": _("Subject Sent"),
@@ -205,8 +197,6 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
         "details": _("Details/Errors"),
         "disseminated_by": _("Disseminated By"),
     }
-    # To make bulletin and email_group searchable by their names in the list view
-    # This requires proper setup in SQLAInterface or custom query handling if default doesn't work.
 
 class DisseminateBulletinView(BaseView):
     route_base = "/disseminatebulletin"
@@ -264,10 +254,9 @@ class DisseminateBulletinView(BaseView):
 
         form.bulletin_id.choices = [ (b.id, b.title) for b in bulletins_query ]
         form.bulletin_id.choices.insert(0, (0, _('-- Select a Bulletin --')))
-        form.email_group_id.choices = [ (g.id, g.name) for g in email_groups_query ]
-        form.email_group_id.choices.insert(0, (0, _('-- Select an Email Group --')))
+        form.email_group_ids.choices = [ (g.id, g.name) for g in email_groups_query ]
         form.whatsapp_group_id.choices = [ (g.id, g.name) for g in whatsapp_groups_query ] # Populate WhatsApp group choices
-        form.whatsapp_group_id.choices.insert(0, (0, _('-- Select a WhatsApp Group --')))
+        # form.whatsapp_group_id.choices.insert(0, (0, _('-- Select a WhatsApp Group --'))) # Will be a multi-select
 
         selected_bulletin_for_template = None
 
@@ -286,14 +275,9 @@ class DisseminateBulletinView(BaseView):
             
             if form.bulletin_id.data is None or form.bulletin_id.data == 0:
                 form.bulletin_id.data = 0
-            if form.email_group_id.data is None:
-                 # Set default for email group only if not pre-selecting channels or if email is a default channel
-                if not form.dissemination_channels.data or 'email' in form.dissemination_channels.data:
-                    form.email_group_id.data = 0
-            
-            if form.whatsapp_group_id.data is None: # Set default for WhatsApp group
-                if not form.dissemination_channels.data or 'whatsapp' in form.dissemination_channels.data:
-                    form.whatsapp_group_id.data = 0
+            # if form.whatsapp_group_id.data is None: # Set default for WhatsApp group
+            #     if not form.dissemination_channels.data or 'whatsapp' in form.dissemination_channels.data:
+            #         form.whatsapp_group_id.data = 0
             
             # Pre-select channels if specified in query params (e.g., ?channels=email,facebook)
             preselect_channels_str = request.args.get('channels')
@@ -324,24 +308,40 @@ class DisseminateBulletinView(BaseView):
             # --- Email Dissemination ---
             if 'email' in dissemination_channels:
                 processed_channels.append('email')
-                email_group_id = form.email_group_id.data
+                email_group_ids = form.email_group_ids.data # Changed to email_group_ids
                 subject = form.subject.data
                 message_body = form.message.data # Renamed for clarity
 
-                email_group = db.session.query(EmailGroup).get(email_group_id)
-                if not email_group:
-                    flash(_("Selected email group not found for Email dissemination."), "danger")
+                selected_email_groups = db.session.query(EmailGroup).filter(EmailGroup.id.in_(email_group_ids)).all()
+                
+                if not selected_email_groups:
+                    flash(_("No valid email groups were selected or found for Email dissemination."), "danger")
+                    log_entries.append(DisseminatedBulletinLog(
+                        bulletin_id=bulletin.id,
+                        # No single email_group_id to log here directly, association table handles it
+                        subject_sent=subject if subject else "N/A for failed email",
+                        message_body_sent=message_body if message_body else "N/A for failed email",
+                        disseminated_by_fk=g.user.id if g.user else None,
+                        status="FAILED",
+                        details="No email groups selected or found.",
+                        channel="email"
+                    ))
                 else:
                     try:
                         pdf_buffer = generate_bulletin_pdf(bulletin)
                         pdf_filename = f"{bulletin.title.replace(' ', '_')}.pdf"
                         pdf_data = pdf_buffer.read()
                         
-                        recipient_emails_str = email_group.emails
-                        recipient_list = [e.strip() for e in recipient_emails_str.split(',') if e.strip()]
+                        all_recipient_emails = set() # Use a set to ensure uniqueness
+                        for group in selected_email_groups:
+                            if group.emails:
+                                group_emails = [e.strip() for e in group.emails.split(',') if e.strip()]
+                                all_recipient_emails.update(group_emails)
+
+                        recipient_list = list(all_recipient_emails)
 
                         if not recipient_list:
-                             raise ValueError("No recipients found in the selected email group.")
+                             raise ValueError("No recipients found in the selected email groups.")
 
                         send_email_smtp(
                             to=",".join(recipient_list),
@@ -350,28 +350,34 @@ class DisseminateBulletinView(BaseView):
                             pdf={pdf_filename: pdf_data},
                             config=current_app.config
                         )
-                        log_entries.append(DisseminatedBulletinLog(
+                        log_entry = DisseminatedBulletinLog(
                             bulletin_id=bulletin.id,
-                            email_group_id=email_group.id, # Log email group for email channel
+                            # email_group_id=email_group.id, # Removed: will be handled by association
                             subject_sent=subject,
                             message_body_sent=message_body,
                             disseminated_by_fk=g.user.id if g.user else None,
                             status="SUCCESS",
                             channel="email"
-                        ))
+                        )
+                        log_entry.email_groups = selected_email_groups # Assign selected groups to the relationship
+                        log_entries.append(log_entry)
                         email_success = True
                     except Exception as e:
                         logging.error(f"Error disseminating bulletin via Email: {e}", exc_info=True)
-                        log_entries.append(DisseminatedBulletinLog(
+                        log_entry = DisseminatedBulletinLog(
                             bulletin_id=bulletin.id,
-                            email_group_id=email_group.id if email_group else None,
+                            # No single email_group_id to log here directly
                             subject_sent=subject if subject else "N/A for failed email",
                             message_body_sent=message_body if message_body else "N/A for failed email",
                             disseminated_by_fk=g.user.id if g.user else None,
                             status="FAILED",
                             details=f"Email Error: {str(e)}",
                             channel="email"
-                        ))
+                        )
+                        # Even on failure, try to associate with initially intended groups if available
+                        if selected_email_groups:
+                            log_entry.email_groups = selected_email_groups
+                        log_entries.append(log_entry)
             
             # --- Facebook Dissemination ---
             if 'facebook' in dissemination_channels:
@@ -513,25 +519,26 @@ class DisseminateBulletinView(BaseView):
                 wa_phone_id_config = current_app.config.get('WHATSAPP_PHONE_NUMBER_ID') # Renamed to avoid clash
                 wa_token_config = current_app.config.get('WHATSAPP_ACCESS_TOKEN') # Renamed
                 wa_template_name_config = current_app.config.get('WHATSAPP_DEFAULT_TEMPLATE_NAME', 'bulletin_alert') # Renamed
-                # wa_recipients_config = current_app.config.get('WHATSAPP_BULLETIN_RECIPIENTS', []) # No longer used from config here
                 
-                whatsapp_group_id_form = form.whatsapp_group_id.data # Get from form
-                selected_whatsapp_group = db.session.query(WhatsAppGroup).get(whatsapp_group_id_form)
+                whatsapp_group_ids_form = form.whatsapp_group_id.data # Changed to whatsapp_group_ids
+                selected_whatsapp_groups = db.session.query(WhatsAppGroup).filter(WhatsAppGroup.id.in_(whatsapp_group_ids_form)).all()
 
-                if not selected_whatsapp_group or not selected_whatsapp_group.phone_numbers:
-                    error_msg = "Selected WhatsApp group not found or has no phone numbers."
+                if not selected_whatsapp_groups:
+                    error_msg = "No WhatsApp groups selected or found."
                     logger.error(error_msg)
                     flash(_(error_msg), "danger")
-                    log_entries.append(DisseminatedBulletinLog(
+                    log_entry = DisseminatedBulletinLog(
                         bulletin_id=bulletin.id,
-                        whatsapp_group_id=whatsapp_group_id_form if whatsapp_group_id_form else None,
+                        # whatsapp_group_id=whatsapp_group_id_form if whatsapp_group_id_form else None, # Removed
                         disseminated_by_fk=g.user.id if g.user else None,
                         status="FAILED",
                         details=error_msg,
                         channel="whatsapp",
                         subject_sent=f"WhatsApp attempt for: {bulletin.title} (Template: {wa_template_name_config})",
                         message_body_sent="WhatsApp Group Error"
-                    ))
+                    )
+                    log_entry.whatsapp_groups = [] # Ensure association is empty
+                    log_entries.append(log_entry)
                 # Check essential configs like token and phone ID, template name
                 elif not wa_phone_id_config or not wa_token_config or wa_token_config == "YOUR_PERMANENT_SYSTEM_USER_ACCESS_TOKEN_PLEASE_REPLACE" or not wa_template_name_config:
                     missing_configs = []
@@ -543,32 +550,45 @@ class DisseminateBulletinView(BaseView):
                     error_msg = f"WhatsApp dissemination is not configured correctly in system settings. Missing: {', '.join(missing_configs)}."
                     logger.error(error_msg)
                     flash(_(error_msg), "warning")
-                    log_entries.append(DisseminatedBulletinLog(
+                    log_entry = DisseminatedBulletinLog(
                         bulletin_id=bulletin.id,
-                        whatsapp_group_id=whatsapp_group_id_form,
+                        # whatsapp_group_id=whatsapp_group_id_form, # Removed
                         disseminated_by_fk=g.user.id if g.user else None,
                         status="FAILED",
                         details=error_msg,
                         channel="whatsapp",
                         subject_sent=f"WhatsApp attempt for: {bulletin.title} (Template: {wa_template_name_config})",
                         message_body_sent="System Configuration Error"
-                    ))
+                    )
+                    if selected_whatsapp_groups: # Try to associate even on config failure
+                        log_entry.whatsapp_groups = selected_whatsapp_groups
+                    log_entries.append(log_entry)
                 else:
-                    wa_recipients_list = [p.strip() for p in selected_whatsapp_group.phone_numbers.split(',') if p.strip()]
+                    all_wa_recipients_set = set() # Use a set to ensure uniqueness across groups
+                    for group in selected_whatsapp_groups:
+                        if group.phone_numbers:
+                            group_numbers = [p.strip() for p in group.phone_numbers.split(',') if p.strip()]
+                            all_wa_recipients_set.update(group_numbers)
+                    
+                    wa_recipients_list = list(all_wa_recipients_set)
+
                     if not wa_recipients_list:
-                        error_msg = f"No valid phone numbers found in WhatsApp group '{selected_whatsapp_group.name}'."
+                        selected_group_names = ", ".join([g.name for g in selected_whatsapp_groups])
+                        error_msg = f"No valid phone numbers found in the selected WhatsApp group(s): '{selected_group_names}'."
                         logger.error(error_msg)
                         flash(_(error_msg), "danger")
-                        log_entries.append(DisseminatedBulletinLog(
+                        log_entry = DisseminatedBulletinLog(
                             bulletin_id=bulletin.id,
-                            whatsapp_group_id=whatsapp_group_id_form,
+                            # whatsapp_group_id=whatsapp_group_id_form, # Removed
                             disseminated_by_fk=g.user.id if g.user else None,
                             status="FAILED",
                             details=error_msg,
                             channel="whatsapp",
                             subject_sent=f"WhatsApp attempt for: {bulletin.title} (Template: {wa_template_name_config})",
                             message_body_sent="Empty Group Recipient List"
-                        ))
+                        )
+                        log_entry.whatsapp_groups = selected_whatsapp_groups # Associate with the selected (but empty) groups
+                        log_entries.append(log_entry)
                     else:
                         success_count = 0
                         failure_count = 0
@@ -695,9 +715,9 @@ class DisseminateBulletinView(BaseView):
                             final_status = "PARTIAL_SUCCESS"
                             whatsapp_success = True # Still mark as overall success for the channel if at least one went through
                         
-                        log_entries.append(DisseminatedBulletinLog(
+                        log_entry = DisseminatedBulletinLog(
                             bulletin_id=bulletin.id,
-                            whatsapp_group_id=selected_whatsapp_group.id, # Log the group ID
+                            # whatsapp_group_id=selected_whatsapp_group.id, # Removed: will be handled by association
                             disseminated_by_fk=g.user.id if g.user else None,
                             status=final_status,
                             details="; ".join(whatsapp_log_details),
@@ -705,13 +725,11 @@ class DisseminateBulletinView(BaseView):
                             # For WhatsApp, subject/message_body are less direct. Log template info.
                             subject_sent=f"WhatsApp Template: {wa_template_name_config} (Subject: {sanitized_subject[:100]}...)", 
                             message_body_sent=f"Recipients: {len(wa_recipients_list)}. Advisory: {truncated_advisory[:50]}... Risks: {truncated_risks[:50]}... Tips: {truncated_safety_tips[:50]}... Success: {success_count}, Failed: {failure_count}."
-                        ))
+                        )
+                        log_entry.whatsapp_groups = selected_whatsapp_groups # Assign selected groups to the relationship
+                        log_entries.append(log_entry)
                         if final_status == "SUCCESS":
                             logger.info("All WhatsApp messages disseminated successfully.")
-                        elif final_status == "PARTIAL_SUCCESS":
-                            logger.warning(f"WhatsApp dissemination partially successful: {success_count} sent, {failure_count} failed.")
-                        else:
-                            logger.error(f"All WhatsApp messages failed to disseminate. Failures: {failure_count}.")
 
             # --- Mobile App Broadcast Dissemination ---
             if 'mobile_app_broadcast' in dissemination_channels:

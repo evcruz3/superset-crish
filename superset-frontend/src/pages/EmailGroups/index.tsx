@@ -45,7 +45,7 @@ const EMAIL_GROUP_COLUMNS_TO_FETCH = [
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
   display: flex;
-  justify-content: flex-end; // Align actions to the right
+  justify-content: flex-start; // Align actions to the left
   
   .action-button {
     display: inline-block;
@@ -151,21 +151,6 @@ function EmailGroups({
         Cell: ({ value }: { value?: string | null }) => value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
       },
       {
-        Header: t('Email Addresses'),
-        accessor: 'emails',
-        Cell: ({ value }: { value: string }) => {
-          const emailList = value.split(',').map(e => e.trim()).filter(e => e);
-          if (emailList.length > 3) {
-            return (
-              <Tooltip title={emailList.join(', \n')}>
-                {t('{{count}} emails', { count: emailList.length })}
-              </Tooltip>
-            );
-          }
-          return emailList.join(', ');
-        },
-      },
-      {
         Header: t('Created By'),
         accessor: 'created_by',
         Cell: ({ value }: { value: EmailGroup['created_by'] }) => (
@@ -175,12 +160,12 @@ function EmailGroups({
       {
         Header: t('Created On'),
         accessor: 'created_on',
-        Cell: ({ value }: { value: string }) => moment(value).fromNow(),
+        Cell: ({ value }: { value: string }) => moment(value).format('DD MMMM, YYYY hh:mm A'),
       },
       {
         Header: t('Last Modified'),
         accessor: 'changed_on',
-        Cell: ({ value }: { value?: string | null }) => value ? moment(value).fromNow() : '-',
+        Cell: ({ value }: { value?: string | null }) => value ? moment(value).format('DD MMMM, YYYY hh:mm A') : '-',
       },
       {
         Header: t('Actions'),
@@ -230,13 +215,13 @@ function EmailGroups({
         input: 'search',
         operator: FilterOperator.Contains,
       },
-      {
-        Header: t('Emails'),
-        id: 'emails',
-        key: 'emails',
-        input: 'search',
-        operator: FilterOperator.Contains,
-      },
+      // {
+      //   Header: t('Emails'),
+      //   id: 'emails',
+      //   key: 'emails',
+      //   input: 'search',
+      //   operator: FilterOperator.Contains,
+      // },
     ],
     [],
   );

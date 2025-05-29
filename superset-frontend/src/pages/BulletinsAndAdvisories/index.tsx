@@ -536,13 +536,13 @@ function BulletinsAndAdvisories({
             )}
             {bulletin.created_on && (
               <span>
-                {t('Created %s', moment(bulletin.created_on).fromNow())}
+                {t('Created %s', moment(bulletin.created_on).format('DD MMMM, YYYY hh:mm A'))}
               </span>
             )}
             {bulletin.changed_on && bulletin.changed_on !== bulletin.created_on && (
               <span>
                 {' • '}
-                {t('Updated %s', moment(bulletin.changed_on).fromNow())}
+                {t('Updated %s', moment(bulletin.changed_on).format('DD MMMM, YYYY hh:mm A'))}
               </span>
             )}
           </div>

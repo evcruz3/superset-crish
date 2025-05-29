@@ -245,9 +245,10 @@
 
                     {# Add bottom links (Forgot Password / Register) #}
                     <div class="login-links">
-                        <!-- <a href="#">{{_('Forgot your password?')}}</a> {# Placeholder #} -->
+                      <a href="{{ appbuilder.sm.get_url_for_forgot_password_form() }}">{{_("Forgot Your Password?") }}</a>
                          {% if appbuilder.sm.auth_user_registration %}
                              <br/>
+                             <br />
                              <span>{{_("Don't have an account?")}}</span>
                              <a href="{{ appbuilder.sm.get_url_for_registeruser }}">
                                  {{_("Register")}}

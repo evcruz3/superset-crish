@@ -36,6 +36,46 @@ except ModuleNotFoundError:
     logger.info("No PIL installation found")
 
 
+class BulletinCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        self.bulletin_id_str = kwargs.pop('bulletin_id_str', "N/A")
+        super().__init__(*args, **kwargs)
+        # Page dimensions and margins are often set on the canvas instance or retrieved from pagesize
+        self._page_width, self._page_height = self._pagesize
+        
+        # Define margins (consistent with generate_bulletin_pdf)
+        # These are used for positioning the footer elements.
+        self.margin_left = 0.75 * inch
+        self.margin_right = 0.75 * inch
+        self.margin_bottom_abs = 0.5 * inch # Absolute margin from paper edge for footer positioning
+
+    def _draw_page_footer(self):
+        self.saveState()
+        self.setFont("Helvetica", 8)
+        
+        # Footer Y position (e.g., 0.25 inch from the bottom edge of the paper)
+        footer_y_position = self.margin_bottom_abs * 0.5 
+
+        # Bulletin ID (bottom-left)
+        id_text = f"Bulletin ID: {self.bulletin_id_str}"
+        self.drawString(self.margin_left, footer_y_position, id_text)
+
+        # Page number (bottom-right)
+        page_num_text = f"Page {self.getPageNumber()}"
+        text_width = self.stringWidth(page_num_text, "Helvetica", 8)
+        self.drawRightString(self._page_width - self.margin_right, footer_y_position, page_num_text)
+        
+        self.restoreState()
+
+    def showPage(self):
+        self._draw_page_footer() # Draw footer on current page before finishing it
+        super().showPage()
+
+    def save(self):
+        self._draw_page_footer() # Draw footer on the last page before saving
+        super().save()
+
+
 def build_pdf_from_screenshots(snapshots: list[bytes]) -> bytes:
     images = []
 
@@ -96,8 +136,9 @@ def generate_bulletin_pdf(bulletin):
 
 
     buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+    # Use the custom BulletinCanvas
+    p = BulletinCanvas(buffer, pagesize=letter, bulletin_id_str=str(getattr(bulletin, 'id', 'N/A')))
+    width, height = letter # page dimensions remain letter size
     
     # Define margins
     margin_left = 0.75 * inch
@@ -257,7 +298,7 @@ def generate_bulletin_pdf(bulletin):
     p.setFont("Helvetica-Oblique", 9)
     meta_line_height = 11
     if hasattr(bulletin, 'created_on') and bulletin.created_on:
-        created_date_str = bulletin.created_on.strftime("%B %d, %Y at %I:%M %p %Z") if bulletin.created_on else "N/A"
+        created_date_str = bulletin.created_on.strftime("%d %B, %Y at %I:%M %p %Z") if bulletin.created_on else "N/A"
         if y - meta_line_height < margin_bottom: p.showPage(); y = height - margin_top; p.setFont("Helvetica-Oblique", 9)
         p.drawString(margin_left, y - 9, f"Published: {created_date_str}")
         y -= meta_line_height
@@ -265,7 +306,7 @@ def generate_bulletin_pdf(bulletin):
     if (hasattr(bulletin, 'changed_on') and bulletin.changed_on and 
         hasattr(bulletin, 'created_on') and bulletin.created_on and 
         bulletin.changed_on.strftime("%Y-%m-%d %H:%M") != bulletin.created_on.strftime("%Y-%m-%d %H:%M")):
-        changed_date_str = bulletin.changed_on.strftime("%B %d, %Y at %I:%M %p %Z") if bulletin.changed_on else "N/A"
+        changed_date_str = bulletin.changed_on.strftime("%d %B, %Y at %I:%M %p %Z") if bulletin.changed_on else "N/A"
         if y - meta_line_height < margin_bottom: p.showPage(); y = height - margin_top; p.setFont("Helvetica-Oblique", 9)
         p.drawString(margin_left, y - 9, f"Last Updated: {changed_date_str}")
         y -= meta_line_height
@@ -452,27 +493,28 @@ def generate_bulletin_pdf(bulletin):
         logger.info(f"No image attachments found or bulletin.image_attachments is empty for bulletin ID: {getattr(bulletin, 'id', 'N/A')}")
     
     # --- Hashtags ---
-    if bulletin.hashtags and bulletin.hashtags.strip():
-        title = "Hashtags"
-        # Prepare hashtag string: ensure starts with #, space separated
-        tags = [f"#{tag.strip()}" for tag in bulletin.hashtags.split(',') if tag.strip()]
-        content_text = " ".join(tags)
+    # if bulletin.hashtags and bulletin.hashtags.strip():
+    #     title = "Hashtags"
+    #     # Prepare hashtag string: ensure starts with #, space separated
+    #     tags = [f"#{tag.strip()}" for tag in bulletin.hashtags.split(',') if tag.strip()]
+    #     content_text = " ".join(tags)
         
-        section_style = style_colors.get(title, {"bg": "#f0f0f0", "border": "#cccccc"})
-        y = draw_section(y, title, content_text, section_style["bg"], section_style["border"], text_font="Helvetica-Oblique", text_size=10)
-        y -= 0.1*inch
+    #     section_style = style_colors.get(title, {"bg": "#f0f0f0", "border": "#cccccc"})
+    #     y = draw_section(y, title, content_text, section_style["bg"], section_style["border"], text_font="Helvetica-Oblique", text_size=10)
+    #     y -= 0.1*inch
 
     # --- Footer with Bulletin ID ---
+    # This section is now handled by BulletinCanvas, so it will be removed.
     # Ensure footer is at the bottom
-    if y < margin_bottom + line_height_small + (0.1*inch) : # If not enough space for ID line
-         p.showPage() # This might create an almost empty page if ID is the only thing left
-         # Consider drawing footer on every page if this behavior is not desired.
+    # if y < margin_bottom + line_height_small + (0.1*inch) : # If not enough space for ID line
+    #      p.showPage() 
+    #      # Consider drawing footer on every page if this behavior is not desired.
     
-    p.setFont("Helvetica", 8)
-    id_text = f"Bulletin ID: {bulletin.id}"
-    p.drawString(margin_left, margin_bottom + (0.05*inch), id_text) # Draw at fixed bottom position
+    # p.setFont("Helvetica", 8)
+    # id_text = f"Bulletin ID: {bulletin.id}"
+    # p.drawString(margin_left, margin_bottom + (0.05*inch), id_text) # Draw at fixed bottom position
     
-    p.showPage()
+    # p.showPage() # This explicit showPage before save is removed as BulletinCanvas.save handles the last page.
     p.save()
     buffer.seek(0)
     logger.info(f"PDF generation complete for bulletin ID: {getattr(bulletin, 'id', 'N/A')}. PDF size: {len(buffer.getvalue())} bytes.")

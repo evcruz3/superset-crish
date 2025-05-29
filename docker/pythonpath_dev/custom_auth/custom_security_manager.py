@@ -14,6 +14,19 @@ import uuid # Import uuid
 from werkzeug.security import generate_password_hash # Import for password hashing
 import logging # Add logging import
 
+# Additional imports for password reset
+from flask import current_app, url_for, flash, redirect, request, g
+from flask_appbuilder.baseviews import expose
+from flask_appbuilder.security.forms import ResetPasswordForm # Reusing FAB's form
+from flask_appbuilder.views import SimpleFormView
+from itsdangerous import URLSafeTimedSerializer
+
+# Import Optional for type hinting
+from typing import Optional
+
+# Import BuildError for exception handling
+from werkzeug.routing import BuildError
+
 log = logging.getLogger(__name__) # Add logger instance
 # from superset import const as c # Optional: for FAB's log constants
 
@@ -109,6 +122,146 @@ class CustomRegisterUserDBView(FabRegisterUserDBView):
     edit_widget = RegisterUserFormWidget # <--- ASSIGN YOUR CUSTOM WIDGET HERE
 
 
+# New Forms and Views for Password Reset
+
+class ForgotPasswordForm(DynamicForm):
+    email = StringField(
+        lazy_gettext("Your Email"),
+        validators=[DataRequired(), Email()],
+        widget=BS3TextFieldWidget(),
+        description=lazy_gettext("Enter the email associated with your account."),
+    )
+
+class ForgotPasswordView(SimpleFormView):
+    route_base = "/forgotpassword"
+    form = ForgotPasswordForm
+    form_template = "appbuilder/general/security/forgot_password_form.html"
+    email_body_template = (
+        "To reset your password, please click the link below:<br><br>"
+        "{reset_url}<br><br>"
+        "If you did not request a password reset, please ignore this email."
+    )
+
+    _form_title_lazy = lazy_gettext("Forgot Password")
+    _email_subject_lazy = lazy_gettext("Password Reset Request")
+
+    @property
+    def form_title(self):
+        return self._form_title_lazy
+
+    @property
+    def email_subject(self):
+        return self._email_subject_lazy
+
+    @expose("/form", methods=["GET", "POST"])
+    def this_form(self):
+        self._init_vars()
+        form = self.form.refresh()
+        if request.method == "POST" and form.validate_on_submit():
+            self.form_post(form)
+            # Redirect even if user not found to prevent email enumeration
+            flash(lazy_gettext("If your email is in our system, you will receive instructions to reset your password."), "info")
+            return redirect(self.appbuilder.get_url_for_index)
+        widgets = self._get_edit_widget(form=form)
+        return self.render_template(
+            self.form_template,
+            title=self.form_title,
+            widgets=widgets,
+            form=form,
+            appbuilder=self.appbuilder,
+        )
+
+    def form_post(self, form: DynamicForm) -> None:
+        user = self.appbuilder.sm.find_user(email=form.email.data)
+        if user:
+            token = self.appbuilder.sm.generate_password_reset_token(user.email)
+            reset_url = url_for(
+                f"{self.appbuilder.sm.resetpasswordconfirmview_class.__name__}.this_form",
+                _external=True,
+                token=token,
+            )
+            # In a real application, you would email this URL to the user
+            log.info(f"Password reset requested for {user.email}. Reset URL: {reset_url}")
+            self.appbuilder.sm.send_password_reset_email(user.email, reset_url)
+            # Flash message moved to this_form to always show after POST
+
+
+class ResetPasswordConfirmView(SimpleFormView):
+    route_base = "/resetpasswordconfirm"
+    form = ResetPasswordForm # Reusing FAB's form
+    form_template = "appbuilder/general/security/reset_password_form.html" # You might need to create this template
+    redirect_url = "/" # Redirect to home page after successful reset
+    token_max_age_seconds = 3600 # Token valid for 1 hour
+
+    _form_title_lazy = "Reset Your Password"  # Plain string
+    _message_lazy = "Password successfully reset. Please log in with your new password."  # Plain string
+    _error_message_lazy = "Invalid or expired password reset link."  # Plain string
+
+    @property
+    def form_title(self):
+        return self._form_title_lazy
+
+    @property
+    def message(self):
+        return self._message_lazy
+
+    @property
+    def error_message(self):
+        return self._error_message_lazy
+
+    def _init_vars(self):
+        super()._init_vars()
+        # Pass the token max age to the template or form if needed for display
+        # For now, it's used server-side only
+
+    @expose("/form", methods=["GET", "POST"])
+    @expose("/form/<token>", methods=["GET", "POST"])
+    def this_form(self, token: str = None):
+        self._init_vars()
+        
+        if request.method == "GET" and not token:
+            token = request.args.get("token")
+
+        if not token:
+            flash(self.error_message, "danger")
+            return redirect(self.appbuilder.get_url_for_login)
+
+        email = self.appbuilder.sm.verify_password_reset_token(token, self.token_max_age_seconds)
+        if not email:
+            flash(self.error_message, "danger")
+            return redirect(self.appbuilder.get_url_for_login)
+
+        form = self.form.refresh()
+        if request.method == "POST" and form.validate_on_submit():
+            # Verify token again before processing post, in case it expired while form was open
+            email_on_post = self.appbuilder.sm.verify_password_reset_token(token, self.token_max_age_seconds)
+            if not email_on_post:
+                flash(self.error_message, "danger")
+                return redirect(self.appbuilder.get_url_for_login)
+            
+            user = self.appbuilder.sm.find_user(email=email_on_post)
+            if not user:
+                flash(self.error_message, "danger") # Should not happen if token was valid
+                return redirect(self.appbuilder.get_url_for_login)
+
+            self.form_post(form, user_id=user.id) # Pass user_id to form_post
+            flash(self.message, "info")
+            return redirect(self.appbuilder.get_url_for_login) # Redirect to login after successful reset
+
+        widgets = self._get_edit_widget(form=form)
+        return self.render_template(
+            self.form_template,
+            title=self.form_title,
+            widgets=widgets,
+            form=form,
+            appbuilder=self.appbuilder,
+            token=token # Pass token to template if form action needs it or for display
+        )
+
+    def form_post(self, form: DynamicForm, user_id: int) -> None: # Modified to accept user_id
+        self.appbuilder.sm.reset_password(user_id, form.password.data)
+        # Flash message handled in this_form
+
 # Define your custom UserDBModelView
 class CustomUserDBModelView(FabUserDBModelView): # Ensure this inherits from the aliased FabUserDBModelView
     user_show_fieldsets = [
@@ -170,12 +323,98 @@ class CustomSecurityManager(SupersetSecurityManager):
     """
     Custom security manager that uses the custom registration form and user models
     """
-    registeruserdbform = CustomRegisterUserDBForm
     user_model = CustomUser
     registeruser_model = CustomRegisterUser
+    registeruserdbform = CustomRegisterUserDBForm
     # Point to the custom view
     registeruserdbview = CustomRegisterUserDBView
     userdbmodelview = CustomUserDBModelView # Use the custom user view
+
+    # Expose view CLASSES for external registration
+    forgotpasswordview_class = ForgotPasswordView
+    resetpasswordconfirmview_class = ResetPasswordConfirmView
+
+    def __init__(self, appbuilder):
+        super().__init__(appbuilder)
+        # Initialize the serializer for password reset tokens
+        self.pwd_reset_serializer = URLSafeTimedSerializer(
+            current_app.config["SECRET_KEY"], salt="password-reset"
+        )
+        # DO NOT register views here; it will be done in superset/initialization/__init__.py
+
+    def get_url_for_forgot_password_form(self):
+        try:
+            # This endpoint name is standard if FAB registers the view class directly
+            return url_for("ForgotPasswordView.this_form")
+        except BuildError:
+            log.error("Could not build URL for ForgotPasswordView.this_form in get_url_for_forgot_password_form")
+            return "#error-generating-url-forgot-password" # Fallback URL
+
+    def _get_password_stamp(self, user_password_hash: str) -> str:
+        """Helper to get a consistent stamp from the password hash."""
+        # Example: use a portion of the hash. Adjust if your hash format differs.
+        # This is a simple way; a more robust way might involve hashing the hash.
+        parts = user_password_hash.split('$')
+        if len(parts) > 1: # Handles common formats like scrypt:salt:hash or pbkdf2:alg:salt:hash
+            return parts[-1][:8] # Take first 8 chars of the actual hash part
+        return user_password_hash[:8] # Fallback for simpler hashes
+
+    def generate_password_reset_token(self, email: str) -> Optional[str]:
+        """
+        Generates a secure, timed token for password reset,
+        including a stamp from the user's current password hash.
+        """
+        user = self.find_user(email=email)
+        if not user or not user.password: # Ensure user and password hash exist
+            return None
+        
+        password_stamp = self._get_password_stamp(user.password)
+
+        try:
+            return self.pwd_reset_serializer.dumps({
+                "user_id": user.id, 
+                "email": email,
+                "password_stamp": password_stamp
+            })
+        except Exception as e:
+            log.error(f"Error generating password reset token for {email}: {e}", exc_info=True)
+            return None
+
+    def verify_password_reset_token(self, token: str, max_age_seconds: int) -> Optional[str]:
+        """
+        Verifies a password reset token (timed and password-stamped)
+        and returns the user's email if valid.
+        """
+        if not token:
+            return None
+        try:
+            data = self.pwd_reset_serializer.loads(token, max_age=max_age_seconds)
+            user_id = data.get("user_id")
+            token_email = data.get("email")
+            original_password_stamp = data.get("password_stamp")
+
+            if not all([user_id, token_email, original_password_stamp]):
+                log.warning("Password reset token is missing expected data.")
+                return None
+
+            user = self.get_user_by_id(user_id)
+            if not user or not user.password: # User must exist and have a password
+                log.warning(f"User not found or no password for ID {user_id} from token.")
+                return None
+
+            if user.email != token_email: # Email check
+                log.warning("Token email does not match user's current email.")
+                return None
+
+            current_password_stamp = self._get_password_stamp(user.password)
+            if current_password_stamp != original_password_stamp:
+                log.warning("Password stamp mismatch. Password may have been changed since token issuance.")
+                return None
+            
+            return user.email # Valid token for this user and password state
+        except Exception as e: # Catches expired, invalid, tampered tokens, or other errors
+            log.warning(f"Invalid, expired, or malformed password reset token received: {e}")
+            return None
 
     def add_register_user(
         self, username, first_name, last_name, email, password="", gender="", age_range=""
@@ -279,4 +518,43 @@ class CustomSecurityManager(SupersetSecurityManager):
                 age_range=register_user.age_range,
             )
             return user
-        return None 
+        return None
+
+    def send_password_reset_email(self, email: str, reset_url: str):
+        """
+        Sends the password reset email using the send_email_smtp utility.
+        """
+        log.info(f"[SM] Attempting to send password reset email to {email} with URL: {reset_url}")
+        try:
+            # Import the utility for sending emails
+            from superset.utils.core import send_email_smtp
+
+            subject = self.forgotpasswordview_class().email_subject
+            # Ensure email_body_template is accessed correctly (it's a string on the class instance)
+            body_template = self.forgotpasswordview_class().email_body_template
+            html_content = body_template.format(reset_url=reset_url)
+            # Replace newline characters with HTML line breaks for proper rendering
+            # html_content = html_content.replace("\n", "<br>") # No longer needed as template uses <br>
+
+            # Basic check for essential SMTP configurations
+            if not all(
+                [
+                    current_app.config.get("SMTP_HOST"),
+                    current_app.config.get("SMTP_MAIL_FROM"),
+                ]
+            ):
+                log.error(
+                    "SMTP not configured. Missing SMTP_HOST or SMTP_MAIL_FROM. Cannot send password reset email."
+                )
+                return
+
+            send_email_smtp(
+                to=email,
+                subject=subject,
+                html_content=html_content,
+                config=current_app.config,  # Pass the whole app config
+                # No attachments, pdfs, or images for this email
+            )
+            log.info(f"Password reset email successfully sent to {email} via send_email_smtp.")
+        except Exception as e:
+            log.error(f"Error sending password reset email to {email} using send_email_smtp: {e}", exc_info=True) 

@@ -259,6 +259,8 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
 
   // State for user's current location (optional)
   const [currentUserLocation, setCurrentUserLocation] = useState<[number, number] | null>(null);
+  const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(false);
+  const [locationError, setLocationError] = useState<boolean>(false);
 
   // Add state for legend expansion
   const [isLegendExpanded, setIsLegendExpanded] = useState<boolean>(true);
@@ -472,23 +474,36 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
   // Function to attempt getting user's location
   const getUserGeolocation = () => {
     if (navigator.geolocation) {
+      if (isFetchingLocation) return; // Prevent multiple requests
+
+      setIsFetchingLocation(true);
+      setLocationError(false); // Reset error state on new attempt
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           console.log('User GeoLocation Found:', [longitude, latitude]);
           setCurrentUserLocation([longitude, latitude]);
+          setIsFetchingLocation(false);
           // Optionally: Show success toast
           // addSuccessToast(t('Current location updated.'));
         },
         (error) => {
           console.error("Error getting user location:", error);
           setCurrentUserLocation(null); // Ensure it's null on error
-          addDangerToast(t('Could not get your location. Using default for directions.'));
+          setIsFetchingLocation(false);
+          if (!locationError) { // Only show toast if it hasn't been shown for this "session" of errors
+            addDangerToast(t('Could not get your location. Using default for directions.'));
+          }
+          setLocationError(true);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 } // Options
       );
     } else {
-      addDangerToast(t('Geolocation is not supported by this browser.'));
+      if (!locationError) {
+        addDangerToast(t('Geolocation is not supported by this browser.'));
+      }
+      setLocationError(true);
     }
   };
 
@@ -502,9 +517,11 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
     } else {
       // Use Dili default if current location unknown
       origin = `${DILI_COORDS[0]},${DILI_COORDS[1]}`;
-      // Attempt to get location when directions are first requested without one
-      // Debounce this if needed, or add a separate button to "Find My Location"
-      getUserGeolocation(); 
+      // Attempt to get location when directions are first requested without one,
+      // but only if there wasn't a recent error.
+      if (!locationError) {
+        getUserGeolocation(); 
+      }
     }
     
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
