@@ -533,8 +533,6 @@ class CustomSecurityManager(SupersetSecurityManager):
             # Ensure email_body_template is accessed correctly (it's a string on the class instance)
             body_template = self.forgotpasswordview_class().email_body_template
             html_content = body_template.format(reset_url=reset_url)
-            # Replace newline characters with HTML line breaks for proper rendering
-            # html_content = html_content.replace("\n", "<br>") # No longer needed as template uses <br>
 
             # Basic check for essential SMTP configurations
             if not all(
@@ -550,7 +548,7 @@ class CustomSecurityManager(SupersetSecurityManager):
 
             send_email_smtp(
                 to=email,
-                subject=subject,
+                subject=str(subject),  # Ensure subject is a string here
                 html_content=html_content,
                 config=current_app.config,  # Pass the whole app config
                 # No attachments, pdfs, or images for this email
