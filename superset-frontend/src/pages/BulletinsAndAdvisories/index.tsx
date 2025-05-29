@@ -632,7 +632,7 @@ function BulletinsAndAdvisories({
           )}
         </FeedCardWrapper>
         <FeedActionsContainer>
-          <Tooltip title={t('Disseminate Bulletin')}>
+          {hasPerm('can_write') && <Tooltip title={t('Disseminate Bulletin')}>
             <FeedActionButton
               icon={<MailOutlined />}
               onClick={(e) => {
@@ -641,7 +641,7 @@ function BulletinsAndAdvisories({
               }}
               aria-label={t('Disseminate Bulletin')}
             />
-          </Tooltip>
+          </Tooltip>}
           <Tooltip title={t('Download PDF')}>
             <FeedActionButton
               icon={<DownloadOutlined />}
