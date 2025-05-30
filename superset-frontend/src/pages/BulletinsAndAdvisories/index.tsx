@@ -335,7 +335,7 @@ function BulletinsAndAdvisories({
         accessor: 'created_by',
       },
       {
-        Cell: ({ row: { original } }: any) => <>{moment(original.created_on).fromNow()}</>,
+        Cell: ({ row: { original } }: any) => <>{moment(original.created_on).format('DD MMMM, YYYY hh:mm A')}</>,
         Header: t('Created'),
         accessor: 'created_on',
       },
@@ -343,7 +343,7 @@ function BulletinsAndAdvisories({
         Cell: ({ row: { original } }: any) => {
           // Only show if different from created_on
           if (original.changed_on && original.changed_on !== original.created_on) {
-            return <>{moment(original.changed_on).fromNow()}</>;
+            return <>{moment(original.changed_on).format('DD MMMM, YYYY hh:mm A')}</>;
           }
           return null;
         },
