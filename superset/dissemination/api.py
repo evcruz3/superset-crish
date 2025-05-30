@@ -4,11 +4,11 @@ from flask_appbuilder.models.sqla.interface import SQLAInterface
 from typing import Any
 import logging
 
-from superset.models.dissemination import EmailGroup
+from superset.models.dissemination import EmailGroup, WhatsAppGroup
 from superset.views.base_api import BaseSupersetModelRestApi, statsd_metrics
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.commands.exceptions import DeleteFailedError
-from superset.dissemination.schemas import EmailGroupSchema, DisseminationUserSchema
+from superset.dissemination.schemas import EmailGroupSchema, DisseminationUserSchema, WhatsAppGroupSchema
 
 class EmailGroupsRestApi(BaseSupersetModelRestApi):
     datamodel = SQLAInterface(EmailGroup)
@@ -107,4 +107,89 @@ class EmailGroupsRestApi(BaseSupersetModelRestApi):
             # So, we must use self.response(500, message=str(ex)) if we want to pass it.
             # However, for 500, it might be better to pass a generic message to the user.
             logging.exception("Error during bulk delete of email groups") # Log the full error
+            return self.response(500, message="An internal server error occurred.") 
+
+class WhatsAppGroupsRestApi(BaseSupersetModelRestApi):
+    datamodel = SQLAInterface(WhatsAppGroup)
+    resource_name = "whatsapp_groups"
+    openapi_spec_tag = "CRISH WhatsApp Groups"
+    allow_browser_login = True
+    class_permission_name = "WhatsAppGroups"  # New permission name
+    method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
+
+    include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
+        "bulk_delete",
+    }
+
+    list_columns = [
+        "id",
+        "name",
+        "description",
+        "phone_numbers",
+        "created_by.id",
+        "created_by.first_name",
+        "created_by.last_name",
+        "created_on",
+        "changed_by.id",
+        "changed_by.first_name",
+        "changed_by.last_name",
+        "changed_on",
+    ]
+    show_columns = list_columns
+    add_columns = ["name", "description", "phone_numbers"]
+    edit_columns = ["id", "name", "description", "phone_numbers"]
+
+    show_model_schema = WhatsAppGroupSchema()
+    list_model_schema = WhatsAppGroupSchema()
+
+    order_columns = [
+        "name",
+        "changed_on",
+        "created_on",
+    ]
+
+    def pre_add(self, item: WhatsAppGroup) -> None:
+        if g.user:
+            item.created_by_fk = g.user.id
+            item.changed_by_fk = g.user.id
+
+    def pre_update(self, item: WhatsAppGroup) -> None:
+        if g.user:
+            item.changed_by_fk = g.user.id
+            
+    def pre_delete(self, item: WhatsAppGroup) -> None:
+        # Add any specific pre-delete validation for WhatsApp groups if necessary
+        pass
+
+    @expose("/", methods=["DELETE"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @rison(schema={"type": "array", "items": {"type": "integer"}})
+    def bulk_delete(self, **kwargs: Any) -> Response:
+        item_ids = kwargs["rison"]
+        try:
+            items = self.datamodel.session.query(WhatsAppGroup).filter(
+                WhatsAppGroup.id.in_(item_ids)
+            ).all()
+
+            if not items:
+                return self.response_404()
+
+            for item in items:
+                try:
+                    self.pre_delete(item) 
+                    self.datamodel.delete(item)
+                except DeleteFailedError as ex:
+                    self.datamodel.session.rollback()
+                    return self.response(403, message=str(ex))
+            
+            self.datamodel.session.commit()
+            return self.response(
+                200,
+                message=f"Deleted {len(items)} WhatsApp groups",
+            )
+        except Exception as ex:
+            self.datamodel.session.rollback()
+            logging.exception("Error during bulk delete of WhatsApp groups")
             return self.response(500, message="An internal server error occurred.") 

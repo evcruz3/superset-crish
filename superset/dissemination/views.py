@@ -891,13 +891,25 @@ class DisseminateBulletinView(BaseView):
 class EmailGroupsSPAView(BaseSupersetView): # Inherit from BaseSupersetView
     route_base = "/emailgroups" 
     class_permission_name = "EmailGroups" # Define class permission name for consistency and potential future use
-    # default_view = "list" # default_view is not typically needed for BaseSupersetView SPA hosts
-    # allow_browser_login = True # Not typically needed for BaseSupersetView with @has_access
 
     @expose("/list/")
     @has_access # Use has_access for SPA views, usually tied to class_permission_name 'can_list' or a specific permission
     def list(self):
+        # This method will be used by the SPA to render its main page.
+        # You can pass initial data or configuration to the template if needed.
+        # For a pure SPA, this might just render a basic HTML template that loads the React app.
+        return super().render_app_template() # Use the method from BaseSupersetView or equivalent
+
+
+class WhatsAppGroupsSPAView(BaseSupersetView):
+    route_base = "/whatsappgroups"
+    class_permission_name = "WhatsAppGroups"
+
+    @expose("/list/")
+    @has_access
+    def list(self):
         return super().render_app_template()
+
 
 # Registration of views and menu items
 # This is usually done in a central place, e.g., where appbuilder is initialized.

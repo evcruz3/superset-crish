@@ -206,8 +206,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.air_quality_forecasts import models as air_quality_models
         from superset.air_quality_forecasts.api import AirQualityForecastRestApi
         # Import Dissemination Views
-        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView, WhatsAppGroupModelView
-        from superset.dissemination.api import EmailGroupsRestApi
+        from superset.dissemination.views import EmailGroupModelView, DisseminatedBulletinLogModelView, DisseminateBulletinView, EmailGroupsSPAView, WhatsAppGroupsSPAView
+        from superset.dissemination.api import EmailGroupsRestApi, WhatsAppGroupsRestApi
         from superset.views.air_quality_forecasts import AirQualityForecastView
 
         set_app_error_handlers(self.superset_app)
@@ -227,6 +227,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(WeatherForecastsApi)
         appbuilder.add_api(AirQualityForecastRestApi)
         appbuilder.add_api(EmailGroupsRestApi)
+        appbuilder.add_api(WhatsAppGroupsRestApi)
         appbuilder.add_api(AnnotationRestApi)
         appbuilder.add_api(AnnotationLayerRestApi)
         appbuilder.add_api(AsyncEventsRestApi)
@@ -566,12 +567,13 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             href='/emailgroups/list/'  # Path for the menu item
         )
         appbuilder.add_view(
-            WhatsAppGroupModelView,
-            "Manage WhatsApp Groups",
+            WhatsAppGroupsSPAView,      # CHANGED from WhatsAppGroupModelView
+            "WhatsApp Groups List",     # CHANGED to a unique name for FAB, and to denote SPA
             label=__("WhatsApp Groups"),
             category="Dissemination",
             category_label=__("Dissemination"),
             icon="fa-whatsapp",
+            href='/whatsappgroups/list/' # ADDED href to point to the SPA route
         )
         appbuilder.add_view(
             DisseminateBulletinView,

@@ -167,18 +167,22 @@ const AirQualityForecasts = lazy(
   () => import('src/pages/AirQualityForecasts'),
 );
 
-const EmailGroupsPage = lazy(
-  () => import(/* webpackChunkName: "EmailGroupsPage" */ 'src/pages/EmailGroups'),
+const EmailGroups = lazy(() =>
+  import(/* webpackChunkName: "EmailGroupsPage" */ 'src/pages/EmailGroups'),
 );
 
-type Routes = {
+const WhatsAppGroups = lazy(() =>
+  import(/* webpackChunkName: "WhatsAppGroupsPage" */ 'src/pages/WhatsAppGroups'),
+);
+
+type RoutesType = {
   path: string;
   Component: ComponentType;
   Fallback?: ComponentType;
   props?: ComponentProps<any>;
 }[];
 
-export const routes: Routes = [
+export const routes: RoutesType = [
   {
     path: '/weather/',
     Component: WeatherForecasts
@@ -323,7 +327,11 @@ export const routes: Routes = [
   },
   {
     path: '/emailgroups/list/',
-    Component: EmailGroupsPage,
+    Component: EmailGroups,
+  },
+  {
+    path: '/whatsappgroups/list/',
+    Component: WhatsAppGroups,
   },
 ];
 
@@ -338,7 +346,7 @@ if (isFeatureEnabled(FeatureFlag.TaggingSystem)) {
   });
 }
 
-const frontEndRoutes = routes
+const frontEndRoutes: Record<string, boolean> = routes
   .map(r => r.path)
   .reduce(
     (acc, curr) => ({

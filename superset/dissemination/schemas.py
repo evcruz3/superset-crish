@@ -14,4 +14,14 @@ class EmailGroupSchema(Schema):
     created_on = fields.DateTime()
     changed_on = fields.DateTime(allow_none=True)
     created_by = fields.Nested(DisseminationUserSchema, allow_none=True) # Allow none if FK is nullable
-    changed_by = fields.Nested(DisseminationUserSchema, allow_none=True) # Allow none if FK is nullable 
+    changed_by = fields.Nested(DisseminationUserSchema, allow_none=True) # Allow none if FK is nullable
+
+class WhatsAppGroupSchema(Schema):
+    id = fields.Int()
+    name = fields.String()
+    description = fields.String(allow_none=True)
+    phone_numbers = fields.String(allow_none=True) # Assuming phone_numbers is a string field
+    created_on = fields.DateTime()
+    changed_on = fields.DateTime(allow_none=True)
+    created_by = fields.Nested(DisseminationUserSchema, allow_none=True)
+    changed_by = fields.Nested(DisseminationUserSchema, allow_none=True) 

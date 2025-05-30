@@ -125,6 +125,8 @@ export function useListViewResource<D extends object = any>(
       return false;
     }
 
+    console.log(state.permissions)
+
     return Boolean(state.permissions.find(p => p === perm));
   }
 
