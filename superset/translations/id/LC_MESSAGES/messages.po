@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-07 00:42+0800\n"
+"POT-Creation-Date: 2025-05-30 11:41+0800\n"
 "PO-Revision-Date: 2025-02-06 16:24+0900\n"
 "Last-Translator: \n"
 "Language: tet\n"
@@ -418,8 +418,15 @@ msgid "+ %s more"
 msgstr "+ %s mais"
 
 #, fuzzy
+msgid "+ Add Range"
+msgstr "Hatama Alerta"
+
+#, fuzzy
 msgid "+ Add Value"
 msgstr "Hatama Alerta"
+
+msgid "+1234567890, +0987654321"
+msgstr ""
 
 msgid ""
 "-- Note: Unless you save your query, these tabs will NOT persist if you "
@@ -428,6 +435,16 @@ msgid ""
 msgstr ""
 "-- Nota: Se ita-boot la rai ita-boot nia pergunta, aba sira-ne'e sei LA "
 "persiste se ita-boot hamoos ita-boot nia cookies ka muda browser sira.\n"
+
+msgid "-- Select Email Group(s) --"
+msgstr ""
+
+msgid "-- Select WhatsApp Group(s) --"
+msgstr ""
+
+#, fuzzy
+msgid "-- Select a Bulletin --"
+msgstr "Hili tipu vizualizasaun ida"
 
 #, python-format
 msgid "... and %s others"
@@ -743,6 +760,10 @@ msgstr ""
 "ho ângulu hanesan, no valór ne'ebé reprezenta hosi kualkér kuña ilustra "
 "hosi nia área, envezde nia raiu ka ângulu varredura nian."
 
+#, fuzzy
+msgid "A readable URL for your chart."
+msgstr "URL ida ne'ebé bele lee ba ita-boot nia painél"
+
 msgid "A readable URL for your dashboard"
 msgstr "URL ida ne'ebé bele lee ba ita-boot nia painél"
 
@@ -842,6 +863,10 @@ msgstr "Asaun sira"
 msgid "Active"
 msgstr "Ativu"
 
+#, fuzzy
+msgid "Active filters"
+msgstr "Filtru tempu"
+
 msgid "Actual Values"
 msgstr "Valór Reál sira"
 
@@ -881,6 +906,10 @@ msgstr "Hatama modelu CSS"
 msgid "Add Chart"
 msgstr "Hatama Gráfiku"
 
+#, fuzzy
+msgid "Add Chart Thumbnail"
+msgstr "Gráfiku miniatura sira"
+
 msgid "Add Column"
 msgstr "Hatama Koluna"
 
@@ -893,6 +922,14 @@ msgstr "Hatama Baze-dadus"
 #, fuzzy
 msgid "Add Divider"
 msgstr "Divizor"
+
+#, fuzzy
+msgid "Add Email Group"
+msgstr "Edit relatóriu email"
+
+#, fuzzy
+msgid "Add File Attachment"
+msgstr "Konjuntu dadus sira"
 
 #, fuzzy
 msgid "Add Filter"
@@ -913,11 +950,18 @@ msgstr "Hatama Regra"
 msgid "Add Tag"
 msgstr "Hatama Tag"
 
+msgid "Add WhatsApp Group"
+msgstr ""
+
 msgid "Add a Plugin"
 msgstr "Hatama Plugin ida"
 
 msgid "Add a dataset"
 msgstr "Hatama konjuntu dadus ida"
+
+#, fuzzy
+msgid "Add a new record"
+msgstr "Hatama tab foun ida"
 
 msgid "Add a new tab"
 msgstr "Hatama tab foun ida"
@@ -1078,6 +1122,10 @@ msgstr "Testu adisionál atu aumenta antes ka depois valór, ezemplu unidade"
 msgid "Additive"
 msgstr "Aditivu"
 
+#, fuzzy
+msgid "Address"
+msgstr "Hatama ona"
+
 msgid ""
 "Adds color to the chart symbols based on the positive or negative change "
 "from the comparison value."
@@ -1105,6 +1153,13 @@ msgstr "Ajusta oinsá baze-dadus ida-ne'e sei interatua ho SQL Lab."
 msgid "Adjust performance settings of this database."
 msgstr "Ajusta konfigurasaun dezempeñu nian husi baze-dadus ida-ne'e."
 
+#, fuzzy
+msgid "Admin Post"
+msgstr "Períodu mínimu sira"
+
+msgid "Administrative Posts with Facilities"
+msgstr ""
+
 msgid "Advanced"
 msgstr "Avansadu"
 
@@ -1131,6 +1186,13 @@ msgstr "Tipu dadus avansadu"
 
 msgid "Advanced-Analytics"
 msgstr "Análize-Avansadu"
+
+msgid "Advisory"
+msgstr ""
+
+#, fuzzy
+msgid "Advisory is required"
+msgstr "Presiza tipu"
 
 msgid "Affected Charts"
 msgstr "Gráfiku sira ne'ebé afetadu"
@@ -1176,6 +1238,10 @@ msgstr "Agregasaun"
 
 msgid "Aggregation function"
 msgstr "Funsaun agregasaun"
+
+#, fuzzy
+msgid "Air Quality Forecasts"
+msgstr "Previzaun Tempu"
 
 msgid "Alert"
 msgstr "Alerta"
@@ -1378,6 +1444,10 @@ msgstr "Alteradu"
 msgid "Always filter main datetime column"
 msgstr "Sempre filtra koluna data-oras prinsipál"
 
+#, fuzzy
+msgid "Ambulance Service Available"
+msgstr "La disponivel"
+
 msgid "An Error Occurred"
 msgstr "Erru ida akontese"
 
@@ -1425,8 +1495,16 @@ msgstr ""
 msgid "An error occurred while creating %ss: %s"
 msgstr "Erru ida mosu bainhira kria %ss: %s"
 
+#, fuzzy
+msgid "An error occurred while creating the WhatsApp group."
+msgstr "Erru ida akontese bainhira kria fonte dadus nian"
+
 msgid "An error occurred while creating the data source"
 msgstr "Erru ida akontese bainhira kria fonte dadus nian"
+
+#, fuzzy
+msgid "An error occurred while creating the email group."
+msgstr "Erru ida akontese bainhira kria valór."
 
 msgid "An error occurred while creating the value."
 msgstr "Erru ida akontese bainhira kria valór."
@@ -1573,6 +1651,14 @@ msgstr ""
 "evita lakon mudansa sira ita-boot halo, favór ida rai ita-boot nia "
 "pergunta uza butaun \"Rai pergunta\"."
 
+#, fuzzy
+msgid "An error occurred while updating the WhatsApp group."
+msgstr "Erru ida akontese bainhira atualiza valór."
+
+#, fuzzy
+msgid "An error occurred while updating the email group."
+msgstr "Erru ida akontese bainhira atualiza valór."
+
 msgid "An error occurred while updating the value."
 msgstr "Erru ida akontese bainhira atualiza valór."
 
@@ -1581,6 +1667,10 @@ msgstr "Erru ida akontese bainhira hatama hela valor."
 
 msgid "An unexpected error occurred"
 msgstr "Erru ne'ebé la espera akontese"
+
+#, fuzzy
+msgid "Analytics"
+msgstr "pur ezemplu Análitika"
 
 msgid "Anchor to"
 msgstr "Ankra ba"
@@ -1755,6 +1845,10 @@ msgstr "Aplika formatasaun kór kondisionál ba métrika sira"
 msgid "Apply conditional color formatting to numeric columns"
 msgstr "Aplika formatasaun kór kondisionál ba koluna numérika sira"
 
+#, fuzzy
+msgid "Apply conditional color formatting to string columns"
+msgstr "Aplika formatasaun kór kondisionál ba koluna numérika sira"
+
 msgid "Apply filters"
 msgstr "Aplika filtru sira"
 
@@ -1799,6 +1893,12 @@ msgstr ""
 "Ita-boot iha serteza katak ita-boot hakarak atu apaga anotasaun sira "
 "ne'ebé maka hili ona?"
 
+#, fuzzy
+msgid "Are you sure you want to delete the selected bulletins?"
+msgstr ""
+"Ita-boot iha serteza katak ita-boot hakarak atu regra regra sira ne'ebé "
+"maka hili ona?"
+
 msgid "Are you sure you want to delete the selected charts?"
 msgstr ""
 "Ita-boot iha serteza katak ita-boot hakarak atu apaga gráfiku sira ne'ebé"
@@ -1817,6 +1917,12 @@ msgstr ""
 msgid "Are you sure you want to delete the selected layers?"
 msgstr ""
 "Ita-boot iha serteza katak ita-boot hakarak atu apaga kamada sira ne'ebé "
+"maka hili ona?"
+
+#, fuzzy
+msgid "Are you sure you want to delete the selected posts?"
+msgstr ""
+"Ita-boot iha serteza katak ita-boot hakarak atu apaga tag sira ne'ebé "
 "maka hili ona?"
 
 msgid "Are you sure you want to delete the selected queries?"
@@ -1838,6 +1944,34 @@ msgid "Are you sure you want to delete the selected templates?"
 msgstr ""
 "Ita-boot iha serteza katak ita-boot hakarak atu delete modelu sira ne'ebé"
 " maka hili ona?"
+
+#, fuzzy
+msgid ""
+"Are you sure you want to delete this WhatsApp group? This action cannot "
+"be undone."
+msgstr ""
+"Ita-boot iha serteza katak ita-boot hakarak atu apaga anotasaun sira "
+"ne'ebé maka hili ona?"
+
+#, fuzzy, python-format
+msgid "Are you sure you want to delete this bulletin?"
+msgstr "Ita-boot iha serteza katak ita-boot hakarak atu apaga %s?"
+
+#, fuzzy
+msgid ""
+"Are you sure you want to delete this email group? This action cannot be "
+"undone."
+msgstr ""
+"Ita-boot iha serteza katak ita-boot hakarak atu apaga anotasaun sira "
+"ne'ebé maka hili ona?"
+
+#, fuzzy, python-format
+msgid "Are you sure you want to delete this item?"
+msgstr "Ita-boot iha serteza katak ita-boot hakarak atu apaga %s?"
+
+#, fuzzy, python-format
+msgid "Are you sure you want to delete this post?"
+msgstr "Ita-boot iha serteza katak ita-boot hakarak atu apaga %s?"
 
 msgid "Are you sure you want to overwrite this dataset?"
 msgstr ""
@@ -1882,10 +2016,6 @@ msgstr "Atribui konjuntu ida husi parámetru sira hanesan"
 msgid "Assist"
 msgstr "Tulun"
 
-#, fuzzy
-msgid "Associated Chart"
-msgstr "Gráfiku sira ne'ebé asosiadu"
-
 msgid "Associated Charts"
 msgstr "Gráfiku sira ne'ebé asosiadu"
 
@@ -1902,6 +2032,10 @@ msgstr "Presiza konjuntu dadus"
 #, fuzzy
 msgid "Attachments"
 msgstr "Konjuntu dadus sira"
+
+#, fuzzy
+msgid "Audit Trail"
+msgstr "Edit Tabela"
 
 msgid "August"
 msgstr "Agostu"
@@ -1962,6 +2096,10 @@ msgstr "BOLEANO"
 
 msgid "Back"
 msgstr "Fila fali"
+
+#, fuzzy
+msgid "Back to Login"
+msgstr "Fila fali ba hotu-hotu"
 
 msgid "Back to all"
 msgstr "Fila fali ba hotu-hotu"
@@ -2198,7 +2336,20 @@ msgstr "Gráfiku Bala"
 msgid "Bulletin"
 msgstr "Hili barak"
 
-msgid "Bulletin created successfully"
+#, fuzzy
+msgid "Bulletin Attachment"
+msgstr "Konjuntu dadus sira"
+
+#, fuzzy
+msgid "Bulletin Title"
+msgstr "Hili barak"
+
+#, fuzzy
+msgid "Bulletin created successfully!"
+msgstr "Buletin kria ona ho susesu"
+
+#, fuzzy
+msgid "Bulletin updated successfully!"
 msgstr "Buletin kria ona ho susesu"
 
 msgid "Bulletins & Advisories"
@@ -2489,6 +2640,10 @@ msgstr "Muda liña nia orden sira."
 msgid "Changed By"
 msgstr "Muda Husi"
 
+#, fuzzy
+msgid "Changed On"
+msgstr "Muda husi"
+
 msgid "Changed by"
 msgstr "Muda husi"
 
@@ -2607,6 +2762,9 @@ msgstr "Labele atualiza gráfiku."
 msgid "Chart does not exist"
 msgstr "Gráfiku la eziste"
 
+msgid "Chart form data or query data not available."
+msgstr ""
+
 msgid "Chart has no query context saved. Please save the chart again."
 msgstr ""
 "Gráfiku laiha kontestu pergunta nian ne'ebé guarda ona. Favor ida guada "
@@ -2645,6 +2803,13 @@ msgstr "Propriedade gráfiku nian atualiza ona"
 msgid "Chart thumbnail"
 msgstr "Gráfiku miniatura sira"
 
+msgid "Chart thumbnail added as an image attachment."
+msgstr ""
+
+#, fuzzy
+msgid "Chart thumbnail preview"
+msgstr "Gráfiku miniatura sira"
+
 msgid "Chart title"
 msgstr "Gráfiku nia Títulu"
 
@@ -2653,6 +2818,10 @@ msgstr "Tipu gráfiku presiza konjuntu dadus ida"
 
 msgid "Chart width"
 msgstr "Gráfiku nia luan"
+
+#, fuzzy, python-format
+msgid "Chart with this slug was not found"
+msgstr "Labele hetan gráfiku %(id)s"
 
 msgid "Charts"
 msgstr "Gráfiku sira"
@@ -2818,6 +2987,10 @@ msgstr "Apaga hotu"
 msgid "Clear all data"
 msgstr "Apaga dadus hotu"
 
+#, fuzzy
+msgid "Clear all filters"
+msgstr "apaga filtru hotu-hotu"
+
 msgid "Clear form"
 msgstr "Apaga formuláriu"
 
@@ -2833,6 +3006,9 @@ msgid ""
 msgstr ""
 "Klik iha butaun \"Kria gráfiku\" iha painél kontrolu iha liman-karuk atu "
 "haree uluk vizualizasaun ida ka"
+
+msgid "Click on your OpenID provider below"
+msgstr ""
 
 msgid "Click or drag file to this area to upload"
 msgstr "Klik ka rasta arkivu ba área ida-ne'e atu karrega"
@@ -2890,6 +3066,10 @@ msgstr "Klik atu atualiza obrigatóriu"
 msgid "Click to see difference"
 msgstr "Klik atu haree diferensa"
 
+#, fuzzy
+msgid "Click to select image"
+msgstr "Hadi'a ba Intervalu Tempu ne'ebé hili ona"
+
 msgid "Click to sort ascending"
 msgstr "Klik atu klasifika tuir sa'e (kresente)"
 
@@ -2898,6 +3078,10 @@ msgstr "Klik atu klasifika tun (dekresente)"
 
 msgid "Close"
 msgstr "Taka"
+
+#, fuzzy
+msgid "Close Details"
+msgstr "Taka tab"
 
 msgid "Close all other tabs"
 msgstr "Taka tab sira seluk hotu"
@@ -3023,6 +3207,18 @@ msgid "Column containing messages for feed entries"
 msgstr "Koluna ne'ebé kontein mensajen sira ba entrada sira feed nian"
 
 #, fuzzy
+msgid "Column containing numeric values for feed entries"
+msgstr "Koluna ne'ebé kontein mensajen sira ba entrada sira feed nian"
+
+#, fuzzy
+msgid "Column containing parameter data for feed entries"
+msgstr "Koluna ne'ebé kontein dadus latitude nian"
+
+#, fuzzy
+msgid "Column containing status information for feed entries"
+msgstr "Koluna ne'ebé kontein dadus latitude nian"
+
+#, fuzzy
 msgid "Column containing timestamps for feed entries"
 msgstr "Koluna ne'ebé kontein dadus latitude nian"
 
@@ -3108,6 +3304,10 @@ msgstr "Koluna sira atu lee"
 
 msgid "Combine metrics"
 msgstr "Kombina métrika sira"
+
+#, fuzzy
+msgid "Combined Unique Recipients:"
+msgstr "Destinatáriu sira CC nian"
 
 msgid ""
 "Comma-separated color picks for the intervals, e.g. 1,2,4. Integers "
@@ -3230,11 +3430,18 @@ msgstr "Konfigura painél ida-ne'e atu hatama iha aplikasaun web esternu ida."
 msgid "Configure your how you overlay is displayed here."
 msgstr "Konfigura oinsá ita-boot nia sobrepozisaun hatudu iha ne'e."
 
+#, fuzzy
+msgid "Confirm New Password"
+msgstr "Hatudu senha."
+
 msgid "Confirm overwrite"
 msgstr "Konfirma hakerek nian"
 
 msgid "Confirm save"
 msgstr "Konfirma guarda"
+
+msgid "Confirm your new password"
+msgstr ""
 
 msgid "Connect"
 msgstr "Konekta"
@@ -3374,6 +3581,9 @@ msgstr "Labele foti gráfiku sira ne'ebé maka guarda ona"
 msgid "Could not find viz object"
 msgstr "La konsege hetan objetu viz"
 
+msgid "Could not get your location. Using default for directions."
+msgstr ""
+
 msgid "Could not load database driver"
 msgstr "La konsege karrega kondutór baze-dadus nian"
 
@@ -3383,6 +3593,15 @@ msgstr "La konsege karrega kondutór baze-dadus nian: {}"
 #, python-format
 msgid "Could not resolve hostname: \"%(host)s\"."
 msgstr "La konsege rezolve ema nain nia narant: \"%(host)s\"."
+
+msgid "Could not retrieve chart ID or form data."
+msgstr ""
+
+msgid "Could not retrieve chart digest for thumbnail preview."
+msgstr ""
+
+msgid "Could not retrieve chart digest for thumbnail."
+msgstr ""
 
 msgid "Count"
 msgstr "Konta"
@@ -3417,6 +3636,10 @@ msgstr "Mapa Nasaun nian"
 msgid "Create"
 msgstr "Kria"
 
+#, fuzzy
+msgid "Create Bulletin"
+msgstr "Kria gráfiku foun"
+
 msgid "Create Chart"
 msgstr "Kria Gráfiku"
 
@@ -3424,8 +3647,16 @@ msgstr "Kria Gráfiku"
 msgid "Create New Bulletin"
 msgstr "Kria gráfiku foun"
 
+#, fuzzy
+msgid "Create New Email Group"
+msgstr "Kria gráfiku foun"
+
 msgid "Create New Public Education Post"
 msgstr "Kria Postu Edukasaun Públika Foun"
+
+#, fuzzy
+msgid "Create New WhatsApp Group"
+msgstr "Kria gráfiku foun"
 
 msgid "Create a dataset"
 msgstr "Kria konjuntu dadus ida"
@@ -3465,9 +3696,17 @@ msgstr "Kria ka hili eskema..."
 msgid "Created"
 msgstr "Kria ona"
 
+#, fuzzy, python-format
+msgid "Created %s"
+msgstr "Kria ona"
+
 #, fuzzy
 msgid "Created By"
 msgstr "Kria husi"
+
+#, fuzzy
+msgid "Created On"
+msgstr "Kria iha"
 
 msgid "Created by"
 msgstr "Kria husi"
@@ -3475,7 +3714,15 @@ msgstr "Kria husi"
 msgid "Created by me"
 msgstr "Kria husi ha'u"
 
+#, fuzzy
+msgid "Created by:"
+msgstr "Kria husi"
+
 msgid "Created on"
+msgstr "Kria iha"
+
+#, fuzzy
+msgid "Created on:"
 msgstr "Kria iha"
 
 msgid "Creating SSH Tunnel failed for an unknown reason"
@@ -3489,6 +3736,11 @@ msgstr "Kriadór"
 
 msgid "Crimson"
 msgstr "Karmesin"
+
+msgid ""
+"Critical error: Failed to save dissemination log(s). Please check system "
+"logs."
+msgstr ""
 
 msgid "Cross-filter will be applied to all of the charts that use this dataset."
 msgstr ""
@@ -3525,8 +3777,16 @@ msgstr "Símbolu moeda nian"
 msgid "Current"
 msgstr "Atuál"
 
+#, fuzzy
+msgid "Current Image File"
+msgstr "Semana atuál"
+
 msgid "Current day"
 msgstr "Loron atuál"
+
+#, fuzzy
+msgid "Current filename:"
+msgstr "Tinan atuál"
 
 msgid "Current month"
 msgstr "Fulan atuál"
@@ -3959,10 +4219,6 @@ msgstr "Tipu fonte dadus la válidu"
 msgid "Datasource type is required when datasource_id is given"
 msgstr "Tipu fonte dadus nian presiza bainhira fó id_fontedadus"
 
-#, fuzzy
-msgid "Date Column"
-msgstr "Koluna tempu nian"
-
 msgid "Date Time Format"
 msgstr "Formatu data no oras nian"
 
@@ -4218,14 +4474,34 @@ msgstr "Apaga %s?"
 msgid "Delete Annotation?"
 msgstr "Apaga anotasaun?"
 
+#, fuzzy
+msgid "Delete Bulletin?"
+msgstr "Apaga Pergunta?"
+
+#, fuzzy
+msgid "Delete Bulletins"
+msgstr "Kria gráfiku foun"
+
 msgid "Delete Database?"
 msgstr "Apaga Baze-dadus?"
 
 msgid "Delete Dataset?"
 msgstr "Apaga Konjuntu dadus?"
 
+#, fuzzy, python-format
+msgid "Delete Email Group: %s?"
+msgstr "Apaga relatóriu email"
+
 msgid "Delete Layer?"
 msgstr "Apaga Kamada?"
+
+#, fuzzy
+msgid "Delete Post?"
+msgstr "Apaga Relatóriu?"
+
+#, fuzzy
+msgid "Delete Posts"
+msgstr "Apaga Relatóriu?"
 
 msgid "Delete Query?"
 msgstr "Apaga Pergunta?"
@@ -4235,6 +4511,13 @@ msgstr "Apaga Relatóriu?"
 
 msgid "Delete Template?"
 msgstr "Apaga Modelu?"
+
+#, python-format
+msgid "Delete WhatsApp Group: %s?"
+msgstr ""
+
+msgid "Delete WhatsApp group"
+msgstr ""
 
 msgid "Delete all Really?"
 msgstr "Tebes duni atu apaga hotu kedan?"
@@ -4248,11 +4531,19 @@ msgstr "Apaga tab painél nian?"
 msgid "Delete database"
 msgstr "Apaga baze-dadus"
 
+#, fuzzy
+msgid "Delete email group"
+msgstr "Apaga relatóriu email"
+
 msgid "Delete email report"
 msgstr "Apaga relatóriu email"
 
 msgid "Delete query"
 msgstr "Excluir consulta"
+
+#, fuzzy
+msgid "Delete record"
+msgstr "Apaga Relatóriu?"
 
 msgid "Delete template"
 msgstr "Apaga modelu"
@@ -4262,6 +4553,12 @@ msgstr "Apaga kontentór ida-ne'e no guarda hodi apaga mensajen ida-ne'e."
 
 msgid "Deleted"
 msgstr "Apaga ona"
+
+msgid "Deleted ${bulletinsToDelete.length} bulletins"
+msgstr ""
+
+msgid "Deleted ${postsToDelete.length} posts"
+msgstr ""
 
 #, python-format
 msgid "Deleted %(num)d annotation"
@@ -4322,6 +4619,14 @@ msgid "Deleted %s"
 msgstr "Apaga ona %s"
 
 #, python-format
+msgid "Deleted %s WhatsApp groups"
+msgstr ""
+
+#, fuzzy, python-format
+msgid "Deleted %s email groups"
+msgstr "Apaga relatóriu email"
+
+#, python-format
 msgid "Deleted: %s"
 msgstr "Apaga ona: %s"
 
@@ -4377,6 +4682,10 @@ msgstr "Detallu sira"
 
 msgid "Details of the certification"
 msgstr "Detallu sertifikasaun"
+
+#, fuzzy
+msgid "Details/Errors"
+msgstr "Detallu sira"
 
 msgid "Determines how whiskers and outliers are calculated."
 msgstr "Determina oinsá maka kalkula whiskers no outlier sira."
@@ -4520,6 +4829,32 @@ msgstr ""
 "sirkula. Se ita-boot nia dadus iha komponente jeoespasiál, koko gráfiku "
 "arku deck.gl."
 
+#, fuzzy
+msgid "Disseminate"
+msgstr "Konjuntu dadus ne'ebé laiha"
+
+#, fuzzy
+msgid "Disseminate Bulletin"
+msgstr "Kria gráfiku foun"
+
+msgid "Disseminated Bulletin Logs"
+msgstr ""
+
+#, fuzzy
+msgid "Disseminated By"
+msgstr "Kria husi"
+
+#, fuzzy
+msgid "Dissemination"
+msgstr "desviasaun"
+
+#, fuzzy
+msgid "Dissemination Logs"
+msgstr "Rejistu Asaun"
+
+msgid "Dissemination Result: "
+msgstr ""
+
 msgid "Distribute across"
 msgstr "Distribui ba"
 
@@ -4541,6 +4876,10 @@ msgstr "Documentasaun"
 msgid "Domain"
 msgstr "Domíniu"
 
+#, fuzzy
+msgid "Don't have an account?"
+msgstr "Ita-boot seidauk iha favoritu ruma!"
+
 msgid "Donut"
 msgstr "Donat/kabuar"
 
@@ -4548,6 +4887,10 @@ msgid "Dotted"
 msgstr "Pontilldu"
 
 msgid "Download"
+msgstr "Baixar"
+
+#, fuzzy
+msgid "Download PDF"
 msgstr "Baixar"
 
 #, fuzzy
@@ -4807,6 +5150,10 @@ msgstr "Edit"
 msgid "Edit Alert"
 msgstr "Edit Alerta"
 
+#, fuzzy
+msgid "Edit Bulletin"
+msgstr "Hili barak"
+
 msgid "Edit CSS"
 msgstr "Edit CSS"
 
@@ -4831,6 +5178,14 @@ msgstr "Edit Baze-dadus"
 msgid "Edit Dataset "
 msgstr "Edit konjuntu dadus "
 
+#, fuzzy
+msgid "Edit Email Group"
+msgstr "Edit relatóriu email"
+
+#, fuzzy, python-format
+msgid "Edit Email Group: %s"
+msgstr "Edit relatóriu email"
+
 msgid "Edit Log"
 msgstr "Edit log"
 
@@ -4852,6 +5207,18 @@ msgstr "Edit Tabela"
 #, fuzzy
 msgid "Edit Tag"
 msgstr "Editar log"
+
+#, fuzzy
+msgid "Edit WhatsApp Group"
+msgstr "Edit propriedade gráfiku"
+
+#, python-format
+msgid "Edit WhatsApp Group: %s"
+msgstr ""
+
+#, fuzzy
+msgid "Edit WhatsApp group"
+msgstr "Edit propriedade gráfiku"
 
 msgid "Edit annotation"
 msgstr "Edit anotasaun"
@@ -4877,6 +5244,10 @@ msgstr "Edita baze-dadus"
 msgid "Edit dataset"
 msgstr "Edita baze-dadus"
 
+#, fuzzy
+msgid "Edit email group"
+msgstr "Edit relatóriu email"
+
 msgid "Edit email report"
 msgstr "Edit relatóriu email"
 
@@ -4888,6 +5259,10 @@ msgstr "Edit propriedade sira"
 
 msgid "Edit query"
 msgstr "Editar pregunta"
+
+#, fuzzy
+msgid "Edit record"
+msgstr "Edit relatóriu"
 
 msgid "Edit template"
 msgstr "Edit modelu"
@@ -4928,11 +5303,43 @@ msgstr "Naran utilizadór ka seña ne'e sala."
 msgid "Elevation"
 msgstr "Elevasaun"
 
+#, fuzzy
+msgid "Email"
+msgstr "Prinsipál"
+
+msgid "Email Address"
+msgstr ""
+
+msgid "Email Addresses"
+msgstr ""
+
+#, fuzzy
+msgid "Email Addresses (comma-separated)"
+msgstr "Domíniu sira ne'ebé permitidu (haketak ho vírgula)"
+
+msgid "Email Group"
+msgstr ""
+
+msgid "Email Groups"
+msgstr ""
+
 msgid "Email reports active"
 msgstr "Relatóriu sira email nian ativu"
 
 msgid "Email subject name (optional)"
 msgstr "Naran sujeitu email nian (opsionál)"
+
+#, python-format
+msgid "Email: Failed (%(error)s)."
+msgstr ""
+
+#, fuzzy
+msgid "Email: Success."
+msgstr "asuntu email nian"
+
+#, fuzzy
+msgid "Emails:"
+msgstr "Detallu sira"
 
 msgid "Embed"
 msgstr "Inkorpora"
@@ -4948,6 +5355,9 @@ msgstr "Painél ne'ebé inkorporadu labele apaga."
 
 msgid "Embedding deactivated."
 msgstr "Inkorporasaun dezativadu."
+
+msgid "Emergency Services Available"
+msgstr ""
 
 msgid "Emit Filter Events"
 msgstr "Emiti eventus filtru sira"
@@ -5086,14 +5496,39 @@ msgstr "Hakerek valór ida"
 msgid "Enter alert name"
 msgstr "Hatama naran alerta nian"
 
+#, fuzzy
+msgid "Enter caption for the image"
+msgstr "Hatama títulu foun ba tab"
+
 msgid "Enter duration in seconds"
 msgstr "Hatama durasaun iha segundu"
+
+msgid "Enter email addresses, separated by commas."
+msgstr ""
 
 msgid "Enter fullscreen"
 msgstr "Tama iha ekran tomak"
 
+#, fuzzy
+msgid "Enter name part"
+msgstr "Hatama naran alerta nian"
+
+msgid "Enter phone numbers, separated by commas (e.g., +1234567890, +0987654321)."
+msgstr ""
+
+#, fuzzy
+msgid "Enter range values"
+msgstr "Hakerek valór ida"
+
 msgid "Enter report name"
 msgstr "Hatama naran relatóriu nian"
+
+msgid "Enter service keyword"
+msgstr ""
+
+#, fuzzy
+msgid "Enter string value"
+msgstr "Hakerek valór ida"
 
 #, python-format
 msgid "Enter the required %(dbModelName)s credentials"
@@ -5101,6 +5536,20 @@ msgstr "Hatama kredensial %(dbModelName)s ne'ebé presiza"
 
 msgid "Enter the unique project id for your database."
 msgstr "Hatama id projetu úniku ba ita-boot nia baze-dadus."
+
+#, fuzzy
+msgid "Enter your OpenID Username"
+msgstr "Hatama naran relatóriu nian"
+
+msgid "Enter your email address"
+msgstr ""
+
+msgid "Enter your login and password below"
+msgstr ""
+
+#, fuzzy
+msgid "Enter your new password"
+msgstr "Favor hatama fali seña."
 
 msgid "Entity"
 msgstr "Entidade"
@@ -5143,6 +5592,25 @@ msgid "Error loading chart datasources. Filters may not work correctly."
 msgstr ""
 "Erru iha karregamentu fonte dadus gráfiku nian. Filtru sira bele la "
 "funsiona ho loloos."
+
+#, fuzzy
+msgid "Error loading charts"
+msgstr "Erru iha gráfiku ne'ebé maka halo"
+
+#, fuzzy
+msgid "Error loading facility count data"
+msgstr "Mosu erru ida bainhira karrega dadus gráfiku nian"
+
+msgid "Error loading facility locations"
+msgstr ""
+
+#, fuzzy
+msgid "Error loading facility types"
+msgstr "Erru iha lee arkivu CSV"
+
+#, fuzzy
+msgid "Error loading municipalities"
+msgstr "Munisipiu"
 
 msgid "Error message"
 msgstr "Mensajen erru"
@@ -5409,7 +5877,35 @@ msgstr "FEV"
 msgid "FRI"
 msgstr "SEX"
 
+msgid ""
+"Facebook dissemination is not configured correctly (missing Access Token "
+"or Page ID)."
+msgstr ""
+
+#, python-format
+msgid "Facebook: Failed (%(error)s)."
+msgstr ""
+
+#, python-format
+msgid "Facebook: Success (%(status)s)."
+msgstr ""
+
 msgid "Facilities"
+msgstr "Fasilidade sira"
+
+msgid "Facilities by Administrative Post"
+msgstr ""
+
+#, fuzzy
+msgid "Facilities by Type"
+msgstr "Fasilidade sira"
+
+#, fuzzy
+msgid "Facility Type"
+msgstr "Tipu filtru"
+
+#, fuzzy
+msgid "Facility Types"
 msgstr "Fasilidade sira"
 
 msgid "Factor"
@@ -5429,11 +5925,11 @@ msgid "Failed at stopping query. %s"
 msgstr "Falla atu hapara pergunta. %s"
 
 #, fuzzy
-msgid "Failed to capture chart content. Try again."
+msgid "Failed to add chart thumbnail as attachment. "
 msgstr "Falla atu karrega dadus gráfiku nian."
 
 #, fuzzy
-msgid "Failed to create bulletin"
+msgid "Failed to create bulletin."
 msgstr "Falla atu kria relatóriu"
 
 #, fuzzy
@@ -5448,15 +5944,22 @@ msgid "Failed to execute %(query)s"
 msgstr "Falla atu ezekuta %(query)s"
 
 #, fuzzy
-msgid "Failed to fetch chart data"
-msgstr "Falla atu karrega dadus gráfiku nian"
-
-#, fuzzy
-msgid "Failed to fetch form data"
+msgid "Failed to fetch chart thumbnail image. Status: "
 msgstr "Falla atu karrega dadus gráfiku nian"
 
 msgid "Failed to generate chart edit URL"
 msgstr "Falla atu hamosu URL edit gráfiku nian"
+
+msgid "Failed to initiate PDF download. Please check the console for details."
+msgstr ""
+
+#, fuzzy
+msgid "Failed to load bulletin details."
+msgstr "Falla atu karrega dadus gráfiku nian."
+
+#, fuzzy
+msgid "Failed to load chart"
+msgstr "Falla atu karrega dadus gráfiku nian"
 
 msgid "Failed to load chart data"
 msgstr "Falla atu karrega dadus gráfiku nian"
@@ -5465,10 +5968,26 @@ msgid "Failed to load chart data."
 msgstr "Falla atu karrega dadus gráfiku nian."
 
 #, fuzzy
-msgid "Failed to load charts"
+msgid "Failed to load chart thumbnail preview."
+msgstr "Falla atu karrega dadus gráfiku nian."
+
+#, fuzzy, python-format
+msgid "Failed to load chart: %s"
 msgstr "Falla atu karrega dadus gráfiku nian"
 
 msgid "Failed to load dimensions for drill by"
+msgstr "Falla atu karrega dadus gráfiku nian"
+
+#, fuzzy, python-format
+msgid "Failed to load disease alerts: %s"
+msgstr "Falla atu karrega dadus gráfiku nian"
+
+#, fuzzy
+msgid "Failed to load facilities for this map area."
+msgstr "Falla atu karrega dadus gráfiku nian."
+
+#, fuzzy, python-format
+msgid "Failed to load weather alerts: %s"
 msgstr "Falla atu karrega dadus gráfiku nian"
 
 msgid "Failed to retrieve advanced type"
@@ -5482,6 +6001,10 @@ msgstr "Falla atu hahú pergunta remota iha traballadór ida."
 
 msgid "Failed to tag items"
 msgstr "Falla atu tau tag ba sasán sira"
+
+#, fuzzy
+msgid "Failed to update bulletin."
+msgstr "Falla atu kria relatóriu"
 
 msgid "Failed to update report"
 msgstr "Falla atu atualiza relatóriu"
@@ -5519,6 +6042,9 @@ msgstr "Buka ona %s"
 msgid "Fetching"
 msgstr "Buka hela"
 
+msgid "Fetching chart thumbnail... This may take a moment."
+msgstr ""
+
 #, python-format
 msgid "Field cannot be decoded by JSON. %(json_error)s"
 msgstr "Kampu labele dekode hosi JSON. %(json_error)s"
@@ -5529,6 +6055,9 @@ msgstr "Kampu labele dekode hosi JSON. %(msg)s"
 
 msgid "Field is required"
 msgstr "Presiza kampu"
+
+msgid "Fields marked with an asterisk (*) are required."
+msgstr ""
 
 msgid "File"
 msgstr "Arkivu"
@@ -5585,6 +6114,10 @@ msgstr "Konfigurasaun filtru sira"
 msgid "Filter Type"
 msgstr "Tipu filtru"
 
+#, fuzzy
+msgid "Filter by date"
+msgstr "Tipu filtru"
+
 msgid "Filter charts"
 msgstr "Filtra gráfiku sira"
 
@@ -5622,6 +6155,10 @@ msgstr "Filtra ita-boot nia gráfiku sira"
 
 msgid "Filterable"
 msgstr "Filtravel"
+
+#, fuzzy
+msgid "Filterable columns"
+msgstr "Koluna tabela nian"
 
 msgid "Filters"
 msgstr "Filtru sira"
@@ -5779,6 +6316,10 @@ msgstr "Xave estranjeiru"
 msgid "Forest Green"
 msgstr "Floresta Verde"
 
+#, fuzzy
+msgid "Forgot Your Password?"
+msgstr "Xave Privadu Seña"
+
 msgid "Form data not found in cache, reverting to chart metadata."
 msgstr ""
 "Dadus formuláriu nian la hetan iha cache, fila fali ba metadadus gráfiku "
@@ -5882,9 +6423,16 @@ msgstr "Konfigurasaun GeoJson"
 msgid "Geohash"
 msgstr "Geohash"
 
+msgid "Geolocation is not supported by this browser."
+msgstr ""
+
 #, fuzzy
 msgid "Geospatial"
 msgstr "Espasial"
+
+#, fuzzy
+msgid "Get Directions"
+msgstr "Diresional"
 
 msgid "Get the last date by the date unit."
 msgstr "Hetan data ikus tuir unidade data nian."
@@ -5940,6 +6488,10 @@ msgstr "Agrupa Husi, Métrika ka Persentajen Métrika tenke iha valór"
 msgid "Group Key"
 msgstr "Grupu Xave"
 
+#, fuzzy
+msgid "Group Name"
+msgstr "Naran Regra"
+
 msgid "Group by"
 msgstr "Agrupa husi"
 
@@ -5976,12 +6528,22 @@ msgstr ""
 "no aplika bainhira normalizasaun aplika kontra mapa temperature manas "
 "(heatmap) tomak."
 
+msgid "Has Ambulance?"
+msgstr ""
+
+msgid "Has Emergency?"
+msgstr ""
+
 msgid "Has created by"
 msgstr "Kria ona husi"
 
 #, fuzzy
 msgid "Hashtags"
 msgstr "tag sira"
+
+#, fuzzy
+msgid "Hashtags (comma-separated)"
+msgstr "Domíniu sira ne'ebé permitidu (haketak ho vírgula)"
 
 msgid "Header"
 msgstr "Kabesallu"
@@ -6003,6 +6565,9 @@ msgstr "Altura"
 
 msgid "Height of the sparkline"
 msgstr "Altura minigráfiku"
+
+msgid "Help"
+msgstr ""
 
 msgid "Hide Line"
 msgstr "Subar liña"
@@ -6152,6 +6717,9 @@ msgstr ""
 msgid "If table already exists"
 msgstr "Se Tabela Eziste Ona"
 
+msgid "If you are not already a user, please register"
+msgstr ""
+
 msgid "Ignore cache when generating report"
 msgstr "Ignora cache bainhira kria hela relatóriu"
 
@@ -6163,6 +6731,13 @@ msgstr "Ignora oras"
 
 msgid "Image (PNG) embedded in email"
 msgstr "Imajen (PNG) inkorporadu iha email"
+
+#, fuzzy
+msgid "Image Attachments"
+msgstr "Konjuntu dadus sira"
+
+msgid "Image Attachments (Optional)"
+msgstr ""
 
 msgid "Image download failed, please refresh and try again."
 msgstr "Falla baixar imajen, favór ida atualiza no koko fali."
@@ -6322,6 +6897,13 @@ msgstr "JSON ne'ebé la válidu"
 msgid "Invalid advanced data type: %(advanced_data_type)s"
 msgstr "Tipu dadus avansadu ne'ebé la válidu: %(advanced_data_type)s"
 
+#, fuzzy
+msgid "Invalid bulletin ID format."
+msgstr "Formatu data/oras ne'ebé la válidu"
+
+msgid "Invalid bulletin ID provided for pre-selection."
+msgstr ""
+
 msgid "Invalid certificate"
 msgstr "Sertifikadu ne'ebé la válidu"
 
@@ -6355,6 +6937,10 @@ msgstr "Kódigu moeda ne'ebé la válidu iha métrika sira ne'ebé guarda ona"
 
 msgid "Invalid date/timestamp format"
 msgstr "Formatu data/oras ne'ebé la válidu"
+
+#, fuzzy, python-format
+msgid "Invalid email format found: %s"
+msgstr "email ne'e la válidu"
 
 #, python-format
 msgid "Invalid filter operation type: %(op)s"
@@ -6463,6 +7049,10 @@ msgstr "Kestaun 1000 - Konjuntu dadus nian boot liu atu halo konsulta."
 
 msgid "Issue 1001 - The database is under an unusual load."
 msgstr "Kestaun 1001 - Baze-dadus iha karga ne'ebé ladún hanesan babain."
+
+#, python-format
+msgid "Item %(itemNumber)s"
+msgstr ""
 
 msgid "It’s not recommended to truncate axis in Bar chart."
 msgstr "La rekomenda atu tesi eixu iha gráfiku barra sira."
@@ -6601,6 +7191,10 @@ msgstr "Mudansa Ikus liu"
 msgid "Last Modified"
 msgstr "Modifikasaun ikus"
 
+#, fuzzy
+msgid "Last Updated"
+msgstr "Lista atualizadu"
+
 #, python-format
 msgid "Last Updated %s"
 msgstr "Atualizasaun ikus liu %s"
@@ -6627,6 +7221,10 @@ msgstr "Trimestre ikus"
 
 msgid "Last run"
 msgstr "Ezekutasaun ikus"
+
+#, fuzzy
+msgid "Last updated"
+msgstr "Lista atualizadu"
 
 msgid "Last week"
 msgstr "Semana kotuk"
@@ -6815,6 +7413,10 @@ msgstr "Link kopia ona!"
 msgid "List Unique Values"
 msgstr "Lista Valór Úniku sira"
 
+#, fuzzy
+msgid "List View"
+msgstr "Haree"
+
 msgid "List of extra columns made available in JavaScript functions"
 msgstr "Lista husi koluna estra sira ne'ebé disponibiliza iha funsaun JavaScript"
 
@@ -6851,11 +7453,30 @@ msgstr "Karrega hosi cache"
 msgid "Loading"
 msgstr "Karrega hela"
 
+#, fuzzy
+msgid "Loading analytics..."
+msgstr "Análize sira"
+
+msgid "Loading bulletin details..."
+msgstr ""
+
+#, fuzzy
+msgid "Loading preview..."
+msgstr "Karrega hela..."
+
 msgid "Loading..."
 msgstr "Karrega hela..."
 
 msgid "Locate the chart"
 msgstr "Lokaliza gráfiku"
+
+#, fuzzy
+msgid "Location"
+msgstr "Asaun"
+
+#, fuzzy
+msgid "Log Details"
+msgstr "Detallu sira"
 
 msgid "Log Scale"
 msgstr "Eskala Log"
@@ -6952,6 +7573,13 @@ msgstr ""
 msgid "Manage"
 msgstr "Jere"
 
+#, fuzzy
+msgid "Manage Email Groups"
+msgstr "Jere relatóriu email"
+
+msgid "Manage WhatsApp Groups"
+msgstr ""
+
 msgid "Manage email report"
 msgstr "Jere relatóriu email"
 
@@ -6973,6 +7601,15 @@ msgstr "Konfigurasaun"
 
 msgid "Map Style"
 msgstr "Estilo do mapa"
+
+#, fuzzy
+msgid "Map View"
+msgstr "Haree"
+
+msgid ""
+"Map specific ranges of values to colors. Click \"+ Add Range\" to add a "
+"new mapping."
+msgstr ""
 
 msgid "Map specific values to colors. Click \"+ Add Value\" to add a new mapping."
 msgstr ""
@@ -7027,6 +7664,10 @@ msgstr "Bola nia tamanu máximu"
 
 msgid "Max Events"
 msgstr "Eventu maximu sira"
+
+#, fuzzy
+msgid "Max Value"
+msgstr "Valor máximu"
 
 msgid "Maximum"
 msgstr "Máximu"
@@ -7097,6 +7738,10 @@ msgstr "Asaun menu nian hamosu"
 #, fuzzy
 msgid "Message"
 msgstr "Kopia mensajen"
+
+#, fuzzy
+msgid "Message Body Sent"
+msgstr "Mensajen nia konteúdu"
 
 #, fuzzy
 msgid "Message Column"
@@ -7239,11 +7884,19 @@ msgstr "Min"
 msgid "Min Periods"
 msgstr "Períodu mínimu sira"
 
+#, fuzzy
+msgid "Min Value"
+msgstr "Valor mínimu"
+
 msgid "Min Width"
 msgstr "Largura mínimu"
 
 msgid "Min periods"
 msgstr "Períodu mínimu sira"
+
+#, fuzzy
+msgid "Min value must be less than max value"
+msgstr "Valór tenke boot liu 0"
 
 msgid "Min/max (no outliers)"
 msgstr "Min/max (la iha outliers)"
@@ -7311,6 +7964,13 @@ msgstr "Konjuntu dadus ne'ebé laiha"
 msgid "Mixed Chart"
 msgstr "Gráfiku Misturadu"
 
+#, python-format
+msgid "Mobile App Broadcast: Failed (%(error)s)."
+msgstr ""
+
+msgid "Mobile App Broadcast: Success."
+msgstr ""
+
 msgid "Modified"
 msgstr "Modifika ona"
 
@@ -7329,6 +7989,10 @@ msgstr "Modifika husi: %s"
 msgid "Modified columns: %s"
 msgstr "Koluna sira ne'ebé modifika ona: %s"
 
+#, fuzzy
+msgid "Modified:"
+msgstr "Modifika ona"
+
 msgid "Monday"
 msgstr "Segunda"
 
@@ -7341,6 +8005,10 @@ msgstr "Fulan sira %s"
 
 msgid "More"
 msgstr "Barak liután"
+
+#, fuzzy
+msgid "More actions"
+msgstr "Asaun sira"
 
 msgid "More filters"
 msgstr "Filtru barak liután"
@@ -7406,10 +8074,6 @@ msgstr "Tenke fornese kredensial sira ba Tunél SSH"
 msgid "Must specify a country"
 msgstr "Tenke espesifika nasaun ida"
 
-#, fuzzy
-msgid "Must specify a date column"
-msgstr "Koluna Data-Tempu Prinsipál"
-
 msgid "Must specify a message column"
 msgstr "Tenke espesifika koluna mensajen ida"
 
@@ -7418,8 +8082,24 @@ msgid "Must specify a metric"
 msgstr "Ordena tuir métrika"
 
 #, fuzzy
+msgid "Must specify a parameter column"
+msgstr "Koluna Data-Tempu Prinsipál"
+
+#, fuzzy
+msgid "Must specify a status column"
+msgstr "Koluna Data-Tempu Prinsipál"
+
+#, fuzzy
+msgid "Must specify a temporal column"
+msgstr "Koluna Data-Tempu Prinsipál"
+
+#, fuzzy
 msgid "Must specify a title column"
 msgstr "Koluna Títulu"
+
+#, fuzzy
+msgid "Must specify a value column"
+msgstr "Koluna Data-Tempu Prinsipál"
 
 msgid "Must specify a value for filters with comparison operators"
 msgstr "Tenke espesifika valór ida ba filtru sira ho operadór komparasaun sira"
@@ -7450,6 +8130,14 @@ msgstr "NUMÉRIKU"
 
 msgid "Name"
 msgstr "Naran"
+
+#, fuzzy
+msgid "Name (A-Z)"
+msgstr "Troka naran ba tab"
+
+#, fuzzy
+msgid "Name (Z-A)"
+msgstr "Troka naran ba tab"
 
 msgid "Name is required"
 msgstr "Presiza naran"
@@ -7492,6 +8180,10 @@ msgstr "Rede erru"
 
 msgid "Network error."
 msgstr "Rede erru."
+
+#, fuzzy
+msgid "New Password"
+msgstr "Seña"
 
 msgid "New chart"
 msgstr "Gráfiku foun"
@@ -7561,6 +8253,9 @@ msgstr "Laiha filtru sira ne'ebé aplika"
 msgid "No available filters."
 msgstr "Laiha filtru sira ne'ebé disponivel."
 
+msgid "No channels were processed."
+msgstr ""
+
 msgid "No charts"
 msgstr "Laiha gráfiku sira"
 
@@ -7597,11 +8292,26 @@ msgstr "Laiha dadus iha arkivu"
 msgid "No databases match your search"
 msgstr "Laiha baze-dadus ne'ebé hanesan ho ita-boot nia peskiza"
 
+#, fuzzy
+msgid "No description"
+msgstr "deskrisaun"
+
 msgid "No description available."
 msgstr "Laiha deskrisaun ne'ebé disponivel."
 
+msgid "No disease alerts returned from API"
+msgstr ""
+
+#, fuzzy
+msgid "No emails listed"
+msgstr "Normalizadu"
+
 msgid "No entities have this tag currently assigned"
 msgstr "Laiha entidade sira ne'ebé maka foin daudaun atribui tag ida-ne'e"
+
+#, fuzzy
+msgid "No facilities found"
+msgstr "Fasilidade sira"
 
 msgid "No filter"
 msgstr "Laiha filtru"
@@ -7624,8 +8334,14 @@ msgstr "Laiha filtru globál sira ne'ebé foin daudaun aumenta"
 msgid "No matching records found"
 msgstr "La hetan rejistu sira ne'ebé hanesan"
 
+msgid "No numbers listed"
+msgstr ""
+
 msgid "No of Bins"
 msgstr "Númeru Lixu-fatin sira"
+
+msgid "No preview available or chart has no thumbnail."
+msgstr ""
 
 msgid "No recents yet"
 msgstr "Seidauk iha resente sira"
@@ -7693,6 +8409,9 @@ msgstr "La hetan koluna temporál sira"
 msgid "No time columns"
 msgstr "Laiha koluna tempu nian"
 
+msgid "No valid email groups were selected or found for Email dissemination."
+msgstr ""
+
 #, fuzzy
 msgid "No valid tabs found in this dashboard"
 msgstr "La aumenta ba painél ruma"
@@ -7707,6 +8426,10 @@ msgid ""
 msgstr ""
 "La hetan validadór ho naran %(validator_name)s (konfigura ba "
 "%(engine_spec)s"
+
+#, fuzzy
+msgid "No weather alerts returned from API"
+msgstr "Pergunta ne'e la fó sai dadus"
 
 msgid "Node label position"
 msgstr "Pozisaun rótulu nodu nian"
@@ -8053,11 +8776,22 @@ msgstr "Naran opsionál ba koluna dadus nian."
 msgid "Optional warning about use of this metric"
 msgstr "Alerta opsionál kona-ba uza métrika ida-ne'e"
 
+msgid "Optional: Add a YouTube video URL"
+msgstr ""
+
 msgid "Options"
 msgstr "Opsaun sira"
 
 msgid "Or choose from a list of other databases we support:"
 msgstr "Ka hili hosi lista baze-dadus sira seluk ne'ebé ami suporta:"
+
+#, fuzzy
+msgid "Or enter your OpenID here"
+msgstr "Tau ita-boot nia kódigu iha ne'e"
+
+#, fuzzy
+msgid "Order by"
+msgstr "Ordena pregunta tuir"
 
 msgid "Order by entity id"
 msgstr "Halo pedidu ba id tuir entidade nian"
@@ -8209,11 +8943,19 @@ msgstr ""
 " Bele buka tuir naran ka naran utilizadór."
 
 #, fuzzy
+msgid "PDF Preview"
+msgstr "Previzualizasaun dadus"
+
+#, fuzzy
 msgid "PDF download failed, please refresh and try again."
 msgstr "Falla baixar imajen, favór ida atualiza no koko fali."
 
 msgid "Page length"
 msgstr "Komprimentu pájina"
+
+#, fuzzy
+msgid "Page size"
+msgstr "tamanu_pájina.hotu"
 
 msgid "Paired t-test Table"
 msgstr "Tabela t-test par"
@@ -8226,6 +8968,10 @@ msgstr "Regra re-amostra Pandas nian"
 
 msgid "Parallel Coordinates"
 msgstr "Koordenasaun Paralelu sira"
+
+#, fuzzy
+msgid "Parameter Column"
+msgstr "Koluna tempu nian"
 
 msgid "Parameter error"
 msgstr "Erru iha parámetru"
@@ -8333,6 +9079,21 @@ msgstr "Ema ka grupu ne'ebé sertifika ona painél ida-ne'e."
 
 msgid "Person or group that has certified this metric"
 msgstr "Ema ka grupu ne'ebé maka sertifika ona métrika ida-ne'e"
+
+#, fuzzy
+msgid "Phone"
+msgstr "La iha"
+
+#, fuzzy
+msgid "Phone Numbers"
+msgstr "Hakerek númeru ida"
+
+msgid "Phone Numbers (comma-separated, e.g., +1234567890)"
+msgstr ""
+
+#, fuzzy
+msgid "Phone Numbers:"
+msgstr "Hakerek númeru ida"
 
 msgid "Physical"
 msgstr "Fíziku"
@@ -8468,6 +9229,10 @@ msgstr ""
 " asegura katak sira koresponde ho ita-boot nia pergunta SQL no Konfigura "
 "Parámetru sira. Depois, koko hala'o fali ita-boot nia pergunta."
 
+#, fuzzy
+msgid "Please choose a provider"
+msgstr "Hili eskema ida"
+
 msgid "Please choose at least one groupby"
 msgstr "Favor hili pelumenus grupu ida tuir"
 
@@ -8476,6 +9241,12 @@ msgstr "Favor konfirma"
 
 msgid "Please confirm the overwrite values."
 msgstr "Favor konfirma valór sira ne'ebé hakerek liu fali."
+
+msgid "Please correct the errors below and try again."
+msgstr ""
+
+msgid "Please correct the errors below:"
+msgstr ""
 
 msgid ""
 "Please ensure your files follow the TLHIS/22:Weekly surveillance Excel "
@@ -8486,6 +9257,9 @@ msgstr ""
 msgid "Please enter a SQLAlchemy URI to test"
 msgstr "Favor hatama SQLAlchemy URI ida atu koko"
 
+msgid "Please enter a valid YouTube video URL"
+msgstr ""
+
 msgid "Please enter valid text. Spaces alone are not permitted."
 msgstr "Favor hatama testu ne'ebé válidu. Espasu sira mesak la permite."
 
@@ -8493,6 +9267,21 @@ msgid ""
 "Please include municipality name (e.g., Dili) or code (e.g., TL-DI) in "
 "filenames"
 msgstr ""
+
+#, fuzzy
+msgid "Please input at least one email address!"
+msgstr "Kuadru dadus pelumenus inklui série ida"
+
+#, fuzzy
+msgid "Please input at least one phone number!"
+msgstr "Hili pelumenus métrika ida"
+
+msgid "Please input the group name!"
+msgstr ""
+
+#, fuzzy
+msgid "Please provide valid phone numbers."
+msgstr "Favor hili númeru semana ida ne'ebé válidu (1-53)"
 
 msgid "Please re-enter the password."
 msgstr "Favor hatama fali seña."
@@ -8517,6 +9306,10 @@ msgid "Please save your dashboard first, then try creating a new email report."
 msgstr ""
 "Por favor, salve primeiro o seu painel e, em seguida, tente criar um novo"
 " relatório de e-mail."
+
+#, fuzzy
+msgid "Please select a bulletin."
+msgstr "Hili eskema ida"
 
 msgid "Please select a file first"
 msgstr "Favor hili uluk arkivu ida"
@@ -8645,6 +9438,10 @@ msgstr "Ita-boot tenke hala'o pergunta ho susesu uluk"
 
 #, fuzzy
 msgid "Posted by"
+msgstr "Kria husi"
+
+#, fuzzy, python-format
+msgid "Posted by %s %s"
 msgstr "Kria husi"
 
 msgid "Powered by Apache Superset"
@@ -8903,6 +9700,15 @@ msgstr "Rasio"
 msgid "Raw records"
 msgstr "Rejistu brutu sira"
 
+msgid "Received unexpected count data format"
+msgstr ""
+
+msgid "Received unexpected facility types data format"
+msgstr ""
+
+msgid "Received unexpected locations data format"
+msgstr ""
+
 #, fuzzy
 msgid "Recently created"
 msgstr "Tag kria ona"
@@ -9000,6 +9806,17 @@ msgstr "Refres gráfiku sira"
 msgid "Refreshing columns"
 msgstr "Refres koluna sira"
 
+#, fuzzy
+msgid "Register"
+msgstr "Pré-filtru"
+
+#, fuzzy
+msgid "Register Account"
+msgstr "Konta Servisu nian"
+
+msgid "Register for an Account"
+msgstr ""
+
 msgid "Regular"
 msgstr "Regular"
 
@@ -9035,6 +9852,10 @@ msgid "Reload"
 msgstr "Karrega fila fali"
 
 msgid "Remove"
+msgstr "Hasai"
+
+#, fuzzy
+msgid "Remove Block"
 msgstr "Hasai"
 
 msgid "Remove cross-filter"
@@ -9073,6 +9894,10 @@ msgstr ""
 " &lt;a&gt; tag sira sei hatudu hanesan hyperlink sira."
 
 msgid "Replace"
+msgstr "Troka"
+
+#, fuzzy
+msgid "Replace Image"
 msgstr "Troka"
 
 msgid "Report"
@@ -9126,6 +9951,10 @@ msgstr "Oráriu Relatóriu nian atinji ona tempu limite."
 
 msgid "Report Schedule state not found"
 msgstr "La hetan Relatóriu Oráriu nia estadu"
+
+#, fuzzy
+msgid "Report a Bug"
+msgstr "Relata erru ida"
 
 msgid "Report a bug"
 msgstr "Relata erru ida"
@@ -9200,6 +10029,10 @@ msgstr "Operasaun amostra fila fali presiza DatetimeIndex"
 msgid "Reset"
 msgstr "Redefini"
 
+#, fuzzy, python-format
+msgid "Reset Password"
+msgstr "%s Seña ka liafuan xave"
+
 msgid "Reset state"
 msgstr "Redefini estadu"
 
@@ -9265,6 +10098,13 @@ msgstr "Valór loos"
 
 msgid "Right-click on a dimension value to drill to detail by that value."
 msgstr "Klik liman-loos iha valór dimensaun ida hodi buka detallu tuir valór ne'e."
+
+msgid "Risks"
+msgstr ""
+
+#, fuzzy
+msgid "Risks are required"
+msgstr "Presiza tipu"
 
 msgid "Role"
 msgstr "Papél"
@@ -9501,6 +10341,14 @@ msgstr "STRING"
 msgid "SUN"
 msgstr "DOM"
 
+#, fuzzy
+msgid "Safety Tips"
+msgstr "Konfigurasaun"
+
+#, fuzzy
+msgid "Safety Tips are required"
+msgstr "Presiza naran"
+
 msgid "Sample Standard Deviation"
 msgstr "Amostra Desviasaun Padraun"
 
@@ -9548,6 +10396,10 @@ msgstr "Guarda no ba iha painél"
 
 msgid "Save (Overwrite)"
 msgstr "Guarda (Hakerek liu)"
+
+#, fuzzy
+msgid "Save Changes"
+msgstr "Guarda alterasaun sira"
 
 msgid "Save as"
 msgstr "Guarda hanesan"
@@ -9725,6 +10577,10 @@ msgstr "Buka tuir testu pergunta nian"
 msgid "Search columns"
 msgstr "Buka koluna sira"
 
+#, fuzzy
+msgid "Search for a chart"
+msgstr "Buka gráfiku hotu-hotu"
+
 msgid "Search in filters"
 msgstr "Buka iha filtru sira"
 
@@ -9790,8 +10646,28 @@ msgstr "Hili"
 msgid "Select ..."
 msgstr "Hili ..."
 
+#, fuzzy
+msgid "Select Bulletin"
+msgstr "Hili barak"
+
+#, fuzzy
+msgid "Select Chart for Thumbnail"
+msgstr "Gráfiku miniatura sira"
+
 msgid "Select Delivery Method"
 msgstr "Hili Métodu Entrega"
+
+#, fuzzy
+msgid "Select Email Group(s)"
+msgstr "Apaga relatóriu email"
+
+#, fuzzy
+msgid "Select Image"
+msgstr "Hili Tag sira"
+
+#, fuzzy
+msgid "Select Image File"
+msgstr "Hili Tag sira"
 
 msgid "Select Tags"
 msgstr "Hili Tag sira"
@@ -9803,8 +10679,24 @@ msgid "Select Week (1-53)"
 msgstr ""
 
 #, fuzzy
+msgid "Select WhatsApp Group(s)"
+msgstr "Hili Tag sira"
+
+msgid "Select WhatsApp group(s) to see combined recipients."
+msgstr ""
+
+#, fuzzy
 msgid "Select Year"
 msgstr "Hili gráfiku"
+
+msgid "Select a WhatsApp group to see recipient count."
+msgstr ""
+
+msgid "Select a bulletin above to preview."
+msgstr ""
+
+msgid "Select a bulletin to see its PDF preview."
+msgstr ""
 
 #, fuzzy
 msgid "Select a chart"
@@ -9908,6 +10800,9 @@ msgstr "Hili gráfiku sira"
 msgid "Select column"
 msgstr "Hili koluna"
 
+msgid "Select columns that can be filtered directly from the table header"
+msgstr ""
+
 msgid ""
 "Select columns that will be displayed in the table. You can multiselect "
 "columns."
@@ -9948,6 +10843,9 @@ msgstr ""
 msgid "Select dataset source"
 msgstr "Hili fonte konjuntu dadus nian"
 
+msgid "Select email group(s) to see combined recipients."
+msgstr ""
+
 msgid "Select file"
 msgstr "Hili arkivu"
 
@@ -9981,6 +10879,16 @@ msgstr ""
 "Hili métrika ida ka barak atu hatudu. Ita-boot bele uza funsaun "
 "agregasaun ida iha koluna ida ka hakerek SQL personalizadu ida hodi kria "
 "métrika ida."
+
+msgid ""
+"Select one or more WhatsApp groups. Phone numbers will be aggregated "
+"without duplicates."
+msgstr ""
+
+msgid ""
+"Select one or more email groups. Emails will be aggregated without "
+"duplicates."
+msgstr ""
 
 msgid "Select operator"
 msgstr "Hili operadór"
@@ -10062,6 +10970,10 @@ msgstr "Hili númeru kaixan sira ba histograma"
 msgid "Select the numeric columns to draw the histogram"
 msgstr "Hili koluna numérika sira hodi dezeña histograma"
 
+#, fuzzy
+msgid "Select type(s)"
+msgstr "Hili Tipu Viz"
+
 #, python-format
 msgid ""
 "Select values in highlighted field(s) in the control panel. Then run the "
@@ -10071,11 +10983,28 @@ msgstr ""
 "Depois hala'o pergunta hodi klik iha butaun %s."
 
 #, fuzzy
+msgid "Select values..."
+msgstr "Hili ..."
+
+#, fuzzy
 msgid "Selected Files"
 msgstr "Hili arkivu"
 
+#, fuzzy
+msgid "Selected bulletin not found."
+msgstr "Regra RLS la hetan."
+
+msgid "Selected group(s) have no email addresses defined."
+msgstr ""
+
+msgid "Selected group(s) have no phone numbers defined."
+msgstr ""
+
 msgid "Selecting a database is required"
 msgstr "Presiza hili baze-dadus ida"
+
+msgid "Send Password Reset Email"
+msgstr ""
 
 msgid "Send as CSV"
 msgstr "Envia hanesan CSV"
@@ -10091,6 +11020,10 @@ msgstr "Envia hanesan testu"
 
 msgid "Send range filter events to other charts"
 msgstr "Envia eventu interval filtru nian ba gráfiku sira seluk"
+
+#, fuzzy
+msgid "Sent At"
+msgstr "Estadu"
 
 msgid "Separate multiple hashtags with commas"
 msgstr "Haketak hashtag oioin ho vírgula"
@@ -10139,6 +11072,14 @@ msgstr "Paginasaun servidór nian"
 
 msgid "Service Account"
 msgstr "Konta Servisu nian"
+
+#, fuzzy
+msgid "Services"
+msgstr "série"
+
+#, fuzzy
+msgid "Services Offered"
+msgstr "Orden Série nian"
 
 msgid "Set auto-refresh interval"
 msgstr "Defini intervalu refres automátika"
@@ -10248,6 +11189,13 @@ msgstr "Hatudu Painél"
 msgid "Show Database"
 msgstr "Hatudu Baze dadus"
 
+msgid "Show Dissemination Log"
+msgstr ""
+
+#, fuzzy
+msgid "Show Email Group"
+msgstr "Hatudu koluna hotu-hotu"
+
 msgid "Show Labels"
 msgstr "Hatudu rotulu sira"
 
@@ -10269,6 +11217,10 @@ msgstr "Hatudu Intervalu Filtru"
 msgid "Show Table"
 msgstr "Hatudu Tabela"
 
+#, fuzzy
+msgid "Show Text Labels"
+msgstr "Hatudu rotulu sira"
+
 msgid "Show Timestamp"
 msgstr "Hatudu Karimbu Oras"
 
@@ -10289,6 +11241,9 @@ msgstr "Hatudu Valór"
 
 msgid "Show Values"
 msgstr "Hatudu Valór sira"
+
+msgid "Show WhatsApp Group"
+msgstr ""
 
 msgid "Show Y-axis"
 msgstr "Hatudu eixu Y"
@@ -10359,6 +11314,10 @@ msgstr "Hatudu menus..."
 msgid "Show minor ticks on axes."
 msgstr "Hatudu marka ki'ik sira iha eixu sira."
 
+#, fuzzy
+msgid "Show on Map"
+msgstr "Hatudu Totál"
+
 msgid "Show only my charts"
 msgstr "Hatudu de'it ha'u nia gráfiku sira"
 
@@ -10373,6 +11332,10 @@ msgstr "Hatudu ponteiru"
 
 msgid "Show progress"
 msgstr "Hatudu progresu"
+
+#, fuzzy
+msgid "Show record"
+msgstr "Rejistu brutu sira"
 
 msgid "Show rows subtotal"
 msgstr "Hatudu subtotál liña sira"
@@ -10453,6 +11416,17 @@ msgstr "Hatudu lista ida hosi série hotu-hotu ne'ebé disponivel iha momentu ne
 
 msgid "Shows or hides markers for the time series"
 msgstr "Hatudu ka subar markadór sira ba série tempu nian"
+
+#, fuzzy
+msgid "Sign In"
+msgstr "La'ós iha"
+
+#, fuzzy
+msgid "Sign In with "
+msgstr "Tama ho"
+
+msgid "Sign in using:"
+msgstr ""
 
 msgid "Significance Level"
 msgstr "Nivel Signifikansia"
@@ -10789,6 +11763,10 @@ msgstr "Estatístiku"
 msgid "Status"
 msgstr "Estadu"
 
+#, fuzzy
+msgid "Status Column"
+msgstr "Koluna tempu nian"
+
 msgid "Step - end"
 msgstr "Etapa - ikus"
 
@@ -10842,6 +11820,10 @@ msgstr "Forsa atu dada gráfiku ba sentru"
 msgid "Stretched style"
 msgstr "Estilu alongadu"
 
+#, fuzzy
+msgid "String Conditional Formatting"
+msgstr "formatasaun kondisionál báziku"
+
 msgid "Stroke Color"
 msgstr "Trasu Kor"
 
@@ -10869,6 +11851,14 @@ msgstr "Subtítulu"
 msgid "Subheader Font Size"
 msgstr "Tamañu fonte subtítulu"
 
+#, fuzzy
+msgid "Subject"
+msgstr "asuntu email nian"
+
+#, fuzzy
+msgid "Subject Sent"
+msgstr "Relatóriu enviadu"
+
 msgid "Submit"
 msgstr "Submete"
 
@@ -10880,6 +11870,22 @@ msgstr "Susesu"
 
 msgid "Successfully changed dataset!"
 msgstr "Ho susesu muda konjuntu dadus!"
+
+#, fuzzy, python-format
+msgid "Successfully created WhatsApp group: %s"
+msgstr "Ho susesu muda konjuntu dadus!"
+
+#, fuzzy, python-format
+msgid "Successfully created email group: %s"
+msgstr "Ho susesu muda konjuntu dadus!"
+
+#, fuzzy, python-format
+msgid "Successfully updated WhatsApp group: %s"
+msgstr "Ho susesu muda konjuntu dadus!"
+
+#, python-format
+msgid "Successfully updated email group: %s"
+msgstr ""
 
 msgid "Suffix"
 msgstr "Sufiksu"
@@ -11150,6 +12156,10 @@ msgid ""
 msgstr ""
 "Ligasaun ho modelu, bele inklui {{ métrika }} ka valór sira seluk ne'ebé "
 "mai hosi kontrolu sira."
+
+#, fuzzy
+msgid "Temporal Column"
+msgstr "Kór Kategóriku"
 
 msgid "Temporal X-Axis"
 msgstr "Eixu-X Temporál"
@@ -11487,6 +12497,9 @@ msgstr ""
 
 msgid "The function to use when aggregating points into groups"
 msgstr "Funsaun atu uza bainhira halibur pontu sira ba grupu sira"
+
+msgid "The granularity to apply to the temporal column for filtering and display"
+msgstr ""
 
 msgid ""
 "The histogram chart displays the distribution of a dataset by\n"
@@ -12140,9 +13153,17 @@ msgstr "Mosu problema ida bainhira apaga regra sira: %s"
 msgid "There was an issue deleting the selected %s: %s"
 msgstr "Mosu problema ida bainhira apaga %s ne'ebé maka hili ona: %s"
 
+#, fuzzy, python-format
+msgid "There was an issue deleting the selected WhatsApp groups"
+msgstr "Mosu problema ida bainhira apaga gráfiku sira ne'ebé maka hili ona: %s"
+
 #, python-format
 msgid "There was an issue deleting the selected annotations: %s"
 msgstr "Mosu problema ida bainhira apaga anotasaun sira ne'ebé maka hili ona: %s"
+
+#, fuzzy, python-format
+msgid "There was an issue deleting the selected bulletins"
+msgstr "Mosu problema ida bainhira apaga pergunta sira ne'ebé maka hili ona: %s"
 
 #, python-format
 msgid "There was an issue deleting the selected charts: %s"
@@ -12157,9 +13178,17 @@ msgstr ""
 "Mosu problema ida bainhira hamoos konjuntu dadus sira ne'ebé maka hili "
 "ona: %s"
 
+#, fuzzy, python-format
+msgid "There was an issue deleting the selected email groups"
+msgstr "Mosu problema ida bainhira hamoos kamada sira ne'ebé maka hili ona: %s"
+
 #, python-format
 msgid "There was an issue deleting the selected layers: %s"
 msgstr "Mosu problema ida bainhira hamoos kamada sira ne'ebé maka hili ona: %s"
+
+#, fuzzy, python-format
+msgid "There was an issue deleting the selected posts"
+msgstr "Mosu problema ida bainhira apaga %s ne'ebé maka hili ona: %s"
 
 #, python-format
 msgid "There was an issue deleting the selected queries: %s"
@@ -12168,6 +13197,22 @@ msgstr "Mosu problema ida bainhira apaga pergunta sira ne'ebé maka hili ona: %s
 #, python-format
 msgid "There was an issue deleting the selected templates: %s"
 msgstr "Mosu problema ida bainhira apaga modelu sira ne'ebé maka hili ona: %s"
+
+#, fuzzy, python-format
+msgid "There was an issue deleting this WhatsApp group"
+msgstr "Mosu problema ida bainhira apaga %s: %s"
+
+#, fuzzy, python-format
+msgid "There was an issue deleting this bulletin"
+msgstr "Mosu problema ida bainhira apaga: %s"
+
+#, fuzzy, python-format
+msgid "There was an issue deleting this email group"
+msgstr "Mosu problema ida bainhira apaga: %s"
+
+#, fuzzy, python-format
+msgid "There was an issue deleting this post"
+msgstr "Mosu problema ida bainhira apaga %s: %s"
 
 #, python-format
 msgid "There was an issue deleting: %s"
@@ -12284,6 +13329,11 @@ msgstr "Koluna ida-ne'e bele la kompativel ho konjuntu dadus atuál"
 
 msgid "This column must contain date/time information."
 msgstr "Koluna ida-ne'e tenke iha informasaun kona-ba data/oras."
+
+msgid ""
+"This content will be used for the email body. For Facebook, this message "
+"combined with the subject will form the post caption."
+msgstr ""
 
 msgid ""
 "This control filters the whole chart based on the selected time range. "
@@ -12545,6 +13595,14 @@ msgstr "Nivel alfa limiar ba determinasaun signifikante"
 msgid "Threshold: "
 msgstr "Limite: "
 
+msgid ""
+"Thumbnail image not available or still generating. Try adding the chart "
+"to see if it becomes available."
+msgstr ""
+
+msgid "Thumbnail is generating. Please try adding it again in a few moments."
+msgstr ""
+
 msgid "Thumbnail is unavailable"
 msgstr ""
 
@@ -12787,6 +13845,14 @@ msgstr "Total (%(aggfunc)s)"
 msgid "Total (%(aggregatorName)s)"
 msgstr "Total (%(aggregatorName)s)"
 
+#, fuzzy
+msgid "Total Health Facilities"
+msgstr "Atualiza Dadus Fasilidade Saúde nian"
+
+#, fuzzy
+msgid "Total Unique Recipients:"
+msgstr "Hatama Destinatáriu sira CC nian"
+
 msgid "Total value"
 msgstr "Valor total"
 
@@ -12911,6 +13977,10 @@ msgstr "URL"
 msgid "URL Parameters"
 msgstr "Parámetru sira URL nian"
 
+#, fuzzy
+msgid "URL Slug"
+msgstr "URL slug"
+
 msgid "URL parameters"
 msgstr "Parámetru sira URL nian"
 
@@ -13018,6 +14088,9 @@ msgstr "Erru ne'ebé la espera: "
 msgid "Unexpected no file extension found"
 msgstr "La espera atu la hetan estensaun arkivu"
 
+msgid "Unexpected response format for municipalities"
+msgstr ""
+
 #, python-format
 msgid "Unexpected time range: %(error)s"
 msgstr "Tempu ne'ebé la espera: %(error)s"
@@ -13123,6 +14196,14 @@ msgstr "Atualiza Dadus Fasilidade Saúde nian"
 msgid "Update chart"
 msgstr "Atualiza Gráfiku"
 
+#, fuzzy
+msgid "Updated"
+msgstr "Atualizasaun"
+
+#, fuzzy, python-format
+msgid "Updated %s"
+msgstr "Atualizasaun ikus liu %s"
+
 msgid "Updating chart was stopped"
 msgstr "Atualizasaun ba gráfiku paradu ona"
 
@@ -13170,6 +14251,10 @@ msgstr "Karrega arkivu ida ba baze-dadus ida."
 #, python-format
 msgid "Upload a file with a valid extension. Valid: [%s]"
 msgstr "Karrega arkivu ida ho estensaun ne'ebé válidu. Válidu: [%s]"
+
+#, fuzzy
+msgid "Upload file"
+msgstr "Karrega arkivu JSON"
 
 msgid "Upload file to database"
 msgstr "Karrega arkivu ba baze-dadus"
@@ -13295,6 +14380,10 @@ msgstr ""
 msgid "User"
 msgstr "Utilizadór"
 
+#, fuzzy
+msgid "User Name"
+msgstr "Naran Utilizadór"
+
 msgid "User doesn't have the proper permissions."
 msgstr "Utilizadór laiha lisensa sira ne'ebé loos."
 
@@ -13342,11 +14431,19 @@ msgstr ""
 msgid "Value"
 msgstr "Valor"
 
+#, fuzzy
+msgid "Value Column"
+msgstr "Koluna tabela nian"
+
 msgid "Value Domain"
 msgstr "Valor Domíniu"
 
 msgid "Value Format"
 msgstr "Formatu Valór"
+
+#, fuzzy
+msgid "Value Range to Color Mapping"
+msgstr "Defini filtru mapeamentu sira"
 
 msgid "Value and Percentage"
 msgstr "Valór no Persentajen"
@@ -13411,6 +14508,10 @@ msgstr "Vertical (karuk)"
 msgid "Video game consoles"
 msgstr "Konsola videojogu sira"
 
+#, fuzzy
+msgid "Video thumbnail"
+msgstr "Gráfiku miniatura sira"
+
 msgid "View"
 msgstr "Haree"
 
@@ -13432,6 +14533,10 @@ msgstr "View in SQL Lab"
 #, python-format
 msgid "View keys & indexes (%s)"
 msgstr "Haree xave sira no índise sira (%s)"
+
+#, fuzzy
+msgid "View on Map"
+msgstr "View in SQL Lab"
 
 msgid "View query"
 msgstr "Haree pergunta"
@@ -13720,6 +14825,9 @@ msgstr "Semana sira %s"
 msgid "Weight"
 msgstr "Pezu"
 
+msgid "Welcome"
+msgstr ""
+
 #, python-format
 msgid ""
 "We’re having trouble loading these results. Queries are set to timeout "
@@ -13759,6 +14867,24 @@ msgstr "O ne'ebé maka dezenvolve konstar la iha rótulu?"
 
 msgid "What should happen if the table already exists"
 msgstr "Saida maka tenke akontese se tabela ne'e eziste ona"
+
+msgid "WhatsApp Group"
+msgstr ""
+
+#, fuzzy
+msgid "WhatsApp Groups"
+msgstr "Opsaun Mapa temperature manas"
+
+msgid "WhatsApp group"
+msgstr ""
+
+#, python-format
+msgid "WhatsApp: Failed (%(error)s)."
+msgstr ""
+
+#, python-format
+msgid "WhatsApp: Success (%(status)s)."
+msgstr ""
 
 msgid ""
 "When `Calculation type` is set to \"Percentage change\", the Y Axis "
@@ -13892,6 +15018,10 @@ msgstr "Karik atutu hatudu lejenda ida ba gráfiku"
 
 msgid "Whether to display bubbles on top of countries"
 msgstr "Karik atu hatudu bolu sira iha nasaun sira nia leten"
+
+#, fuzzy
+msgid "Whether to display text labels on the map"
+msgstr "Karik atu hatudu rótulu sira."
 
 msgid "Whether to display the aggregate count"
 msgstr "Karik atu hatudu kontajen agregadu"
@@ -14313,6 +15443,10 @@ msgstr ""
 "Ita-boot bele haree uluk lista painél sira nian iha dropdown "
 "konfigurasaun gráfiku nian."
 
+#, fuzzy
+msgid "You can select multiple values"
+msgstr "Bele hili valór oioin"
+
 msgid "You can't apply cross-filter on this data point."
 msgstr "Ita-boot labele aplika filtru kruzadu iha pontu dadus ida-ne'e."
 
@@ -14440,6 +15574,9 @@ msgstr ""
 "sira, métrika sira) ne'ebé maka koresponde ho konjuntu dadus foun ida-"
 "ne'e mantein ona."
 
+msgid "YouTube Video URL"
+msgstr ""
+
 msgid "Your chart is not up to date"
 msgstr "Ita-boot nia gráfiku la atualizadu"
 
@@ -14480,6 +15617,9 @@ msgstr "Ita-boot nia pergunta atualiza ona"
 msgid "Your report could not be deleted"
 msgstr "Ita-boot nia relatóriu labele atu apaga"
 
+msgid "Your user is activated you can now proceed to login"
+msgstr ""
+
 msgid "ZIP file contains multiple file types"
 msgstr "Arkivu ZIP kontein tipu arkivu oioin"
 
@@ -14495,6 +15635,10 @@ msgstr "Nivel zoom mapa nian"
 msgid "[ untitled dashboard ]"
 msgstr "[ painél la hó títulu ]"
 
+#, fuzzy
+msgid "[Invalid Date]"
+msgstr "Estadu ne'ebé la válidu."
+
 msgid "[Longitude] and [Latitude] columns must be present in [Group By]"
 msgstr "[Longitude] no [Latitude] koluna sira tenke prezente iha [Group By]"
 
@@ -14503,6 +15647,22 @@ msgstr "[Longitude] no [Latitude] tenke tau"
 
 msgid "[Missing Dataset]"
 msgstr "[Konjuntu Dadus ne'ebé Lakon]"
+
+#, fuzzy
+msgid "[No Bulletin Data]"
+msgstr "Hili barak"
+
+#, fuzzy
+msgid "[No Date]"
+msgstr "Laiha dadus"
+
+#, fuzzy
+msgid "[No Status]"
+msgstr "Estatutu Deskoñesidu"
+
+#, fuzzy
+msgid "[Unknown Title]"
+msgstr "Tipu deskoñesidu"
 
 msgid "[Untitled]"
 msgstr "[La iha títulu]"
@@ -14697,6 +15857,10 @@ msgstr "koluna"
 msgid "connecting to %(dbModelName)s"
 msgstr "konekta ba %(dbModelName)s"
 
+#, fuzzy
+msgid "contains"
+msgstr "Kontinua nafatin"
+
 msgid "content type"
 msgstr "tipu konteúdu"
 
@@ -14885,8 +16049,15 @@ msgstr "pu ezemplu, koluna \"user id\" ida"
 msgid "edit mode"
 msgstr "modu edit"
 
+msgid "email group"
+msgstr ""
+
 msgid "email subject"
 msgstr "asuntu email nian"
+
+#, fuzzy
+msgid "ends with"
+msgstr "Largura borde nian"
 
 msgid "entries"
 msgstr "entrada sira"
@@ -14894,6 +16065,10 @@ msgstr "entrada sira"
 #, fuzzy
 msgid "entries per page"
 msgstr "Mudansa Persentajen iha série-tempu"
+
+#, fuzzy
+msgid "equals"
+msgstr "Sekuensiál"
 
 msgid "error"
 msgstr "erru"
@@ -14948,6 +16123,10 @@ msgstr "íkonu tipu funsaun"
 
 msgid "geohash (square)"
 msgstr "geohash (kuadradu)"
+
+#, fuzzy
+msgid "health facility"
+msgstr "Atualiza Dadus Fasilidade Saúde nian"
 
 msgid "heatmap"
 msgstr "mapa temperature manas"
@@ -15084,6 +16263,10 @@ msgstr "laiha validadór SQL ne'ebé maka konfigura"
 #, python-format
 msgid "no SQL validator is configured for %(engine_spec)s"
 msgstr "laiha validadór SQL ne'ebé maka konfigura ba %(engine_spec)s"
+
+#, fuzzy
+msgid "not equals"
+msgstr "La hanesan ho (≠)"
 
 msgid "numeric type icon"
 msgstr "íkonu tipu numériku"
@@ -15239,6 +16422,10 @@ msgstr "pilla"
 msgid "staggered"
 msgstr "haksoit"
 
+#, fuzzy
+msgid "starts with"
+msgstr "Gráfiku nia luan"
+
 msgid "std"
 msgstr "std"
 
@@ -15302,6 +16489,9 @@ msgstr ""
 
 msgid "use latest_partition template"
 msgstr "uza modelu partisaun_ikus liu"
+
+msgid "user1@example.com, user2@example.com"
+msgstr ""
 
 msgid "value ascending"
 msgstr "valór ne'ebé sa'e"

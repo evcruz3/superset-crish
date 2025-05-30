@@ -25,7 +25,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-07 00:42+0800\n"
+"POT-Creation-Date: 2025-05-30 11:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -368,13 +368,28 @@ msgstr ""
 msgid "+ %s more"
 msgstr ""
 
+msgid "+ Add Range"
+msgstr ""
+
 msgid "+ Add Value"
+msgstr ""
+
+msgid "+1234567890, +0987654321"
 msgstr ""
 
 msgid ""
 "-- Note: Unless you save your query, these tabs will NOT persist if you "
 "clear your cookies or change browsers.\n"
 "\n"
+msgstr ""
+
+msgid "-- Select Email Group(s) --"
+msgstr ""
+
+msgid "-- Select WhatsApp Group(s) --"
+msgstr ""
+
+msgid "-- Select a Bulletin --"
 msgstr ""
 
 #, python-format
@@ -672,6 +687,9 @@ msgid ""
 " rather than its radius or sweep angle."
 msgstr ""
 
+msgid "A readable URL for your chart."
+msgstr ""
+
 msgid "A readable URL for your dashboard"
 msgstr ""
 
@@ -758,6 +776,9 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
+msgid "Active filters"
+msgstr ""
+
 msgid "Actual Values"
 msgstr ""
 
@@ -797,6 +818,9 @@ msgstr ""
 msgid "Add Chart"
 msgstr ""
 
+msgid "Add Chart Thumbnail"
+msgstr ""
+
 msgid "Add Column"
 msgstr ""
 
@@ -807,6 +831,12 @@ msgid "Add Database"
 msgstr ""
 
 msgid "Add Divider"
+msgstr ""
+
+msgid "Add Email Group"
+msgstr ""
+
+msgid "Add File Attachment"
 msgstr ""
 
 msgid "Add Filter"
@@ -827,10 +857,16 @@ msgstr ""
 msgid "Add Tag"
 msgstr ""
 
+msgid "Add WhatsApp Group"
+msgstr ""
+
 msgid "Add a Plugin"
 msgstr ""
 
 msgid "Add a dataset"
+msgstr ""
+
+msgid "Add a new record"
 msgstr ""
 
 msgid "Add a new tab"
@@ -977,6 +1013,9 @@ msgstr ""
 msgid "Additive"
 msgstr ""
 
+msgid "Address"
+msgstr ""
+
 msgid ""
 "Adds color to the chart symbols based on the positive or negative change "
 "from the comparison value."
@@ -996,6 +1035,12 @@ msgid "Adjust how this database will interact with SQL Lab."
 msgstr ""
 
 msgid "Adjust performance settings of this database."
+msgstr ""
+
+msgid "Admin Post"
+msgstr ""
+
+msgid "Administrative Posts with Facilities"
 msgstr ""
 
 msgid "Advanced"
@@ -1023,6 +1068,12 @@ msgid "Advanced data type"
 msgstr ""
 
 msgid "Advanced-Analytics"
+msgstr ""
+
+msgid "Advisory"
+msgstr ""
+
+msgid "Advisory is required"
 msgstr ""
 
 msgid "Affected Charts"
@@ -1062,6 +1113,9 @@ msgid "Aggregation"
 msgstr ""
 
 msgid "Aggregation function"
+msgstr ""
+
+msgid "Air Quality Forecasts"
 msgstr ""
 
 msgid "Alert"
@@ -1247,6 +1301,9 @@ msgstr ""
 msgid "Always filter main datetime column"
 msgstr ""
 
+msgid "Ambulance Service Available"
+msgstr ""
+
 msgid "An Error Occurred"
 msgstr ""
 
@@ -1288,7 +1345,13 @@ msgstr ""
 msgid "An error occurred while creating %ss: %s"
 msgstr ""
 
+msgid "An error occurred while creating the WhatsApp group."
+msgstr ""
+
 msgid "An error occurred while creating the data source"
+msgstr ""
+
+msgid "An error occurred while creating the email group."
 msgstr ""
 
 msgid "An error occurred while creating the value."
@@ -1421,6 +1484,12 @@ msgid ""
 "button."
 msgstr ""
 
+msgid "An error occurred while updating the WhatsApp group."
+msgstr ""
+
+msgid "An error occurred while updating the email group."
+msgstr ""
+
 msgid "An error occurred while updating the value."
 msgstr ""
 
@@ -1428,6 +1497,9 @@ msgid "An error occurred while upserting the value."
 msgstr ""
 
 msgid "An unexpected error occurred"
+msgstr ""
+
+msgid "Analytics"
 msgstr ""
 
 msgid "Anchor to"
@@ -1594,6 +1666,9 @@ msgstr ""
 msgid "Apply conditional color formatting to numeric columns"
 msgstr ""
 
+msgid "Apply conditional color formatting to string columns"
+msgstr ""
+
 msgid "Apply filters"
 msgstr ""
 
@@ -1632,6 +1707,9 @@ msgstr ""
 msgid "Are you sure you want to delete the selected annotations?"
 msgstr ""
 
+msgid "Are you sure you want to delete the selected bulletins?"
+msgstr ""
+
 msgid "Are you sure you want to delete the selected charts?"
 msgstr ""
 
@@ -1644,6 +1722,9 @@ msgstr ""
 msgid "Are you sure you want to delete the selected layers?"
 msgstr ""
 
+msgid "Are you sure you want to delete the selected posts?"
+msgstr ""
+
 msgid "Are you sure you want to delete the selected queries?"
 msgstr ""
 
@@ -1654,6 +1735,25 @@ msgid "Are you sure you want to delete the selected tags?"
 msgstr ""
 
 msgid "Are you sure you want to delete the selected templates?"
+msgstr ""
+
+msgid ""
+"Are you sure you want to delete this WhatsApp group? This action cannot "
+"be undone."
+msgstr ""
+
+msgid "Are you sure you want to delete this bulletin?"
+msgstr ""
+
+msgid ""
+"Are you sure you want to delete this email group? This action cannot be "
+"undone."
+msgstr ""
+
+msgid "Are you sure you want to delete this item?"
+msgstr ""
+
+msgid "Are you sure you want to delete this post?"
 msgstr ""
 
 msgid "Are you sure you want to overwrite this dataset?"
@@ -1692,9 +1792,6 @@ msgstr ""
 msgid "Assist"
 msgstr ""
 
-msgid "Associated Chart"
-msgstr ""
-
 msgid "Associated Charts"
 msgstr ""
 
@@ -1708,6 +1805,9 @@ msgid "At least one hashtag is required"
 msgstr ""
 
 msgid "Attachments"
+msgstr ""
+
+msgid "Audit Trail"
 msgstr ""
 
 msgid "August"
@@ -1768,6 +1868,9 @@ msgid "BOOLEAN"
 msgstr ""
 
 msgid "Back"
+msgstr ""
+
+msgid "Back to Login"
 msgstr ""
 
 msgid "Back to all"
@@ -1971,7 +2074,16 @@ msgstr ""
 msgid "Bulletin"
 msgstr ""
 
-msgid "Bulletin created successfully"
+msgid "Bulletin Attachment"
+msgstr ""
+
+msgid "Bulletin Title"
+msgstr ""
+
+msgid "Bulletin created successfully!"
+msgstr ""
+
+msgid "Bulletin updated successfully!"
 msgstr ""
 
 msgid "Bulletins & Advisories"
@@ -2243,6 +2355,9 @@ msgstr ""
 msgid "Changed By"
 msgstr ""
 
+msgid "Changed On"
+msgstr ""
+
 msgid "Changed by"
 msgstr ""
 
@@ -2357,6 +2472,9 @@ msgstr ""
 msgid "Chart does not exist"
 msgstr ""
 
+msgid "Chart form data or query data not available."
+msgstr ""
+
 msgid "Chart has no query context saved. Please save the chart again."
 msgstr ""
 
@@ -2393,6 +2511,12 @@ msgstr ""
 msgid "Chart thumbnail"
 msgstr ""
 
+msgid "Chart thumbnail added as an image attachment."
+msgstr ""
+
+msgid "Chart thumbnail preview"
+msgstr ""
+
 msgid "Chart title"
 msgstr ""
 
@@ -2400,6 +2524,9 @@ msgid "Chart type requires a dataset"
 msgstr ""
 
 msgid "Chart width"
+msgstr ""
+
+msgid "Chart with this slug was not found"
 msgstr ""
 
 msgid "Charts"
@@ -2557,6 +2684,9 @@ msgstr ""
 msgid "Clear all data"
 msgstr ""
 
+msgid "Clear all filters"
+msgstr ""
+
 msgid "Clear form"
 msgstr ""
 
@@ -2568,6 +2698,9 @@ msgstr ""
 msgid ""
 "Click on \"Create chart\" button in the control panel on the left to "
 "preview a visualization or"
+msgstr ""
+
+msgid "Click on your OpenID provider below"
 msgstr ""
 
 msgid "Click or drag file to this area to upload"
@@ -2620,6 +2753,9 @@ msgstr ""
 msgid "Click to see difference"
 msgstr ""
 
+msgid "Click to select image"
+msgstr ""
+
 msgid "Click to sort ascending"
 msgstr ""
 
@@ -2627,6 +2763,9 @@ msgid "Click to sort descending"
 msgstr ""
 
 msgid "Close"
+msgstr ""
+
+msgid "Close Details"
 msgstr ""
 
 msgid "Close all other tabs"
@@ -2741,6 +2880,15 @@ msgstr ""
 msgid "Column containing messages for feed entries"
 msgstr ""
 
+msgid "Column containing numeric values for feed entries"
+msgstr ""
+
+msgid "Column containing parameter data for feed entries"
+msgstr ""
+
+msgid "Column containing status information for feed entries"
+msgstr ""
+
 msgid "Column containing timestamps for feed entries"
 msgstr ""
 
@@ -2820,6 +2968,9 @@ msgid "Columns to read"
 msgstr ""
 
 msgid "Combine metrics"
+msgstr ""
+
+msgid "Combined Unique Recipients:"
 msgstr ""
 
 msgid ""
@@ -2927,10 +3078,16 @@ msgstr ""
 msgid "Configure your how you overlay is displayed here."
 msgstr ""
 
+msgid "Confirm New Password"
+msgstr ""
+
 msgid "Confirm overwrite"
 msgstr ""
 
 msgid "Confirm save"
+msgstr ""
+
+msgid "Confirm your new password"
 msgstr ""
 
 msgid "Connect"
@@ -3067,6 +3224,9 @@ msgstr ""
 msgid "Could not find viz object"
 msgstr ""
 
+msgid "Could not get your location. Using default for directions."
+msgstr ""
+
 msgid "Could not load database driver"
 msgstr ""
 
@@ -3075,6 +3235,15 @@ msgstr ""
 
 #, python-format
 msgid "Could not resolve hostname: \"%(host)s\"."
+msgstr ""
+
+msgid "Could not retrieve chart ID or form data."
+msgstr ""
+
+msgid "Could not retrieve chart digest for thumbnail preview."
+msgstr ""
+
+msgid "Could not retrieve chart digest for thumbnail."
 msgstr ""
 
 msgid "Count"
@@ -3110,13 +3279,22 @@ msgstr ""
 msgid "Create"
 msgstr ""
 
+msgid "Create Bulletin"
+msgstr ""
+
 msgid "Create Chart"
 msgstr ""
 
 msgid "Create New Bulletin"
 msgstr ""
 
+msgid "Create New Email Group"
+msgstr ""
+
 msgid "Create New Public Education Post"
+msgstr ""
+
+msgid "Create New WhatsApp Group"
 msgstr ""
 
 msgid "Create a dataset"
@@ -3154,7 +3332,14 @@ msgstr ""
 msgid "Created"
 msgstr ""
 
+#, python-format
+msgid "Created %s"
+msgstr ""
+
 msgid "Created By"
+msgstr ""
+
+msgid "Created On"
 msgstr ""
 
 msgid "Created by"
@@ -3163,7 +3348,13 @@ msgstr ""
 msgid "Created by me"
 msgstr ""
 
+msgid "Created by:"
+msgstr ""
+
 msgid "Created on"
+msgstr ""
+
+msgid "Created on:"
 msgstr ""
 
 msgid "Creating SSH Tunnel failed for an unknown reason"
@@ -3176,6 +3367,11 @@ msgid "Creator"
 msgstr ""
 
 msgid "Crimson"
+msgstr ""
+
+msgid ""
+"Critical error: Failed to save dissemination log(s). Please check system "
+"logs."
 msgstr ""
 
 msgid "Cross-filter will be applied to all of the charts that use this dataset."
@@ -3211,7 +3407,13 @@ msgstr ""
 msgid "Current"
 msgstr ""
 
+msgid "Current Image File"
+msgstr ""
+
 msgid "Current day"
+msgstr ""
+
+msgid "Current filename:"
 msgstr ""
 
 msgid "Current month"
@@ -3619,9 +3821,6 @@ msgstr ""
 msgid "Datasource type is required when datasource_id is given"
 msgstr ""
 
-msgid "Date Column"
-msgstr ""
-
 msgid "Date Time Format"
 msgstr ""
 
@@ -3838,13 +4037,29 @@ msgstr ""
 msgid "Delete Annotation?"
 msgstr ""
 
+msgid "Delete Bulletin?"
+msgstr ""
+
+msgid "Delete Bulletins"
+msgstr ""
+
 msgid "Delete Database?"
 msgstr ""
 
 msgid "Delete Dataset?"
 msgstr ""
 
+#, python-format
+msgid "Delete Email Group: %s?"
+msgstr ""
+
 msgid "Delete Layer?"
+msgstr ""
+
+msgid "Delete Post?"
+msgstr ""
+
+msgid "Delete Posts"
 msgstr ""
 
 msgid "Delete Query?"
@@ -3854,6 +4069,13 @@ msgid "Delete Report?"
 msgstr ""
 
 msgid "Delete Template?"
+msgstr ""
+
+#, python-format
+msgid "Delete WhatsApp Group: %s?"
+msgstr ""
+
+msgid "Delete WhatsApp group"
 msgstr ""
 
 msgid "Delete all Really?"
@@ -3868,10 +4090,16 @@ msgstr ""
 msgid "Delete database"
 msgstr ""
 
+msgid "Delete email group"
+msgstr ""
+
 msgid "Delete email report"
 msgstr ""
 
 msgid "Delete query"
+msgstr ""
+
+msgid "Delete record"
 msgstr ""
 
 msgid "Delete template"
@@ -3881,6 +4109,12 @@ msgid "Delete this container and save to remove this message."
 msgstr ""
 
 msgid "Deleted"
+msgstr ""
+
+msgid "Deleted ${bulletinsToDelete.length} bulletins"
+msgstr ""
+
+msgid "Deleted ${postsToDelete.length} posts"
 msgstr ""
 
 #, python-format
@@ -3942,6 +4176,14 @@ msgid "Deleted %s"
 msgstr ""
 
 #, python-format
+msgid "Deleted %s WhatsApp groups"
+msgstr ""
+
+#, python-format
+msgid "Deleted %s email groups"
+msgstr ""
+
+#, python-format
 msgid "Deleted: %s"
 msgstr ""
 
@@ -3993,6 +4235,9 @@ msgid "Details"
 msgstr ""
 
 msgid "Details of the certification"
+msgstr ""
+
+msgid "Details/Errors"
 msgstr ""
 
 msgid "Determines how whiskers and outliers are calculated."
@@ -4117,6 +4362,27 @@ msgid ""
 "your data has a geospatial component, try the deck.gl Arc chart."
 msgstr ""
 
+msgid "Disseminate"
+msgstr ""
+
+msgid "Disseminate Bulletin"
+msgstr ""
+
+msgid "Disseminated Bulletin Logs"
+msgstr ""
+
+msgid "Disseminated By"
+msgstr ""
+
+msgid "Dissemination"
+msgstr ""
+
+msgid "Dissemination Logs"
+msgstr ""
+
+msgid "Dissemination Result: "
+msgstr ""
+
 msgid "Distribute across"
 msgstr ""
 
@@ -4138,6 +4404,9 @@ msgstr ""
 msgid "Domain"
 msgstr ""
 
+msgid "Don't have an account?"
+msgstr ""
+
 msgid "Donut"
 msgstr ""
 
@@ -4145,6 +4414,9 @@ msgid "Dotted"
 msgstr ""
 
 msgid "Download"
+msgstr ""
+
+msgid "Download PDF"
 msgstr ""
 
 msgid "Download Template"
@@ -4366,6 +4638,9 @@ msgstr ""
 msgid "Edit Alert"
 msgstr ""
 
+msgid "Edit Bulletin"
+msgstr ""
+
 msgid "Edit CSS"
 msgstr ""
 
@@ -4390,6 +4665,13 @@ msgstr ""
 msgid "Edit Dataset "
 msgstr ""
 
+msgid "Edit Email Group"
+msgstr ""
+
+#, python-format
+msgid "Edit Email Group: %s"
+msgstr ""
+
 msgid "Edit Log"
 msgstr ""
 
@@ -4409,6 +4691,16 @@ msgid "Edit Table"
 msgstr ""
 
 msgid "Edit Tag"
+msgstr ""
+
+msgid "Edit WhatsApp Group"
+msgstr ""
+
+#, python-format
+msgid "Edit WhatsApp Group: %s"
+msgstr ""
+
+msgid "Edit WhatsApp group"
 msgstr ""
 
 msgid "Edit annotation"
@@ -4435,6 +4727,9 @@ msgstr ""
 msgid "Edit dataset"
 msgstr ""
 
+msgid "Edit email group"
+msgstr ""
+
 msgid "Edit email report"
 msgstr ""
 
@@ -4445,6 +4740,9 @@ msgid "Edit properties"
 msgstr ""
 
 msgid "Edit query"
+msgstr ""
+
+msgid "Edit record"
 msgstr ""
 
 msgid "Edit template"
@@ -4484,10 +4782,38 @@ msgstr ""
 msgid "Elevation"
 msgstr ""
 
+msgid "Email"
+msgstr ""
+
+msgid "Email Address"
+msgstr ""
+
+msgid "Email Addresses"
+msgstr ""
+
+msgid "Email Addresses (comma-separated)"
+msgstr ""
+
+msgid "Email Group"
+msgstr ""
+
+msgid "Email Groups"
+msgstr ""
+
 msgid "Email reports active"
 msgstr ""
 
 msgid "Email subject name (optional)"
+msgstr ""
+
+#, python-format
+msgid "Email: Failed (%(error)s)."
+msgstr ""
+
+msgid "Email: Success."
+msgstr ""
+
+msgid "Emails:"
 msgstr ""
 
 msgid "Embed"
@@ -4503,6 +4829,9 @@ msgid "Embedded dashboard could not be deleted."
 msgstr ""
 
 msgid "Embedding deactivated."
+msgstr ""
+
+msgid "Emergency Services Available"
 msgstr ""
 
 msgid "Emit Filter Events"
@@ -4630,13 +4959,34 @@ msgstr ""
 msgid "Enter alert name"
 msgstr ""
 
+msgid "Enter caption for the image"
+msgstr ""
+
 msgid "Enter duration in seconds"
+msgstr ""
+
+msgid "Enter email addresses, separated by commas."
 msgstr ""
 
 msgid "Enter fullscreen"
 msgstr ""
 
+msgid "Enter name part"
+msgstr ""
+
+msgid "Enter phone numbers, separated by commas (e.g., +1234567890, +0987654321)."
+msgstr ""
+
+msgid "Enter range values"
+msgstr ""
+
 msgid "Enter report name"
+msgstr ""
+
+msgid "Enter service keyword"
+msgstr ""
+
+msgid "Enter string value"
 msgstr ""
 
 #, python-format
@@ -4644,6 +4994,18 @@ msgid "Enter the required %(dbModelName)s credentials"
 msgstr ""
 
 msgid "Enter the unique project id for your database."
+msgstr ""
+
+msgid "Enter your OpenID Username"
+msgstr ""
+
+msgid "Enter your email address"
+msgstr ""
+
+msgid "Enter your login and password below"
+msgstr ""
+
+msgid "Enter your new password"
 msgstr ""
 
 msgid "Entity"
@@ -4684,6 +5046,21 @@ msgid "Error in jinja expression in fetch values predicate: %(msg)s"
 msgstr ""
 
 msgid "Error loading chart datasources. Filters may not work correctly."
+msgstr ""
+
+msgid "Error loading charts"
+msgstr ""
+
+msgid "Error loading facility count data"
+msgstr ""
+
+msgid "Error loading facility locations"
+msgstr ""
+
+msgid "Error loading facility types"
+msgstr ""
+
+msgid "Error loading municipalities"
 msgstr ""
 
 msgid "Error message"
@@ -4939,7 +5316,32 @@ msgstr ""
 msgid "FRI"
 msgstr ""
 
+msgid ""
+"Facebook dissemination is not configured correctly (missing Access Token "
+"or Page ID)."
+msgstr ""
+
+#, python-format
+msgid "Facebook: Failed (%(error)s)."
+msgstr ""
+
+#, python-format
+msgid "Facebook: Success (%(status)s)."
+msgstr ""
+
 msgid "Facilities"
+msgstr ""
+
+msgid "Facilities by Administrative Post"
+msgstr ""
+
+msgid "Facilities by Type"
+msgstr ""
+
+msgid "Facility Type"
+msgstr ""
+
+msgid "Facility Types"
 msgstr ""
 
 msgid "Factor"
@@ -4958,10 +5360,10 @@ msgstr ""
 msgid "Failed at stopping query. %s"
 msgstr ""
 
-msgid "Failed to capture chart content. Try again."
+msgid "Failed to add chart thumbnail as attachment. "
 msgstr ""
 
-msgid "Failed to create bulletin"
+msgid "Failed to create bulletin."
 msgstr ""
 
 msgid "Failed to create post"
@@ -4974,13 +5376,19 @@ msgstr ""
 msgid "Failed to execute %(query)s"
 msgstr ""
 
-msgid "Failed to fetch chart data"
-msgstr ""
-
-msgid "Failed to fetch form data"
+msgid "Failed to fetch chart thumbnail image. Status: "
 msgstr ""
 
 msgid "Failed to generate chart edit URL"
+msgstr ""
+
+msgid "Failed to initiate PDF download. Please check the console for details."
+msgstr ""
+
+msgid "Failed to load bulletin details."
+msgstr ""
+
+msgid "Failed to load chart"
 msgstr ""
 
 msgid "Failed to load chart data"
@@ -4989,10 +5397,25 @@ msgstr ""
 msgid "Failed to load chart data."
 msgstr ""
 
-msgid "Failed to load charts"
+msgid "Failed to load chart thumbnail preview."
+msgstr ""
+
+#, python-format
+msgid "Failed to load chart: %s"
 msgstr ""
 
 msgid "Failed to load dimensions for drill by"
+msgstr ""
+
+#, python-format
+msgid "Failed to load disease alerts: %s"
+msgstr ""
+
+msgid "Failed to load facilities for this map area."
+msgstr ""
+
+#, python-format
+msgid "Failed to load weather alerts: %s"
 msgstr ""
 
 msgid "Failed to retrieve advanced type"
@@ -5005,6 +5428,9 @@ msgid "Failed to start remote query on a worker."
 msgstr ""
 
 msgid "Failed to tag items"
+msgstr ""
+
+msgid "Failed to update bulletin."
 msgstr ""
 
 msgid "Failed to update report"
@@ -5042,6 +5468,9 @@ msgstr ""
 msgid "Fetching"
 msgstr ""
 
+msgid "Fetching chart thumbnail... This may take a moment."
+msgstr ""
+
 #, python-format
 msgid "Field cannot be decoded by JSON. %(json_error)s"
 msgstr ""
@@ -5051,6 +5480,9 @@ msgid "Field cannot be decoded by JSON. %(msg)s"
 msgstr ""
 
 msgid "Field is required"
+msgstr ""
+
+msgid "Fields marked with an asterisk (*) are required."
 msgstr ""
 
 msgid "File"
@@ -5104,6 +5536,9 @@ msgstr ""
 msgid "Filter Type"
 msgstr ""
 
+msgid "Filter by date"
+msgstr ""
+
 msgid "Filter charts"
 msgstr ""
 
@@ -5138,6 +5573,9 @@ msgid "Filter your charts"
 msgstr ""
 
 msgid "Filterable"
+msgstr ""
+
+msgid "Filterable columns"
 msgstr ""
 
 msgid "Filters"
@@ -5273,6 +5711,9 @@ msgstr ""
 msgid "Forest Green"
 msgstr ""
 
+msgid "Forgot Your Password?"
+msgstr ""
+
 msgid "Form data not found in cache, reverting to chart metadata."
 msgstr ""
 
@@ -5369,7 +5810,13 @@ msgstr ""
 msgid "Geohash"
 msgstr ""
 
+msgid "Geolocation is not supported by this browser."
+msgstr ""
+
 msgid "Geospatial"
+msgstr ""
+
+msgid "Get Directions"
 msgstr ""
 
 msgid "Get the last date by the date unit."
@@ -5426,6 +5873,9 @@ msgstr ""
 msgid "Group Key"
 msgstr ""
 
+msgid "Group Name"
+msgstr ""
+
 msgid "Group by"
 msgstr ""
 
@@ -5458,10 +5908,19 @@ msgid ""
 "when the normalization is applied against the whole heatmap."
 msgstr ""
 
+msgid "Has Ambulance?"
+msgstr ""
+
+msgid "Has Emergency?"
+msgstr ""
+
 msgid "Has created by"
 msgstr ""
 
 msgid "Hashtags"
+msgstr ""
+
+msgid "Hashtags (comma-separated)"
 msgstr ""
 
 msgid "Header"
@@ -5483,6 +5942,9 @@ msgid "Height"
 msgstr ""
 
 msgid "Height of the sparkline"
+msgstr ""
+
+msgid "Help"
 msgstr ""
 
 msgid "Hide Line"
@@ -5609,6 +6071,9 @@ msgstr ""
 msgid "If table already exists"
 msgstr ""
 
+msgid "If you are not already a user, please register"
+msgstr ""
+
 msgid "Ignore cache when generating report"
 msgstr ""
 
@@ -5619,6 +6084,12 @@ msgid "Ignore time"
 msgstr ""
 
 msgid "Image (PNG) embedded in email"
+msgstr ""
+
+msgid "Image Attachments"
+msgstr ""
+
+msgid "Image Attachments (Optional)"
 msgstr ""
 
 msgid "Image download failed, please refresh and try again."
@@ -5769,6 +6240,12 @@ msgstr ""
 msgid "Invalid advanced data type: %(advanced_data_type)s"
 msgstr ""
 
+msgid "Invalid bulletin ID format."
+msgstr ""
+
+msgid "Invalid bulletin ID provided for pre-selection."
+msgstr ""
+
 msgid "Invalid certificate"
 msgstr ""
 
@@ -5795,6 +6272,10 @@ msgid "Invalid currency code in saved metrics"
 msgstr ""
 
 msgid "Invalid date/timestamp format"
+msgstr ""
+
+#, python-format
+msgid "Invalid email format found: %s"
 msgstr ""
 
 #, python-format
@@ -5903,6 +6384,10 @@ msgid "Issue 1000 - The dataset is too large to query."
 msgstr ""
 
 msgid "Issue 1001 - The database is under an unusual load."
+msgstr ""
+
+#, python-format
+msgid "Item %(itemNumber)s"
 msgstr ""
 
 msgid "It’s not recommended to truncate axis in Bar chart."
@@ -6038,6 +6523,9 @@ msgstr ""
 msgid "Last Modified"
 msgstr ""
 
+msgid "Last Updated"
+msgstr ""
+
 #, python-format
 msgid "Last Updated %s"
 msgstr ""
@@ -6063,6 +6551,9 @@ msgid "Last quarter"
 msgstr ""
 
 msgid "Last run"
+msgstr ""
+
+msgid "Last updated"
 msgstr ""
 
 msgid "Last week"
@@ -6233,6 +6724,9 @@ msgstr ""
 msgid "List Unique Values"
 msgstr ""
 
+msgid "List View"
+msgstr ""
+
 msgid "List of extra columns made available in JavaScript functions"
 msgstr ""
 
@@ -6269,10 +6763,25 @@ msgstr ""
 msgid "Loading"
 msgstr ""
 
+msgid "Loading analytics..."
+msgstr ""
+
+msgid "Loading bulletin details..."
+msgstr ""
+
+msgid "Loading preview..."
+msgstr ""
+
 msgid "Loading..."
 msgstr ""
 
 msgid "Locate the chart"
+msgstr ""
+
+msgid "Location"
+msgstr ""
+
+msgid "Log Details"
 msgstr ""
 
 msgid "Log Scale"
@@ -6366,6 +6875,12 @@ msgstr ""
 msgid "Manage"
 msgstr ""
 
+msgid "Manage Email Groups"
+msgstr ""
+
+msgid "Manage WhatsApp Groups"
+msgstr ""
+
 msgid "Manage email report"
 msgstr ""
 
@@ -6385,6 +6900,14 @@ msgid "Map Settings"
 msgstr ""
 
 msgid "Map Style"
+msgstr ""
+
+msgid "Map View"
+msgstr ""
+
+msgid ""
+"Map specific ranges of values to colors. Click \"+ Add Range\" to add a "
+"new mapping."
 msgstr ""
 
 msgid "Map specific values to colors. Click \"+ Add Value\" to add a new mapping."
@@ -6439,6 +6962,9 @@ msgid "Max Bubble Size"
 msgstr ""
 
 msgid "Max Events"
+msgstr ""
+
+msgid "Max Value"
 msgstr ""
 
 msgid "Maximum"
@@ -6502,6 +7028,9 @@ msgid "Menu actions trigger"
 msgstr ""
 
 msgid "Message"
+msgstr ""
+
+msgid "Message Body Sent"
 msgstr ""
 
 msgid "Message Column"
@@ -6632,10 +7161,16 @@ msgstr ""
 msgid "Min Periods"
 msgstr ""
 
+msgid "Min Value"
+msgstr ""
+
 msgid "Min Width"
 msgstr ""
 
 msgid "Min periods"
+msgstr ""
+
+msgid "Min value must be less than max value"
 msgstr ""
 
 msgid "Min/max (no outliers)"
@@ -6701,6 +7236,13 @@ msgstr ""
 msgid "Mixed Chart"
 msgstr ""
 
+#, python-format
+msgid "Mobile App Broadcast: Failed (%(error)s)."
+msgstr ""
+
+msgid "Mobile App Broadcast: Success."
+msgstr ""
+
 msgid "Modified"
 msgstr ""
 
@@ -6719,6 +7261,9 @@ msgstr ""
 msgid "Modified columns: %s"
 msgstr ""
 
+msgid "Modified:"
+msgstr ""
+
 msgid "Monday"
 msgstr ""
 
@@ -6730,6 +7275,9 @@ msgid "Months %s"
 msgstr ""
 
 msgid "More"
+msgstr ""
+
+msgid "More actions"
 msgstr ""
 
 msgid "More filters"
@@ -6794,16 +7342,25 @@ msgstr ""
 msgid "Must specify a country"
 msgstr ""
 
-msgid "Must specify a date column"
-msgstr ""
-
 msgid "Must specify a message column"
 msgstr ""
 
 msgid "Must specify a metric"
 msgstr ""
 
+msgid "Must specify a parameter column"
+msgstr ""
+
+msgid "Must specify a status column"
+msgstr ""
+
+msgid "Must specify a temporal column"
+msgstr ""
+
 msgid "Must specify a title column"
+msgstr ""
+
+msgid "Must specify a value column"
 msgstr ""
 
 msgid "Must specify a value for filters with comparison operators"
@@ -6834,6 +7391,12 @@ msgid "NUMERIC"
 msgstr ""
 
 msgid "Name"
+msgstr ""
+
+msgid "Name (A-Z)"
+msgstr ""
+
+msgid "Name (Z-A)"
 msgstr ""
 
 msgid "Name is required"
@@ -6876,6 +7439,9 @@ msgid "Network error"
 msgstr ""
 
 msgid "Network error."
+msgstr ""
+
+msgid "New Password"
 msgstr ""
 
 msgid "New chart"
@@ -6946,6 +7512,9 @@ msgstr ""
 msgid "No available filters."
 msgstr ""
 
+msgid "No channels were processed."
+msgstr ""
+
 msgid "No charts"
 msgstr ""
 
@@ -6982,10 +7551,22 @@ msgstr ""
 msgid "No databases match your search"
 msgstr ""
 
+msgid "No description"
+msgstr ""
+
 msgid "No description available."
 msgstr ""
 
+msgid "No disease alerts returned from API"
+msgstr ""
+
+msgid "No emails listed"
+msgstr ""
+
 msgid "No entities have this tag currently assigned"
+msgstr ""
+
+msgid "No facilities found"
 msgstr ""
 
 msgid "No filter"
@@ -7009,7 +7590,13 @@ msgstr ""
 msgid "No matching records found"
 msgstr ""
 
+msgid "No numbers listed"
+msgstr ""
+
 msgid "No of Bins"
+msgstr ""
+
+msgid "No preview available or chart has no thumbnail."
 msgstr ""
 
 msgid "No recents yet"
@@ -7069,6 +7656,9 @@ msgstr ""
 msgid "No time columns"
 msgstr ""
 
+msgid "No valid email groups were selected or found for Email dissemination."
+msgstr ""
+
 msgid "No valid tabs found in this dashboard"
 msgstr ""
 
@@ -7079,6 +7669,9 @@ msgstr ""
 msgid ""
 "No validator named %(validator_name)s found (configured for the "
 "%(engine_spec)s engine)"
+msgstr ""
+
+msgid "No weather alerts returned from API"
 msgstr ""
 
 msgid "Node label position"
@@ -7397,10 +7990,19 @@ msgstr ""
 msgid "Optional warning about use of this metric"
 msgstr ""
 
+msgid "Optional: Add a YouTube video URL"
+msgstr ""
+
 msgid "Options"
 msgstr ""
 
 msgid "Or choose from a list of other databases we support:"
+msgstr ""
+
+msgid "Or enter your OpenID here"
+msgstr ""
+
+msgid "Order by"
 msgstr ""
 
 msgid "Order by entity id"
@@ -7531,10 +8133,16 @@ msgid ""
 " or username."
 msgstr ""
 
+msgid "PDF Preview"
+msgstr ""
+
 msgid "PDF download failed, please refresh and try again."
 msgstr ""
 
 msgid "Page length"
+msgstr ""
+
+msgid "Page size"
 msgstr ""
 
 msgid "Paired t-test Table"
@@ -7547,6 +8155,9 @@ msgid "Pandas resample rule"
 msgstr ""
 
 msgid "Parallel Coordinates"
+msgstr ""
+
+msgid "Parameter Column"
 msgstr ""
 
 msgid "Parameter error"
@@ -7652,6 +8263,18 @@ msgid "Person or group that has certified this dashboard."
 msgstr ""
 
 msgid "Person or group that has certified this metric"
+msgstr ""
+
+msgid "Phone"
+msgstr ""
+
+msgid "Phone Numbers"
+msgstr ""
+
+msgid "Phone Numbers (comma-separated, e.g., +1234567890)"
+msgstr ""
+
+msgid "Phone Numbers:"
 msgstr ""
 
 msgid "Physical"
@@ -7769,6 +8392,9 @@ msgid ""
 "your query again."
 msgstr ""
 
+msgid "Please choose a provider"
+msgstr ""
+
 msgid "Please choose at least one groupby"
 msgstr ""
 
@@ -7776,6 +8402,12 @@ msgid "Please confirm"
 msgstr ""
 
 msgid "Please confirm the overwrite values."
+msgstr ""
+
+msgid "Please correct the errors below and try again."
+msgstr ""
+
+msgid "Please correct the errors below:"
 msgstr ""
 
 msgid ""
@@ -7787,12 +8419,27 @@ msgstr ""
 msgid "Please enter a SQLAlchemy URI to test"
 msgstr ""
 
+msgid "Please enter a valid YouTube video URL"
+msgstr ""
+
 msgid "Please enter valid text. Spaces alone are not permitted."
 msgstr ""
 
 msgid ""
 "Please include municipality name (e.g., Dili) or code (e.g., TL-DI) in "
 "filenames"
+msgstr ""
+
+msgid "Please input at least one email address!"
+msgstr ""
+
+msgid "Please input at least one phone number!"
+msgstr ""
+
+msgid "Please input the group name!"
+msgstr ""
+
+msgid "Please provide valid phone numbers."
 msgstr ""
 
 msgid "Please re-enter the password."
@@ -7813,6 +8460,9 @@ msgid "Please save your chart first, then try creating a new email report."
 msgstr ""
 
 msgid "Please save your dashboard first, then try creating a new email report."
+msgstr ""
+
+msgid "Please select a bulletin."
 msgstr ""
 
 msgid "Please select a file first"
@@ -7928,6 +8578,10 @@ msgid "Post created successfully"
 msgstr ""
 
 msgid "Posted by"
+msgstr ""
+
+#, python-format
+msgid "Posted by %s %s"
 msgstr ""
 
 msgid "Powered by Apache Superset"
@@ -8182,6 +8836,15 @@ msgstr ""
 msgid "Raw records"
 msgstr ""
 
+msgid "Received unexpected count data format"
+msgstr ""
+
+msgid "Received unexpected facility types data format"
+msgstr ""
+
+msgid "Received unexpected locations data format"
+msgstr ""
+
 msgid "Recently created"
 msgstr ""
 
@@ -8264,6 +8927,15 @@ msgstr ""
 msgid "Refreshing columns"
 msgstr ""
 
+msgid "Register"
+msgstr ""
+
+msgid "Register Account"
+msgstr ""
+
+msgid "Register for an Account"
+msgstr ""
+
 msgid "Regular"
 msgstr ""
 
@@ -8293,6 +8965,9 @@ msgid "Reload"
 msgstr ""
 
 msgid "Remove"
+msgstr ""
+
+msgid "Remove Block"
 msgstr ""
 
 msgid "Remove cross-filter"
@@ -8329,6 +9004,9 @@ msgid ""
 msgstr ""
 
 msgid "Replace"
+msgstr ""
+
+msgid "Replace Image"
 msgstr ""
 
 msgid "Report"
@@ -8377,6 +9055,9 @@ msgid "Report Schedule reached a working timeout."
 msgstr ""
 
 msgid "Report Schedule state not found"
+msgstr ""
+
+msgid "Report a Bug"
 msgstr ""
 
 msgid "Report a bug"
@@ -8452,6 +9133,9 @@ msgstr ""
 msgid "Reset"
 msgstr ""
 
+msgid "Reset Password"
+msgstr ""
+
 msgid "Reset state"
 msgstr ""
 
@@ -8514,6 +9198,12 @@ msgid "Right value"
 msgstr ""
 
 msgid "Right-click on a dimension value to drill to detail by that value."
+msgstr ""
+
+msgid "Risks"
+msgstr ""
+
+msgid "Risks are required"
 msgstr ""
 
 msgid "Role"
@@ -8732,6 +9422,12 @@ msgstr ""
 msgid "SUN"
 msgstr ""
 
+msgid "Safety Tips"
+msgstr ""
+
+msgid "Safety Tips are required"
+msgstr ""
+
 msgid "Sample Standard Deviation"
 msgstr ""
 
@@ -8778,6 +9474,9 @@ msgid "Save & go to dashboard"
 msgstr ""
 
 msgid "Save (Overwrite)"
+msgstr ""
+
+msgid "Save Changes"
 msgstr ""
 
 msgid "Save as"
@@ -8950,6 +9649,9 @@ msgstr ""
 msgid "Search columns"
 msgstr ""
 
+msgid "Search for a chart"
+msgstr ""
+
 msgid "Search in filters"
 msgstr ""
 
@@ -9015,7 +9717,22 @@ msgstr ""
 msgid "Select ..."
 msgstr ""
 
+msgid "Select Bulletin"
+msgstr ""
+
+msgid "Select Chart for Thumbnail"
+msgstr ""
+
 msgid "Select Delivery Method"
+msgstr ""
+
+msgid "Select Email Group(s)"
+msgstr ""
+
+msgid "Select Image"
+msgstr ""
+
+msgid "Select Image File"
 msgstr ""
 
 msgid "Select Tags"
@@ -9027,7 +9744,22 @@ msgstr ""
 msgid "Select Week (1-53)"
 msgstr ""
 
+msgid "Select WhatsApp Group(s)"
+msgstr ""
+
+msgid "Select WhatsApp group(s) to see combined recipients."
+msgstr ""
+
 msgid "Select Year"
+msgstr ""
+
+msgid "Select a WhatsApp group to see recipient count."
+msgstr ""
+
+msgid "Select a bulletin above to preview."
+msgstr ""
+
+msgid "Select a bulletin to see its PDF preview."
 msgstr ""
 
 msgid "Select a chart"
@@ -9127,6 +9859,9 @@ msgstr ""
 msgid "Select column"
 msgstr ""
 
+msgid "Select columns that can be filtered directly from the table header"
+msgstr ""
+
 msgid ""
 "Select columns that will be displayed in the table. You can multiselect "
 "columns."
@@ -9162,6 +9897,9 @@ msgstr ""
 msgid "Select dataset source"
 msgstr ""
 
+msgid "Select email group(s) to see combined recipients."
+msgstr ""
+
 msgid "Select file"
 msgstr ""
 
@@ -9187,6 +9925,16 @@ msgstr ""
 msgid ""
 "Select one or many metrics to display. You can use an aggregation "
 "function on a column or write custom SQL to create a metric."
+msgstr ""
+
+msgid ""
+"Select one or more WhatsApp groups. Phone numbers will be aggregated "
+"without duplicates."
+msgstr ""
+
+msgid ""
+"Select one or more email groups. Emails will be aggregated without "
+"duplicates."
 msgstr ""
 
 msgid "Select operator"
@@ -9258,16 +10006,34 @@ msgstr ""
 msgid "Select the numeric columns to draw the histogram"
 msgstr ""
 
+msgid "Select type(s)"
+msgstr ""
+
 #, python-format
 msgid ""
 "Select values in highlighted field(s) in the control panel. Then run the "
 "query by clicking on the %s button."
 msgstr ""
 
+msgid "Select values..."
+msgstr ""
+
 msgid "Selected Files"
 msgstr ""
 
+msgid "Selected bulletin not found."
+msgstr ""
+
+msgid "Selected group(s) have no email addresses defined."
+msgstr ""
+
+msgid "Selected group(s) have no phone numbers defined."
+msgstr ""
+
 msgid "Selecting a database is required"
+msgstr ""
+
+msgid "Send Password Reset Email"
 msgstr ""
 
 msgid "Send as CSV"
@@ -9283,6 +10049,9 @@ msgid "Send as text"
 msgstr ""
 
 msgid "Send range filter events to other charts"
+msgstr ""
+
+msgid "Sent At"
 msgstr ""
 
 msgid "Separate multiple hashtags with commas"
@@ -9331,6 +10100,12 @@ msgid "Server pagination"
 msgstr ""
 
 msgid "Service Account"
+msgstr ""
+
+msgid "Services"
+msgstr ""
+
+msgid "Services Offered"
 msgstr ""
 
 msgid "Set auto-refresh interval"
@@ -9430,6 +10205,12 @@ msgstr ""
 msgid "Show Database"
 msgstr ""
 
+msgid "Show Dissemination Log"
+msgstr ""
+
+msgid "Show Email Group"
+msgstr ""
+
 msgid "Show Labels"
 msgstr ""
 
@@ -9451,6 +10232,9 @@ msgstr ""
 msgid "Show Table"
 msgstr ""
 
+msgid "Show Text Labels"
+msgstr ""
+
 msgid "Show Timestamp"
 msgstr ""
 
@@ -9470,6 +10254,9 @@ msgid "Show Value"
 msgstr ""
 
 msgid "Show Values"
+msgstr ""
+
+msgid "Show WhatsApp Group"
 msgstr ""
 
 msgid "Show Y-axis"
@@ -9536,6 +10323,9 @@ msgstr ""
 msgid "Show minor ticks on axes."
 msgstr ""
 
+msgid "Show on Map"
+msgstr ""
+
 msgid "Show only my charts"
 msgstr ""
 
@@ -9549,6 +10339,9 @@ msgid "Show pointer"
 msgstr ""
 
 msgid "Show progress"
+msgstr ""
+
+msgid "Show record"
 msgstr ""
 
 msgid "Show rows subtotal"
@@ -9613,6 +10406,15 @@ msgid "Shows a list of all series available at that point in time"
 msgstr ""
 
 msgid "Shows or hides markers for the time series"
+msgstr ""
+
+msgid "Sign In"
+msgstr ""
+
+msgid "Sign In with "
+msgstr ""
+
+msgid "Sign in using:"
 msgstr ""
 
 msgid "Significance Level"
@@ -9934,6 +10736,9 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
+msgid "Status Column"
+msgstr ""
+
 msgid "Step - end"
 msgstr ""
 
@@ -9983,6 +10788,9 @@ msgstr ""
 msgid "Stretched style"
 msgstr ""
 
+msgid "String Conditional Formatting"
+msgstr ""
+
 msgid "Stroke Color"
 msgstr ""
 
@@ -10010,6 +10818,12 @@ msgstr ""
 msgid "Subheader Font Size"
 msgstr ""
 
+msgid "Subject"
+msgstr ""
+
+msgid "Subject Sent"
+msgstr ""
+
 msgid "Submit"
 msgstr ""
 
@@ -10020,6 +10834,22 @@ msgid "Success"
 msgstr ""
 
 msgid "Successfully changed dataset!"
+msgstr ""
+
+#, python-format
+msgid "Successfully created WhatsApp group: %s"
+msgstr ""
+
+#, python-format
+msgid "Successfully created email group: %s"
+msgstr ""
+
+#, python-format
+msgid "Successfully updated WhatsApp group: %s"
+msgstr ""
+
+#, python-format
+msgid "Successfully updated email group: %s"
 msgstr ""
 
 msgid "Suffix"
@@ -10269,6 +11099,9 @@ msgstr ""
 msgid ""
 "Templated link, it's possible to include {{ metric }} or other values "
 "coming from the controls."
+msgstr ""
+
+msgid "Temporal Column"
 msgstr ""
 
 msgid "Temporal X-Axis"
@@ -10537,6 +11370,9 @@ msgid ""
 msgstr ""
 
 msgid "The function to use when aggregating points into groups"
+msgstr ""
+
+msgid "The granularity to apply to the temporal column for filtering and display"
 msgstr ""
 
 msgid ""
@@ -11053,8 +11889,14 @@ msgstr ""
 msgid "There was an issue deleting the selected %s: %s"
 msgstr ""
 
+msgid "There was an issue deleting the selected WhatsApp groups"
+msgstr ""
+
 #, python-format
 msgid "There was an issue deleting the selected annotations: %s"
+msgstr ""
+
+msgid "There was an issue deleting the selected bulletins"
 msgstr ""
 
 #, python-format
@@ -11068,8 +11910,14 @@ msgstr ""
 msgid "There was an issue deleting the selected datasets: %s"
 msgstr ""
 
+msgid "There was an issue deleting the selected email groups"
+msgstr ""
+
 #, python-format
 msgid "There was an issue deleting the selected layers: %s"
+msgstr ""
+
+msgid "There was an issue deleting the selected posts"
 msgstr ""
 
 #, python-format
@@ -11078,6 +11926,18 @@ msgstr ""
 
 #, python-format
 msgid "There was an issue deleting the selected templates: %s"
+msgstr ""
+
+msgid "There was an issue deleting this WhatsApp group"
+msgstr ""
+
+msgid "There was an issue deleting this bulletin"
+msgstr ""
+
+msgid "There was an issue deleting this email group"
+msgstr ""
+
+msgid "There was an issue deleting this post"
 msgstr ""
 
 #, python-format
@@ -11170,6 +12030,11 @@ msgid "This column might be incompatible with current dataset"
 msgstr ""
 
 msgid "This column must contain date/time information."
+msgstr ""
+
+msgid ""
+"This content will be used for the email body. For Facebook, this message "
+"combined with the subject will form the post caption."
 msgstr ""
 
 msgid ""
@@ -11369,6 +12234,14 @@ msgid "Threshold alpha level for determining significance"
 msgstr ""
 
 msgid "Threshold: "
+msgstr ""
+
+msgid ""
+"Thumbnail image not available or still generating. Try adding the chart "
+"to see if it becomes available."
+msgstr ""
+
+msgid "Thumbnail is generating. Please try adding it again in a few moments."
 msgstr ""
 
 msgid "Thumbnail is unavailable"
@@ -11607,6 +12480,12 @@ msgstr ""
 msgid "Total (%(aggregatorName)s)"
 msgstr ""
 
+msgid "Total Health Facilities"
+msgstr ""
+
+msgid "Total Unique Recipients:"
+msgstr ""
+
 msgid "Total value"
 msgstr ""
 
@@ -11725,6 +12604,9 @@ msgstr ""
 msgid "URL Parameters"
 msgstr ""
 
+msgid "URL Slug"
+msgstr ""
+
 msgid "URL parameters"
 msgstr ""
 
@@ -11813,6 +12695,9 @@ msgid "Unexpected error: "
 msgstr ""
 
 msgid "Unexpected no file extension found"
+msgstr ""
+
+msgid "Unexpected response format for municipalities"
 msgstr ""
 
 #, python-format
@@ -11917,6 +12802,13 @@ msgstr ""
 msgid "Update chart"
 msgstr ""
 
+msgid "Updated"
+msgstr ""
+
+#, python-format
+msgid "Updated %s"
+msgstr ""
+
 msgid "Updating chart was stopped"
 msgstr ""
 
@@ -11961,6 +12853,9 @@ msgstr ""
 
 #, python-format
 msgid "Upload a file with a valid extension. Valid: [%s]"
+msgstr ""
+
+msgid "Upload file"
 msgstr ""
 
 msgid "Upload file to database"
@@ -12069,6 +12964,9 @@ msgstr ""
 msgid "User"
 msgstr ""
 
+msgid "User Name"
+msgstr ""
+
 msgid "User doesn't have the proper permissions."
 msgstr ""
 
@@ -12105,10 +13003,16 @@ msgstr ""
 msgid "Value"
 msgstr ""
 
+msgid "Value Column"
+msgstr ""
+
 msgid "Value Domain"
 msgstr ""
 
 msgid "Value Format"
+msgstr ""
+
+msgid "Value Range to Color Mapping"
 msgstr ""
 
 msgid "Value and Percentage"
@@ -12171,6 +13075,9 @@ msgstr ""
 msgid "Video game consoles"
 msgstr ""
 
+msgid "Video thumbnail"
+msgstr ""
+
 msgid "View"
 msgstr ""
 
@@ -12191,6 +13098,9 @@ msgstr ""
 
 #, python-format
 msgid "View keys & indexes (%s)"
+msgstr ""
+
+msgid "View on Map"
 msgstr ""
 
 msgid "View query"
@@ -12433,6 +13343,9 @@ msgstr ""
 msgid "Weight"
 msgstr ""
 
+msgid "Welcome"
+msgstr ""
+
 #, python-format
 msgid ""
 "We’re having trouble loading these results. Queries are set to timeout "
@@ -12463,6 +13376,23 @@ msgid "What should be shown on the label?"
 msgstr ""
 
 msgid "What should happen if the table already exists"
+msgstr ""
+
+msgid "WhatsApp Group"
+msgstr ""
+
+msgid "WhatsApp Groups"
+msgstr ""
+
+msgid "WhatsApp group"
+msgstr ""
+
+#, python-format
+msgid "WhatsApp: Failed (%(error)s)."
+msgstr ""
+
+#, python-format
+msgid "WhatsApp: Success (%(status)s)."
 msgstr ""
 
 msgid ""
@@ -12568,6 +13498,9 @@ msgid "Whether to display a legend for the chart"
 msgstr ""
 
 msgid "Whether to display bubbles on top of countries"
+msgstr ""
+
+msgid "Whether to display text labels on the map"
 msgstr ""
 
 msgid "Whether to display the aggregate count"
@@ -12942,6 +13875,9 @@ msgstr ""
 msgid "You can preview the list of dashboards in the chart settings dropdown."
 msgstr ""
 
+msgid "You can select multiple values"
+msgstr ""
+
 msgid "You can't apply cross-filter on this data point."
 msgstr ""
 
@@ -13053,6 +13989,9 @@ msgid ""
 "match this new dataset have been retained."
 msgstr ""
 
+msgid "YouTube Video URL"
+msgstr ""
+
 msgid "Your chart is not up to date"
 msgstr ""
 
@@ -13091,6 +14030,9 @@ msgstr ""
 msgid "Your report could not be deleted"
 msgstr ""
 
+msgid "Your user is activated you can now proceed to login"
+msgstr ""
+
 msgid "ZIP file contains multiple file types"
 msgstr ""
 
@@ -13106,6 +14048,9 @@ msgstr ""
 msgid "[ untitled dashboard ]"
 msgstr ""
 
+msgid "[Invalid Date]"
+msgstr ""
+
 msgid "[Longitude] and [Latitude] columns must be present in [Group By]"
 msgstr ""
 
@@ -13113,6 +14058,18 @@ msgid "[Longitude] and [Latitude] must be set"
 msgstr ""
 
 msgid "[Missing Dataset]"
+msgstr ""
+
+msgid "[No Bulletin Data]"
+msgstr ""
+
+msgid "[No Date]"
+msgstr ""
+
+msgid "[No Status]"
+msgstr ""
+
+msgid "[Unknown Title]"
 msgstr ""
 
 msgid "[Untitled]"
@@ -13298,6 +14255,9 @@ msgstr ""
 msgid "connecting to %(dbModelName)s"
 msgstr ""
 
+msgid "contains"
+msgstr ""
+
 msgid "content type"
 msgstr ""
 
@@ -13478,13 +14438,22 @@ msgstr ""
 msgid "edit mode"
 msgstr ""
 
+msgid "email group"
+msgstr ""
+
 msgid "email subject"
+msgstr ""
+
+msgid "ends with"
 msgstr ""
 
 msgid "entries"
 msgstr ""
 
 msgid "entries per page"
+msgstr ""
+
+msgid "equals"
 msgstr ""
 
 msgid "error"
@@ -13539,6 +14508,9 @@ msgid "function type icon"
 msgstr ""
 
 msgid "geohash (square)"
+msgstr ""
+
+msgid "health facility"
 msgstr ""
 
 msgid "heatmap"
@@ -13662,6 +14634,9 @@ msgstr ""
 
 #, python-format
 msgid "no SQL validator is configured for %(engine_spec)s"
+msgstr ""
+
+msgid "not equals"
 msgstr ""
 
 msgid "numeric type icon"
@@ -13813,6 +14788,9 @@ msgstr ""
 msgid "staggered"
 msgstr ""
 
+msgid "starts with"
+msgstr ""
+
 msgid "std"
 msgstr ""
 
@@ -13873,6 +14851,9 @@ msgid ""
 msgstr ""
 
 msgid "use latest_partition template"
+msgstr ""
+
+msgid "user1@example.com, user2@example.com"
 msgstr ""
 
 msgid "value ascending"
