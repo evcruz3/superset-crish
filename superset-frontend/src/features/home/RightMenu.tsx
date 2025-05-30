@@ -20,7 +20,7 @@ import { Fragment, useState, useEffect, FC, PureComponent } from 'react';
 
 import rison from 'rison';
 import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useQueryParams, BooleanParam } from 'use-query-params';
 import { isEmpty } from 'lodash';
 
@@ -353,6 +353,7 @@ const RightMenu = ({
   };
 
   const theme = useTheme();
+  const { pathname } = useLocation();
 
   return (
     <StyledDiv align={align}>
@@ -396,7 +397,7 @@ const RightMenu = ({
               ? environmentTag.color
               : environmentTag.color
                   .split('.')
-                  .reduce((o, i) => o[i], theme.colors)
+                  .reduce((o, i) => o[i], theme.colors as any)
           }
         >
           <span css={tagStyles}>{environmentTag.text}</span>
@@ -474,39 +475,40 @@ const RightMenu = ({
             })}
           </SubMenu>
         )}
-        <SubMenu
-          title={t('Settings')}
-          icon={<Icons.TriangleDown iconSize="xl" />}
-        >
-          {settings?.map?.((section, index) => [
-            <Menu.ItemGroup key={`${section.label}`} title={section.label}>
-              {section?.childs?.map?.(child => {
-                if (typeof child !== 'string') {
-                  const menuItemDisplay = RightMenuItemIconExtension ? (
-                    <StyledMenuItemWithIcon>
-                      {child.label}
-                      <RightMenuItemIconExtension menuChild={child} />
-                    </StyledMenuItemWithIcon>
-                  ) : (
-                    child.label
-                  );
-                  return (
-                    <Menu.Item key={`${child.label}`}>
-                      {isFrontendRoute(child.url) ? (
-                        <Link to={child.url || ''}>{menuItemDisplay}</Link>
-                      ) : (
-                        <a href={child.url}>{menuItemDisplay}</a>
-                      )}
-                    </Menu.Item>
-                  );
-                }
-                return null;
-              })}
-            </Menu.ItemGroup>,
-            index < settings.length - 1 && (
-              <Menu.Divider key={`divider_${index}`} />
-            ),
-          ])}
+        {!navbarRight.user_is_anonymous && (
+          <SubMenu
+            title={t('Settings')}
+            icon={<Icons.TriangleDown iconSize="xl" />}
+          >
+            {settings?.map?.((section, index) => [
+              <Menu.ItemGroup key={`${section.label}`} title={section.label}>
+                {section?.childs?.map?.(child => {
+                  if (typeof child !== 'string') {
+                    const menuItemDisplay = RightMenuItemIconExtension ? (
+                      <StyledMenuItemWithIcon>
+                        {child.label}
+                        <RightMenuItemIconExtension menuChild={child} />
+                      </StyledMenuItemWithIcon>
+                    ) : (
+                      child.label
+                    );
+                    return (
+                      <Menu.Item key={`${child.label}`}>
+                        {isFrontendRoute(child.url) ? (
+                          <Link to={child.url || ''}>{menuItemDisplay}</Link>
+                        ) : (
+                          <a href={child.url}>{menuItemDisplay}</a>
+                        )}
+                      </Menu.Item>
+                    );
+                  }
+                  return null;
+                })}
+              </Menu.ItemGroup>,
+              index < settings.length - 1 && (
+                <Menu.Divider key={`divider_${index}`} />
+              ),
+            ])}
 
           {!navbarRight.user_is_anonymous && [
             <Menu.Divider key="user-divider" />,
@@ -549,6 +551,7 @@ const RightMenu = ({
             </Menu.ItemGroup>,
           ]}
         </SubMenu>
+       )}
         {navbarRight.show_language_picker && (
           <LanguagePicker
             locale={navbarRight.locale}
@@ -590,7 +593,7 @@ const RightMenu = ({
           <span>&nbsp;</span>
         </>
       )}
-      {navbarRight.user_is_anonymous && (
+      {navbarRight.user_is_anonymous && pathname !== '/login/' && (
         <StyledAnchor href={navbarRight.user_login_url}>
           <i className="fa fa-fw fa-sign-in" />
           {t('Login')}
