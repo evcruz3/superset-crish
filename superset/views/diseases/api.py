@@ -14,6 +14,14 @@ import re
 from datetime import datetime, timedelta
 from isoweek import Week
 import os
+from flask_appbuilder.api import expose, protect, safe
+from flask_appbuilder.models.sqla.interface import SQLAInterface
+from flask_appbuilder.models.sqla.filters import FilterEqual, FilterStartsWith, FilterInFunction
+from sqlalchemy import asc, desc
+from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
+from superset.views.diseases.models import DiseaseData
+from superset.views.diseases.schemas import DiseaseDataSchema, openapi_spec_methods_override as disease_openapi_spec_methods_override
+from superset.views.base_api import BaseSupersetModelRestApi, statsd_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -674,3 +682,489 @@ class UpdateCaseReportsRestApi(BaseSupersetApi):
         except Exception as e:
             logger.error(f"Error retrieving template: {str(e)}", exc_info=True)
             return self.response_500(f"Error retrieving template: {str(e)}")
+
+class DiseaseDataRestApi(BaseSupersetModelRestApi):
+    datamodel = SQLAInterface(DiseaseData)
+    resource_name = "disease_data"
+    allow_browser_login = True
+
+    class_permission_name = "DiseaseData" # Needs to be defined in Superset's security roles
+    method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP # Reuse, but only GET will be exposed
+
+    # Only include GET related methods (subset of CRUD)
+    include_route_methods = {RouteMethod.GET_LIST, RouteMethod.GET} 
+
+    # Explicitly set add_columns and edit_columns to empty lists
+    # to prevent auto-generation of add/edit schemas, as this API is GET-only.
+    add_columns: list[str] = []
+    edit_columns: list[str] = []
+
+    # Define list and show columns based on the model
+    list_columns = [
+        "year", "week_number", "disease", "municipality_code", "municipality",
+        "totalCases", "totalDeaths", "week_start_date",
+        "LessThan1TotalCases", "OneToFourTotalCases", "FiveToFourteenTotalCases", "FifteenPlusTotalCases",
+        "FifteenToTwentyFourTotalCases", "TwentyFiveToThirtyNineTotalCases", "FortyToFiftyNineTotalCases", "SixtyPlusTotalCases"
+    ]
+    show_columns = [
+        "year", "week_number", "disease", "municipality_code", "municipality",
+        "totalCases", "totalCasesMale", "totalCasesFemale",
+        "totalDeaths", "totalDeathsMale", "totalDeathsFemale",
+        "LessThan1TotalCases", "LessThan1TotalCasesMale", "LessThan1TotalCasesFemale",
+        "LessThan1TotalDeaths", "LessThan1TotalDeathsMale", "LessThan1TotalDeathsFemale",
+        "LessThan1CaseMale", "LessThan1CaseFemale", "LessThan1DeathMale", "LessThan1DeathFemale",
+        "OneToFourTotalCases", "OneToFourTotalCasesMale", "OneToFourTotalCasesFemale",
+        "OneToFourTotalDeaths", "OneToFourTotalDeathsMale", "OneToFourTotalDeathsFemale",
+        "OneToFourCaseMale", "OneToFourCaseFemale", "OneToFourDeathMale", "OneToFourDeathFemale",
+        "FiveToFourteenTotalCases", "FiveToFourteenTotalCasesMale", "FiveToFourteenTotalCasesFemale",
+        "FiveToFourteenTotalDeaths", "FiveToFourteenTotalDeathsMale", "FiveToFourteenTotalDeathsFemale",
+        "FiveToFourteenCaseMale", "FiveToFourteenCaseFemale", "FiveToFourteenDeathMale", "FiveToFourteenDeathFemale",
+        "FifteenPlusTotalCases", "FifteenPlusTotalCasesMale", "FifteenPlusTotalCasesFemale",
+        "FifteenPlusTotalDeaths", "FifteenPlusTotalDeathsMale", "FifteenPlusTotalDeathsFemale",
+        "FifteenPlusCaseMale", "FifteenPlusCaseFemale", "FifteenPlusDeathMale", "FifteenPlusDeathFemale",
+        "week_start_date",
+        "FifteenToTwentyFourTotalCases", "FifteenToTwentyFourTotalCasesMale", "FifteenToTwentyFourTotalCasesFemale",
+        "FifteenToTwentyFourTotalDeaths", "FifteenToTwentyFourTotalDeathsMale", "FifteenToTwentyFourTotalDeathsFemale",
+        "FifteenToTwentyFourCaseMale", "FifteenToTwentyFourCaseFemale", "FifteenToTwentyFourDeathMale", "FifteenToTwentyFourDeathFemale",
+        "TwentyFiveToThirtyNineTotalCases", "TwentyFiveToThirtyNineTotalCasesMale", "TwentyFiveToThirtyNineTotalCasesFemale",
+        "TwentyFiveToThirtyNineTotalDeaths", "TwentyFiveToThirtyNineTotalDeathsMale", "TwentyFiveToThirtyNineTotalDeathsFemale",
+        "TwentyFiveToThirtyNineCaseMale", "TwentyFiveToThirtyNineCaseFemale", "TwentyFiveToThirtyNineDeathMale", "TwentyFiveToThirtyNineDeathFemale",
+        "FortyToFiftyNineTotalCases", "FortyToFiftyNineTotalCasesMale", "FortyToFiftyNineTotalCasesFemale",
+        "FortyToFiftyNineTotalDeaths", "FortyToFiftyNineTotalDeathsMale", "FortyToFiftyNineTotalDeathsFemale",
+        "FortyToFiftyNineCaseMale", "FortyToFiftyNineCaseFemale", "FortyToFiftyNineDeathMale", "FortyToFiftyNineDeathFemale",
+        "SixtyPlusTotalCases", "SixtyPlusTotalCasesMale", "SixtyPlusTotalCasesFemale",
+        "SixtyPlusTotalDeaths", "SixtyPlusTotalDeathsMale", "SixtyPlusTotalDeathsFemale",
+        "SixtyPlusCaseMale", "SixtyPlusCaseFemale", "SixtyPlusDeathMale", "SixtyPlusDeathFemale"
+    ]
+
+    # Define searchable columns
+    search_columns = [
+        "year", "week_number", "disease", "municipality_code", "municipality"
+    ]
+
+    # Define how filters are applied for search_columns
+    search_filters = {
+        "year": [FilterEqual],
+        "week_number": [FilterEqual],
+        "disease": [FilterEqual, FilterStartsWith, FilterInFunction], # Allow for flexible disease searching
+        "municipality_code": [FilterEqual, FilterInFunction],
+        "municipality": [FilterEqual, FilterStartsWith, FilterInFunction],
+    }
+
+    # Helper static method to get args, returns None if not found.
+    @staticmethod
+    def _get_arg_for_filter(arg_name: str, arg_type: type = str) -> str | int | None:
+        if request:
+            value = request.args.get(arg_name)
+            if value is not None:
+                try:
+                    if arg_type == int:
+                        return int(value)
+                    return str(value) # Default to string
+                except ValueError:
+                    logger.warning(f"Could not convert arg {arg_name} with value {value} to type {arg_type}")
+                    return None
+        return None
+
+    # Base filters for direct URL query parameters
+    base_filters = [
+        ["year", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("year", int)],
+        ["week_number", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("week_number", int)],
+        ["disease", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("disease")],
+        ["municipality_code", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("municipality_code")],
+        ["municipality", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("municipality")],
+    ]
+
+    # Default ordering
+    base_order = ("year", "desc") # Order by year descending by default
+
+    # Response schema
+    response_schema = DiseaseDataSchema()
+    
+    # OpenAPI specification details
+    openapi_spec_tag = "CRISH Disease Data" # New tag for this API
+    openapi_spec_methods = disease_openapi_spec_methods_override # Use the one from schemas.py
+    openapi_spec_component_schemas = (DiseaseDataSchema,)
+
+
+    @expose("/", methods=["GET"])
+    # @protect()
+    @safe
+    # @statsd_metrics
+    # @event_logger.log_this_with_context(
+    #     action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_list",
+    #     log_to_statsd=False,
+    # )
+    def get_list(self, **kwargs) -> Response:
+        """
+        ---
+        get:
+          summary: Get list of disease data entries.
+          description: >-
+            Retrieves a list of disease data entries.
+            Supports filtering via direct query parameters (e.g., year=2023, disease=Dengue)
+            and/or the 'q' rison parameter for complex queries (filters, ordering, pagination).
+            Pagination can be controlled using `page` and `page_size` either directly as query
+            parameters or within the 'q' rison payload. Set `page_size` to -1 to retrieve all matching entries.
+          parameters:
+            - name: q
+              in: query
+              description: >-
+                Rison-encoded string for complex queries.
+                Allows specifying filters, ordering, page, and page_size.
+                Example for filters: (filters:!((col:year,opr:eq,value:2023),(col:disease,opr:sw,value:Den)))
+                Example for ordering: (order_column:week_number,order_direction:desc)
+                Example for pagination: (page:0,page_size:25)
+                Example for fetching all items: (page_size:-1)
+              schema:
+                type: string
+                # For detailed structure, refer to Rison documentation and how FAB processes it.
+                # A general GetListRisonSchema might include:
+                # properties:
+                #   filters:
+                #     type: array
+                #     items: { type: object } # Define filter object structure
+                #   order_column: { type: string }
+                #   order_direction: { type: string, enum: [asc, desc] }
+                #   page: { type: integer }
+                #   page_size: { type: integer }
+            - name: year
+              in: query
+              schema: { type: integer }
+              description: Filter by exact year (e.g., 2023). Applied if 'q' does not filter on year.
+            - name: week_number
+              in: query
+              schema: { type: integer }
+              description: Filter by exact week number (e.g., 42). Applied if 'q' does not filter on week_number.
+            - name: disease
+              in: query
+              schema: { type: string }
+              description: Filter by exact disease name (e.g., Dengue). Applied if 'q' does not filter on disease.
+            - name: municipality_code
+              in: query
+              schema: { type: string }
+              description: Filter by exact municipality code (e.g., TL-DI). Applied if 'q' does not filter on municipality_code.
+            - name: municipality
+              in: query
+              schema: { type: string }
+              description: Filter by exact municipality name (e.g., Dili). Applied if 'q' does not filter on municipality.
+            - name: page
+              in: query
+              schema: { type: integer, default: 0 }
+              description: Page number for pagination (0-indexed). Used if 'page' is not in 'q'.
+            - name: page_size
+              in: query
+              schema: { type: integer, default: 25 } # Actual default might be self.page_size or 25
+              description: Number of results per page. Set to -1 to retrieve all results. Used if 'page_size' is not in 'q'.
+          responses:
+            200:
+              description: A list of disease data entries.
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      ids:
+                        type: array
+                        items:
+                          type: string # Or a more specific type if the composite PK string format is consistent
+                        description: List of primary key values for the results.
+                      count:
+                        type: integer
+                        description: Total number of matching records.
+                      result:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DiseaseDataSchema'
+                        description: The list of disease data records for the current page.
+                      page:
+                        type: integer
+                        description: The current page number (0-indexed).
+                      page_size:
+                        type: integer
+                        description: The number of items per page.
+                      total_pages:
+                        type: integer
+                        description: The total number of pages.
+                      next_page_url:
+                        type: string
+                        nullable: true
+                        description: URL for the next page of results, if available.
+                      prev_page_url:
+                        type: string
+                        nullable: true
+                        description: URL for the previous page of results, if available.
+            400:
+              description: Bad Request (e.g., invalid parameter format, malformed Rison).
+            401:
+              description: Unauthorized.
+            500:
+              description: Internal Server Error.
+        # Note: Detailed OpenAPI spec might also be generated via openapi_spec_methods_override in schemas.py
+        """
+        logger.debug(f"DiseaseDataRestApi.get_list called. Original kwargs from framework/rison (from 'q' param): {kwargs.get('rison')}")
+        logger.debug(f"Request args (for direct filters): {request.args}")
+
+        # 1. Start with a base SQLAlchemy query
+        query = self.datamodel.session.query(self.datamodel.obj)
+
+        # 2. Apply direct URL parameter filters using SQLAlchemy
+        direct_query_params_mapping = {
+            "year": "year",
+            "week_number": "week_number",
+            "disease": "disease",
+            "municipality_code": "municipality_code",
+            "municipality": "municipality",
+        }
+        for query_param_key, model_column_name in direct_query_params_mapping.items():
+            if query_param_key in request.args:
+                param_value = request.args.get(query_param_key)
+                # Ensure param_value is not None and not one of the special FAB params
+                if param_value is not None and query_param_key.lower() not in ['q', 'page', 'page_size', 'order_column', 'order_direction', 'keys', 'columns']:
+                    logger.info(f"Applying direct URL filter to SQLAlchemy query: {model_column_name} == {param_value}")
+                    
+                    # Handle type conversion for integer fields based on model
+                    column_attr = getattr(self.datamodel.obj, model_column_name)
+                    if str(column_attr.type).lower() == "integer":
+                        try:
+                            param_value = int(param_value)
+                        except ValueError:
+                            logger.warning(f"Skipping filter for {model_column_name}: could not convert '{param_value}' to int.")
+                            continue # Skip this filter if conversion fails
+                    
+                    query = query.filter(getattr(self.datamodel.obj, model_column_name) == param_value)
+        
+        # 3. Handle Rison 'q' parameter (filters, pagination, ordering)
+        rison_payload = kwargs.get("rison", {})
+        if not isinstance(rison_payload, dict):
+            rison_payload = {} # Ensure rison_payload is a dict
+
+        # 3a. Apply filters from Rison 'q' parameter
+        rison_filters_list = rison_payload.get("filters") 
+        if rison_filters_list:
+            try:
+                fab_rison_filters = self.datamodel.get_filters(filter_columns_list=rison_filters_list)
+                logger.debug(f"Applying Rison filters (from q param) to SQLAlchemy query: {rison_filters_list}")
+                query = self.datamodel.apply_filters(query, fab_rison_filters)
+            except Exception as e: # Catch potential errors from get_filters or apply_filters
+                logger.error(f"Error applying Rison filters: {e}")
+                return self.response_400(message=f"Error in Rison filter format: {e}")
+        else:
+            logger.debug("No Rison filters (from q param) to apply.")
+
+        # 4. Get the count AFTER all filters are applied
+        logger.debug("Executing count query on filtered SQLAlchemy query.")
+        try:
+            item_count = query.count()
+        except Exception as e:
+            logger.error(f"Error executing count query: {e}")
+            return self.response_500(message=f"Database error during count: {e}")
+
+        # 5. Apply ordering
+        order_column_name = rison_payload.get("order_column")
+        order_direction = rison_payload.get("order_direction", "asc").lower() # Default to asc
+
+        if order_column_name and hasattr(self.datamodel.obj, order_column_name):
+            column_attr = getattr(self.datamodel.obj, order_column_name)
+            logger.debug(f"Applying Rison ordering: {order_column_name} {order_direction}")
+            if order_direction == "desc":
+                query = query.order_by(desc(column_attr))
+            else:
+                query = query.order_by(asc(column_attr))
+        elif self.base_order: # Apply default base_order if no order_column in Rison
+            if hasattr(self.datamodel.obj, self.base_order[0]):
+                column_attr = getattr(self.datamodel.obj, self.base_order[0])
+                logger.debug(f"Applying default base_order: {self.base_order[0]} {self.base_order[1]}")
+                if self.base_order[1].lower() == "desc":
+                    query = query.order_by(desc(column_attr))
+                else:
+                    query = query.order_by(asc(column_attr))
+        else: # Fallback if no ordering specified and no base_order
+            # Order by primary key columns to ensure consistent pagination
+            # This assumes _pk_columns is defined in the model or we can get them
+            pk_cols = getattr(self.datamodel.obj, '_pk_columns', [])
+            if not pk_cols and hasattr(self.datamodel, 'primary_key_columns'): # FAB 3.x
+                 pk_cols = [c.name for c in self.datamodel.primary_key_columns]
+            elif not pk_cols: # FAB 4.x might rely on inspector
+                from sqlalchemy import inspect
+                pk_cols = [key.name for key in inspect(self.datamodel.obj).primary_key]
+
+            if pk_cols:
+                logger.debug(f"No specific order, ordering by primary keys: {pk_cols}")
+                for pk_col_name in pk_cols:
+                    if hasattr(self.datamodel.obj, pk_col_name):
+                        query = query.order_by(asc(getattr(self.datamodel.obj, pk_col_name)))
+            else:
+                logger.warning("Could not determine primary keys for default ordering.")
+
+
+        # 6. Apply pagination
+        page = rison_payload.get("page")
+        page_size = rison_payload.get("page_size")
+
+        # If not in Rison, try direct query args for page/page_size
+        if page is None and "page" in request.args:
+            try:
+                page = int(request.args.get("page"))
+            except ValueError:
+                logger.warning(f"Invalid 'page' parameter in direct args: {request.args.get('page')}")
+                page = 0 # Default to 0 if invalid
+        if page is None: # If still None, default to 0
+             page = 0
+
+        if page_size is None and "page_size" in request.args:
+            try:
+                page_size = int(request.args.get("page_size"))
+            except ValueError:
+                logger.warning(f"Invalid 'page_size' parameter in direct args: {request.args.get('page_size')}")
+                page_size = self.page_size or 25 # Use API's default page_size or 25
+        if page_size is None: # If still None, use API default
+            page_size = self.page_size or 25
+
+
+        actual_page_size = page_size
+        total_pages = 0
+
+        if page_size > 0:
+            logger.debug(f"Applying pagination: page {page}, page_size {page_size}")
+            total_pages = (item_count + page_size - 1) // page_size if item_count > 0 else 0 # Ceiling division
+            offset = page * page_size
+            query = query.limit(page_size).offset(offset)
+            actual_page_size = page_size
+        elif page_size == -1: # Requesting all items
+            logger.debug(f"Attempting to retrieve all items (page_size: -1)")
+            total_pages = 1 if item_count > 0 else 0
+            actual_page_size = item_count if item_count > 0 else 0 
+            # No limit/offset applied if page_size is -1
+        # else: page_size is 0 or invalid (e.g. negative not -1), no pagination applied
+        # This means FAB default might kick in or all results might be returned if no other limit.
+        # For safety, if page_size is 0 or invalid negative, perhaps default to API's page_size
+        elif page_size <= 0 and page_size != -1 : # page_size is 0 or invalid negative
+             logger.warning(f"Invalid page_size {page_size}, defaulting to API's page_size or 25.")
+             default_ps = self.page_size or 25
+             total_pages = (item_count + default_ps -1) // default_ps if item_count > 0 else 0
+             offset = page * default_ps
+             query = query.limit(default_ps).offset(offset)
+             actual_page_size = default_ps
+
+
+        # 7. Execute the final query to get results
+        logger.debug("Executing final data query on filtered, ordered, paginated SQLAlchemy query.")
+        try:
+            result = query.all()
+        except Exception as e:
+            logger.error(f"Error executing final data query: {e}")
+            return self.response_500(message=f"Database error during data retrieval: {e}")
+
+        # 8. Prepare response
+        # Get primary key values. Model should have a get_pk_value method for composite keys.
+        pks = [self.datamodel.get_pk_value(item) for item in result] 
+        
+        # Serialize data using Marshmallow schema
+        # The schema's "get_composite_id" method will add the 'id' field.
+        response_data = self.response_schema.dump(result, many=True)
+
+        final_response = {
+            "ids": pks, 
+            "count": item_count,
+            "result": response_data,
+            "page": page,
+            "page_size": actual_page_size,
+            "total_pages": total_pages,
+            "next_page_url": None,
+            "prev_page_url": None,
+        }
+
+        # 9. Generate prev/next URLs (simplified, might need full Rison reconstruction for complex cases)
+        if item_count > 0 and actual_page_size > 0 and total_pages > 1: 
+            base_url = request.base_url
+            
+            def build_url_with_params(target_page):
+                # Start with non-pagination, non-q direct query args
+                preserved_args = {
+                    k: v for k, v in request.args.items() 
+                    if k.lower() not in ['q', 'page', 'page_size', 'order_column', 'order_direction', 'keys', 'columns']
+                }
+                
+                # Add pagination params
+                preserved_args["page"] = target_page
+                preserved_args["page_size"] = actual_page_size
+
+                # If 'q' was originally present and contained ordering/filtering, it should ideally be preserved.
+                # For simplicity, this example rebuilds from direct args + new page/page_size.
+                # A more robust solution would parse the original 'q', modify page/page_size, and re-encode it.
+                if rison_payload: # If 'q' was used, try to carry it over, updating page/page_size
+                    updated_rison = rison_payload.copy()
+                    updated_rison["page"] = target_page
+                    updated_rison["page_size"] = actual_page_size
+                    # Note: This requires a rison library to dump `updated_rison` back to a string.
+                    # from superset.utils import rison as rison_lib # Placeholder
+                    # query_string = f"q={rison_lib.dumps(updated_rison)}"
+                    # For now, if 'q' exists, we might have to rely on client to reconstruct or use simpler direct params
+                    # This simplified version will use direct params for next/prev if q is too complex to rebuild here without rison.dumps
+                    # Let's assume if rison was used, we keep it and just override page/page_size if they were *not* in rison initially
+                    
+                    final_params = preserved_args.copy()
+                    if 'q' in request.args: # If original request had 'q'
+                        # Ideally, modify 'q' if 'page' or 'page_size' were within it.
+                        # If page/page_size were outside 'q', then this is fine.
+                        # This is a complex area. A simpler approach for now if q is used:
+                        # Don't add direct page/page_size if they are expected to be in q.
+                        # For now, let's assume direct params are primary for pagination links for simplicity.
+                        pass # Handled by preserved_args already if they were direct
+                    
+                    # Convert preserved_args to query string
+                    from urllib.parse import urlencode
+                    query_string = urlencode(final_params, doseq=True) # doseq for multi-value params
+                    return f"{base_url}?{query_string}"
+
+                else: # No 'q' parameter, just use direct args
+                    from urllib.parse import urlencode
+                    query_string = urlencode(preserved_args, doseq=True)
+                    return f"{base_url}?{query_string}"
+
+            current_page_for_logic = page
+            if (current_page_for_logic + 1) < total_pages:
+                final_response["next_page_url"] = build_url_with_params(current_page_for_logic + 1)
+            
+            if current_page_for_logic > 0 and total_pages > 0:
+                final_response["prev_page_url"] = build_url_with_params(current_page_for_logic - 1)
+        
+        return self.response(200, **final_response)
+
+    def get(self, pk_string: str) -> Response:
+        """
+        Retrieves a single disease data entry by its composite primary key string.
+        The pk_string is expected to be in the format: year_week_disease_municipality_code
+        """
+        try:
+            parts = pk_string.split('_', 3)
+            if len(parts) != 4:
+                raise ValueError("Composite ID must have 4 parts separated by underscores.")
+
+            year_str, week_number_str, disease, municipality_code = parts
+            
+            filter_args = {
+                "year": int(year_str),
+                "week_number": int(week_number_str),
+                "disease": disease,
+                "municipality_code": municipality_code,
+            }
+            
+            # Use the datamodel to find the item
+            # This assumes the model has these exact column names for filtering.
+            item = self.datamodel.session.query(self.datamodel.obj).filter_by(**filter_args).one_or_none()
+
+            if not item:
+                return self.response_404()
+
+            # Use the defined response schema to serialize the item
+            # The schema will also add the 'id' field via get_composite_id
+            return self.response(200, result=self.response_schema.dump(item))
+
+        except ValueError as ve:
+            logger.warning(f"Invalid composite ID format or value error for GET: {pk_string} - {ve}")
+            return self.response_400(message=f"Invalid ID format or value: {ve}")
+        except Exception as e:
+            logger.error(f"Error retrieving disease data item with pk_string {pk_string}: {e}", exc_info=True)
+            return self.response_500(message=str(e))
