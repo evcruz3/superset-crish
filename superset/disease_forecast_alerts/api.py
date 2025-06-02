@@ -132,7 +132,7 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             return None
 
     @expose("/", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -705,7 +705,7 @@ class DiseasePipelineRunHistoryRestApi(BaseSupersetModelRestApi):
             return self.response_500(message=f"Error creating disease pipeline run history: {e}")
 
     @expose("/last_successful_run", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(

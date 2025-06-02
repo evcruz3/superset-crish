@@ -404,7 +404,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             item_dict['image_attachments'] = []
 
     @expose("/<pk>", methods=("GET",))
-    @protect()
+    # @protect()
     @safe
     @permission_name("get")
     @statsd_metrics
@@ -422,7 +422,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         return response
 
     @expose("/", methods=("GET",))
-    @protect()
+    # @protect()
     @safe
     @permission_name("get_list") 
     @statsd_metrics 
@@ -446,8 +446,8 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         return response
 
     @expose("/<int:bulletin_id>/pdf/", methods=("GET",))
-    # @protect() # Temporarily commented out for debugging
-    @safe # Temporarily commented out for debugging
+    # @protect() # This decorator is already commented out or was never present
+    @safe
     @statsd_metrics # Temporarily commented out for debugging
     # @permission_name("get") # Temporarily commented out for debugging
     def download_bulletin_pdf(self, bulletin_id: int) -> Response:

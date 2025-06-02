@@ -183,7 +183,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
     # --- Wind Speed Endpoints ---
     @expose("/wind_speed", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_wind_speed_list")
@@ -287,7 +286,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
             return self.response_422(message=f"Could not create entry: {str(e)}")
 
     @expose("/wind_speed/<string:mun_code>/<string:forecast_date_str>", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_wind_speed_item")
@@ -428,7 +426,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
     # --- Heat Index Endpoints ---
     @expose("/heat_index", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_heat_index_list")
@@ -512,7 +509,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         return self._handle_post_item(HeatIndexDailyRegion, HeatIndexDailyRegionPostSchema, HeatIndexDailyRegionSchema)
 
     @expose("/heat_index/<string:mun_code>/<string:forecast_date_str>", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_heat_index_item")
@@ -610,7 +606,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
     # --- Rainfall Endpoints ---
     @expose("/rainfall", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_rainfall_list")
@@ -694,7 +689,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         return self._handle_post_item(RainfallDailyWeightedAverage, RainfallDailyWeightedAveragePostSchema, RainfallDailyWeightedAverageSchema)
 
     @expose("/rainfall/<string:mun_code>/<string:forecast_date_str>", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_rainfall_item")
@@ -792,7 +786,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
     # --- Humidity (Rh) Endpoints ---
     @expose("/humidity", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_humidity_list")
@@ -876,7 +869,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         return self._handle_post_item(RhDailyAvgRegion, RhDailyAvgRegionPostSchema, RhDailyAvgRegionSchema)
 
     @expose("/humidity/<string:mun_code>/<string:forecast_date_str>", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_humidity_item")
@@ -974,7 +966,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
     # --- Max Temperature Endpoints ---
     @expose("/temp_max", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_temp_max_list")
@@ -1058,7 +1049,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         return self._handle_post_item(TmaxDailyTmaxRegion, TmaxDailyTmaxRegionPostSchema, TmaxDailyTmaxRegionSchema)
 
     @expose("/temp_max/<string:mun_code>/<string:forecast_date_str>", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_temp_max_item")
@@ -1156,7 +1146,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
 
     # --- Min Temperature Endpoints ---
     @expose("/temp_min", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_temp_min_list")
@@ -1240,7 +1229,6 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         return self._handle_post_item(TminDailyTminRegion, TminDailyTminRegionPostSchema, TminDailyTminRegionSchema)
 
     @expose("/temp_min/<string:mun_code>/<string:forecast_date_str>", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_temp_min_item")
