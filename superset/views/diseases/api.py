@@ -158,19 +158,24 @@ class UpdateCaseReportsRestApi(BaseSupersetApi):
             normalized_data = []
             
             # Process data rows (start from row 4, which contains the actual data)
-            data_rows = df.iloc[3:]  # Start from row 4 (index 3)
+            data_rows = df.iloc[2:]  # Start from row 4 (index 3)
             total_columns_in_file = len(df.columns)
             logger.info(f"Total columns in source DataFrame: {total_columns_in_file}")
             
             expected_columns_per_age_group = 4 # Case M, Case F, Death M, Death F
             
             for idx, row in data_rows.iterrows():
+                # logger.info(f"Processing row {idx+4} of {len(data_rows)}")
+                # logger.info(f"Row: {row}")
                 if pd.isna(row.iloc[1]):  # Skip if disease name is empty
+                    logger.warning(f"Row {idx+4}: Disease name is empty. Skipping.")
                     continue
                     
                 normalized_row = {col: 0 for col in normalized_columns}  # Initialize with zeros
                 disease_name = row.iloc[1]
+                logger.info(f"Disease name: {disease_name}")
                 if pd.isna(disease_name) or not isinstance(disease_name, str):
+                    logger.warning(f"Row {idx+4} ({disease_name}): Disease name is not a string. Skipping.")
                     continue
                     
                 normalized_row['disease'] = disease_name.strip()
