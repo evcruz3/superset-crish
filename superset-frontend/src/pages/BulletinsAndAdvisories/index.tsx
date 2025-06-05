@@ -488,7 +488,7 @@ function BulletinsAndAdvisories({
       return null;
     }
     const { isSelected } = bulletin;
-    const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()).filter(tag => tag) || [];
+    // const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()).filter(tag => tag) || [];
 
     // console.log(`Rendering FeedCard: ${bulletin.title}, isSelected: ${isSelected}, bulkSelectEnabled: ${bulkSelectEnabled}`); // DEBUG
 
@@ -622,14 +622,14 @@ function BulletinsAndAdvisories({
             </div>
           )}
 
-          {hashtags.length > 0 && (
+          {/* {hashtags.length > 0 && (
             <div className="feed-card-hashtags feed-card-section">
               <div className="section-title">{t('Hashtags')}</div>
               {hashtags.map(tag => (
                 <Tag key={tag}>#{tag}</Tag>
               ))}
             </div>
-          )}
+          )} */}
         </FeedCardWrapper>
         <FeedActionsContainer>
           {hasPerm('can_write') && <Tooltip title={t('Disseminate Bulletin')}>

@@ -174,7 +174,7 @@ export default function BulletinCard({
   refreshData: parentRefreshData,
 }: BulletinCardProps) {
   const [showModal, setShowModal] = useState(false);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
+  // const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [localBulletin, setLocalBulletin] = useState<Bulletin>(bulletin);
 
@@ -183,32 +183,32 @@ export default function BulletinCard({
     setLocalBulletin(bulletin);
   }, [bulletin, refreshKey]);
 
-  useEffect(() => {
-    const fetchThumbnailUrl = async () => {
-      if (localBulletin.chart_id) {
-        try {
-          const response = await SupersetClient.get({
-            endpoint: `/api/v1/chart/${localBulletin.chart_id}`,
-          });
-          const chartData = response.json.result;
-          if (chartData.thumbnail_url) {
-            const fullThumbnailUrl = chartData.thumbnail_url.startsWith('/')
-              ? `${window.location.origin}${chartData.thumbnail_url}`
-              : chartData.thumbnail_url;
-            setThumbnailUrl(fullThumbnailUrl);
-          }
-        } catch (error) {
-          setThumbnailUrl('');
-        }
-      }
-    };
+  // useEffect(() => {
+  //   const fetchThumbnailUrl = async () => {
+  //     if (localBulletin.chart_id) {
+  //       try {
+  //         const response = await SupersetClient.get({
+  //           endpoint: `/api/v1/chart/${localBulletin.chart_id}`,
+  //         });
+  //         const chartData = response.json.result;
+  //         if (chartData.thumbnail_url) {
+  //           const fullThumbnailUrl = chartData.thumbnail_url.startsWith('/')
+  //             ? `${window.location.origin}${chartData.thumbnail_url}`
+  //             : chartData.thumbnail_url;
+  //           setThumbnailUrl(fullThumbnailUrl);
+  //         }
+  //       } catch (error) {
+  //         setThumbnailUrl('');
+  //       }
+  //     }
+  //   };
 
-    fetchThumbnailUrl();
-  }, [localBulletin.chart_id, refreshKey]);
+  //   fetchThumbnailUrl();
+  // }, [localBulletin.chart_id, refreshKey]);
 
   if (!localBulletin) return null;
 
-  const hashtags = localBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
+  // const hashtags = localBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
   
   const handleClick = () => {
     if (!bulkSelectEnabled) {
@@ -292,7 +292,7 @@ export default function BulletinCard({
             <div className="section-title">{t('Safety Tips')}</div>
             <div className="section-content">{localBulletin.safety_tips}</div>
           </div>
-          <div className="bulletin-chart">
+          {/* <div className="bulletin-chart">
             {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
               localBulletin.chart_id ? (
                 <BulletinChart chartId={localBulletin.chart_id} />
@@ -309,15 +309,15 @@ export default function BulletinCard({
             ) : (
               <div style={{ height: '200px' }}></div>
             )}
-          </div>
+          </div> */}
         </div>
-        {hashtags.length > 0 && (
+        {/* {hashtags.length > 0 && (
           <div className="bulletin-hashtags">
             {hashtags.map(tag => (
               <Tag key={tag}>#{tag}</Tag>
             ))}
           </div>
-        )}
+        )} */}
       </StyledCard>
       <BulletinDetailModal 
         bulletin={showModal ? localBulletin : null}

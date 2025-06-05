@@ -389,14 +389,57 @@ def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, 
         fig, ax = plt.subplots(1, 1, figsize=(12, 10))
         merged_gdf.plot(color=merged_gdf['color'], ax=ax, edgecolor='black', linewidth=0.5)
         
-        legend_handles = [
-            plt.Rectangle((0,0),1,1, color=color, label=level) 
-            for level, color in ALERT_LEVEL_COLORS.items() if level != 'Missing data'
-        ]
-        if merged_gdf['value'].isnull().any():
-             legend_handles.append(plt.Rectangle((0,0),1,1, color=ALERT_LEVEL_COLORS['Missing data'], label='Missing data'))
+        legend_handles = []
+        unit = ""
+        threshold_details = {} # To store {level: text_for_level}
 
-        ax.legend(handles=legend_handles, title="Alert Levels", loc="lower right")
+        if parameter_name == 'Heat Index':
+            unit = '°C'
+            threshold_details = {
+                'Extreme Danger': f'> {HEAT_INDEX_EXTREME_DANGER}',
+                'Danger': f'> {HEAT_INDEX_DANGER}',
+                'Extreme Caution': f'>= {HEAT_INDEX_EXTREME_CAUTION}',
+                'Normal': f'< {HEAT_INDEX_EXTREME_CAUTION}'
+            }
+        elif parameter_name == 'Rainfall':
+            unit = 'mm'
+            threshold_details = {
+                'Extreme Danger': f'> {RAINFALL_EXTREME_DANGER}',
+                'Danger': f'>= {RAINFALL_DANGER}',
+                'Extreme Caution': f'>= {RAINFALL_EXTREME_CAUTION}',
+                'Normal': f'< {RAINFALL_EXTREME_CAUTION}'
+            }
+        elif parameter_name == 'Wind Speed':
+            unit = 'km/h'
+            threshold_details = {
+                'Extreme Danger': f'> {WIND_SPEED_EXTREME_DANGER}',
+                'Danger': f'>= {WIND_SPEED_DANGER}',
+                'Extreme Caution': f'>= {WIND_SPEED_EXTREME_CAUTION}',
+                'Normal': f'< {WIND_SPEED_EXTREME_CAUTION}'
+            }
+
+        for level, color_val in ALERT_LEVEL_COLORS.items():
+            if level == 'Missing data':
+                continue # Handled separately
+
+            label_text = level
+            if level in threshold_details and unit: # Ensure unit is set
+                label_text = f"{level} ({threshold_details[level]} {unit})"
+            elif level in threshold_details: # Fallback if unit somehow not set but details exist
+                 label_text = f"{level} ({threshold_details[level]})"
+            
+            legend_handles.append(plt.Rectangle((0,0),1,1, color=color_val, label=label_text))
+
+        # Add 'Missing data' to legend if relevant (condition from original code)
+        missing_data_color = ALERT_LEVEL_COLORS.get('Missing data')
+        if missing_data_color and merged_gdf['value'].isnull().any():
+             legend_handles.append(
+                 plt.Rectangle((0,0),1,1, 
+                               color=missing_data_color, 
+                               label='Missing data')
+            )
+
+        ax.legend(handles=legend_handles, title=f"{parameter_name} Alert Levels & Thresholds", loc="lower right")
 
         highlight_gdf = merged_gdf[merged_gdf['ISO'] == municipality_code]
         if not highlight_gdf.empty:

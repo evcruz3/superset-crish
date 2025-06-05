@@ -16,10 +16,10 @@ This document outlines the thresholds used for different disease forecasts in th
 
 | Predicted Cases | Alert Level | Alert Title | Alert Message |
 |----------------|-------------|-------------|---------------|
-| ≥ 100 | Severe | Severe Dengue Alert | Severe dengue outbreak expected with [cases] cases. Immediate preventive action required. |
-| ≥ 50 | High | High Dengue Warning | High risk of dengue outbreak with [cases] cases. Community-level interventions recommended. |
-| ≥ 25 | Moderate | Moderate Dengue Advisory | Moderate risk with [cases] dengue cases expected. Monitor local conditions and take precautions. |
-| ≥ 1 | Low | Low Dengue Notice | Low risk with [cases] dengue cases expected. Preventive measures advised. |
+| ≥ 6 | Severe | Severe Dengue Alert | Severe dengue outbreak expected with [cases] cases. Immediate preventive action required. |
+| ≥ 2 | High | High Dengue Warning | High risk of dengue outbreak with [cases] cases. Community-level interventions recommended. |
+| ≥ 1 | Moderate | Moderate Dengue Advisory | Moderate risk with [cases] dengue cases expected. Monitor local conditions and take precautions. |
+<!-- | ≥ 1 | Low | Low Dengue Notice | Low risk with [cases] dengue cases expected. Preventive measures advised. | -->
 | < 1 | None | No Dengue Cases Expected | No significant dengue risk at this time. |
 
 ### Prevention Measures (Dengue)

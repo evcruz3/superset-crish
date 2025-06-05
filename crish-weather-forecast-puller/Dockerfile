@@ -3,11 +3,19 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    gcc \
-    g++ \
-    postgresql-client \
+RUN echo "deb http://cdn-fastly.deb.debian.org/debian bookworm main" > /etc/apt/sources.list && \
+    echo "deb http://cdn-fastly.deb.debian.org/debian bookworm-updates main" >> /etc/apt/sources.list && \
+    echo "deb http://cdn-fastly.deb.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list && \
+    apt-get update --allow-insecure-repositories && \
+    apt-get install -y --no-install-recommends --reinstall ca-certificates debian-archive-keyring && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get update -o Acquire::ForceIPv4=true --allow-releaseinfo-change --allow-insecure-repositories && \
+    apt-get install -y --allow-unauthenticated \
+        git \
+        gcc \
+        g++ \
+        postgresql-client \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache

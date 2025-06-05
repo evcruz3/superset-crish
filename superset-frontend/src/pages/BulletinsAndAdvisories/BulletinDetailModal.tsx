@@ -198,7 +198,7 @@ export default function BulletinDetailModal({
 
   if (!updatedBulletin) return null;
 
-  const hashtags = updatedBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
+  // const hashtags = updatedBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
 
   const handleDisseminate = () => {
     if (updatedBulletin?.id) {
@@ -339,13 +339,13 @@ export default function BulletinDetailModal({
         </div>
         
         {/* Hashtags Section */}
-        {hashtags.length > 0 && (
+        {/* {hashtags.length > 0 && (
           <div className="bulletin-hashtags">
             {hashtags.map(tag => (
               <Tag key={tag}>#{tag}</Tag>
             ))}
           </div>
-        )}
+        )} */}
       </StyledModal>
 
       {updatedBulletin && (

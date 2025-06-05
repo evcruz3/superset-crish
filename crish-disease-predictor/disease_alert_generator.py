@@ -42,8 +42,8 @@ DISEASE_ALERT_LEVEL_COLORS = {
     'Severe': '#FF0000',          # Red
     'High': '#FFA500',            # Orange
     'Moderate': '#FFFF00',        # Yellow
-    'Low': '#ADD8E6',             # Light Blue
-    'None': '#008000',            # Green (Indicates no significant risk)
+    'Low':   '#008000',           # Green
+    'None': '#ADD8E6',            # Light Blue
     'Missing data': '#D3D3D3'     # Light grey
 }
 
@@ -69,10 +69,9 @@ else:
 DISEASE_THRESHOLDS_DATA = {
     "Dengue": {
         "threshold_rules": [
-            {"min_cases": 100, "alert_level": "Severe", "alert_title": "Severe Dengue Alert", "alert_message": "Severe dengue outbreak expected with {cases} cases. Immediate preventive action required."},
-            {"min_cases": 50, "alert_level": "High", "alert_title": "High Dengue Warning", "alert_message": "High risk of dengue outbreak with {cases} cases. Community-level interventions recommended."},
-            {"min_cases": 25, "alert_level": "Moderate", "alert_title": "Moderate Dengue Advisory", "alert_message": "Moderate risk with {cases} dengue cases expected. Monitor local conditions and take precautions."},
-            {"min_cases": 1, "alert_level": "Low", "alert_title": "Low Dengue Notice", "alert_message": "Low risk with {cases} dengue cases expected. Preventive measures advised."},
+            {"min_cases": 6, "alert_level": "Severe", "alert_title": "Severe Dengue Alert", "alert_message": "Severe dengue outbreak expected with {cases} cases. Immediate preventive action required."},
+            {"min_cases": 2, "alert_level": "High", "alert_title": "High Dengue Warning", "alert_message": "High risk of dengue outbreak with {cases} cases. Community-level interventions recommended."},
+            {"min_cases": 1, "alert_level": "Moderate", "alert_title": "Moderate Dengue Advisory", "alert_message": "Moderate risk with {cases} dengue cases expected. Monitor local conditions and take precautions."},
             {"min_cases": 0, "cases_condition": "< 1", "alert_level": "None", "alert_title": "No Dengue Cases Expected", "alert_message": "No significant dengue risk at this time."} # Represents < 1 case (i.e., 0 cases)
         ],
         "prevention_measures": """- Eliminate standing water where mosquitoes can breed
@@ -176,15 +175,44 @@ def generate_disease_map_image(
         fig, ax = plt.subplots(1, 1, figsize=(12, 10))
         merged_gdf.plot(color=merged_gdf['color'], ax=ax, edgecolor='black', linewidth=0.5)
         
-        legend_handles = [
-            plt.Rectangle((0,0),1,1, color=color, label=level) 
-            for level, color in DISEASE_ALERT_LEVEL_COLORS.items() if level != 'Missing data' # Exclude 'None' if it means no color
-        ]
-        # Add missing data to legend if any municipality has it (or if it's the default)
-        if merged_gdf['color'].eq(DISEASE_ALERT_LEVEL_COLORS['Missing data']).any() or not all_municipalities_predictions:
-             legend_handles.append(plt.Rectangle((0,0),1,1, color=DISEASE_ALERT_LEVEL_COLORS['Missing data'], label='Missing data'))
+        legend_handles = []
+        if disease_type in DISEASE_THRESHOLDS_DATA:
+            rules = DISEASE_THRESHOLDS_DATA[disease_type]["threshold_rules"]
+            # Assumes rules are typically pre-sorted (e.g., Severe to None)
+            for rule in rules:
+                level = rule["alert_level"]
+                color = DISEASE_ALERT_LEVEL_COLORS.get(level)
 
-        ax.legend(handles=legend_handles, title=f"{disease_type} Alert Levels", loc="lower right")
+                if not color:
+                    logging.warning(f"Legend: Color not found for alert level '{level}' in DISEASE_ALERT_LEVEL_COLORS.")
+                    continue
+
+                threshold_text = ""
+                if rule.get("cases_condition") == "< 1" and rule.get("min_cases") == 0:
+                    threshold_text = "< 1 cases"
+                elif "min_cases" in rule:
+                    threshold_text = f">= {rule['min_cases']} cases"
+                
+                label_text = f"{level} ({threshold_text})" if threshold_text else level
+                legend_handles.append(plt.Rectangle((0,0),1,1, color=color, label=label_text))
+        else:
+            # Fallback if disease_type has no specific rules defined
+            logging.warning(f"Legend: No threshold rules found for disease_type '{disease_type}'. Generating generic legend based on available colors.")
+            for level, color_val in DISEASE_ALERT_LEVEL_COLORS.items():
+                if level != 'Missing data': # 'Missing data' handled separately below
+                     legend_handles.append(plt.Rectangle((0,0),1,1, color=color_val, label=level))
+        
+        # Add 'Missing data' to legend if relevant
+        missing_data_color = DISEASE_ALERT_LEVEL_COLORS.get('Missing data')
+        if missing_data_color and \
+           (merged_gdf['color'].eq(missing_data_color).any() or not all_municipalities_predictions):
+             legend_handles.append(
+                 plt.Rectangle((0,0),1,1, 
+                               color=missing_data_color, 
+                               label='Missing data')
+            )
+
+        ax.legend(handles=legend_handles, title=f"{disease_type} Alert Levels & Thresholds", loc="lower right")
 
         highlight_gdf = merged_gdf[merged_gdf['ISO'] == municipality_code]
         if not highlight_gdf.empty:
@@ -423,6 +451,10 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
                 try:
                     forecast_week_start_dt = datetime.strptime(week_start_for_alert, '%Y-%m-%d')
                     forecast_week_end_dt = forecast_week_start_dt + timedelta(days=6)
+                    generated_on_dt = datetime.strptime(alert_data["forecast_date"], '%Y-%m-%d')
+
+                    generated_on_str = generated_on_dt.strftime('%d %B, %Y')
+
                     if forecast_week_start_dt.year != forecast_week_end_dt.year:
                         week_period_str = f"{forecast_week_start_dt.strftime('%d %B, %Y')} - {forecast_week_end_dt.strftime('%d %B, %Y')}"
                     elif forecast_week_start_dt.month != forecast_week_end_dt.month:
@@ -432,12 +464,13 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
                 except ValueError as e:
                     logging.warning(f"Error parsing date for bulletin title/advisory: {e}. Using raw dates.")
                     week_period_str = f"{week_start_for_alert} to {alert_data['week_end']}"
+                    generated_on_str = alert_data["forecast_date"]
 
                 title = alert_data["alert_title_template"].format(cases=predicted_cases) + f" in {municipality_name} for week of {week_period_str}"
                 advisory = (
                     f"{alert_data['alert_message_template'].format(cases=predicted_cases)}\n\n"
                     f"Forecast for week: {week_period_str} (Predicted cases: {predicted_cases}).\n"
-                    f"This forecast was generated on {alert_data['forecast_date']}."
+                    f"This forecast was generated on {generated_on_str}."
                 )
                 risks = f"Potential for increased {disease_type.lower()} transmission and associated health impacts. "
                 if disease_type in disease_threshold_data and "community_response" in disease_threshold_data[disease_type]:

@@ -184,9 +184,25 @@ def generate_bulletin_pdf(bulletin):
         title_width = p.stringWidth(system_title_text, "Helvetica-Bold", 16)
         title_x = (width - title_width) / 2
         p.drawString(title_x, y, system_title_text)
-        y -= (0.2 * inch) + 16 # Space after system title (16 is font size)
+        y -= 16 # Adjust y for the height of the title (font size)
+
+        # Add a small gap between title and subheader
+        y -= (0.05 * inch)
+
+        # Subheader: Climate Risk Information System for Public Health
+        subheader_text = "Climate Risk Information System for Public Health"
+        subheader_font_size = 12 
+        p.setFont("Helvetica-Bold", subheader_font_size) # Consistent with login page (bold)
+        subheader_text_width = p.stringWidth(subheader_text, "Helvetica-Bold", subheader_font_size)
+        subheader_x = (width - subheader_text_width) / 2
+        p.drawString(subheader_x, y, subheader_text)
+        
+        # Adjust y for the height of the subheader
+        y -= subheader_font_size 
+        # Space after the subheader (and title block)
+        y -= (0.2 * inch) 
     except Exception as e:
-        logger.error(f"Error adding logo/system title to PDF: {e}")
+        logger.error(f"Error adding logo/system title/subheader to PDF: {e}")
         # Fallback if image/title fails
         y -= 0.5 * inch 
 
