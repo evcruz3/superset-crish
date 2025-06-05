@@ -226,11 +226,7 @@
         </div>
         {# END: Add Back button #}
 
-         <div class="top-logos" style="margin-top: 20px;">
-            <img src="{{ url_for('static', filename='assets/images/crish/RDTL.svg') }}" alt="RDTL Logo">
-            <img src="{{ url_for('static', filename='assets/images/crish/MOH.png') }}" alt="CRISH Logo">
-            <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
-        </div>
+         {% include "appbuilder/general/security/_top_logos.html" with add_top_logos_margin_top=true %}
 
         <h3 class="crish-heading">{{ _("Register for an Account") }}</h3>
 
@@ -256,11 +252,7 @@
             </div>
         </div>
 
-        <div class="bottom-logos">
-           <img src="{{ url_for('static', filename='assets/images/crish/GCF.svg') }}" alt="Green Climate Fund Logo">
-           <img src="{{ url_for('static', filename='assets/images/crish/UNEP.svg') }}" alt="UN Environment Programme Logo">
-           <img src="{{ url_for('static', filename='assets/images/crish/RIMES.svg') }}" alt="RIMES Logo">
-        </div>
+        {% include "appbuilder/general/security/_bottom_logos.html" %}
 
     </div> {# End .login-container #}
 </div> {# End .login-body-container #}

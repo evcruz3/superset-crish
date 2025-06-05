@@ -204,12 +204,7 @@
     {# Our custom centered container #}
     <div class="login-container">
 
-        {# Add top logos #}
-        <div class="top-logos">
-            <img src="{{ url_for('static', filename='assets/images/crish/RDTL.svg') }}" alt="RDTL Logo">
-            <img src="{{ url_for('static', filename='assets/images/crish/MOH.png') }}" alt="CRISH Logo">
-            <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
-        </div>
+        {% include "appbuilder/general/security/_top_logos.html" %}
 
         {# Add the CRISH heading here #}
         <h3 class="crish-heading">CRISH</h3>
@@ -260,12 +255,7 @@
             </div>
         </div> {# End #loginbox #}
 
-        {# Add bottom logos #}
-        <div class="bottom-logos">
-           <img src="{{ url_for('static', filename='assets/images/crish/GCF.svg') }}" alt="Green Climate Fund Logo">
-           <img src="{{ url_for('static', filename='assets/images/crish/UNEP.svg') }}" alt="UN Environment Programme Logo">
-           <img src="{{ url_for('static', filename='assets/images/crish/RIMES.svg') }}" alt="RIMES Logo">
-        </div>
+        {% include "appbuilder/general/security/_bottom_logos.html" %}
 
     </div> {# End .login-container #}
 </div> {# End .login-body-container #}
