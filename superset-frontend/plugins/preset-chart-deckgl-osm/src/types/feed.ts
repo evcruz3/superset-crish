@@ -17,8 +17,9 @@
  * under the License.
  */
 
-import { JsonObject } from '@superset-ui/core';
+import { HandlerFunction, JsonObject, QueryFormData } from '@superset-ui/core';
 import { LayerOptions } from './layers';
+import { TooltipProps } from 'antd-v5';
 
 /**
  * Feed entry representing a single data point in the feed
@@ -122,9 +123,12 @@ export interface FeedFormData {
 /**
  * Props specific to Feed layer
  */
-export interface FeedLayerProps extends LayerOptions {
+export interface FeedLayerProps {
+  formData: QueryFormData | FeedGeoJSON;
+  payload: JsonObject;
+  setTooltip: (tooltip: TooltipProps) => void;
   geoJson: FeedGeoJSON;
-  selectionOptions: FeedSelectionOptions;
+  selectionOptions: FeedSelectionOptions | LayerOptions['selectionOptions'];
   opacity?: number;
   currentTime?: Date;
   colorSettings?: {

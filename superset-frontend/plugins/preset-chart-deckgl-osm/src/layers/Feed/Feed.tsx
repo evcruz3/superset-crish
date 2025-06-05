@@ -72,13 +72,13 @@ import { TooltipProps } from '../../components/Tooltip';
 import { countries } from '../Country/countries';
 import { LayerOptions, LayerReturn } from '../../types/layers';
 import {
-  FeedLayerProps,
   FeedGeoJSON,
   FeedGeoJSONFeature,
   FeedCentroid,
   ProcessedFeedData,
   FeedFormData,
-  FeedLayerReturn
+  FeedLayerReturn,
+  FeedLayerProps
 } from '../../types/feed';
 
 // Cache for loaded GeoJSON data
@@ -124,6 +124,47 @@ const fadeIn = keyframes`
     opacity: 1;
     transform: translateY(0);
   }
+`;
+
+const ParameterPanel = styled.div`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 250px; /* Adjust width as needed */
+  max-height: calc(60vh);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+`;
+
+const ParameterCard = styled.div<{isSelected: boolean}>`
+  background: ${({isSelected}) => isSelected ? '#e0e0e0' : '#f9f9f9' }; // Darker if selected
+  border: 1px solid ${({isSelected}) => isSelected ? '#cccccc' : '#f0f0f0' };
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-size: 14px;
+  color: ${({ theme }) => theme.colors.grayscale.dark1};
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  cursor: pointer; // Make it clear it's clickable
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background-color: ${({isSelected}) => isSelected ? '#d5d5d5' : '#efefef' };
+  }
+`;
+
+const ParameterPanelTitle = styled.h4`
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: ${({ theme }) => theme.colors.grayscale.dark2};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+  padding-bottom: 8px;
 `;
 
 const FeedPanel = styled.div<{ isExiting?: boolean }>`
@@ -369,6 +410,34 @@ interface FeedPanelProps {
   granularity: TimeGranularity | null;
 }
 
+interface ParameterDisplayProps {
+  parameters: string[];
+  title: string;
+  selectedParameters: string[];
+  onToggleParameter: (parameter: string) => void;
+}
+
+const ParameterDisplay: React.FC<ParameterDisplayProps> = ({ parameters, title, selectedParameters, onToggleParameter }) => {
+  if (!parameters || parameters.length === 0) {
+    return null;
+  }
+
+  return (
+    <ParameterPanel>
+      <ParameterPanelTitle>{title}</ParameterPanelTitle>
+      {parameters.map((param, index) => (
+        <ParameterCard 
+          key={index} 
+          isSelected={selectedParameters.includes(param)}
+          onClick={() => onToggleParameter(param)}
+        >
+          {param}
+        </ParameterCard>
+      ))}
+    </ParameterPanel>
+  );
+};
+
 export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   entries,
   onClose,
@@ -377,6 +446,8 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   temporal_column,
   granularity,
 }) => {
+
+  console.log("entries", entries);
   // Group entries by date, considering granularity
   const entriesByDate = useMemo(() => {
     const grouped: Record<string, FeedEntry[]> = {};
@@ -482,6 +553,8 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
     };
   }, []);
 
+  console.log("sortedDates", sortedDates);
+
   return (
     <FeedPanel isExiting={isExiting}>
       <FeedHeader>
@@ -495,6 +568,7 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
             ((a[formData.title_column] || '') as string).localeCompare((b[formData.title_column] || '') as string)
           );
           
+          console.log("sortedEntries", sortedEntries);
           return (
             <div key={dateKey}>
               <FeedItemDate>
@@ -552,27 +626,16 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   );
 };
 
-export type DeckGLFeedProps = {
-  formData: QueryFormData;
-  payload: JsonObject;
-  setControlValue: (control: string, value: JsonValue) => void;
-  viewport: Viewport;
-  onAddFilter: HandlerFunction;
-  height: number;
-  width: number;
-  datasource: Datasource;
-};
 
 export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>))[] {
   const { 
     formData, 
     payload, 
-    onAddFilter, 
     setTooltip,
     geoJson,
     selectionOptions,
     opacity = 1,
-    currentTime
+    currentTime,
   } = options;
 
   // Type guard to ensure selectionOptions is present and has required properties
@@ -588,7 +651,7 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     return [];
   }
 
-  const fd = formData as FeedFormData;
+  const fd = formData as unknown as FeedFormData;
   const sc = fd.stroke_color_picker;
   const strokeColor = sc ? [sc.r, sc.g, sc.b, 255 * sc.a] : [0, 0, 0, 255];
   const data = payload.data as ProcessedData;
@@ -672,31 +735,32 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       return typeof metric === 'number' && metric > 0;
     })
     .map((feature: FeedGeoJSONFeature) => {
-    const coordinates = feature.geometry.type === 'Polygon' 
-      ? feature.geometry.coordinates[0]
-      : feature.geometry.coordinates[0][0];
-    
-    // Simplified centroid calculation: Use bounding box center
-    let center: [number, number] = [0, 0]; 
-    if (Array.isArray(coordinates) && coordinates.length > 0 && Array.isArray(coordinates[0]) && coordinates[0].length === 2) {
-      const bounds = coordinates.reduce(([minX, minY, maxX, maxY], [x, y]) => [
-        Math.min(minX, x), Math.min(minY, y),
-        Math.max(maxX, x), Math.max(maxY, y),
-      ], [Infinity, Infinity, -Infinity, -Infinity]);
-      center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
-    } else {
-      console.warn('Could not calculate centroid due to unexpected coordinate format for:', feature.properties.ISO);
-    }
+      // Simplified centroid calculation: Use bounding box center
+      let center: [number, number] = [0, 0];
+      const bounds = geojsonExtent(feature.geometry as any);
 
-    return {
-      position: center as [number, number],
-      count: feature.properties.metric || 0,
-      metricValue: feature.properties.metricValue || 0,
-      name: feature.properties.ADM1 || feature.properties.name || feature.properties.NAME || feature.properties.ISO,
-      ISO: feature.properties.ISO,
-      entries: feature.properties.entries || [],
-    };
-  });
+      if (bounds && bounds.length === 4) { // Check for valid BBox
+        center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+      } else {
+        console.warn(
+          'Could not calculate centroid due to missing or invalid bounds for feature:',
+          feature.properties.ISO,
+        );
+      }
+
+      return {
+        position: center as [number, number],
+        count: feature.properties.metric || 0,
+        metricValue: feature.properties.metricValue || 0,
+        name:
+          feature.properties.ADM1 ||
+          feature.properties.name ||
+          feature.properties.NAME ||
+          feature.properties.ISO,
+        ISO: feature.properties.ISO,
+        entries: feature.properties.entries || [],
+      };
+    });
 
   const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
   const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
@@ -897,6 +961,19 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
   return [geoJsonLayer];
 }
 
+// Definition for DeckGLFeed component's own props
+export type DeckGLFeedProps = {
+  formData: QueryFormData;
+  payload: JsonObject;
+  setControlValue: (control: string, value: JsonValue) => void;
+  viewport: Viewport;
+  onAddFilter: HandlerFunction;
+  height: number;
+  width: number;
+  datasource: Datasource;
+};
+
+// Restored DeckGLContainerHandleExtended interface
 interface DeckGLContainerHandleExtended extends DeckGLContainerHandle {
   setTooltip: (tooltip: TooltipProps['tooltip']) => void;
 }
@@ -910,6 +987,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   const [currentTime, setCurrentTime] = useState<Date | undefined>(undefined);
   const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
   const containerRef = useRef<DeckGLContainerHandleExtended>();
+  const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
   
   const { formData, payload, setControlValue, viewport: initialViewport, height, width, onAddFilter } = props;
 
@@ -919,6 +997,113 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
       current.setTooltip(tooltip);
     }
   }, []);
+
+  const panToFeature = useCallback((feature: any) => {
+    if (!feature) return;
+
+    const bounds = geojsonExtent(feature);
+    if (!bounds) return;
+
+    const [minLng, minLat, maxLng, maxLat] = bounds;
+    const centerLng = (minLng + maxLng) / 2;
+    const centerLat = (minLat + maxLat) / 2;
+
+    const latDiff = Math.abs(maxLat - minLat);
+    const lngDiff = Math.abs(maxLng - minLng);
+    const maxDiff = Math.max(latDiff, lngDiff);
+    const zoom = Math.floor(8 - Math.log2(maxDiff));
+
+    const lngOffset = (lngDiff * 0.5);
+
+    const newViewport = {
+      ...currentViewport,
+      longitude: centerLng + lngOffset, 
+      latitude: centerLat,
+      zoom: Math.min(Math.max(zoom, 4), 12), 
+      bearing: 0,
+      pitch: 0,
+      transitionDuration: 1000,
+      transitionInterpolator: new LinearInterpolator(),
+    };
+
+    setCurrentViewport(newViewport);
+    setControlValue('viewport', newViewport);
+  }, [currentViewport, setControlValue]);
+
+  const parameterColumn = useMemo(() => {
+    return formData.parameter_column as string || 'parameter';
+  }, [formData.parameter_column]);
+
+  const uniqueParameters = useMemo(() => {
+    const colNameForUniqueDiscovery = parameterColumn; 
+    if (payload.data?.data && colNameForUniqueDiscovery) {
+      const allParameters = payload.data.data.reduce((acc: string[], entry: FeedEntry) => {
+        const paramValue = entry.parameter; 
+        if (paramValue && typeof paramValue === 'string' && !acc.includes(paramValue)) {
+          acc.push(paramValue);
+        }
+        return acc;
+      }, []);
+      return allParameters.sort();
+    }
+    return [];
+  }, [payload.data?.data, parameterColumn]);
+
+  // Effect to initialize selectedParameters with all uniqueParameters by default
+  useEffect(() => {
+    if (uniqueParameters.length > 0) {
+      setSelectedParameters(uniqueParameters);
+    }
+  }, [uniqueParameters]);
+
+  const onToggleParameter = useCallback((parameter: string) => {
+    setSelectedParameters(prevSelected => 
+      prevSelected.includes(parameter) 
+        ? prevSelected.filter(p => p !== parameter) 
+        : [...prevSelected, parameter]
+    );
+  }, []);
+
+  const layers = useMemo(
+    () => {
+      const currentParameterColumn = formData.parameter_column as string || 'parameter'; 
+      const currentOpacity = typeof formData.opacity === 'number' ? formData.opacity / 100 : 1; // Default to 1 if undefined
+
+      const handleRegionSelection = (region: SelectedRegion | null) => {
+        if (region) {
+          const feature = (geoJson as FeedGeoJSON)?.features.find(
+            (f: any) => f.properties.ISO === region.id || 
+                       f.properties.ADM1 === region.name ||
+                       f.properties.name === region.name ||
+                       f.properties.NAME === region.name
+          );
+          if (feature && panToFeature) {
+            panToFeature(feature);
+          }
+        }
+        if (setSelectedRegion) {
+          setSelectedRegion(region);
+        }
+      };
+
+      return getLayer({
+        formData,
+        payload,
+        onAddFilter: props.onAddFilter,
+        setTooltip,
+        geoJson: geoJson as FeedGeoJSON,
+        selectionOptions: {
+          setSelectedRegion: handleRegionSelection,
+          selectedRegion,
+        },
+        opacity: currentOpacity,
+        currentTime,
+        selectedParameters,
+        parameterColumn: currentParameterColumn,
+      });
+    },
+    [formData, payload, props.onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature, currentTime, setSelectedRegion, selectedParameters, parameterColumn]
+  );
 
   // Load GeoJSON data
   useEffect(() => {
@@ -951,42 +1136,6 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         setError(`Failed to load GeoJSON data for ${country}: ${err.message}`);
       });
   }, [formData.select_country]);
-
-  // Function to pan to a feature
-  const panToFeature = useCallback((feature: any) => {
-    if (!feature) return;
-
-    const bounds = geojsonExtent(feature);
-    if (!bounds) return;
-
-    const [minLng, minLat, maxLng, maxLat] = bounds;
-    const centerLng = (minLng + maxLng) / 2;
-    const centerLat = (minLat + maxLat) / 2;
-
-    // Calculate appropriate zoom level based on feature size
-    const latDiff = Math.abs(maxLat - minLat);
-    const lngDiff = Math.abs(maxLng - minLng);
-    const maxDiff = Math.max(latDiff, lngDiff);
-    const zoom = Math.floor(8 - Math.log2(maxDiff));
-
-    // Calculate offset based on the feature size and viewport width
-    // Offset by 15% of the viewport width to the left
-    const lngOffset = (lngDiff * 0.5);
-
-    const newViewport = {
-      ...currentViewport,
-      longitude: centerLng + lngOffset, // Offset to the left
-      latitude: centerLat,
-      zoom: Math.min(Math.max(zoom, 4), 12), // Clamp zoom between 4 and 12
-      bearing: 0,
-      pitch: 0,
-      transitionDuration: 1000,
-      transitionInterpolator: new LinearInterpolator(),
-    };
-
-    setCurrentViewport(newViewport);
-    setControlValue('viewport', newViewport);
-  }, [currentViewport, setControlValue]);
 
   // Handle viewport changes
   const onViewportChange = useCallback((nextViewport: Viewport) => {
@@ -1076,10 +1225,12 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     }
   }, [formData.temporal_column, payload.data?.data]);
 
-  // Update selected region entries when current time changes
+    // Update selected region entries when current time changes
   useEffect(() => {
+    // Added more detailed initial log
+    console.log('[useEffect selectedRegion.entries] Triggered. selectedParameters:', JSON.stringify(selectedParameters), 'uniqueParameters.length:', uniqueParameters.length, 'currentTime:', currentTime, 'has geoJson:', !!geoJson, 'has payload.data:', !!payload.data?.data, 'selectedRegion ID:', selectedRegion?.id);
+
     if (selectedRegion && currentTime && geoJson && payload.data?.data) {
-      // Find the feature for the selected region
       const feature = (geoJson as FeedGeoJSON).features.find(
         f => f.properties.ISO === selectedRegion.id || 
              f.properties.ADM1 === selectedRegion.name ||
@@ -1088,70 +1239,102 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
       );
 
       if (feature) {
+        console.log('[useEffect selectedRegion.entries] Found feature for region:', selectedRegion.name);
         const regionId = feature.properties.ISO;
-      const date_key = formData.temporal_column;
+        const date_key = formData.temporal_column;
+        const currentParameterColumn = formData.parameter_column as string || 'parameter';
 
-        const entries = payload.data.data.filter((entry: FeedEntry) => {
+        const dateAndParamFilteredEntries = payload.data.data.filter((entry: FeedEntry) => {
+          // Date filtering
           if (!entry[date_key]) return false;
-          const entryDate = new Date(entry[date_key]);
-          const granularity = formData.time_granularity as TimeGranularity | undefined ?? TimeGranularity.DAY;
-          return datesMatch(entryDate, currentTime, granularity);
-        });
-
-        // Update the selected region with filtered entries
-        setSelectedRegion((prevRegion) => prevRegion ? {
-          ...selectedRegion,
-          entries: entries,
-        } : null);
-      }
-    }
-  }, [currentTime, selectedRegion?.id, selectedRegion?.name, geoJson, payload.data?.data]);
-
-  // Filter entries based on current time
-  const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
-    // filter entries based on selected region
-    return entries.filter((entry: FeedEntry) => {
-      return entry.country_id === selectedRegion?.id;
-    });
-  }, [selectedRegion?.id]);
-
-  // Update getLayer to include panToFeature
-  const layers = useMemo(
-    () => {
-      if (!geoJson) return [];
-      
-      const handleRegionSelection = (region: SelectedRegion | null) => {
-        if (region) {
-          const feature = (geoJson as FeedGeoJSON).features.find(
-            (f: any) => f.properties.ISO === region.id || 
-                       f.properties.ADM1 === region.name ||
-                       f.properties.name === region.name ||
-                       f.properties.NAME === region.name
-          );
-          if (feature && panToFeature) {
-            panToFeature(feature);
+          try {
+            const entryDate = new Date(entry[date_key]);
+            const granularity = formData.time_granularity as TimeGranularity | undefined ?? TimeGranularity.DAY;
+            const dateMatches = datesMatch(entryDate, currentTime, granularity);
+            if (!dateMatches) return false;
+          } catch (e) {
+            console.warn('[useEffect] Error processing date for entry:', entry, e);
+            return false;
           }
-        }
-        if (setSelectedRegion) {
-          setSelectedRegion(region);
-        }
-      };
+          
+          // Parameter matching
+          if (selectedParameters.length > 0 && selectedParameters.length !== uniqueParameters.length) {
+            const paramValue = entry.parameter;
+            const isIncluded = paramValue && selectedParameters.includes(paramValue as string);
+            console.log(`[useEffect] paramValue from entry.parameter:`, paramValue, `Included in [${selectedParameters.join(',')}]?:`, isIncluded);
+            if (!isIncluded) {
+              return false;
+            }
+          }
+          return true;
+        });
+        
+        console.log('[useEffect selectedRegion.entries] Entries after date & param filter (before region filter):', JSON.parse(JSON.stringify(dateAndParamFilteredEntries)));
 
-      return getLayer({
-        formData,
-        payload,
-        onAddFilter: props.onAddFilter,
-        setTooltip,
-        geoJson: geoJson as FeedGeoJSON,
-        selectionOptions: {
-          setSelectedRegion: handleRegionSelection,
-          selectedRegion,
-        },
-        currentTime,
-      });
-    },
-    [formData, payload, setTooltip, geoJson, selectedRegion, panToFeature, setSelectedRegion, currentTime, props.onAddFilter],
-  );
+        const finalEntriesForRegion = dateAndParamFilteredEntries.filter((e: FeedEntry) => e.country_id === regionId);
+        console.log('[useEffect selectedRegion.entries] Final entries for region after region filter:', JSON.parse(JSON.stringify(finalEntriesForRegion)));
+
+        setSelectedRegion((prevRegion) => {
+          if (prevRegion && prevRegion.id === selectedRegion.id) { // Ensure we're updating the correct region
+            // console.log('[useEffect selectedRegion.entries] Updating selectedRegion with new entries.');
+            return {
+              // Keep name and id from prevRegion to ensure we're not using a stale selectedRegion from the outer scope
+              name: prevRegion.name, 
+              id: prevRegion.id,     
+              entries: finalEntriesForRegion, 
+            };
+          }
+          // If prevRegion is null or ID doesn't match, it means selectedRegion might have changed
+          // This case should ideally be handled by other effects or logic that sets selectedRegion initially.
+          // For now, if it doesn't match, we don't update to avoid potential inconsistencies.
+          return prevRegion; 
+        });
+      } else {
+        console.log('[useEffect selectedRegion.entries] No feature found for region based on current selectedRegion:', selectedRegion.name, selectedRegion.id);
+        // If no feature, it implies the selected region is no longer valid in the geoJson,
+        // or the selectedRegion state itself is out of sync.
+        // Clear its entries.
+        setSelectedRegion(prev => prev ? {...prev, entries: []} : null);
+      }
+    } else {
+      console.log('[useEffect selectedRegion.entries] Skipped due to missing selectedRegion, currentTime, geoJson, or payload.data.');
+    }
+  }, [
+    currentTime, 
+    selectedRegion?.id, 
+    selectedRegion?.name, 
+    geoJson, 
+    payload.data, 
+    formData.temporal_column, 
+    formData.time_granularity, 
+    selectedParameters, 
+    uniqueParameters, 
+    formData.parameter_column,
+    setSelectedRegion 
+  ]);
+  // Filter entries based on current time AND selected parameters for the side panel
+  const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
+    console.log('[getFilteredEntries] Received entries:', JSON.parse(JSON.stringify(entries)));
+    console.log('[getFilteredEntries] selectedParameters:', selectedParameters);
+    console.log('[getFilteredEntries] uniqueParameters.length:', uniqueParameters.length);
+
+    if (selectedParameters.length === 0) {
+      return [];
+    }
+    else if (selectedParameters.length === uniqueParameters.length) {
+      console.log('[getFilteredEntries] Bypassing parameter filter (all/none selected).');
+      return entries; 
+    }
+
+    const filteredByParam = entries.filter((entry: FeedEntry) => {
+      const paramValue = entry.parameter;
+      const isIncluded = paramValue && selectedParameters.includes(paramValue as string);
+      console.log(`[getFilteredEntries] Entry: ${entry.title}, ParamValue (from entry.parameter): ${paramValue}, selectedParameters: [${selectedParameters.join(',')}], Included: ${isIncluded}`);
+      return isIncluded;
+    });
+    console.log('[getFilteredEntries] Entries after param filter:', JSON.parse(JSON.stringify(filteredByParam)));
+    return filteredByParam;
+  }, [selectedParameters, uniqueParameters.length]);
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -1190,7 +1373,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
           currentDate.setHours(currentDate.getHours() + 1);
           break;
         default:
-          if (granularity === null || granularity === TimeGranularity.DAY) {
+          if (granularity === null || String(granularity) === String(TimeGranularity.DAY)) {
             currentDate.setDate(currentDate.getDate() + 1);
           } else {
             break;
@@ -1213,6 +1396,14 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         height={height}
         setControlValue={setControlValue}
       >
+        {uniqueParameters.length > 0 && (
+          <ParameterDisplay 
+            parameters={uniqueParameters} 
+            title={parameterColumn.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} 
+            selectedParameters={selectedParameters} 
+            onToggleParameter={onToggleParameter} 
+          />
+        )}
         {timeRange && formData.temporal_column && (
           <StyledTimelineSlider>
             <div className="date-indicator">
