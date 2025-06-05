@@ -636,6 +636,7 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     selectionOptions,
     opacity = 1,
     currentTime,
+    selectedParameters
   } = options;
 
   // Type guard to ensure selectionOptions is present and has required properties
@@ -684,6 +685,8 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
           if (!entry[temporalColumn]) return false; // Don't include entries without dates
           try {
             const entryDate = new Date(entry[temporalColumn]);
+            console.log("entry: ", entry)
+            if(entry.parameter && !selectedParameters?.includes(entry.parameter)) return false;
             return datesMatch(entryDate, currentTime, granularity);
           } catch (e) {
             console.warn('Invalid date encountered during filtering:', entry[temporalColumn]);
@@ -1150,31 +1153,6 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     }
   }, [props.viewport]);
 
-  // Calculate initial viewport
-  const computedViewport = useMemo(() => {
-    if (!geoJson || !formData.autozoom) return initialViewport;
-
-    const points = geoJson.features.reduce(
-      (acc: [number, number, number, number][], feature: any) => {
-        const bounds = geojsonExtent(feature);
-        if (bounds) {
-          return [...acc, [bounds[0], bounds[1]], [bounds[2], bounds[3]]];
-        }
-        return acc;
-      },
-      [],
-    );
-
-    if (points.length) {
-      return fitViewport(initialViewport, {
-        width,
-        height,
-        points,
-      });
-    }
-    return initialViewport;
-  }, [formData.autozoom, height, geoJson, initialViewport, width]);
-
   // Handle closing the feed panel with animation
   const handleCloseFeed = useCallback(() => {
     setIsExiting(true);
@@ -1313,28 +1291,28 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     setSelectedRegion 
   ]);
   // Filter entries based on current time AND selected parameters for the side panel
-  const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
-    console.log('[getFilteredEntries] Received entries:', JSON.parse(JSON.stringify(entries)));
-    console.log('[getFilteredEntries] selectedParameters:', selectedParameters);
-    console.log('[getFilteredEntries] uniqueParameters.length:', uniqueParameters.length);
+  // const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
+  //   console.log('[getFilteredEntries] Received entries:', JSON.parse(JSON.stringify(entries)));
+  //   console.log('[getFilteredEntries] selectedParameters:', selectedParameters);
+  //   console.log('[getFilteredEntries] uniqueParameters.length:', uniqueParameters.length);
 
-    if (selectedParameters.length === 0) {
-      return [];
-    }
-    else if (selectedParameters.length === uniqueParameters.length) {
-      console.log('[getFilteredEntries] Bypassing parameter filter (all/none selected).');
-      return entries; 
-    }
+  //   if (selectedParameters.length === 0) {
+  //     return [];
+  //   }
+  //   else if (selectedParameters.length === uniqueParameters.length) {
+  //     console.log('[getFilteredEntries] Bypassing parameter filter (all/none selected).');
+  //     return entries; 
+  //   }
 
-    const filteredByParam = entries.filter((entry: FeedEntry) => {
-      const paramValue = entry.parameter;
-      const isIncluded = paramValue && selectedParameters.includes(paramValue as string);
-      console.log(`[getFilteredEntries] Entry: ${entry.title}, ParamValue (from entry.parameter): ${paramValue}, selectedParameters: [${selectedParameters.join(',')}], Included: ${isIncluded}`);
-      return isIncluded;
-    });
-    console.log('[getFilteredEntries] Entries after param filter:', JSON.parse(JSON.stringify(filteredByParam)));
-    return filteredByParam;
-  }, [selectedParameters, uniqueParameters.length]);
+  //   const filteredByParam = entries.filter((entry: FeedEntry) => {
+  //     const paramValue = entry.parameter;
+  //     const isIncluded = paramValue && selectedParameters.includes(paramValue as string);
+  //     console.log(`[getFilteredEntries] Entry: ${entry.title}, ParamValue (from entry.parameter): ${paramValue}, selectedParameters: [${selectedParameters.join(',')}], Included: ${isIncluded}`);
+  //     return isIncluded;
+  //   });
+  //   console.log('[getFilteredEntries] Entries after param filter:', JSON.parse(JSON.stringify(filteredByParam)));
+  //   return filteredByParam;
+  // }, [selectedParameters, uniqueParameters.length]);
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -1504,7 +1482,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         )}
         {selectedRegion && (
           <FeedSidePanel
-            entries={getFilteredEntries(selectedRegion.entries)}
+            entries={selectedRegion.entries}
             onClose={handleCloseFeed}
             regionName={selectedRegion.name}
             isExiting={isExiting}

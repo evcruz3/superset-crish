@@ -137,6 +137,7 @@ export interface FeedLayerProps {
       strokeColor?: [number, number, number, number];
     };
   };
+  selectedParameters?: [string]
 }
 
 /**
