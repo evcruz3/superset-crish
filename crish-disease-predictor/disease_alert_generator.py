@@ -189,7 +189,7 @@ def generate_disease_map_image(
 
                 threshold_text = ""
                 if rule.get("cases_condition") == "< 1" and rule.get("min_cases") == 0:
-                    threshold_text = "< 1 cases"
+                    threshold_text = "0 Case"
                 elif "min_cases" in rule:
                     threshold_text = f">= {rule['min_cases']} cases"
                 
