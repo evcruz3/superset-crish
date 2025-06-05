@@ -28,10 +28,10 @@ This document outlines the thresholds used for different weather parameters in t
 
 | Value (mm) | Alert Level | Alert Title | Alert Message |
 |------------|-------------|-------------|---------------|
-| > 60 | Extreme Danger | Severe Rainfall Alert | Severe rainfall expected. High risk of flooding and landslides. |
-| > 25 | Danger | Special Rainfall Attention | Significant rainfall expected. Be vigilant of local alerts. |
-| ≥ 15 | Extreme Caution | Rainfall Advisory | Moderate rainfall expected. Exercise caution. |
-| < 15 | Normal | Normal Rainfall Conditions | No significant rainfall expected. |
+| > 100 | Extreme Danger | Severe Rainfall Alert | Severe rainfall expected. High risk of flooding and landslides. |
+| ≥ 50 | Danger | Special Rainfall Attention | Significant rainfall expected. Be vigilant of local alerts. |
+| ≥ 20 | Extreme Caution | Rainfall Advisory | Moderate rainfall expected. Exercise caution. |
+| < 20 | Normal | Normal Rainfall Conditions | No significant rainfall expected. |
 
 ### Safety Tips (Rainfall)
 - Avoid flood-prone areas and crossing flooded roads
@@ -51,10 +51,10 @@ This document outlines the thresholds used for different weather parameters in t
 
 | Value (km/h) | Alert Level | Alert Title | Alert Message |
 |--------------|-------------|-------------|---------------|
-| > 80 | Extreme Danger | Severe Wind Alert | Extremely strong winds expected. Major damage possible. |
-| > 60 | Danger | Strong Wind Warning | Strong winds expected. Secure loose objects and take precautions. |
-| ≥ 40 | Extreme Caution | Wind Speed Advisory | Moderate winds expected. Stay alert for possible disruptions. |
-| < 40 | Normal | Calm Conditions | Calm wind conditions expected. |
+| > 25 | Extreme Danger | Severe Wind Alert | Extremely strong winds expected. Major damage possible. |
+| ≥ 20 | Danger | Strong Wind Warning | Strong winds expected. Secure loose objects and take precautions. |
+| ≥ 15 | Extreme Caution | Wind Speed Advisory | Moderate winds expected. Stay alert for possible disruptions. |
+| < 15 | Normal | Calm Conditions | Calm wind conditions expected. |
 
 ### Safety Tips (Wind Speed)
 - Secure or bring inside loose outdoor items

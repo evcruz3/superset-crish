@@ -8,3 +8,6 @@ schedule
 isoweek
 scikit-learn
 pandas 
+matplotlib
+geopandas
+boto3 

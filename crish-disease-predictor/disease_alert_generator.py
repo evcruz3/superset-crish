@@ -1,9 +1,69 @@
 import re
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import execute_values
 import logging
+from pathlib import Path
+import io
+import boto3
+import matplotlib.pyplot as plt
+import geopandas
+from dotenv import load_dotenv
+
+# Load environment variables for S3 and other configurations
+load_dotenv()
+
+# S3 Configuration from environment variables
+S3_BUCKET_NAME = os.getenv("S3_BUCKET")
+S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL")
+S3_ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+S3_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
+S3_ADDRESSING_STYLE = os.getenv("S3_ADDRESSING_STYLE", "auto")
+
+s3_client = None
+if S3_BUCKET_NAME and S3_ENDPOINT_URL and S3_ACCESS_KEY and S3_SECRET_KEY:
+    s3_client = boto3.client(
+        's3',
+        endpoint_url=S3_ENDPOINT_URL,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
+        config=boto3.session.Config(s3={'addressing_style': S3_ADDRESSING_STYLE})
+    )
+    logging.info(f"S3 client initialized for endpoint: {S3_ENDPOINT_URL}, bucket: {S3_BUCKET_NAME}")
+elif S3_BUCKET_NAME:
+    s3_client = boto3.client('s3')
+    logging.info(f"S3 client initialized for AWS (standard, bucket: {S3_BUCKET_NAME})")
+else:
+    logging.warning("S3 client not initialized. Missing S3_BUCKET or other S3 configuration variables. Image uploads will be skipped.")
+
+# Disease Alert Level Color Mapping
+DISEASE_ALERT_LEVEL_COLORS = {
+    'Severe': '#FF0000',          # Red
+    'High': '#FFA500',            # Orange
+    'Moderate': '#FFFF00',        # Yellow
+    'Low': '#ADD8E6',             # Light Blue
+    'None': '#008000',            # Green (Indicates no significant risk)
+    'Missing data': '#D3D3D3'     # Light grey
+}
+
+# --- Define GeoJSON path ---
+# Standard in-container path (adjust if different for this service)
+CONTAINER_GEOJSON_PATH = Path("/app/config/timorleste.geojson")
+# Development/fallback path
+# Adjust based on where disease_alert_generator.py is relative to the GeoJSON
+# Assuming crish-disease-predictor is at the same level as superset-frontend
+DEV_GEOJSON_PATH = Path(__file__).resolve().parent.parent / "superset-frontend/plugins/preset-chart-deckgl-osm/src/layers/Country/countries/timorleste.geojson"
+
+GEOJSON_FILE_PATH = None
+if CONTAINER_GEOJSON_PATH.exists():
+    GEOJSON_FILE_PATH = str(CONTAINER_GEOJSON_PATH)
+    logging.info(f"Using GeoJSON from container path: {GEOJSON_FILE_PATH}")
+elif DEV_GEOJSON_PATH.exists():
+    GEOJSON_FILE_PATH = str(DEV_GEOJSON_PATH)
+    logging.info(f"Using GeoJSON from development path: {GEOJSON_FILE_PATH}")
+else:
+    logging.error(f"ERROR: GeoJSON file not found at container path ({CONTAINER_GEOJSON_PATH}) or development path ({DEV_GEOJSON_PATH}). Maps cannot be generated.")
 
 # Hardcoded Disease Thresholds Data based on disease_forecast_thresholds.md
 DISEASE_THRESHOLDS_DATA = {
@@ -46,6 +106,190 @@ DISEASE_THRESHOLDS_DATA = {
 - Clean water distribution in affected areas"""
     }
 }
+
+# --- Image Generation and Upload Functions (Adapted for Disease Data) ---
+
+def upload_image_to_s3(image_buffer, s3_key, bucket_name):
+    """
+    Uploads an image buffer to S3.
+    Returns the S3 key if successful, None otherwise.
+    """
+    if not s3_client or not bucket_name:
+        logging.warning(f"S3 client or bucket name not configured. Skipping S3 upload for {s3_key}.")
+        # For local testing without S3, you might return the key, but for real ops, it's None.
+        # return s3_key 
+        return None
+
+    try:
+        s3_client.put_object(Bucket=bucket_name, Key=s3_key, Body=image_buffer, ContentType='image/png')
+        logging.info(f"Successfully uploaded {s3_key} to S3 bucket {bucket_name}.")
+        return s3_key
+    except Exception as e:
+        logging.error(f"Error uploading {s3_key} to S3 bucket {bucket_name}: {e}", exc_info=True)
+        return None
+
+def generate_disease_map_image(
+    disease_type, 
+    predicted_cases, 
+    alert_level, 
+    municipality_name, 
+    municipality_code, 
+    week_start_str, # YYYY-MM-DD
+    geojson_path,
+    all_municipalities_predictions=None # Optional: List of dicts [{municipality_code, alert_level (actual textual level)}]
+):
+    """
+    Generates a choropleth map image for disease forecast.
+    Colors municipalities by their alert level for the specific disease.
+    Highlights the target municipality.
+    Args:
+        all_municipalities_predictions: A list of dictionaries, where each dictionary contains
+                                          at least 'municipality_code' and 'alert_level' (textual)
+                                          for all municipalities to be displayed on the map.
+                                          If None, only the target municipality will be colored based on its alert_level.
+    """
+    if not geojson_path:
+        logging.error("GeoJSON path not provided. Cannot generate map.")
+        return None
+    try:
+        gdf = geopandas.read_file(geojson_path)
+
+        # Create a DataFrame for merging if all_municipalities_predictions is provided
+        if all_municipalities_predictions:
+            import pandas as pd # Import pandas here as it's only used in this block
+            predictions_df = pd.DataFrame(all_municipalities_predictions)
+            # Ensure municipality_code is the correct type for merging if necessary
+            # gdf['ISO'] is typically string, ensure predictions_df['municipality_code'] is also string.
+            predictions_df['municipality_code'] = predictions_df['municipality_code'].astype(str)
+            merged_gdf = gdf.merge(predictions_df, left_on='ISO', right_on='municipality_code', how='left')
+            # Map alert levels to colors, using the text alert_level from predictions_df
+            merged_gdf['color'] = merged_gdf['alert_level'].map(lambda x: DISEASE_ALERT_LEVEL_COLORS.get(x, DISEASE_ALERT_LEVEL_COLORS['Missing data']))
+        else:
+            # If no all_municipalities_predictions, color only the target municipality
+            merged_gdf = gdf.copy()
+            merged_gdf['color'] = DISEASE_ALERT_LEVEL_COLORS['Missing data'] # Default for others
+            if municipality_code in merged_gdf['ISO'].values:
+                merged_gdf.loc[merged_gdf['ISO'] == municipality_code, 'color'] = DISEASE_ALERT_LEVEL_COLORS.get(alert_level, DISEASE_ALERT_LEVEL_COLORS['Missing data'])
+            else:
+                logging.warning(f"Municipality code {municipality_code} not found in GeoJSON for single coloring.")
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+        merged_gdf.plot(color=merged_gdf['color'], ax=ax, edgecolor='black', linewidth=0.5)
+        
+        legend_handles = [
+            plt.Rectangle((0,0),1,1, color=color, label=level) 
+            for level, color in DISEASE_ALERT_LEVEL_COLORS.items() if level != 'Missing data' # Exclude 'None' if it means no color
+        ]
+        # Add missing data to legend if any municipality has it (or if it's the default)
+        if merged_gdf['color'].eq(DISEASE_ALERT_LEVEL_COLORS['Missing data']).any() or not all_municipalities_predictions:
+             legend_handles.append(plt.Rectangle((0,0),1,1, color=DISEASE_ALERT_LEVEL_COLORS['Missing data'], label='Missing data'))
+
+        ax.legend(handles=legend_handles, title=f"{disease_type} Alert Levels", loc="lower right")
+
+        highlight_gdf = merged_gdf[merged_gdf['ISO'] == municipality_code]
+        if not highlight_gdf.empty:
+            highlight_gdf.plot(ax=ax, facecolor='none', edgecolor='blue', linewidth=2.5, linestyle='--')
+        else:
+            logging.warning(f"Municipality code {municipality_code} not found in GeoJSON for highlighting.")
+
+        try:
+            parsed_week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d')
+            # Assuming a week, so we can format a week period string
+            week_end_dt = parsed_week_start_date + timedelta(days=6)
+            if parsed_week_start_date.year != week_end_dt.year:
+                formatted_week_period = f"{parsed_week_start_date.strftime('%d %B, %Y')} - {week_end_dt.strftime('%d %B, %Y')}"
+            elif parsed_week_start_date.month != week_end_dt.month:
+                formatted_week_period = f"{parsed_week_start_date.strftime('%d %B')} - {week_end_dt.strftime('%d %B, %Y')}"
+            else:
+                formatted_week_period = f"{parsed_week_start_date.strftime('%d')} - {week_end_dt.strftime('%d %B, %Y')}"
+        except ValueError:
+            formatted_week_period = f"Week starting {week_start_str}" # Fallback
+            logging.warning(f"Could not parse week_start_str {week_start_str} for title formatting.")
+
+        ax.set_title(f'{disease_type} Forecast for Timor-Leste - Week of {formatted_week_period}\n{alert_level} Alert in {municipality_name} (Cases: {predicted_cases})', fontsize=15)
+        ax.set_axis_off()
+        plt.tight_layout()
+
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=100)
+        plt.close(fig)
+        img_buffer.seek(0)
+        return img_buffer
+    except Exception as e:
+        logging.error(f"Error generating disease map image for {disease_type} in {municipality_name}: {e}", exc_info=True)
+        return None
+
+def generate_disease_table_image(
+    disease_type, 
+    municipality_name, 
+    week_start_str,      # YYYY-MM-DD, start of the week this prediction is for
+    predicted_cases_current_week, # Prediction for the week_start_str
+    # Optional: if you have data for several weeks to show in a table for context
+    # historical_weekly_cases=None, # List of tuples [(week_start_str, cases)] 
+    # forecast_next_week_cases=None   # Tuple (next_week_start_str, cases)
+):
+    """
+    Generates an image of a table with disease forecast data.
+    Currently shows prediction for one week. Extendable for more data.
+    """
+    try:
+        table_data = []
+        # Format current week prediction
+        try:
+            current_week_start_dt = datetime.strptime(week_start_str, '%Y-%m-%d')
+            current_week_end_dt = current_week_start_dt + timedelta(days=6)
+            if current_week_start_dt.year != current_week_end_dt.year:
+                current_week_label = f"{current_week_start_dt.strftime('%d %B, %Y')} - {current_week_end_dt.strftime('%d %B, %Y')}"
+            elif current_week_start_dt.month != current_week_end_dt.month:
+                current_week_label = f"{current_week_start_dt.strftime('%d %B')} - {current_week_end_dt.strftime('%d %B, %Y')}"
+            else:
+                current_week_label = f"{current_week_start_dt.strftime('%d')} - {current_week_end_dt.strftime('%d %B, %Y')}"
+        except ValueError:
+            current_week_label = f"Week starting {week_start_str}"
+        
+        table_data.append([current_week_label, str(predicted_cases_current_week)])
+
+        # Placeholder for adding more rows if historical/next_week_forecast data is passed
+        # e.g., if historical_weekly_cases:
+        #     for hist_week_start, hist_cases in sorted(historical_weekly_cases, key=lambda x: x[0]):
+        #         # format hist_week_start similar to current_week_label
+        #         table_data.append([formatted_hist_week_label, str(hist_cases)])
+        
+        # e.g., if forecast_next_week_cases:
+        #         # format next_week_start_str similar to current_week_label
+        #         table_data.append([formatted_next_week_label, str(forecast_next_week_cases[1])])
+
+        if not table_data:
+            logging.warning(f"No data for {municipality_name} for table generation of {disease_type}.")
+            return None
+
+        num_rows = len(table_data)
+        fig_height = max(2, num_rows * 0.5 + 1) # Adjust height based on rows
+
+        fig, ax = plt.subplots(figsize=(8, fig_height))
+        ax.axis('tight')
+        ax.axis('off')
+        
+        col_labels = ['Forecast Week', f'Predicted {disease_type} Cases']
+        
+        table = ax.table(cellText=table_data, colLabels=col_labels, cellLoc='center', loc='center')
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.2, 1.2)
+
+        ax.set_title(f'{disease_type} Case Forecast for {municipality_name}', fontsize=12, pad=20)
+        
+        plt.tight_layout()
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=100)
+        plt.close(fig)
+        img_buffer.seek(0)
+        return img_buffer
+    except Exception as e:
+        logging.error(f"Error generating disease table image for {disease_type} in {municipality_name}: {e}", exc_info=True)
+        return None
+
+# --- End of Image Generation and Upload Functions ---
 
 def get_iso_code_for_municipality(municipality_name, municipality_iso_codes):
     """Helper to get ISO code, case-insensitive and handles common variations."""
@@ -115,107 +359,178 @@ def generate_disease_alert(
         "alert_message_template": selected_rule["alert_message"],
     }
 
-def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_data=DISEASE_THRESHOLDS_DATA):
+def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_data=DISEASE_THRESHOLDS_DATA, all_predictions_for_map=None):
     """
-    Creates bulletins from alerts and ingests them into the PostgreSQL database.
+    Creates bulletins from alerts, generates images, uploads them, and ingests all into the PostgreSQL database.
 
     Args:
         list_of_alerts (list): A list of alert data dictionaries from generate_disease_alert.
         db_params (dict): Database connection parameters.
         disease_threshold_data (dict): Parsed threshold data.
+        all_predictions_for_map (dict): Optional. A dictionary where keys are disease types (e.g., "Dengue", "Diarrhea")
+                                        and values are lists of alert data for all municipalities for that disease.
+                                        Each item in the list should contain at least 'municipality_code' and 'alert_level'.
+                                        This is used to color all municipalities on the map.
+                                        Example: {"Dengue": [{'municipality_code': 'TL-DI', 'alert_level': 'High'}, ...]}
     """
     if not list_of_alerts:
-        print("No disease alerts to process for bulletins.")
+        logging.info("No disease alerts to process for bulletins.")
         return
 
-    bulletins_to_insert = []
-
-    for alert_data in list_of_alerts:
-        if not alert_data:
-            continue
-
-        disease_type = alert_data["disease_type"]
-        municipality_name = alert_data["municipality_name"]
-        predicted_cases = alert_data["predicted_cases"]
-        
-        # Format dates for titles and messages
-        try:
-            # The bulletin refers to the week the forecast is FOR
-            forecast_week_start_dt = datetime.strptime(alert_data["week_start"], '%Y-%m-%d')
-            # formatted_week_start = forecast_week_start_dt.strftime('%B %d, %Y') # Not directly used in title
-            forecast_week_end_dt = datetime.strptime(alert_data["week_end"], '%Y-%m-%d')
-            # formatted_week_end = forecast_week_end_dt.strftime('%B %d, %Y') # Not directly used in title
-            
-            # If start and end month are the same, format as "Month Day1-Day2, Year"
-            # Otherwise, "Month1 Day1 - Month2 Day2, Year" (assuming year is same)
-            if forecast_week_start_dt.month == forecast_week_end_dt.month:
-                week_period_str = f"{forecast_week_start_dt.strftime('%B %d')}-{forecast_week_end_dt.strftime('%d, %Y')}"
-            else:
-                week_period_str = f"{forecast_week_start_dt.strftime('%B %d')} - {forecast_week_end_dt.strftime('%B %d, %Y')}"
-
-        except ValueError as e:
-            print(f"Error parsing date for bulletin: {e}. Using raw dates.")
-            week_period_str = f"{alert_data['week_start']} to {alert_data['week_end']}"
-
-        # Create bulletin title and advisory
-        title = alert_data["alert_title_template"].format(cases=predicted_cases) + f" in {municipality_name} for week of {week_period_str}"
-        advisory = (
-            f"{alert_data['alert_message_template'].format(cases=predicted_cases)}\\n\\n"
-            f"Forecast for week: {week_period_str} (Predicted cases: {predicted_cases}).\\n"
-            f"This forecast was generated on {alert_data['forecast_date']}."
-        )
-
-        # Get risks and safety tips
-        risks = f"Potential for increased {disease_type.lower()} transmission and associated health impacts. "
-        if disease_type in disease_threshold_data and "community_response" in disease_threshold_data[disease_type]:
-            risks += "\\n\\nCommunity Response Guidance:\\n" + disease_threshold_data[disease_type]["community_response"]
-        
-        safety_tips = ""
-        if disease_type in disease_threshold_data and "prevention_measures" in disease_threshold_data[disease_type]:
-            safety_tips = "Prevention Measures:\\n" + disease_threshold_data[disease_type]["prevention_measures"]
-        
-        hashtags = f"disease,alert,{disease_type.lower()},{municipality_name.lower().replace(' ', '')},{alert_data['alert_level'].lower()}"
-
-        # Ensure this tuple matches the schema in transform_weather_data.py
-        bulletins_to_insert.append((
-            title,
-            advisory,
-            hashtags,
-            1,  # created_by_fk (Admin user ID)
-            datetime.now(), # created_on
-            datetime.now(), # changed_on
-            risks,
-            safety_tips
-        ))
-
-    if not bulletins_to_insert:
-        print("No valid bulletins generated.")
-        return
-
-    # Ingest into PostgreSQL
     conn = None
     try:
         conn = psycopg2.connect(**db_params)
         conn.autocommit = False # Use a transaction
         with conn.cursor() as cur:
-            # This SQL statement and columns MUST match transform_weather_data.py
-            sql = """
+            # Ensure bulletin_image_attachments table exists
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS bulletin_image_attachments (
+                id SERIAL PRIMARY KEY,
+                bulletin_id INTEGER REFERENCES bulletins(id) ON DELETE CASCADE,
+                s3_key TEXT NOT NULL,
+                caption TEXT,
+                created_on TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                changed_on TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            );
+            """)
+            logging.info("Checked/Created table bulletin_image_attachments.")
+
+            bulletin_insert_sql = """
             INSERT INTO bulletins (
                 title, advisory, hashtags, created_by_fk, 
                 created_on, changed_on, risks, safety_tips
-            ) VALUES %s
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
             """
-            # Using execute_values for batch insert
-            execute_values(cur, sql, bulletins_to_insert, page_size=100)
-            conn.commit()
-            print(f"Successfully inserted {len(bulletins_to_insert)} disease bulletins into the database.")
+            attachment_insert_sql = """
+            INSERT INTO bulletin_image_attachments (
+                bulletin_id, s3_key, caption, created_on, changed_on
+            ) VALUES (%s, %s, %s, %s, %s);
+            """
+
+            bulletins_created_count = 0
+            for alert_data in list_of_alerts:
+                if not alert_data:
+                    continue
+
+                disease_type = alert_data["disease_type"]
+                municipality_name = alert_data["municipality_name"]
+                municipality_code = alert_data["municipality_code"]
+                predicted_cases = alert_data["predicted_cases"]
+                alert_level = alert_data["alert_level"]
+                week_start_for_alert = alert_data["week_start"] # YYYY-MM-DD
+                
+                # Format dates for titles and messages
+                try:
+                    forecast_week_start_dt = datetime.strptime(week_start_for_alert, '%Y-%m-%d')
+                    forecast_week_end_dt = forecast_week_start_dt + timedelta(days=6)
+                    if forecast_week_start_dt.year != forecast_week_end_dt.year:
+                        week_period_str = f"{forecast_week_start_dt.strftime('%d %B, %Y')} - {forecast_week_end_dt.strftime('%d %B, %Y')}"
+                    elif forecast_week_start_dt.month != forecast_week_end_dt.month:
+                        week_period_str = f"{forecast_week_start_dt.strftime('%d %B')} - {forecast_week_end_dt.strftime('%d %B, %Y')}"
+                    else:
+                        week_period_str = f"{forecast_week_start_dt.strftime('%d')} - {forecast_week_end_dt.strftime('%d %B, %Y')}"
+                except ValueError as e:
+                    logging.warning(f"Error parsing date for bulletin title/advisory: {e}. Using raw dates.")
+                    week_period_str = f"{week_start_for_alert} to {alert_data['week_end']}"
+
+                title = alert_data["alert_title_template"].format(cases=predicted_cases) + f" in {municipality_name} for week of {week_period_str}"
+                advisory = (
+                    f"{alert_data['alert_message_template'].format(cases=predicted_cases)}\n\n"
+                    f"Forecast for week: {week_period_str} (Predicted cases: {predicted_cases}).\n"
+                    f"This forecast was generated on {alert_data['forecast_date']}."
+                )
+                risks = f"Potential for increased {disease_type.lower()} transmission and associated health impacts. "
+                if disease_type in disease_threshold_data and "community_response" in disease_threshold_data[disease_type]:
+                    risks += "\n\nCommunity Response Guidance:\n" + disease_threshold_data[disease_type]["community_response"]
+                safety_tips = ""
+                if disease_type in disease_threshold_data and "prevention_measures" in disease_threshold_data[disease_type]:
+                    safety_tips = "Prevention Measures:\n" + disease_threshold_data[disease_type]["prevention_measures"]
+                hashtags = f"disease,alert,{disease_type.lower()},{municipality_name.lower().replace(' ', '')},{alert_level.lower()}"
+                current_time = datetime.now()
+
+                bulletin_id = None
+                try:
+                    cur.execute(bulletin_insert_sql, (
+                        title, advisory, hashtags, 1, current_time, current_time, risks, safety_tips
+                    ))
+                    bulletin_id = cur.fetchone()[0]
+                    bulletins_created_count += 1
+                    logging.info(f"Inserted bulletin ID {bulletin_id} for {disease_type} in {municipality_name}")
+                except Exception as e:
+                    logging.error(f"Error inserting bulletin for {disease_type} in {municipality_name}: {e}", exc_info=True)
+                    conn.rollback() # Rollback this specific bulletin insertion attempt
+                    continue # Skip to next alert
+
+                if bulletin_id and S3_BUCKET_NAME and GEOJSON_FILE_PATH:
+                    bulletin_s3_image_keys = []
+                    map_image_buffer = None
+                    table_image_buffer = None
+                    
+                    # Prepare data for map: list of all predictions for THIS disease type
+                    all_preds_for_map_type = []
+                    if all_predictions_for_map and disease_type in all_predictions_for_map:
+                        all_preds_for_map_type = all_predictions_for_map[disease_type]
+
+                    # 1. Disease Map Image
+                    map_image_buffer = generate_disease_map_image(
+                        disease_type, predicted_cases, alert_level, 
+                        municipality_name, municipality_code, week_start_for_alert, 
+                        GEOJSON_FILE_PATH, all_municipalities_predictions=all_preds_for_map_type
+                    )
+                    if map_image_buffer:
+                        map_s3_key = f"bulletin_charts/disease_map_{week_start_for_alert}_{disease_type.replace(' ', '_')}_{municipality_code}_{current_time.strftime('%Y%m%d%H%M%S%f')}.png"
+                        uploaded_map_key = upload_image_to_s3(map_image_buffer, map_s3_key, S3_BUCKET_NAME)
+                        if uploaded_map_key:
+                            bulletin_s3_image_keys.append({
+                                "key": uploaded_map_key,
+                                "caption": f"{disease_type} forecast map for {municipality_name}, week of {week_period_str}"
+                            })
+                    
+                    # 2. Disease Table Image
+                    table_image_buffer = generate_disease_table_image(
+                        disease_type, municipality_name, week_start_for_alert, predicted_cases
+                        # Add historical/next_week data here if available and function is extended
+                    )
+                    if table_image_buffer:
+                        table_s3_key = f"bulletin_charts/disease_table_{week_start_for_alert}_{disease_type.replace(' ', '_')}_{municipality_code}_{current_time.strftime('%Y%m%d%H%M%S%f')}.png"
+                        uploaded_table_key = upload_image_to_s3(table_image_buffer, table_s3_key, S3_BUCKET_NAME)
+                        if uploaded_table_key:
+                            bulletin_s3_image_keys.append({
+                                "key": uploaded_table_key,
+                                "caption": f"{disease_type} case forecast table for {municipality_name}, week of {week_period_str}"
+                            })
+
+                    # Insert image attachments
+                    if bulletin_s3_image_keys:
+                        for img_data in bulletin_s3_image_keys:
+                            try:
+                                cur.execute(attachment_insert_sql, (
+                                    bulletin_id, img_data["key"], img_data["caption"], current_time, current_time
+                                ))
+                                logging.info(f"  Attached image {img_data['key']} to bulletin {bulletin_id}")
+                            except Exception as e:
+                                logging.error(f"Error attaching image {img_data['key']} to bulletin {bulletin_id}: {e}", exc_info=True)
+                                # Decide if this error should rollback the bulletin insert too. For now, just log and continue.
+                                # conn.rollback() # This would rollback the bulletin if an attachment fails.
+                    
+                elif not S3_BUCKET_NAME:
+                    logging.warning(f"S3_BUCKET_NAME not set. Skipping image generation/upload for bulletin ID {bulletin_id}.")
+                elif not GEOJSON_FILE_PATH:
+                    logging.warning(f"GEOJSON_FILE_PATH not set. Skipping map image generation for bulletin ID {bulletin_id}.")
+            
+            if bulletins_created_count > 0:
+                conn.commit()
+                logging.info(f"Successfully processed and inserted {bulletins_created_count} disease bulletins and their attachments.")
+            else:
+                logging.info("No new disease bulletins were created in this run.")
+                conn.rollback() # Rollback if nothing was actually committed (e.g. table creation only)
 
     except psycopg2.DatabaseError as e:
-        print(f"Database error during bulletin ingestion: {e}")
+        logging.error(f"Database error during bulletin processing: {e}", exc_info=True)
         if conn:
             conn.rollback()
     except Exception as e:
-        print(f"Error ingesting disease bulletins to PostgreSQL: {e}")
+        logging.error(f"General error during bulletin processing: {e}", exc_info=True)
         if conn:
             conn.rollback()
     finally:

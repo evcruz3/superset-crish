@@ -133,7 +133,16 @@ class DiarrheaPredictor:
 
     def get_week_info(self, date_str):
         """Get year and week number from a date string."""
-        date = datetime.strptime(date_str, '%Y-%m-%d')
+        # Ensure date_str is in 'YYYY-MM-DD' format
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            # Attempt to parse if it's a different common format or already a date object
+            if isinstance(date_str, datetime):
+                date = date_str
+            else: # Add more parsing attempts if other formats are possible
+                raise ValueError(f"Date string '{date_str}' is not in 'YYYY-MM-DD' format and could not be parsed.")
+
         year = date.year
         week = isoweek.Week.withdate(date).week
         return year, week
@@ -244,6 +253,7 @@ class DiarrheaPredictor:
 def main():
     predictor = DiarrheaPredictor()
     pipeline_name = "Diarrhea Predictor Pipeline"
+    pipeline_start_time = datetime.now() # For recording run
     municipalities_processed_count = 0
     alerts_generated_this_run = 0
     bulletins_created_this_run = 0 # Assuming 1 bulletin per alert for now
@@ -253,9 +263,10 @@ def main():
         predictor.connect_db()
         
         # Load weekly averages and forecast data
-        current_date = datetime.now().strftime('%Y%m%d')
-        weekly_averages_file = f"{predictor.weather_data_dir}/all_municipalities_weekly_averages_{current_date}.json"
-        forecast_file = f"{predictor.weather_data_dir}/all_municipalities_forecast_{current_date}.json"
+        # Standardized date format for filenames
+        current_date_filename_suffix = pipeline_start_time.strftime('%Y%m%d')
+        weekly_averages_file = f"{predictor.weather_data_dir}/all_municipalities_weekly_averages_{current_date_filename_suffix}.json"
+        forecast_file = f"{predictor.weather_data_dir}/all_municipalities_forecast_{current_date_filename_suffix}.json"
         
         try:
             with open(weekly_averages_file, 'r') as f:
@@ -324,41 +335,40 @@ def main():
                     predictions[municipality] = {
                         'current_week': {
                             'predicted_cases': current_prediction,
-                            'prediction_date': datetime.now().strftime('%Y-%m-%d'),
+                            # Standardized prediction_date format
+                            'prediction_date': pipeline_start_time.strftime('%Y-%m-%d'),
                             'weeks_used': [
                                 {'start': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_start'], 
                                  'end': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_end']}
-                                for i in range(int(os.getenv('MAX_WEEKS_HISTORY', '4')))
-                            ]
+                                for i in range(int(os.getenv('MAX_WEEKS_HISTORY', '4')))]
                         }
                     }
                     
                     # Add next week prediction if available
                     if next_week_prediction is not None:
                         # Calculate next week's date range
-                        current_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d') # Corrected variable name
-                        next_week_start = current_end_dt + timedelta(days=1)
-                        next_week_end = next_week_start + timedelta(days=6)
+                        # Ensure week_end is parsed correctly before timedelta operations
+                        last_hist_week_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d') 
+                        next_week_start_dt = last_hist_week_end_dt + timedelta(days=1)
+                        next_week_end_dt = next_week_start_dt + timedelta(days=6)
                         
                         predictions[municipality]['next_week'] = {
                             'predicted_cases': next_week_prediction,
-                            'prediction_date': datetime.now().strftime('%Y-%m-%d'),
+                            # Standardized prediction_date format
+                            'prediction_date': pipeline_start_time.strftime('%Y-%m-%d'),
                             'week_range': {
-                                'start': next_week_start.strftime('%Y-%m-%d'),
-                                'end': next_week_end.strftime('%Y-%m-%d')
+                                'start': next_week_start_dt.strftime('%Y-%m-%d'),
+                                'end': next_week_end_dt.strftime('%Y-%m-%d')
                             }
                         }
 
                     # --- Generate Alerts --- 
-                    current_forecast_date_str = datetime.now().strftime('%Y-%m-%d')
+                    # Use a consistent forecast_date for alerts generated in this run
+                    alert_forecast_date_str = pipeline_start_time.strftime('%Y-%m-%d')
 
                     # Alert for current week prediction
                     if current_prediction is not None:
                         # Determine the week start/end for the current prediction
-                        # This assumes the last week in 'weeks_used' is the week being predicted for
-                        # Or, if it's a direct forecast for a "current week", adjust accordingly.
-                        # For simplicity, let's assume `weeks[-1]` represents the week *ending* now (or most recently).
-                        # If the model predicts for the week *after* the last historical data point:
                         last_hist_week_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
                         current_pred_week_start_dt = last_hist_week_end_dt + timedelta(days=1)
                         current_pred_week_end_dt = current_pred_week_start_dt + timedelta(days=6)
@@ -367,7 +377,7 @@ def main():
                             disease_type="Diarrhea",
                             predicted_cases=int(current_prediction),
                             municipality_name=municipality,
-                            forecast_date_str=current_forecast_date_str,
+                            forecast_date_str=alert_forecast_date_str, # Standardized
                             week_start_str=current_pred_week_start_dt.strftime('%Y-%m-%d'),
                             week_end_str=current_pred_week_end_dt.strftime('%Y-%m-%d'),
                             municipality_iso_code=municipality_iso_code
@@ -382,7 +392,7 @@ def main():
                             disease_type="Diarrhea",
                             predicted_cases=int(next_week_prediction),
                             municipality_name=municipality,
-                            forecast_date_str=current_forecast_date_str,
+                            forecast_date_str=alert_forecast_date_str, # Standardized
                             week_start_str=predictions[municipality]['next_week']['week_range']['start'],
                             week_end_str=predictions[municipality]['next_week']['week_range']['end'],
                             municipality_iso_code=municipality_iso_code
@@ -398,7 +408,8 @@ def main():
 
         # Save predictions
         os.makedirs(predictor.predictions_dir, exist_ok=True)
-        predictions_file = f"{predictor.predictions_dir}/diarrhea_predictions_{current_date}.json"
+        # Use standardized date suffix for predictions file
+        predictions_file = f"{predictor.predictions_dir}/diarrhea_predictions_{current_date_filename_suffix}.json"
         with open(predictions_file, 'w') as f:
             json.dump(predictions, f, indent=2)
         
@@ -414,8 +425,20 @@ def main():
         # --- Ingest Bulletins ---    
         if all_alerts:
             print(f"\nAttempting to ingest {len(all_alerts)} Diarrhea alerts as bulletins...")
-            create_and_ingest_bulletins(all_alerts, predictor.db_params)
-            bulletins_created_this_run = len(all_alerts) # Assuming one bulletin per alert that leads to bulletin creation
+
+            # Prepare data for full map coloring
+            predictions_for_map_display = []
+            for alert_item in all_alerts:
+                if alert_item and 'municipality_code' in alert_item and 'alert_level' in alert_item:
+                    predictions_for_map_display.append({
+                        'municipality_code': alert_item['municipality_code'],
+                        'alert_level': alert_item['alert_level']
+                    })
+            
+            all_predictions_for_map_arg = {"Diarrhea": predictions_for_map_display}
+            
+            create_and_ingest_bulletins(all_alerts, predictor.db_params, all_predictions_for_map=all_predictions_for_map_arg)
+            bulletins_created_this_run = len(all_alerts) # This might be an overestimation if some bulletins fail
             
             # Also ingest raw alerts to disease_forecast_alerts table
             create_and_ingest_disease_forecast_alerts(all_alerts, predictor.db_params)

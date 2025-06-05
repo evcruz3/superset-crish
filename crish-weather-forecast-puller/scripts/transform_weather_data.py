@@ -46,6 +46,22 @@ ALERT_LEVEL_COLORS = {
     'Missing data': '#D3D3D3'     # Light grey for missing data
 }
 
+# --- Weather Parameter Threshold Constants ---
+# Heat Index (°C)
+HEAT_INDEX_EXTREME_DANGER = 42
+HEAT_INDEX_DANGER = 40
+HEAT_INDEX_EXTREME_CAUTION = 36
+
+# Rainfall (mm)
+RAINFALL_EXTREME_DANGER = 100
+RAINFALL_DANGER = 50
+RAINFALL_EXTREME_CAUTION = 20
+
+# Wind Speed (km/h)
+WIND_SPEED_EXTREME_DANGER = 25
+WIND_SPEED_DANGER = 20
+WIND_SPEED_EXTREME_CAUTION = 15
+
 # --- Define GeoJSON path ---
 # Standard in-container path
 CONTAINER_GEOJSON_PATH = Path("/app/config/timorleste.geojson")
@@ -119,17 +135,17 @@ def calculate_heat_index(tmax_df, rh_df):
 def get_alert_level_for_value(parameter_name, value):
     """Determines the alert level based on parameter name and value."""
     if parameter_name == 'Heat Index':
-        if value > 42: return 'Extreme Danger'
-        if value > 40: return 'Danger'
-        if value >= 36: return 'Extreme Caution'
+        if value > HEAT_INDEX_EXTREME_DANGER: return 'Extreme Danger'
+        if value > HEAT_INDEX_DANGER: return 'Danger'
+        if value >= HEAT_INDEX_EXTREME_CAUTION: return 'Extreme Caution'
     elif parameter_name == 'Rainfall':
-        if value > 60: return 'Extreme Danger'
-        if value > 25: return 'Danger'
-        if value >= 15: return 'Extreme Caution'
+        if value > RAINFALL_EXTREME_DANGER: return 'Extreme Danger'
+        if value >= RAINFALL_DANGER: return 'Danger'
+        if value >= RAINFALL_EXTREME_CAUTION: return 'Extreme Caution'
     elif parameter_name == 'Wind Speed':
-        if value > 80: return 'Extreme Danger'
-        if value > 60: return 'Danger'
-        if value >= 40: return 'Extreme Caution'
+        if value > WIND_SPEED_EXTREME_DANGER: return 'Extreme Danger'
+        if value >= WIND_SPEED_DANGER: return 'Danger'
+        if value >= WIND_SPEED_EXTREME_CAUTION: return 'Extreme Caution'
     return 'Normal'
 
 def transform_weather_data(input_file):
@@ -191,17 +207,17 @@ def generate_weather_alerts(dataframes):
     # Heat Index Alerts
     heat_index_alerts = dataframes['heat_index_daily_region'].with_columns([
         pl.lit('Heat Index').alias('weather_parameter'),
-        pl.when(pl.col('value') > 42).then(pl.lit('Extreme Danger'))
-          .when(pl.col('value') > 40).then(pl.lit('Danger'))
-          .when(pl.col('value') >= 36).then(pl.lit('Extreme Caution'))
+        pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
+          .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Danger'))
+          .when(pl.col('value') >= HEAT_INDEX_EXTREME_CAUTION).then(pl.lit('Extreme Caution'))
           .otherwise(pl.lit('Normal')).alias('alert_level'),
-        pl.when(pl.col('value') > 42).then(pl.lit('Extreme Heat Index Alert'))
-          .when(pl.col('value') > 40).then(pl.lit('Dangerous Heat Index Alert'))
-          .when(pl.col('value') >= 36).then(pl.lit('High Heat Index Warning'))
+        pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Extreme Heat Index Alert'))
+          .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Dangerous Heat Index Alert'))
+          .when(pl.col('value') >= HEAT_INDEX_EXTREME_CAUTION).then(pl.lit('High Heat Index Warning'))
           .otherwise(pl.lit('Normal Conditions')).alias('alert_title'),
-        pl.when(pl.col('value') > 42).then(pl.lit('Heat stroke imminent. Avoid any outdoor activities.'))
-          .when(pl.col('value') > 40).then(pl.lit('Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure.'))
-          .when(pl.col('value') >= 36).then(pl.lit('Heat cramps and heat exhaustion possible; continuing activity could result in heat stroke.'))
+        pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Heat stroke imminent. Avoid any outdoor activities.'))
+          .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure.'))
+          .when(pl.col('value') >= HEAT_INDEX_EXTREME_CAUTION).then(pl.lit('Heat cramps and heat exhaustion possible; continuing activity could result in heat stroke.'))
           .otherwise(pl.lit('No heat index alerts at this time.')).alias('alert_message'),
         pl.col('value').alias('parameter_value')
     ])
@@ -209,17 +225,17 @@ def generate_weather_alerts(dataframes):
     # Rainfall Alerts
     rainfall_alerts = dataframes['rainfall_daily_weighted_average'].with_columns([
         pl.lit('Rainfall').alias('weather_parameter'),
-        pl.when(pl.col('value') > 60).then(pl.lit('Extreme Danger'))
-          .when(pl.col('value') > 25).then(pl.lit('Danger'))
-          .when(pl.col('value') >= 15).then(pl.lit('Extreme Caution'))
+        pl.when(pl.col('value') > RAINFALL_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
+          .when(pl.col('value') >= RAINFALL_DANGER).then(pl.lit('Danger'))
+          .when(pl.col('value') >= RAINFALL_EXTREME_CAUTION).then(pl.lit('Extreme Caution'))
           .otherwise(pl.lit('Normal')).alias('alert_level'),
-        pl.when(pl.col('value') > 60).then(pl.lit('Severe Rainfall Alert'))
-          .when(pl.col('value') > 25).then(pl.lit('Special Rainfall Attention'))
-          .when(pl.col('value') >= 15).then(pl.lit('Rainfall Advisory'))
+        pl.when(pl.col('value') > RAINFALL_EXTREME_DANGER).then(pl.lit('Severe Rainfall Alert'))
+          .when(pl.col('value') >= RAINFALL_DANGER).then(pl.lit('Special Rainfall Attention'))
+          .when(pl.col('value') >= RAINFALL_EXTREME_CAUTION).then(pl.lit('Rainfall Advisory'))
           .otherwise(pl.lit('Normal Rainfall Conditions')).alias('alert_title'),
-        pl.when(pl.col('value') > 60).then(pl.lit('Severe rainfall expected. High risk of flooding and landslides.'))
-          .when(pl.col('value') > 25).then(pl.lit('Significant rainfall expected. Be vigilant of local alerts.'))
-          .when(pl.col('value') >= 15).then(pl.lit('Moderate rainfall expected. Exercise caution.'))
+        pl.when(pl.col('value') > RAINFALL_EXTREME_DANGER).then(pl.lit('Severe rainfall expected. High risk of flooding and landslides.'))
+          .when(pl.col('value') >= RAINFALL_DANGER).then(pl.lit('Significant rainfall expected. Be vigilant of local alerts.'))
+          .when(pl.col('value') >= RAINFALL_EXTREME_CAUTION).then(pl.lit('Moderate rainfall expected. Exercise caution.'))
           .otherwise(pl.lit('No significant rainfall expected.')).alias('alert_message'),
         pl.col('value').alias('parameter_value')
     ])
@@ -227,17 +243,17 @@ def generate_weather_alerts(dataframes):
     # Wind Alerts
     wind_alerts = dataframes['ws_daily_avg_region'].with_columns([
         pl.lit('Wind Speed').alias('weather_parameter'),
-        pl.when(pl.col('value') > 80).then(pl.lit('Extreme Danger'))
-          .when(pl.col('value') > 60).then(pl.lit('Danger'))
-          .when(pl.col('value') >= 40).then(pl.lit('Extreme Caution'))
+        pl.when(pl.col('value') > WIND_SPEED_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
+          .when(pl.col('value') >= WIND_SPEED_DANGER).then(pl.lit('Danger'))
+          .when(pl.col('value') >= WIND_SPEED_EXTREME_CAUTION).then(pl.lit('Extreme Caution'))
           .otherwise(pl.lit('Normal')).alias('alert_level'),
-        pl.when(pl.col('value') > 80).then(pl.lit('Severe Wind Alert'))
-          .when(pl.col('value') > 60).then(pl.lit('Strong Wind Warning'))
-          .when(pl.col('value') >= 40).then(pl.lit('Wind Speed Advisory'))
+        pl.when(pl.col('value') > WIND_SPEED_EXTREME_DANGER).then(pl.lit('Severe Wind Alert'))
+          .when(pl.col('value') >= WIND_SPEED_DANGER).then(pl.lit('Strong Wind Warning'))
+          .when(pl.col('value') >= WIND_SPEED_EXTREME_CAUTION).then(pl.lit('Wind Speed Advisory'))
           .otherwise(pl.lit('Calm Conditions')).alias('alert_title'),
-        pl.when(pl.col('value') > 80).then(pl.lit('Extremely strong winds expected. Major damage possible.'))
-          .when(pl.col('value') > 60).then(pl.lit('Strong winds expected. Secure loose objects and take precautions.'))
-          .when(pl.col('value') >= 40).then(pl.lit('Moderate winds expected. Stay alert for possible disruptions.'))
+        pl.when(pl.col('value') > WIND_SPEED_EXTREME_DANGER).then(pl.lit('Extremely strong winds expected. Major damage possible.'))
+          .when(pl.col('value') >= WIND_SPEED_DANGER).then(pl.lit('Strong winds expected. Secure loose objects and take precautions.'))
+          .when(pl.col('value') >= WIND_SPEED_EXTREME_CAUTION).then(pl.lit('Moderate winds expected. Stay alert for possible disruptions.'))
           .otherwise(pl.lit('Calm wind conditions expected.')).alias('alert_message'),
         pl.col('value').alias('parameter_value')
     ])
