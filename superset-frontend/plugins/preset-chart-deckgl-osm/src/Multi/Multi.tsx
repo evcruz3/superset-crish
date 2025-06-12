@@ -22,6 +22,7 @@ import {
   styled,
   getNumberFormatter,
   getSequentialSchemeRegistry, // Import the color scheme registry
+  t,
 } from '@superset-ui/core'
 import { Layer } from '@deck.gl/core'
 import { Slider, DatePicker } from 'antd'
@@ -1243,7 +1244,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                         timeFormatted: moment(item.time).format(subslice.form_data.date_format || 'DD MMM YYYY') // Format time
                       }));
 
-                    setRegionChartModalTitle(`${subslice.slice_name} (${regionName})`);
+                    setRegionChartModalTitle(`${t(subslice.slice_name)} (${regionName})`);
 
                     if (categoryTimelineData.length > 0) {
                       setRegionChartModalContent(
@@ -1311,7 +1312,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                         const colorScheme = getSequentialSchemeRegistry().get(schemeName);
                         const lineColors = colorScheme?.colors || ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']; // Default colors if scheme not found
 
-                        setRegionChartModalTitle(`${subslice.slice_name} (${regionName}) (${subslice.form_data.metric_unit || ''})`);
+                        setRegionChartModalTitle(`${t(subslice.slice_name)} (${regionName}) (${subslice.form_data.metric_unit || ''})`);
                         setRegionChartModalContent(
                           <ResponsiveContainer width="100%" height={400}>
                             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -2284,9 +2285,9 @@ const DeckMulti = (props: DeckMultiProps) => {
                               ☰
                             </span>
                             <span className="layer-name">
-                              {subslice?.slice_name}
-                              {loadingState?.loading && ' (Loading...)'}
-                              {loadingState?.error && ' (Load Failed)'}
+                              {subslice?.slice_name && t(subslice.slice_name)}
+                              {loadingState?.loading && t(' (Loading...)')}
+                              {loadingState?.error && t(' (Load Failed)')}
                             </span>
                             <div className="header-controls">
                               {layer && (
@@ -2385,7 +2386,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                 metricUnit={metricUnit}
                 values={isCategorical ? categoricalValues : metricValues}
                 metricName={""}
-                layerName={subslice.slice_name}
+                layerName={t(subslice.slice_name)}
                 isCategorical={isCategorical}
                 rangeMap={subslice.form_data.range_map}
               />
