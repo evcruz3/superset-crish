@@ -50,7 +50,7 @@ import { getExploreLongUrl } from '../utils/explore'
 import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
-import { countries, type CountryKeys } from '../layers/Country/countries'
+import { countries } from '../layers/Country/countries'
 import type { CountryKeys } from '../layers/Country/countries'
 import {
   FeedEntry,
@@ -2030,6 +2030,65 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, [currentTime]);
 
+   
+    // Do a switch case for the msgid phrases so that pybabel can detect the msgid phrases and translate them
+    // msgid "Max Temperature Forecast"
+    // msgstr "Previzaun Temperatura Maximu"
+
+    // msgid "Min Temperature Forecast"
+    // msgstr "Previzaun Temperatura Minimu"
+
+    // msgid "Wind Speed Forecast"
+    // msgstr "Previzaun Velosidade Anin"
+
+    // msgid "Relative Humidity Forecast"
+    // msgstr "Previzaun Relativu Umidade"
+
+    // msgid "Rainfall Forecast"
+    // msgstr "Previzaun Udan Been"
+
+    // msgid "This Week's Dengue Case"
+    // msgstr "Kazu Dengue Semana nee'e"
+
+    // msgid "This Week's Diarrhea Case"
+    // msgstr "Kazu Diareia Semana ne'e"
+
+    // msgid "Weather data provided by ECMWF"
+    // msgstr "Dadus kona-ba tempu forsene husi ECMWF"
+
+    // msgid "Last successful weather update:"
+    // msgstr "Atualizasaun ikus kona-ba tempu ne'ebé susesu:"
+
+    // msgid "Heat Index Forecast"
+    // msgstr "Previzaun Indise Temperatura" 
+
+  const getLayerName = (sliceName: string) => {
+    switch (sliceName) {
+      case 'Max Temperature Forecast':
+        return t('Max Temperature Forecast');
+      case 'Min Temperature Forecast':
+        return t('Min Temperature Forecast');
+      case 'Wind Speed Forecast':
+        return t('Wind Speed Forecast');
+      case 'Relative Humidity Forecast':
+        return t('Relative Humidity Forecast');
+      case 'Rainfall Forecast':
+        return t('Rainfall Forecast');
+      case 'This Week\'s Dengue Case':
+        return t('This Week\'s Dengue Case');
+      case 'This Week\'s Diarrhea Case':
+        return t('This Week\'s Diarrhea Case');
+      case 'Weather data provided by ECMWF':
+        return t('Weather data provided by ECMWF');
+      case 'Last successful weather update:':
+        return t('Last successful weather update:');
+      case 'Heat Index Forecast':
+        return t('Heat Index Forecast');
+      default:
+        return sliceName;
+    }
+  }
+
   // Add the new Modal to the render function
   return (
     <DeckGLContainerStyledWrapper
@@ -2285,7 +2344,8 @@ const DeckMulti = (props: DeckMultiProps) => {
                               ☰
                             </span>
                             <span className="layer-name">
-                              {subslice?.slice_name && t(subslice.slice_name)}
+                             
+                              {subslice?.slice_name && getLayerName(subslice.slice_name)}
                               {loadingState?.loading && t(' (Loading...)')}
                               {loadingState?.error && t(' (Load Failed)')}
                             </span>
