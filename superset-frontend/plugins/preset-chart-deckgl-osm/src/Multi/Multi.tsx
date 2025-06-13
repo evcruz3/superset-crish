@@ -1270,7 +1270,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                                   flexShrink: 0
                                 }}></span>
                                 <span style={{ fontWeight: 500, marginRight: '10px', minWidth: '150px' }}>{item.timeFormatted}:</span>
-                                <span>{item.category}</span>
+                                <span>{t(item.category)}</span>
                               </li>
                             ))}
                           </ul>

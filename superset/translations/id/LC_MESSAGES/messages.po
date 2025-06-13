@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 09:43+0800\n"
+"POT-Creation-Date: 2025-06-13 10:18+0800\n"
 "PO-Revision-Date: 2025-06-12 16:48+0800\n"
 "Last-Translator: \n"
 "Language: tet\n"
@@ -4165,6 +4165,10 @@ msgstr "Tipu fonte dadus la válidu"
 
 msgid "Datasource type is required when datasource_id is given"
 msgstr "Tipu fonte dadus nian presiza bainhira fó id_fontedadus"
+
+#, fuzzy
+msgid "Date"
+msgstr "data"
 
 msgid "Date Time Format"
 msgstr "Formatu data no oras nian"
@@ -14586,6 +14590,10 @@ msgstr "Previzaun Tempu"
 
 msgid "Weather data provided by ECMWF"
 msgstr "Dadus kona-ba tempu forsene husi ECMWF"
+
+#, fuzzy
+msgid "Weather update history unavailable"
+msgstr "Imajen ki'ik la disponivel"
 
 msgid "Web"
 msgstr "Web"

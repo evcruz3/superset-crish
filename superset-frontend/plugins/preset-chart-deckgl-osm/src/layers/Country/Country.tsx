@@ -31,6 +31,7 @@ import {
   getSequentialSchemeRegistry,
   styled,
   getCategoricalSchemeRegistry,
+  t,
 } from '@superset-ui/core';
 import { scaleLinear, ScaleLinear } from 'd3-scale';
 import { Slider, DatePicker } from 'antd';
@@ -732,18 +733,17 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
+      const value = fd.categorical_column && o.object.properties.categorical_value !== undefined
+        ? o.object.properties.categorical_value
+        : o.object.properties.metric !== undefined
+        ? `${prefix}${formatter(o.object.properties.metric)}${unit}`
+        : 'No data';
 
       const tooltipRows = [
         <TooltipRow
           key="area"
           label={`${areaName} `}
-          value={
-            fd.categorical_column && o.object.properties.categorical_value !== undefined
-              ? o.object.properties.categorical_value
-              : o.object.properties.metric !== undefined
-              ? `${prefix}${formatter(o.object.properties.metric)}${unit}`
-              : 'No data'
-          }
+          value={t(value)}
         />
       ];
 
@@ -786,7 +786,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
         tooltipRows.push(
           <TooltipRow
             key="date"
-            label="Date "
+            label={t('Date') + " "}
             value={formattedDate}
           />
         );

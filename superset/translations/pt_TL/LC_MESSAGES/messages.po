@@ -21,7 +21,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 09:43+0800\n"
+"POT-Creation-Date: 2025-06-13 10:18+0800\n"
 "PO-Revision-Date: 2025-06-12 17:09+0800\n"
 "Last-Translator: \n"
 "Language: pt_TL\n"
@@ -4334,6 +4334,10 @@ msgstr "O tipo de fonte de dados é inválido"
 
 msgid "Datasource type is required when datasource_id is given"
 msgstr "O tipo de fonte de dados é necessário quando datasource_id é fornecido"
+
+#, fuzzy
+msgid "Date"
+msgstr "data"
 
 msgid "Date Time Format"
 msgstr "Formato de data e hora"
@@ -15210,6 +15214,10 @@ msgstr "Previsão do Tempo"
 #, fuzzy
 msgid "Weather data provided by ECMWF"
 msgstr "Obter pré-visualização de dados"
+
+#, fuzzy
+msgid "Weather update history unavailable"
+msgstr "A miniatura não está disponível"
 
 msgid "Web"
 msgstr "Rede"

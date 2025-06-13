@@ -25,7 +25,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 09:43+0800\n"
+"POT-Creation-Date: 2025-06-13 10:18+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3835,6 +3835,9 @@ msgid "Datasource type is invalid"
 msgstr ""
 
 msgid "Datasource type is required when datasource_id is given"
+msgstr ""
+
+msgid "Date"
 msgstr ""
 
 msgid "Date Time Format"
@@ -13360,6 +13363,9 @@ msgid "Weather Forecasts"
 msgstr ""
 
 msgid "Weather data provided by ECMWF"
+msgstr ""
+
+msgid "Weather update history unavailable"
 msgstr ""
 
 msgid "Web"
