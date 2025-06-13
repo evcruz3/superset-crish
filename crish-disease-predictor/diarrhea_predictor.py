@@ -332,29 +332,34 @@ def main():
                     )
                 
                 if current_prediction is not None:
+                    # Calculate current prediction week range
+                    last_hist_week_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
+                    current_pred_week_start_dt = last_hist_week_end_dt + timedelta(days=1)
+                    current_pred_week_end_dt = current_pred_week_start_dt + timedelta(days=6)
+
                     predictions[municipality] = {
                         'current_week': {
                             'predicted_cases': current_prediction,
-                            # Standardized prediction_date format
                             'prediction_date': pipeline_start_time.strftime('%Y-%m-%d'),
+                            'week_range': {
+                                'start': current_pred_week_start_dt.strftime('%Y-%m-%d'),
+                                'end': current_pred_week_end_dt.strftime('%Y-%m-%d')
+                            },
                             'weeks_used': [
-                                {'start': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_start'], 
+                                {'start': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_start'],
                                  'end': weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4'))+i]['week_end']}
                                 for i in range(int(os.getenv('MAX_WEEKS_HISTORY', '4')))]
                         }
                     }
-                    
+
                     # Add next week prediction if available
                     if next_week_prediction is not None:
-                        # Calculate next week's date range
-                        # Ensure week_end is parsed correctly before timedelta operations
-                        last_hist_week_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d') 
-                        next_week_start_dt = last_hist_week_end_dt + timedelta(days=1)
+                        # Calculate next week's date range based on the current prediction's week
+                        next_week_start_dt = current_pred_week_end_dt + timedelta(days=1)
                         next_week_end_dt = next_week_start_dt + timedelta(days=6)
-                        
+
                         predictions[municipality]['next_week'] = {
                             'predicted_cases': next_week_prediction,
-                            # Standardized prediction_date format
                             'prediction_date': pipeline_start_time.strftime('%Y-%m-%d'),
                             'week_range': {
                                 'start': next_week_start_dt.strftime('%Y-%m-%d'),
@@ -362,24 +367,19 @@ def main():
                             }
                         }
 
-                    # --- Generate Alerts --- 
+                    # --- Generate Alerts ---
                     # Use a consistent forecast_date for alerts generated in this run
                     alert_forecast_date_str = pipeline_start_time.strftime('%Y-%m-%d')
 
                     # Alert for current week prediction
                     if current_prediction is not None:
-                        # Determine the week start/end for the current prediction
-                        last_hist_week_end_dt = datetime.strptime(weeks[-1]['week_end'], '%Y-%m-%d')
-                        current_pred_week_start_dt = last_hist_week_end_dt + timedelta(days=1)
-                        current_pred_week_end_dt = current_pred_week_start_dt + timedelta(days=6)
-
                         current_alert = generate_disease_alert(
                             disease_type="Diarrhea",
                             predicted_cases=int(current_prediction),
                             municipality_name=municipality,
                             forecast_date_str=alert_forecast_date_str, # Standardized
-                            week_start_str=current_pred_week_start_dt.strftime('%Y-%m-%d'),
-                            week_end_str=current_pred_week_end_dt.strftime('%Y-%m-%d'),
+                            week_start_str=predictions[municipality]['current_week']['week_range']['start'],
+                            week_end_str=predictions[municipality]['current_week']['week_range']['end'],
                             municipality_iso_code=municipality_iso_code
                         )
                         if current_alert:
