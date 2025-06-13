@@ -370,7 +370,13 @@ function Diseases() {
                     key="death_cases"
                 >
                     <TabContentContainer>
-                        {/* Content for Death Cases */}
+                        <ChartContainer>
+                            <ResponsiveChartSlug 
+                                slug="weekly-disease-deaths-by-municipality" 
+                                fillHeight={true}
+                                onError={(error) => console.error('Chart error:', error)}
+                            />
+                        </ChartContainer>
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane

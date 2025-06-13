@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   styled,
   t,
@@ -157,17 +157,20 @@ const WeatherTrendChart = ({
 }) => {
   const [data, setData] = useState<WeatherDataSeries>({});
   const [loading, setLoading] = useState(true);
-  const { width, ref } = useResizeDetector();
+  const { ref } = useResizeDetector();
   const echartRef = useRef<any>();
 
   useEffect(() => {
+    let ignore = false;
     setLoading(true);
     const { municipalities, startDate, daysRange } = filters;
 
     if (level === 'municipality' && municipalities.length === 0) {
       setData({});
       setLoading(false);
-      return;
+      return () => {
+        ignore = true;
+      };
     }
 
     let fetchPromises;
@@ -235,6 +238,7 @@ const WeatherTrendChart = ({
 
     Promise.all(fetchPromises)
       .then(results => {
+        if (ignore) return;
         const newData: WeatherDataSeries = {};
         results.forEach(result => {
           if (result.data) {
@@ -244,19 +248,29 @@ const WeatherTrendChart = ({
         setData(newData);
       })
       .catch(error => {
+        if (ignore) return;
         console.error(`Error fetching ${title} data:`, error);
         setData({});
       })
       .finally(() => {
+        if (ignore) return;
         setLoading(false);
       });
+
+    return () => {
+      ignore = true;
+    };
   }, [parameter, title, filters, level]);
 
-  const allDates = [
-    ...new Set(
-      Object.values(data).flatMap(d => d.map(item => item.forecast_date)),
-    ),
-  ].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+  const allDates = useMemo(
+    () =>
+      [
+        ...new Set(
+          Object.values(data).flatMap(d => d.map(item => item.forecast_date)),
+        ),
+      ].sort((a, b) => new Date(a).getTime() - new Date(b).getTime()),
+    [data],
+  );
 
   const parameterThresholds = showThresholds ? THRESHOLDS[parameter] : undefined;
 
@@ -272,171 +286,183 @@ const WeatherTrendChart = ({
     '#8a2be2',
   ];
 
-  const seriesData = Object.entries(data).map(([municipality, munData], i) => {
-    const dataMap = new Map(munData.map(d => [d.forecast_date, d.value]));
-    const color = FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
-    return {
-      name: municipality,
-      type: 'line',
-      smooth: true,
-      showSymbol: true,
-      symbol: 'emptyCircle',
-      symbolSize: 6,
-      lineStyle: {
-        color,
-      },
-      itemStyle: {
-        color,
-      },
-      data: allDates.map(date => {
-        const value = dataMap.get(date);
-
-        if (value === null || value === undefined) {
-          return null;
-        }
-
-        const point: {
-          value: number;
-          itemStyle?: { color: string };
-          symbol?: string;
-          symbolSize?: number;
-        } = {
-          value,
-        };
-
-        if (parameterThresholds) {
-          // The thresholds are sorted from most severe to least severe.
-          // Find the first threshold that the value is greater than or equal to.
-          const threshold = [...parameterThresholds]
-            .reverse()
-            .find(t => value >= t.value);
-          if (threshold) {
-            point.itemStyle = {
-              color: threshold.color,
-            };
-            point.symbol = 'triangle';
-            point.symbolSize = 10;
-          }
-        }
-
-        return point;
-      }),
-    };
-  });
-
-  const echartOptions = {
-    title: {
-      text: title,
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: any[]) => {
-        if (!params.length) {
-          return '';
-        }
-
-        const unit = WEATHER_PARAMETER_UNITS[parameter] || '';
-        const date = moment(params[0].axisValue).format('DD MMM YYYY');
-
-        const content = params
-          .map(param => {
-            // The 'Thresholds' series for markLine should not be in tooltip
-            if (param.seriesName === 'Thresholds') {
-              return null;
-            }
-
-            const pointValue =
-              typeof param.value === 'object' && param.value !== null
-                ? param.value.value
-                : param.value;
-
-            if (pointValue == null) {
-              return null;
-            }
-            return `${param.marker} ${
-              param.seriesName
-            }: <strong>${pointValue.toFixed(2)}${unit}</strong>`;
-          })
-          .filter(Boolean)
-          .join('<br />');
-
-        return `${date}<br />${content}`;
-      },
-    },
-    legend: {
-      data: Object.keys(data),
-      type: 'scroll',
-    },
-    xAxis: {
-      type: 'category',
-      data: allDates,
-      axisLabel: {
-        formatter: (value: string) => moment(value).format('DD MMM YYYY'),
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: WEATHER_PARAMETER_UNITS[parameter] || '',
-    },
-    series: seriesData,
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '10%',
-      containLabel: true,
-    },
-  };
-
-  if (showThresholds && parameterThresholds) {
-    echartOptions.series.push({
-      name: 'Thresholds',
-      type: 'line',
-      markLine: {
-        symbol: 'none',
-        silent: true,
-        data: parameterThresholds.map(t => ({
-          yAxis: t.value,
-          name: t.label,
+  const seriesData = useMemo(
+    () =>
+      Object.entries(data).map(([municipality, munData], i) => {
+        const dataMap = new Map(munData.map(d => [d.forecast_date, d.value]));
+        const color = FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
+        return {
+          name: municipality,
+          type: 'line',
+          smooth: true,
+          showSymbol: true,
+          symbol: 'emptyCircle',
+          symbolSize: 6,
           lineStyle: {
-            color: t.color,
-            type: 'dashed',
+            color,
           },
-          label: {
-            formatter: '{b}',
-            position: 'insideEndTop',
-            color: t.color,
+          itemStyle: {
+            color,
           },
-        })),
+          data: allDates.map(date => {
+            const value = dataMap.get(date);
+
+            if (value === null || value === undefined) {
+              return null;
+            }
+
+            const point: {
+              value: number;
+              itemStyle?: { color: string };
+              symbol?: string;
+              symbolSize?: number;
+            } = {
+              value,
+            };
+
+            if (parameterThresholds) {
+              // The thresholds are sorted from most severe to least severe.
+              // Find the first threshold that the value is greater than or equal to.
+              const threshold = [...parameterThresholds]
+                .reverse()
+                .find(t => value >= t.value);
+              if (threshold) {
+                point.itemStyle = {
+                  color: threshold.color,
+                };
+                point.symbol = 'triangle';
+                point.symbolSize = 10;
+              }
+            }
+
+            return point;
+          }),
+        };
+      }),
+    [data, allDates, parameterThresholds],
+  );
+
+  const echartOptions = useMemo(() => {
+    const options: any = {
+      title: {
+        text: title,
       },
-    } as any);
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any[]) => {
+          if (!params.length) {
+            return '';
+          }
 
-    const allDataValues = Object.values(data)
-      .flatMap(series => series.map(point => point.value))
-      .filter(value => value !== null) as number[];
+          const unit = WEATHER_PARAMETER_UNITS[parameter] || '';
+          const date = moment(params[0].axisValue).format('DD MMM YYYY');
 
-    const thresholdValues = parameterThresholds.map(t => t.value);
-    const combinedValues = [...allDataValues, ...thresholdValues];
+          const content = params
+            .map(param => {
+              // The 'Thresholds' series for markLine should not be in tooltip
+              if (param.seriesName === 'Thresholds') {
+                return null;
+              }
 
-    if (combinedValues.length > 0) {
-      let min = Math.min(...combinedValues);
-      let max = Math.max(...combinedValues);
+              const pointValue =
+                typeof param.value === 'object' && param.value !== null
+                  ? param.value.value
+                  : param.value;
 
-      if (min === max) {
-        min -= 10;
-        max += 10;
+              if (pointValue == null) {
+                return null;
+              }
+              return `${param.marker} ${
+                param.seriesName
+              }: <strong>${pointValue.toFixed(2)}${unit}</strong>`;
+            })
+            .filter(Boolean)
+            .join('<br />');
+
+          return `${date}<br />${content}`;
+        },
+      },
+      legend: {
+        data: Object.keys(data),
+        type: 'scroll',
+      },
+      xAxis: {
+        type: 'category',
+        data: allDates,
+        axisLabel: {
+          formatter: (value: string) => moment(value).format('DD MMM YYYY'),
+        },
+      },
+      yAxis: {
+        type: 'value',
+        name: WEATHER_PARAMETER_UNITS[parameter] || '',
+      },
+      series: seriesData,
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '10%',
+        containLabel: true,
+      },
+    };
+
+    if (showThresholds && parameterThresholds) {
+      options.series.push({
+        name: 'Thresholds',
+        type: 'line',
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          data: parameterThresholds.map(t => ({
+            yAxis: t.value,
+            name: t.label,
+            lineStyle: {
+              color: t.color,
+              type: 'dashed',
+            },
+            label: {
+              formatter: '{b}',
+              position: 'insideEndTop',
+              color: t.color,
+            },
+          })),
+        },
+      });
+
+      const allDataValues = Object.values(data)
+        .flatMap(series => series.map(point => point.value))
+        .filter(value => value !== null) as number[];
+
+      const thresholdValues = parameterThresholds.map(t => t.value);
+      const combinedValues = [...allDataValues, ...thresholdValues];
+
+      if (combinedValues.length > 0) {
+        let min = Math.min(...combinedValues);
+        let max = Math.max(...combinedValues);
+
+        if (min === max) {
+          min -= 10;
+          max += 10;
+        }
+
+        const padding = (max - min) * 0.1 || 5;
+        const yMin = min - padding;
+        const yMax = max + padding;
+
+        options.yAxis.min = yMin < 0 && min >= 0 ? 0 : Math.floor(yMin);
+        options.yAxis.max = Math.ceil(yMax);
       }
-
-      const padding = (max - min) * 0.1 || 5;
-      const yMin = min - padding;
-      const yMax = max + padding;
-
-      // eslint-disable-next-line no-param-reassign
-      (echartOptions.yAxis as any).min =
-        yMin < 0 && min >= 0 ? 0 : Math.floor(yMin);
-      // eslint-disable-next-line no-param-reassign
-      (echartOptions.yAxis as any).max = Math.ceil(yMax);
     }
-  }
+    return options;
+  }, [
+    title,
+    parameter,
+    data,
+    allDates,
+    seriesData,
+    showThresholds,
+    parameterThresholds,
+  ]);
 
   if (loading) {
     return <Loading />;
@@ -492,20 +518,15 @@ const Trendlines = () => {
   const [level, setLevel] = useState<Level>('municipality');
   const [showThresholds, setShowThresholds] = useState(true);
 
-  const [filters, setFilters] = useState<Filters>({
-    municipalities: ['Dili'],
-    startDate: moment().format('YYYY-MM-DD'),
-    daysRange: 10,
-  });
-
-  useEffect(() => {
-    if (startDate) {
-      setFilters({
-        municipalities,
-        startDate: startDate.format('YYYY-MM-DD'),
-        daysRange,
-      });
+  const filters: Filters | null = useMemo(() => {
+    if (!startDate) {
+      return null;
     }
+    return {
+      municipalities,
+      startDate: startDate.format('YYYY-MM-DD'),
+      daysRange,
+    };
   }, [municipalities, startDate, daysRange]);
 
   const handleLevelChange = (newLevel: Level) => {
@@ -589,32 +610,36 @@ const Trendlines = () => {
             </div>
           </div>
           <div className="body">
-            <Row gutter={[16, 16]}>
-              <Col span={24} key="heat-index">
-                <ChartContainer>
-                  <WeatherTrendChart
-                    parameter="heat_index"
-                    title={t('Heat Index')}
-                    filters={filters}
-                    level={level}
-                    showThresholds={showThresholds}
-                  />
-                </ChartContainer>
-              </Col>
-              {Object.entries(WEATHER_PARAMETERS).map(([title, param]) => (
-                <Col span={24} key={param}>
+            {filters ? (
+              <Row gutter={[16, 16]}>
+                <Col span={24} key="heat-index">
                   <ChartContainer>
                     <WeatherTrendChart
-                      parameter={param}
-                      title={t(title)}
+                      parameter="heat_index"
+                      title={t('Heat Index')}
                       filters={filters}
                       level={level}
                       showThresholds={showThresholds}
                     />
                   </ChartContainer>
                 </Col>
-              ))}
-            </Row>
+                {Object.entries(WEATHER_PARAMETERS).map(([title, param]) => (
+                  <Col span={24} key={param}>
+                    <ChartContainer>
+                      <WeatherTrendChart
+                        parameter={param}
+                        title={t(title)}
+                        filters={filters}
+                        level={level}
+                        showThresholds={showThresholds}
+                      />
+                    </ChartContainer>
+                  </Col>
+                ))}
+              </Row>
+            ) : (
+              <Loading />
+            )}
           </div>
         </div>
       </TrendlinesContainer>
