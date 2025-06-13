@@ -17,7 +17,7 @@
  * under the License.
  */
 import React, { useState, useCallback, useEffect } from 'react';
-import { styled, t } from '@superset-ui/core';
+import { styled, t, tn } from '@superset-ui/core';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 import DashboardTabs from '../WeatherForecasts/DashboardTabs';
@@ -1042,16 +1042,21 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     
     const alertGroups: GroupedAlertType[] = [];
     const parameterMapping: Record<string, { type: string; color: string; title: string }> = {
-      'Rainfall': { type: 'rain', color: '#3a5998', title: 'Rainfall Alert' },
-      'Wind Speed': { type: 'wind', color: '#4c9c6d', title: 'Wind Alert' },
-      'Heat Index': { type: 'heat', color: '#a67533', title: 'Heat Alert' }
+      'Rainfall': { type: 'rain', color: '#3a5998', title: t('Rainfall Alert') },
+      'Wind Speed': { type: 'wind', color: '#4c9c6d', title: t('Wind Alert') },
+      'Heat Index': { type: 'heat', color: '#a67533', title: t('Heat Alert') }
     };
 
     Object.entries(groupedByParameter).forEach(([parameter, parameterAlerts]) => {
       const mapping = parameterMapping[parameter] || { 
         type: parameter.toLowerCase().replace(/\s+/g, '_'), 
         color: '#888888',
-        title: `${parameter} Alert`
+        title: tn(
+          '%(parameter)s Alert',
+          '%(parameter)s Alerts',
+          parameterAlerts.length,
+          { parameter: parameter }
+        )
       };
       const extremeDanger = parameterAlerts.filter(a => a.alert_level === 'Extreme Danger' || a.alert_level === 'Severe').length;
       const danger = parameterAlerts.filter(a => a.alert_level === 'Danger' || a.alert_level === 'Heavy' || a.alert_level === 'Strong').length;
@@ -1063,10 +1068,10 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         title: mapping.title,
         color: mapping.color,
         details: [
-          { label: 'Extreme Danger', count: extremeDanger },
-          { label: 'Danger', count: danger },
-          { label: 'Extreme Caution', count: extremeCaution },
-          { label: 'Normal/Light', count: light }
+          { label: t('Extreme Danger'), count: extremeDanger },
+          { label: t('Danger'), count: danger },
+          { label: t('Extreme Caution'), count: extremeCaution },
+          { label: t('Normal/Light'), count: light }
         ].filter(d => d.count > 0), 
         alertData: parameterAlerts,
         isDisease: false // Mark as weather
@@ -1092,15 +1097,15 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
 
     const alertGroups: GroupedAlertType[] = [];
     const diseaseMapping: Record<string, { type: string; color: string; title: string; icon: string }> = {
-      'Dengue': { type: 'dengue', color: '#aa3535', title: 'Dengue Alert', icon: '🦟' }, // Red from mosquito.svg gradient
-      'Diarrhea': { type: 'diarrhea', color: '#56ACE0', title: 'Diarrhea Alert', icon: '<0xF0><0x9F><0xA7><0xBB>' } // Light blue from stomach.svg
+      'Dengue': { type: 'dengue', color: '#aa3535', title: t('Dengue Alert'), icon: '🦟' }, // Red from mosquito.svg gradient
+      'Diarrhea': { type: 'diarrhea', color: '#56ACE0', title: t('Diarrhea Alert'), icon: '<0xF0><0x9F><0xA7><0xBB>' } // Light blue from stomach.svg
     };
 
     Object.entries(groupedByDisease).forEach(([disease, diseaseAlerts]) => {
       const mapping = diseaseMapping[disease] || {
         type: disease.toLowerCase().replace(/\s+/g, '_'),
         color: '#6c757d', // Gray for unknown
-        title: `${disease} Alert`,
+        title: t(`${disease} Alert`),
         icon: '❓'
       };
 
@@ -1115,10 +1120,10 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         title: mapping.title,
         color: mapping.color,
         details: [
-          { label: 'Severe', count: severe },
-          { label: 'High', count: high },
-          { label: 'Moderate', count: moderate },
-          { label: 'Low', count: low }
+          { label: t('Severe'), count: severe },
+          { label: t('High'), count: high },
+          { label: t('Moderate'), count: moderate },
+          { label: t('Low'), count: low }
         ].filter(d => d.count > 0),
         alertData: diseaseAlerts,
         isDisease: true // Mark as disease
@@ -1153,7 +1158,7 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   }, [fetchWeatherAlerts, fetchLastPull, fetchDiseaseAlerts, fetchLastDiseaseRun]);
 
   const handleError = useCallback((error: Error) => {
-    addDangerToast(t('Failed to load chart: %s', error.message));
+    addDangerToast(t(t('Failed to load chart: %s'), error.message));
   }, [addDangerToast]);
 
   // Unified alert click handler
@@ -1379,7 +1384,12 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
                 <AlertTitle>{alert.title}</AlertTitle>
                 {alert.details.map((detail) => (
                   <AlertDetail key={detail.label}>
-                    {detail.label}: {detail.count} Locations
+                    {detail.label}: {tn(
+                      "%(count)s Location",
+                      "%(count)s Locations",
+                      detail.count,
+                      { count: detail.count }
+                    )}
                   </AlertDetail>
                 ))}
               </AlertContent>

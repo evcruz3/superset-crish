@@ -25,7 +25,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-12 17:36+0800\n"
+"POT-Creation-Date: 2025-06-13 09:43+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -151,6 +151,9 @@ msgstr ""
 msgid "!= (Is not equal)"
 msgstr ""
 
+msgid "${disease} Alert"
+msgstr ""
+
 #, python-format
 msgid "% calculation"
 msgstr ""
@@ -162,6 +165,12 @@ msgstr ""
 #, python-format
 msgid "% of total"
 msgstr ""
+
+#, python-format
+msgid "%(count)s Location"
+msgid_plural "%(count)s Locations"
+msgstr[0] ""
+msgstr[1] ""
 
 #, python-format
 msgid "%(dialect)s cannot be used as a data source for security reasons."
@@ -205,6 +214,12 @@ msgstr ""
 #, python-format
 msgid "%(other)s saved queries will appear here"
 msgstr ""
+
+#, python-format
+msgid "%(parameter)s Alert"
+msgid_plural "%(parameter)s Alerts"
+msgstr[0] ""
+msgstr[1] ""
 
 #, python-format
 msgid "%(prefix)s %(title)s"
@@ -3528,6 +3543,9 @@ msgstr ""
 msgid "Daily seasonality"
 msgstr ""
 
+msgid "Danger"
+msgstr ""
+
 msgid "Dark"
 msgstr ""
 
@@ -4202,6 +4220,9 @@ msgstr ""
 msgid "Dengue"
 msgstr ""
 
+msgid "Dengue Alert"
+msgstr ""
+
 msgid "Density"
 msgstr ""
 
@@ -4247,6 +4268,9 @@ msgid "Diamond"
 msgstr ""
 
 msgid "Diarrhea"
+msgstr ""
+
+msgid "Diarrhea Alert"
 msgstr ""
 
 msgid "Did you mean:"
@@ -5299,6 +5323,12 @@ msgstr ""
 msgid "Extra url parameters for use in Jinja templated queries"
 msgstr ""
 
+msgid "Extreme Caution"
+msgstr ""
+
+msgid "Extreme Danger"
+msgstr ""
+
 msgid "Extruded"
 msgstr ""
 
@@ -5390,10 +5420,6 @@ msgid "Failed to load chart data."
 msgstr ""
 
 msgid "Failed to load chart thumbnail preview."
-msgstr ""
-
-#, python-format
-msgid "Failed to load chart: %s"
 msgstr ""
 
 msgid "Failed to load dimensions for drill by"
@@ -5921,6 +5947,9 @@ msgstr ""
 msgid "Header row"
 msgstr ""
 
+msgid "Heat Alert"
+msgstr ""
+
 msgid "Heat Index Forecast"
 msgstr ""
 
@@ -5961,6 +5990,9 @@ msgid "Hides the Line for the time series"
 msgstr ""
 
 msgid "Hierarchy"
+msgstr ""
+
+msgid "High"
 msgstr ""
 
 msgid "Histogram"
@@ -6833,6 +6865,9 @@ msgstr ""
 msgid "Longitude of default viewport"
 msgstr ""
 
+msgid "Low"
+msgstr ""
+
 msgid "Lower Threshold"
 msgstr ""
 
@@ -7245,6 +7280,9 @@ msgid "Mobile App Broadcast: Failed (%(error)s)."
 msgstr ""
 
 msgid "Mobile App Broadcast: Success."
+msgstr ""
+
+msgid "Moderate"
 msgstr ""
 
 msgid "Modified"
@@ -7697,6 +7735,9 @@ msgid "None -> None"
 msgstr ""
 
 msgid "Normal"
+msgstr ""
+
+msgid "Normal/Light"
 msgstr ""
 
 msgid "Normalize"
@@ -8805,6 +8846,9 @@ msgid "Radius in meters"
 msgstr ""
 
 msgid "Radius in miles"
+msgstr ""
+
+msgid "Rainfall Alert"
 msgstr ""
 
 msgid "Rainfall Forecast"
@@ -10137,6 +10181,9 @@ msgid "Settings"
 msgstr ""
 
 msgid "Settings for time series"
+msgstr ""
+
+msgid "Severe"
 msgstr ""
 
 msgid "Share"
@@ -11990,10 +12037,10 @@ msgid ""
 "and for power users who may want to alter specific parameters."
 msgstr ""
 
-msgid "This Week's Dengue Case"
+msgid "This Week's Dengue Cases Forecast"
 msgstr ""
 
-msgid "This Week's Diarrhea Case"
+msgid "This Week's Diarrhea Cases Forecast"
 msgstr ""
 
 #, python-format
@@ -13664,6 +13711,9 @@ msgid "Width of the confidence interval. Should be between 0 and 1"
 msgstr ""
 
 msgid "Width of the sparkline"
+msgstr ""
+
+msgid "Wind Alert"
 msgstr ""
 
 msgid "Wind Speed Forecast"

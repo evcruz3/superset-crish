@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-12 17:36+0800\n"
+"POT-Creation-Date: 2025-06-13 09:43+0800\n"
 "PO-Revision-Date: 2025-06-12 16:48+0800\n"
 "Last-Translator: \n"
 "Language: tet\n"
@@ -176,6 +176,9 @@ msgstr " atu haree ita nia dadus sira."
 msgid "!= (Is not equal)"
 msgstr "!= (diferente)"
 
+msgid "${disease} Alert"
+msgstr ""
+
 #, python-format
 msgid "% calculation"
 msgstr "kálkulo % calculation"
@@ -187,6 +190,12 @@ msgstr "% o husi aman"
 #, python-format
 msgid "% of total"
 msgstr "% o total"
+
+#, python-format
+msgid "%(count)s Location"
+msgid_plural "%(count)s Locations"
+msgstr[0] "Fatin %(count)s"
+msgstr[1] "Fatin %(count)s"
 
 #, python-format
 msgid "%(dialect)s cannot be used as a data source for security reasons."
@@ -233,6 +242,12 @@ msgstr "%(other)s sira ne'ebé foin lalais sei mosu iha ne'e"
 #, python-format
 msgid "%(other)s saved queries will appear here"
 msgstr "%(other)s pergunta sira ne'ebé rai ona sei mosu iha ne'e"
+
+#, fuzzy, python-format
+msgid "%(parameter)s Alert"
+msgid_plural "%(parameter)s Alerts"
+msgstr[0] "Parámetru sira %{parameter}s"
+msgstr[1] "Parámetru sira %{parameter}s"
 
 #, python-format
 msgid "%(prefix)s %(title)s"
@@ -3838,6 +3853,9 @@ msgstr "DML"
 msgid "Daily seasonality"
 msgstr "Sazonalidade loroloron nian"
 
+msgid "Danger"
+msgstr "Perigu"
+
 msgid "Dark"
 msgstr "Nakukun"
 
@@ -4570,6 +4588,9 @@ msgstr "Demografia"
 msgid "Dengue"
 msgstr "Dengue"
 
+msgid "Dengue Alert"
+msgstr "Alerta Dengue"
+
 msgid "Density"
 msgstr "Densidade"
 
@@ -4618,6 +4639,9 @@ msgstr "Diamante"
 
 msgid "Diarrhea"
 msgstr "Diareia"
+
+msgid "Diarrhea Alert"
+msgstr "Alerta Diareia"
 
 msgid "Did you mean:"
 msgstr "Ita-boot hatete:"
@@ -5747,6 +5771,12 @@ msgstr ""
 msgid "Extra url parameters for use in Jinja templated queries"
 msgstr "Parámetru url adisionál sira ba uza iha pergunta sira ho modelu Jinja"
 
+msgid "Extreme Caution"
+msgstr "Presiza Kuidadu"
+
+msgid "Extreme Danger"
+msgstr "Perigu Kuidadu"
+
 msgid "Extruded"
 msgstr "Extrudadu ona"
 
@@ -5841,10 +5871,6 @@ msgstr "Falla atu karrega dadus gráfiku nian."
 
 msgid "Failed to load chart thumbnail preview."
 msgstr "La konsege karrega previzaun ba imajen ki'ik gráfiku nian."
-
-#, python-format
-msgid "Failed to load chart: %s"
-msgstr "La konsege karrega gráfiku: %s"
 
 msgid "Failed to load dimensions for drill by"
 msgstr "Falla atu karrega dadus gráfiku nian"
@@ -6406,6 +6432,9 @@ msgstr "Header"
 msgid "Header row"
 msgstr "Header  koluna"
 
+msgid "Heat Alert"
+msgstr "Alerta Temperatura"
+
 msgid "Heat Index Forecast"
 msgstr "Previzaun Indise Temperatura"
 
@@ -6447,6 +6476,9 @@ msgstr "Subar Liña ba série tempu nian"
 
 msgid "Hierarchy"
 msgstr "Ierarkia"
+
+msgid "High"
+msgstr "Sae"
 
 msgid "Histogram"
 msgstr "Histograma"
@@ -7168,7 +7200,7 @@ msgid "Lift percent precision"
 msgstr "Persentu levantamentu ho presizaun"
 
 msgid "Light"
-msgstr "Klaru"
+msgstr "Leve"
 
 msgid "Light mode"
 msgstr "Modu klaru"
@@ -7376,6 +7408,9 @@ msgstr "Longitude no Latitude"
 
 msgid "Longitude of default viewport"
 msgstr "Longitude husi vista padraun"
+
+msgid "Low"
+msgstr "Menus"
 
 msgid "Lower Threshold"
 msgstr "Limite Inferiór"
@@ -7814,6 +7849,9 @@ msgstr "Transmisaun Aplikasaun Móvel: La konsege (%(error)s)."
 
 msgid "Mobile App Broadcast: Success."
 msgstr "Transmisaun Aplikasaun Móvel: Susesu."
+
+msgid "Moderate"
+msgstr "Moderadu"
 
 msgid "Modified"
 msgstr "Modifika ona"
@@ -8280,6 +8318,9 @@ msgstr "Laiha -> Laiha"
 
 msgid "Normal"
 msgstr "Normal"
+
+msgid "Normal/Light"
+msgstr "Normal/Leve"
 
 msgid "Normalize"
 msgstr "Normaliza"
@@ -9476,6 +9517,9 @@ msgstr "Raiu iha metru"
 
 msgid "Radius in miles"
 msgstr "Raiu iha milla"
+
+msgid "Rainfall Alert"
+msgstr "Alerta Udan Been"
 
 msgid "Rainfall Forecast"
 msgstr "Previzaun Udan Been"
@@ -10898,6 +10942,9 @@ msgstr "Konfigurasaun"
 
 msgid "Settings for time series"
 msgstr "Konfigurasaun sira ba série tempu nian"
+
+msgid "Severe"
+msgstr "Severu"
 
 msgid "Share"
 msgstr "Kompartilla"
@@ -13027,11 +13074,11 @@ msgstr ""
 "no ba utilizadór sira ne'ebé maka hakarak atu altera parámetru espesífiku"
 " sira."
 
-msgid "This Week's Dengue Case"
-msgstr "Kazu Dengue Semana nee'e"
+msgid "This Week's Dengue Cases Forecast"
+msgstr "Previzaun Kazu Dengue Semana ida ne'e"
 
-msgid "This Week's Diarrhea Case"
-msgstr "Kazu Diareia Semana ne'e"
+msgid "This Week's Diarrhea Cases Forecast"
+msgstr "Previzaun Kazu Diareia Semana ida ne'e"
 
 #, python-format
 msgid "This action will permanently delete %s."
@@ -14942,6 +14989,9 @@ msgstr "Intervalu konfiansa nia largura. Tenke entre 0 no 1"
 
 msgid "Width of the sparkline"
 msgstr "Largura husi liña naroman/ sparkline nian"
+
+msgid "Wind Alert"
+msgstr "Alerta Anin"
 
 msgid "Wind Speed Forecast"
 msgstr "Previzaun Velosidade Anin"

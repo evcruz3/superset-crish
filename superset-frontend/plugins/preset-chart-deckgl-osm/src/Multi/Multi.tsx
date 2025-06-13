@@ -2074,10 +2074,10 @@ const DeckMulti = (props: DeckMultiProps) => {
         return t('Relative Humidity Forecast');
       case 'Rainfall Forecast':
         return t('Rainfall Forecast');
-      case 'This Week\'s Dengue Case':
-        return t('This Week\'s Dengue Case');
-      case 'This Week\'s Diarrhea Case':
-        return t('This Week\'s Diarrhea Case');
+      case 'This Week\'s Dengue Cases Forecast':
+        return t('This Week\'s Dengue Cases Forecast');
+      case 'This Week\'s Diarrhea Cases Forecast':
+        return t('This Week\'s Diarrhea Cases Forecast');
       case 'Weather data provided by ECMWF':
         return t('Weather data provided by ECMWF');
       case 'Last successful weather update:':

@@ -21,7 +21,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-12 17:36+0800\n"
+"POT-Creation-Date: 2025-06-13 09:43+0800\n"
 "PO-Revision-Date: 2025-06-12 17:09+0800\n"
 "Last-Translator: \n"
 "Language: pt_TL\n"
@@ -198,6 +198,9 @@ msgstr " para visualizar seus dados."
 msgid "!= (Is not equal)"
 msgstr "!= (diferente)"
 
+msgid "${disease} Alert"
+msgstr ""
+
 #, fuzzy, python-format
 msgid "% calculation"
 msgstr "cálculo % c"
@@ -209,6 +212,12 @@ msgstr "% o do pai"
 #, fuzzy, python-format
 msgid "% of total"
 msgstr "% o total"
+
+#, python-format
+msgid "%(count)s Location"
+msgid_plural "%(count)s Locations"
+msgstr[0] ""
+msgstr[1] ""
 
 #, python-format
 msgid "%(dialect)s cannot be used as a data source for security reasons."
@@ -257,6 +266,12 @@ msgstr "%(other)s recentes irão aparecer aqui"
 #, python-format
 msgid "%(other)s saved queries will appear here"
 msgstr "%(other)s As consultas salvas aparecerão aqui"
+
+#, fuzzy, python-format
+msgid "%(parameter)s Alert"
+msgid_plural "%(parameter)s Alerts"
+msgstr[0] "Parâmetros"
+msgstr[1] ""
 
 #, python-format
 msgid "%(prefix)s %(title)s"
@@ -3993,6 +4008,10 @@ msgstr "DML"
 msgid "Daily seasonality"
 msgstr "Sazonalidade diária"
 
+#, fuzzy
+msgid "Danger"
+msgstr "Faixa"
+
 msgid "Dark"
 msgstr "Escuro"
 
@@ -4759,6 +4778,9 @@ msgstr "Demografia"
 msgid "Dengue"
 msgstr "Dengue"
 
+msgid "Dengue Alert"
+msgstr ""
+
 msgid "Density"
 msgstr "Densidade"
 
@@ -4806,6 +4828,10 @@ msgid "Diamond"
 msgstr "Diamante"
 
 msgid "Diarrhea"
+msgstr "Diarréia"
+
+#, fuzzy
+msgid "Diarrhea Alert"
 msgstr "Diarréia"
 
 msgid "Did you mean:"
@@ -5998,6 +6024,14 @@ msgstr ""
 msgid "Extra url parameters for use in Jinja templated queries"
 msgstr "Parâmetros de url extras para uso em consultas de modelo Jinja"
 
+#, fuzzy
+msgid "Extreme Caution"
+msgstr "Direcional"
+
+#, fuzzy
+msgid "Extreme Danger"
+msgstr "Intervalo de tempo de substituição"
+
 msgid "Extruded"
 msgstr "Extrudados"
 
@@ -6101,10 +6135,6 @@ msgstr "Falha ao carregar dados do gráfico."
 #, fuzzy
 msgid "Failed to load chart thumbnail preview."
 msgstr "Falha ao carregar dados do gráfico."
-
-#, fuzzy, python-format
-msgid "Failed to load chart: %s"
-msgstr "Falha ao carregar dados do gráfico: %s"
 
 #, fuzzy
 msgid "Failed to load dimensions for drill by"
@@ -6698,6 +6728,10 @@ msgid "Header row"
 msgstr "Linha do Cabeçalho"
 
 #, fuzzy
+msgid "Heat Alert"
+msgstr "alerta"
+
+#, fuzzy
 msgid "Heat Index Forecast"
 msgstr "Previsão do Tempo"
 
@@ -6740,6 +6774,10 @@ msgstr "Oculta a linha da série temporal"
 
 msgid "Hierarchy"
 msgstr "Hierarquia"
+
+#, fuzzy
+msgid "High"
+msgstr "direito"
 
 msgid "Histogram"
 msgstr "Histograma"
@@ -7701,6 +7739,10 @@ msgid "Longitude of default viewport"
 msgstr "Longitude da viewport padrão"
 
 #, fuzzy
+msgid "Low"
+msgstr "Fluxo"
+
+#, fuzzy
 msgid "Lower Threshold"
 msgstr "Rótulo limite"
 
@@ -8159,6 +8201,10 @@ msgstr ""
 
 msgid "Mobile App Broadcast: Success."
 msgstr ""
+
+#, fuzzy
+msgid "Moderate"
+msgstr "data"
 
 msgid "Modified"
 msgstr "Modificado"
@@ -8648,6 +8694,9 @@ msgstr "Nenhum -> Nenhum"
 
 msgid "Normal"
 msgstr "Normal"
+
+msgid "Normal/Light"
+msgstr ""
 
 #, fuzzy
 msgid "Normalize"
@@ -9897,6 +9946,10 @@ msgstr "Raio em metros"
 
 msgid "Radius in miles"
 msgstr "Raio em milhas"
+
+#, fuzzy
+msgid "Rainfall Alert"
+msgstr "Habilitar previsão"
 
 #, fuzzy
 msgid "Rainfall Forecast"
@@ -11394,6 +11447,10 @@ msgstr "Configurações"
 
 msgid "Settings for time series"
 msgstr "Configurações para séries temporais"
+
+#, fuzzy
+msgid "Severe"
+msgstr "todos"
 
 msgid "Share"
 msgstr "Compartilhar"
@@ -13598,10 +13655,10 @@ msgstr ""
 " e para usuários avançados que podem querer alterar parâmetros "
 "específicos."
 
-msgid "This Week's Dengue Case"
+msgid "This Week's Dengue Cases Forecast"
 msgstr ""
 
-msgid "This Week's Diarrhea Case"
+msgid "This Week's Diarrhea Cases Forecast"
 msgstr ""
 
 #, python-format
@@ -15573,6 +15630,10 @@ msgstr "Largura do intervalo de confiança. Deve estar entre 0 e 1"
 
 msgid "Width of the sparkline"
 msgstr "Largura do brilho"
+
+#, fuzzy
+msgid "Wind Alert"
+msgstr "alerta"
 
 #, fuzzy
 msgid "Wind Speed Forecast"
