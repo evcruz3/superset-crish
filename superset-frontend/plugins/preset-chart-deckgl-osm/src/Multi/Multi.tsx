@@ -602,7 +602,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
             />
             <span className="label">
               {isCategorical 
-                ? String(value)
+                ? t(String(value))
                 : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`
               }
             </span>

@@ -1406,15 +1406,15 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
 
       {/* Data source attribution updated */}
       <DataSourceAttribution>
-        <span>Weather data provided by ECMWF</span>
+        <span>{t('Weather data provided by ECMWF')}</span>
         {lastPullLoading ? (
           <DataUpdateInfo>Loading last weather update time...</DataUpdateInfo>
         ) : lastPullInfo ? (
           <DataUpdateInfo>
-            Last successful weather update: {formatDisplayDate(lastPullInfo.pulled_at)}
+            {t('Last successful weather update:')} {formatDisplayDate(lastPullInfo.pulled_at)}
           </DataUpdateInfo>
         ) : (
-          <DataUpdateInfo>Weather update history unavailable</DataUpdateInfo>
+          <DataUpdateInfo>{t('Weather update history unavailable')}</DataUpdateInfo>
         )}
         {/* <span style={{marginTop: '5px'}}>Disease forecast data generated internally</span>
         {lastDiseaseRunLoading ? (
