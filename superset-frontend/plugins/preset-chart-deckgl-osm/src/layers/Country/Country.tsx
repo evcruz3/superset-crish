@@ -623,9 +623,10 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       .map((d: DataRecord) => d.metric)
       .filter((v: number) => v !== undefined && v !== null);
     metricValues = allMetricValues;
-    const minMaxExtent = allMetricValues.length > 0 
-      ? [Math.min(...allMetricValues), Math.max(...allMetricValues)]
-      : [0, 100]; // Default range if no metrics available
+    const minMaxExtent: [number, number] =
+      allMetricValues.length > 0
+        ? [Math.min(...allMetricValues), Math.max(...allMetricValues)]
+        : [0, 100]; // Default range if no metrics available
 
     // Check if we have a range_map defined in form data
     const hasRangeMap = fd.range_map && Object.keys(fd.range_map).length > 0;
@@ -730,7 +731,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   function setTooltipContent(o: JsonObject) {
     if (!o.object?.extraProps) {
       const areaName = o.object.properties.ADM1 || o.object.properties.name || o.object.properties.NAME || o.object.properties.ISO;
-      const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
+      const formatter = getNumberFormatter(fd.number_format || ',d');
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
       const value = fd.categorical_column && o.object.properties.categorical_value !== undefined
@@ -1303,7 +1304,6 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                   ) : false;
                 }}
                 style={{ border: 'none', width: 'auto' }}
-                locale={locale}
                 onPanelChange={(value, mode) => {
                   if (mode === 'week' && value) {
                     // Ensure the selected date is aligned to Monday using ISO week
@@ -1362,7 +1362,7 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                       onClick={() => setCurrentTime(date)}
                       ref={isActive ? activeDateRef : null}
                     >
-                      {date.toLocaleDateString('en-US', dateFormat)}
+                      {date.toLocaleDateString(moment.locale(), dateFormat)}
                     </div>
                   );
                 })}
