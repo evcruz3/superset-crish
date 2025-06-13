@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 10:44+0800\n"
+"POT-Creation-Date: 2025-06-13 16:47+0800\n"
 "PO-Revision-Date: 2025-06-12 16:48+0800\n"
 "Last-Translator: \n"
 "Language: tet\n"
@@ -4216,6 +4216,10 @@ msgstr "Loron (freq=D)"
 msgid "Days %s"
 msgstr "Loron sira %s"
 
+#, fuzzy
+msgid "Days Range"
+msgstr "loron 30 liu ba"
+
 msgid "Db engine did not return all queried columns"
 msgstr "Motor Db la fó fila fali koluna sira ne'ebé husu hotu"
 
@@ -6216,9 +6220,8 @@ msgstr "Obriga atu atualiza lista tabela nian"
 msgid "Forecast periods"
 msgstr "Períodu previzaun sira"
 
-#, fuzzy
 msgid "Forecasts"
-msgstr "Premiti preve"
+msgstr "Previzaun sira"
 
 msgid "Foreign key"
 msgstr "Xave estranjeiru"
@@ -6466,6 +6469,10 @@ msgstr "fasilidade saúde"
 
 msgid "Heat Alert"
 msgstr "Alerta Temperatura"
+
+#, fuzzy
+msgid "Heat Index"
+msgstr "Naran Folla"
 
 msgid "Heat Index Forecast"
 msgstr "Previzaun Indise Temperatura"
@@ -7228,6 +7235,10 @@ msgstr "Menus ka hanesan (<=)"
 msgid "Less than (<)"
 msgstr "Menus husi (<)"
 
+#, fuzzy
+msgid "Level"
+msgstr "rótulu"
+
 msgid "Lift percent precision"
 msgstr "Persentu levantamentu ho presizaun"
 
@@ -7962,6 +7973,10 @@ msgstr ""
 msgid "Multiplier"
 msgstr "Multiplikador"
 
+#, fuzzy
+msgid "Municipalities"
+msgstr "Munisipiu"
+
 msgid "Municipality"
 msgstr "Munisipiu"
 
@@ -8072,6 +8087,10 @@ msgstr "Ita-boot nia tag nia naran"
 
 msgid "Name your database"
 msgstr "Fó naran ba ita-boot nia baze-dadus"
+
+#, fuzzy
+msgid "National"
+msgstr "Relasional"
 
 msgid "Need help? Learn how to connect your database"
 msgstr "Presiza ajuda? Aprende oinsá atu liga ita-boot nia baze-dadus"
@@ -8192,6 +8211,9 @@ msgstr "Laiha dadus"
 
 msgid "No data after filtering or data is NULL for the latest time record"
 msgstr "Laiha dadus hafoin filtrajen ka dadus maka NULU ba rejistu tempu ikus liu"
+
+msgid "No data available for the selected criteria."
+msgstr ""
 
 msgid "No data in file"
 msgstr "Laiha dadus iha arkivu"
@@ -10743,6 +10765,10 @@ msgstr "Hili valór filtru dahuluk tuir padraun"
 msgid "Select format"
 msgstr "Hili formatu"
 
+#, fuzzy
+msgid "Select municipalities"
+msgstr "Munisípiu sira ne'ebé falta"
+
 msgid ""
 "Select one or many metrics to display, that will be displayed in the "
 "percentages of total. Percentage metrics will be calculated only from "
@@ -11097,6 +11123,10 @@ msgstr "Hatudu Tabela"
 
 msgid "Show Text Labels"
 msgstr "Hatudu Label Testu sira"
+
+#, fuzzy
+msgid "Show Thresholds"
+msgstr "Limite Inferiór"
 
 msgid "Show Timestamp"
 msgstr "Hatudu Karimbu Oras"
@@ -11582,6 +11612,10 @@ msgstr "Inisiu (Longitude, Latitude): "
 
 msgid "Start Bulk Upload"
 msgstr "Hahú Upload  barak"
+
+#, fuzzy
+msgid "Start Date"
+msgstr "Data Hahú"
 
 msgid "Start Longitude & Latitude"
 msgstr "Hahú Longitude no latitude sira"
@@ -14645,6 +14679,10 @@ msgstr ""
 "Ami la konsege konekta ba ita-boot nia baze-dadus ho naran "
 "\"%(database)s\". Favor verifika ita-boot nia naran baze-dadus no koko "
 "fali."
+
+#, fuzzy
+msgid "Weather Forecast Trendlines"
+msgstr "Previzaun Tempu"
 
 msgid "Weather Forecasts"
 msgstr "Previzaun Tempu"

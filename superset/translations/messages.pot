@@ -25,7 +25,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 10:44+0800\n"
+"POT-Creation-Date: 2025-06-13 16:47+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3882,6 +3882,9 @@ msgstr ""
 msgid "Days %s"
 msgstr ""
 
+msgid "Days Range"
+msgstr ""
+
 msgid "Db engine did not return all queried columns"
 msgstr ""
 
@@ -5977,6 +5980,9 @@ msgstr ""
 msgid "Heat Alert"
 msgstr ""
 
+msgid "Heat Index"
+msgstr ""
+
 msgid "Heat Index Forecast"
 msgstr ""
 
@@ -6693,6 +6699,9 @@ msgstr ""
 msgid "Less than (<)"
 msgstr ""
 
+msgid "Level"
+msgstr ""
+
 msgid "Lift percent precision"
 msgstr ""
 
@@ -7387,6 +7396,9 @@ msgstr ""
 msgid "Multiplier"
 msgstr ""
 
+msgid "Municipalities"
+msgstr ""
+
 msgid "Municipality"
 msgstr ""
 
@@ -7496,6 +7508,9 @@ msgid "Name of your tag"
 msgstr ""
 
 msgid "Name your database"
+msgstr ""
+
+msgid "National"
 msgstr ""
 
 msgid "Need help? Learn how to connect your database"
@@ -7615,6 +7630,9 @@ msgid "No data"
 msgstr ""
 
 msgid "No data after filtering or data is NULL for the latest time record"
+msgstr ""
+
+msgid "No data available for the selected criteria."
 msgstr ""
 
 msgid "No data in file"
@@ -10002,6 +10020,9 @@ msgstr ""
 msgid "Select format"
 msgstr ""
 
+msgid "Select municipalities"
+msgstr ""
+
 msgid ""
 "Select one or many metrics to display, that will be displayed in the "
 "percentages of total. Percentage metrics will be calculated only from "
@@ -10323,6 +10344,9 @@ msgid "Show Table"
 msgstr ""
 
 msgid "Show Text Labels"
+msgstr ""
+
+msgid "Show Thresholds"
 msgstr ""
 
 msgid "Show Timestamp"
@@ -10779,6 +10803,9 @@ msgid "Start (Longitude, Latitude): "
 msgstr ""
 
 msgid "Start Bulk Upload"
+msgstr ""
+
+msgid "Start Date"
 msgstr ""
 
 msgid "Start Longitude & Latitude"
@@ -13411,6 +13438,9 @@ msgstr ""
 msgid ""
 "We were unable to connect to your database named \"%(database)s\". Please"
 " verify your database name and try again."
+msgstr ""
+
+msgid "Weather Forecast Trendlines"
 msgstr ""
 
 msgid "Weather Forecasts"

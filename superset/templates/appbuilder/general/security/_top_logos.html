@@ -1,13 +1,22 @@
 <style>
-  /* Specific style for RDTL logo to be bigger.
-     The .top-logos class (styled in parent templates) typically uses align-items: center,
-     so a taller RDTL logo will appear higher. */
+  .top-logos {
+    align-items: flex-end;
+  }
+
+  /*
+    Specific style for RDTL logo to be bigger and elevated.
+    The .top-logos class is set to align items to the bottom (flex-end).
+    The taller RDTL logo will already appear higher.
+    A positive `bottom` value with `position: relative` elevates it further.
+  */
   .top-logos img.logo-rdtl {
-    height: 80px; /* Default for other top logos is usually 60px */
+    height: 120px; /* Default for other top logos is usually 60px */
+    position: relative;
+    bottom: 20px;
   }
 </style>
 
-<div class="top-logos"{% if add_top_logos_margin_top | default(false) %} style="margin-top: 20px;"{% endif %}>
+<div class="top-logos"{% if add_top_logos_margin_top | default(false) %} style="margin-top: 20px; "{% endif %}>
     <img src="{{ url_for('static', filename='assets/images/crish/DNMG.svg') }}" alt="DNMG Logo">
     <img src="{{ url_for('static', filename='assets/images/crish/RDTL.svg') }}" alt="RDTL Logo" class="logo-rdtl">
     <img src="{{ url_for('static', filename='assets/images/crish/MOH.png') }}" alt="MOH Logo">

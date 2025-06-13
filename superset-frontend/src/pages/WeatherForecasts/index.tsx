@@ -3,6 +3,7 @@ import { styled, t, useTheme } from '@superset-ui/core';
 import { LineEditableTabs } from 'src/components/Tabs';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 import DashboardTabs, { ChartContainer, StyledTabsContainer, TabContentContainer } from './DashboardTabs';
+import Trendlines from './Trendlines';
 
 
 function WeatherForecasts() {
@@ -53,7 +54,7 @@ function WeatherForecasts() {
                     key="3"
                 >
                     <TabContentContainer>
-                        <DashboardTabs idOrSlug="weather_forecast" selectedTabIndex={0} />
+                        <Trendlines />
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane

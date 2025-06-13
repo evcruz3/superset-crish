@@ -2030,38 +2030,6 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, [currentTime]);
 
-   
-    // Do a switch case for the msgid phrases so that pybabel can detect the msgid phrases and translate them
-    // msgid "Max Temperature Forecast"
-    // msgstr "Previzaun Temperatura Maximu"
-
-    // msgid "Min Temperature Forecast"
-    // msgstr "Previzaun Temperatura Minimu"
-
-    // msgid "Wind Speed Forecast"
-    // msgstr "Previzaun Velosidade Anin"
-
-    // msgid "Relative Humidity Forecast"
-    // msgstr "Previzaun Relativu Umidade"
-
-    // msgid "Rainfall Forecast"
-    // msgstr "Previzaun Udan Been"
-
-    // msgid "This Week's Dengue Case"
-    // msgstr "Kazu Dengue Semana nee'e"
-
-    // msgid "This Week's Diarrhea Case"
-    // msgstr "Kazu Diareia Semana ne'e"
-
-    // msgid "Weather data provided by ECMWF"
-    // msgstr "Dadus kona-ba tempu forsene husi ECMWF"
-
-    // msgid "Last successful weather update:"
-    // msgstr "Atualizasaun ikus kona-ba tempu ne'ebé susesu:"
-
-    // msgid "Heat Index Forecast"
-    // msgstr "Previzaun Indise Temperatura" 
-
   const getLayerName = (sliceName: string) => {
     switch (sliceName) {
       case 'Max Temperature Forecast':

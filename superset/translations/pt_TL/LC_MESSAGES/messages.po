@@ -21,7 +21,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 10:44+0800\n"
+"POT-Creation-Date: 2025-06-13 16:47+0800\n"
 "PO-Revision-Date: 2025-06-12 17:09+0800\n"
 "Last-Translator: \n"
 "Language: pt_TL\n"
@@ -4383,6 +4383,10 @@ msgstr "Dia (freq=D)"
 msgid "Days %s"
 msgstr "Dias %s"
 
+#, fuzzy
+msgid "Days Range"
+msgstr "28 dias atrás"
+
 msgid "Db engine did not return all queried columns"
 msgstr "O motor do banco de dados não retornou todas as colunas consultadas"
 
@@ -6762,6 +6766,10 @@ msgid "Heat Alert"
 msgstr "alerta"
 
 #, fuzzy
+msgid "Heat Index"
+msgstr "Nome da planilha"
+
+#, fuzzy
 msgid "Heat Index Forecast"
 msgstr "Previsão do Tempo"
 
@@ -7547,6 +7555,10 @@ msgstr "Menor ou igual (<=)"
 msgid "Less than (<)"
 msgstr "Menos que (<)"
 
+#, fuzzy
+msgid "Level"
+msgstr "rótulo"
+
 msgid "Lift percent precision"
 msgstr "Precisão da percentagem de elevação"
 
@@ -8315,6 +8327,10 @@ msgstr ""
 msgid "Multiplier"
 msgstr "Multiplicador"
 
+#, fuzzy
+msgid "Municipalities"
+msgstr "Município"
+
 msgid "Municipality"
 msgstr "Município"
 
@@ -8435,6 +8451,10 @@ msgstr "Nome do seu banco de dados"
 
 msgid "Name your database"
 msgstr "Nome do seu banco de dados"
+
+#, fuzzy
+msgid "National"
+msgstr "Relacional"
 
 msgid "Need help? Learn how to connect your database"
 msgstr "Precisa de ajuda? Aprenda como conectar seu banco de dados"
@@ -8561,6 +8581,9 @@ msgid "No data after filtering or data is NULL for the latest time record"
 msgstr ""
 "Não há dados após a filtragem ou os dados são NULL para o último registo "
 "de tempo"
+
+msgid "No data available for the selected criteria."
+msgstr ""
 
 msgid "No data in file"
 msgstr "Não há dados no arquivo"
@@ -11231,6 +11254,10 @@ msgstr "Selecione primeiro valor do filtro por padrão"
 msgid "Select format"
 msgstr "Formato do valor"
 
+#, fuzzy
+msgid "Select municipalities"
+msgstr "Município"
+
 msgid ""
 "Select one or many metrics to display, that will be displayed in the "
 "percentages of total. Percentage metrics will be calculated only from "
@@ -11607,6 +11634,10 @@ msgstr "Mostrar Tabela"
 #, fuzzy
 msgid "Show Text Labels"
 msgstr "Mostrar rótulos"
+
+#, fuzzy
+msgid "Show Thresholds"
+msgstr "Rótulo limite"
 
 msgid "Show Timestamp"
 msgstr "Mostrar Carimbo de data/hora"
@@ -12114,6 +12145,10 @@ msgstr "Início (Longitude, Latitude):"
 #, fuzzy
 msgid "Start Bulk Upload"
 msgstr "Upload de CSV"
+
+#, fuzzy
+msgid "Start Date"
+msgstr "Data de início"
 
 msgid "Start Longitude & Latitude"
 msgstr "Longitude e latitude iniciais"
@@ -15268,6 +15303,10 @@ msgid ""
 msgstr ""
 "Não foi possível conectar-se ao seu banco de dados chamado "
 "\"%(database)s\". Verifique o nome do banco de dados e tente novamente."
+
+#, fuzzy
+msgid "Weather Forecast Trendlines"
+msgstr "Previsão do Tempo"
 
 msgid "Weather Forecasts"
 msgstr "Previsão do Tempo"
