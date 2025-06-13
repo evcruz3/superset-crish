@@ -21,7 +21,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 10:18+0800\n"
+"POT-Creation-Date: 2025-06-13 10:44+0800\n"
 "PO-Revision-Date: 2025-06-12 17:09+0800\n"
 "Last-Translator: \n"
 "Language: pt_TL\n"
@@ -557,6 +557,9 @@ msgstr "Frequência de início de 1 ano"
 msgid "10 minute"
 msgstr "10 minutos"
 
+msgid "10-Day Forecast Cards"
+msgstr ""
+
 msgid "104 weeks"
 msgstr "104 semanas"
 
@@ -882,6 +885,9 @@ msgstr "ABR"
 
 msgid "AQE"
 msgstr "AQE"
+
+msgid "AQI Map"
+msgstr ""
 
 msgid "AUG"
 msgstr "AGO"
@@ -2595,6 +2601,9 @@ msgid "Cannot parse time string [%(human_readable)s]"
 msgstr "Não é possível analisar a string de tempo [%(human_readable)s]"
 
 msgid "Cannot remove files that are uploading or already uploaded"
+msgstr ""
+
+msgid "Carbon Monoxide (CO)"
 msgstr ""
 
 msgid "CartoDB Voyager"
@@ -5015,6 +5024,9 @@ msgstr "Documentação"
 msgid "Domain"
 msgstr "Domínio"
 
+msgid "Dominant Pollutant"
+msgstr ""
+
 #, fuzzy
 msgid "Don't have an account?"
 msgstr "Você ainda não tem nenhum favorito!"
@@ -6485,6 +6497,10 @@ msgstr "Forçar atualização da lista de tabelas"
 msgid "Forecast periods"
 msgstr "Períodos de previsão"
 
+#, fuzzy
+msgid "Forecasts"
+msgstr "Habilitar previsão"
+
 msgid "Foreign key"
 msgstr "Chave estrangeira"
 
@@ -6626,6 +6642,9 @@ msgstr "Vá ao modo de edição para configurar o painel e adicionar gráficos"
 msgid "Gold"
 msgstr "Ouro"
 
+msgid "Good"
+msgstr ""
+
 msgid "Google Sheet Name and URL"
 msgstr "Planilha Google Nome e URL"
 
@@ -6724,12 +6743,19 @@ msgstr "marca"
 msgid "Hashtags (comma-separated)"
 msgstr "Domínios permitidos (separados por vírgula)"
 
+msgid "Hazardous"
+msgstr ""
+
 msgid "Header"
 msgstr "Cabeçalho"
 
 #, fuzzy
 msgid "Header row"
 msgstr "Linha do Cabeçalho"
+
+#, fuzzy
+msgid "Health Advisory"
+msgstr "Atualizar dados de facilidade de saúde"
 
 #, fuzzy
 msgid "Heat Alert"
@@ -8461,6 +8487,9 @@ msgstr "Gráfico Nightingale Rose"
 msgid "Nightingale Rose Chart"
 msgstr "Gráfico Nightingale Rose"
 
+msgid "Nitrogen Dioxide (NO₂)"
+msgstr ""
+
 msgid "No"
 msgstr "Não"
 
@@ -9204,12 +9233,23 @@ msgstr ""
 "Pesquisável por nome ou nome de usuário."
 
 #, fuzzy
+msgid "Ozone (O₃)"
+msgstr "Horizontal (topo)"
+
+#, fuzzy
 msgid "PDF Preview"
 msgstr "Pré-visualização de dados"
 
 #, fuzzy
 msgid "PDF download failed, please refresh and try again."
 msgstr "Falha no download da imagem, por favor atualizar e tentar novamente."
+
+#, fuzzy
+msgid "PM10"
+msgstr "p1"
+
+msgid "PM2.5"
+msgstr ""
 
 msgid "Page length"
 msgstr "Comprimento da página"
@@ -12251,6 +12291,9 @@ msgstr "Sufixo"
 msgid "Suffix to apply after the percentage display"
 msgstr "Sufixo para aplicar após a apresentação da percentagem"
 
+msgid "Sulfur Dioxide (SO₂)"
+msgstr ""
+
 msgid "Sum"
 msgstr "Soma"
 
@@ -14286,6 +14329,14 @@ msgstr "Mapa da árvore"
 msgid "Trend"
 msgstr "Tendência"
 
+#, fuzzy
+msgid "Trendline"
+msgstr "pendente"
+
+#, fuzzy
+msgid "Trendlines"
+msgstr "Linhas de marcação"
+
 msgid "Triangle"
 msgstr "Triângulo"
 
@@ -14499,6 +14550,12 @@ msgstr ""
 #, fuzzy, python-format
 msgid "Unexpected time range: %(error)s"
 msgstr "Intervalo de tempo inesperado: %(error)s"
+
+msgid "Unhealthy"
+msgstr ""
+
+msgid "Unhealthy for Sensitive Groups"
+msgstr ""
 
 msgid "Unit to be displayed after the metric value"
 msgstr "Unidade a ser exibida após o valor da métrica"
@@ -14918,6 +14975,10 @@ msgstr "Vertical"
 
 msgid "Vertical (Left)"
 msgstr "Vertical (esquerda)"
+
+#, fuzzy
+msgid "Very Unhealthy"
+msgstr "a cada mês"
 
 msgid "Video game consoles"
 msgstr "Consoles de videogame"

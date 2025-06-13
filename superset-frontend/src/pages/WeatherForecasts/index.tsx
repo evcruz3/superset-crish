@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { styled, useTheme } from '@superset-ui/core';
+import { styled, t, useTheme } from '@superset-ui/core';
 import { LineEditableTabs } from 'src/components/Tabs';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 import DashboardTabs, { ChartContainer, StyledTabsContainer, TabContentContainer } from './DashboardTabs';
@@ -21,7 +21,7 @@ function WeatherForecasts() {
                 type="card"
             >
                 <LineEditableTabs.TabPane
-                    tab="Forecasts"
+                    tab={t("Forecasts")}
                     key="1"
                 >
                     <TabContentContainer>
@@ -35,7 +35,7 @@ function WeatherForecasts() {
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane
-                    tab="Alerts"
+                    tab={t("Alerts")}
                     key="2"
                 >
                     <TabContentContainer>
@@ -49,7 +49,7 @@ function WeatherForecasts() {
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane
-                    tab="Trendlines"
+                    tab={t("Trendlines")}
                     key="3"
                 >
                     <TabContentContainer>
@@ -57,7 +57,7 @@ function WeatherForecasts() {
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane
-                    tab="Table"
+                    tab={t("Table")}
                     key="4"
                 >
                     <TabContentContainer>

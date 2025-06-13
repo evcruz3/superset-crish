@@ -25,7 +25,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 10:18+0800\n"
+"POT-Creation-Date: 2025-06-13 10:44+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -475,6 +475,9 @@ msgstr ""
 msgid "10 minute"
 msgstr ""
 
+msgid "10-Day Forecast Cards"
+msgstr ""
+
 msgid "104 weeks"
 msgstr ""
 
@@ -763,6 +766,9 @@ msgid "APR"
 msgstr ""
 
 msgid "AQE"
+msgstr ""
+
+msgid "AQI Map"
 msgstr ""
 
 msgid "AUG"
@@ -2278,6 +2284,9 @@ msgid "Cannot parse time string [%(human_readable)s]"
 msgstr ""
 
 msgid "Cannot remove files that are uploading or already uploaded"
+msgstr ""
+
+msgid "Carbon Monoxide (CO)"
 msgstr ""
 
 msgid "CartoDB Voyager"
@@ -4426,6 +4435,9 @@ msgstr ""
 msgid "Domain"
 msgstr ""
 
+msgid "Dominant Pollutant"
+msgstr ""
+
 msgid "Don't have an account?"
 msgstr ""
 
@@ -5726,6 +5738,9 @@ msgstr ""
 msgid "Forecast periods"
 msgstr ""
 
+msgid "Forecasts"
+msgstr ""
+
 msgid "Foreign key"
 msgstr ""
 
@@ -5855,6 +5870,9 @@ msgstr ""
 msgid "Gold"
 msgstr ""
 
+msgid "Good"
+msgstr ""
+
 msgid "Google Sheet Name and URL"
 msgstr ""
 
@@ -5944,10 +5962,16 @@ msgstr ""
 msgid "Hashtags (comma-separated)"
 msgstr ""
 
+msgid "Hazardous"
+msgstr ""
+
 msgid "Header"
 msgstr ""
 
 msgid "Header row"
+msgstr ""
+
+msgid "Health Advisory"
 msgstr ""
 
 msgid "Heat Alert"
@@ -7523,6 +7547,9 @@ msgstr ""
 msgid "Nightingale Rose Chart"
 msgstr ""
 
+msgid "Nitrogen Dioxide (NO₂)"
+msgstr ""
+
 msgid "No"
 msgstr ""
 
@@ -8178,10 +8205,19 @@ msgid ""
 " or username."
 msgstr ""
 
+msgid "Ozone (O₃)"
+msgstr ""
+
 msgid "PDF Preview"
 msgstr ""
 
 msgid "PDF download failed, please refresh and try again."
+msgstr ""
+
+msgid "PM10"
+msgstr ""
+
+msgid "PM2.5"
 msgstr ""
 
 msgid "Page length"
@@ -10909,6 +10945,9 @@ msgstr ""
 msgid "Suffix to apply after the percentage display"
 msgstr ""
 
+msgid "Sulfur Dioxide (SO₂)"
+msgstr ""
+
 msgid "Sum"
 msgstr ""
 
@@ -12580,6 +12619,12 @@ msgstr ""
 msgid "Trend"
 msgstr ""
 
+msgid "Trendline"
+msgstr ""
+
+msgid "Trendlines"
+msgstr ""
+
 msgid "Triangle"
 msgstr ""
 
@@ -12759,6 +12804,12 @@ msgstr ""
 
 #, python-format
 msgid "Unexpected time range: %(error)s"
+msgstr ""
+
+msgid "Unhealthy"
+msgstr ""
+
+msgid "Unhealthy for Sensitive Groups"
 msgstr ""
 
 msgid "Unit to be displayed after the metric value"
@@ -13127,6 +13178,9 @@ msgid "Vertical"
 msgstr ""
 
 msgid "Vertical (Left)"
+msgstr ""
+
+msgid "Very Unhealthy"
 msgstr ""
 
 msgid "Video game consoles"

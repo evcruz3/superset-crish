@@ -19,7 +19,7 @@
 import React, { useState } from 'react';
 import DashboardTabs, { ChartContainer, TabContentContainer, StyledTabsContainer } from '../WeatherForecasts/DashboardTabs';
 import { LineEditableTabs } from 'src/components/Tabs';
-import { useTheme } from '@superset-ui/core';
+import { t, useTheme } from '@superset-ui/core';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 export default function DiseaseForecasts() {
 
@@ -40,7 +40,7 @@ export default function DiseaseForecasts() {
                 type="card"
             >
                 <LineEditableTabs.TabPane
-                    tab="Forecasts"
+                    tab={t("Forecasts")}
                     key="1"
                 >
                     <TabContentContainer>
@@ -54,7 +54,7 @@ export default function DiseaseForecasts() {
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane
-                    tab="Alerts"
+                    tab={t("Alerts")}
                     key="2"
                 >
                     <TabContentContainer>
@@ -68,7 +68,7 @@ export default function DiseaseForecasts() {
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane
-                    tab="Trendlines"
+                    tab={t("Trendlines")}
                     key="3"
                 >
                     <TabContentContainer>
@@ -76,7 +76,7 @@ export default function DiseaseForecasts() {
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane
-                    tab="Table"
+                    tab={t("Table")}
                     key="4"
                 >
                     <TabContentContainer>

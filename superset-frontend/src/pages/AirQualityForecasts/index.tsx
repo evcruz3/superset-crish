@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ElementType, ClassAttributes, HTMLAttributes } from 'react';
-import { styled, useTheme, SupersetClient, SupersetTheme, JsonObject } from '@superset-ui/core';
+import { styled, useTheme, SupersetClient, SupersetTheme, JsonObject, t } from '@superset-ui/core';
 import { Spin, Alert, Select, Row, Col, DatePicker } from 'antd';
 import { DeckGL } from '@deck.gl/react';
 import { GeoJsonLayer, GeoJsonLayerProps } from '@deck.gl/layers';
@@ -114,12 +114,12 @@ const INITIAL_VIEW_STATE = {
 };
 
 const AQI_LEVELS = [
-  { range: [0, 50], label: 'Good', colorKey: 'success.base' },
-  { range: [51, 100], label: 'Moderate', colorKey: 'warning.base' },
-  { range: [101, 150], label: 'Unhealthy for Sensitive Groups', colorKey: 'error.base' },
-  { range: [151, 200], label: 'Unhealthy', colorKey: 'error.dark1' },
-  { range: [201, 300], label: 'Very Unhealthy', colorKey: 'error.dark2' },
-  { range: [301, Infinity], label: 'Hazardous', colorKey: 'error.dark2' },
+  { range: [0, 50], label: t('Good'), colorKey: 'success.base' },
+  { range: [51, 100], label: t('Moderate'), colorKey: 'warning.base' },
+  { range: [101, 150], label: t('Unhealthy for Sensitive Groups'), colorKey: 'error.base' },
+  { range: [151, 200], label: t('Unhealthy'), colorKey: 'error.dark1' },
+  { range: [201, 300], label: t('Very Unhealthy'), colorKey: 'error.dark2' },
+  { range: [301, Infinity], label: t('Hazardous'), colorKey: 'error.dark2' },
 ];
 
 const getAqiColor = (aqi: number, theme: SupersetTheme, forPill: boolean = false): [number, number, number, number] | string => {
@@ -173,12 +173,12 @@ export default function AirQualityForecastsPage() {
   const [trendlineError, setTrendlineError] = useState<string | null>(null); 
 
   const ALL_POLLUTANTS_OPTIONS = [
-    { label: 'PM2.5', value: 'pm25' },
-    { label: 'PM10', value: 'pm10' },
-    { label: 'Ozone (O₃)', value: 'o3' },
-    { label: 'Nitrogen Dioxide (NO₂)', value: 'no2' },
-    { label: 'Sulfur Dioxide (SO₂)', value: 'so2' },
-    { label: 'Carbon Monoxide (CO)', value: 'co' },
+    { label: t('PM2.5'), value: 'pm25' },
+    { label: t('PM10'), value: 'pm10' },
+    { label: t('Ozone (O₃)'), value: 'o3' },
+    { label: t('Nitrogen Dioxide (NO₂)'), value: 'no2' },
+    { label: t('Sulfur Dioxide (SO₂)'), value: 'so2' },
+    { label: t('Carbon Monoxide (CO)'), value: 'co' },
   ];
 
   const municipalitiesOptions = geojson?.features?.map((f: any) => ({ 
@@ -292,14 +292,14 @@ export default function AirQualityForecastsPage() {
       <ForecastCard key={index} theme={theme}>
         <h3>{moment(data.forecast_date).format('DD MMMM, YYYY')} - {data.municipality_name}</h3>
         <p><PollutantPill theme={theme} aqi={data.overall_aqi}>AQI: {data.overall_aqi}</PollutantPill></p>
-        {data.dominant_pollutant && <p><strong>Dominant Pollutant:</strong> {data.dominant_pollutant}</p>}
-        {data.pm25 && <p><strong>PM2.5:</strong> {data.pm25} µg/m³</p>}
-        {data.pm10 && <p><strong>PM10:</strong> {data.pm10} µg/m³</p>}
-        {data.o3 && <p><strong>Ozone (O₃):</strong> {data.o3} ppm</p>}
-        {data.no2 && <p><strong>Nitrogen Dioxide (NO₂):</strong> {data.no2} ppm</p>}
-        {data.so2 && <p><strong>Sulfur Dioxide (SO₂):</strong> {data.so2} ppm</p>}
-        {data.co && <p><strong>Carbon Monoxide (CO):</strong> {data.co} ppm</p>}
-        {data.health_advisory && <p><strong>Health Advisory:</strong> {data.health_advisory}</p>}
+        {data.dominant_pollutant && <p><strong>{t('Dominant Pollutant')}:</strong> {data.dominant_pollutant}</p>}
+        {data.pm25 && <p><strong>{t('PM2.5')}:</strong> {data.pm25} µg/m³</p>}
+        {data.pm10 && <p><strong>{t('PM10')}:</strong> {data.pm10} µg/m³</p>}
+        {data.o3 && <p><strong>{t('Ozone (O₃)')}:</strong> {data.o3} ppm</p>}
+        {data.no2 && <p><strong>{t('Nitrogen Dioxide (NO₂)')}:</strong> {data.no2} ppm</p>}
+        {data.so2 && <p><strong>{t('Sulfur Dioxide (SO₂)')}:</strong> {data.so2} ppm</p>}
+        {data.co && <p><strong>{t('Carbon Monoxide (CO)')}:</strong> {data.co} ppm</p>}
+        {data.health_advisory && <p><strong>{t('Health Advisory')}:</strong> {data.health_advisory}</p>}
       </ForecastCard>
     ));
   };
@@ -394,7 +394,7 @@ export default function AirQualityForecastsPage() {
         onChange={handleTabChange} 
         type="card"
       >
-        <LineEditableTabs.TabPane tab="AQI Map" key="map">
+        <LineEditableTabs.TabPane tab={t("AQI Map")} key="map">
           <TabContentContainer theme={theme}>
             {loading && activeTab === 'map' && <Spin tip="Loading map and data..." />}
             {error && activeTab === 'map' && <Alert message={error} type="error" showIcon />}
@@ -463,7 +463,7 @@ export default function AirQualityForecastsPage() {
             )}
           </TabContentContainer>
         </LineEditableTabs.TabPane>
-        <LineEditableTabs.TabPane tab="10-Day Forecast Cards" key="cards">
+        <LineEditableTabs.TabPane tab={t("10-Day Forecast Cards")} key="cards">
             <Row gutter={[16,16]} style={{marginBottom: theme.gridUnit * 4}}>
                 <Col>
                     Select Municipality:
@@ -484,7 +484,7 @@ export default function AirQualityForecastsPage() {
             {renderForecasts()}
           </TabContentContainer>
         </LineEditableTabs.TabPane>
-        <LineEditableTabs.TabPane tab="Trendline" key="trendline">
+        <LineEditableTabs.TabPane tab={t("Trendline")} key="trendline">
           <TabContentContainer theme={theme}>
             <Row gutter={[16, 16]} style={{ marginBottom: theme.gridUnit * 4 }}>
               <Col>

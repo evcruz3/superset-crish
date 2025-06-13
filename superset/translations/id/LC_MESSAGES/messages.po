@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 10:18+0800\n"
+"POT-Creation-Date: 2025-06-13 10:44+0800\n"
 "PO-Revision-Date: 2025-06-12 16:48+0800\n"
 "Last-Translator: \n"
 "Language: tet\n"
@@ -529,6 +529,10 @@ msgstr "Frekuensia hahú tinan 1 nian"
 msgid "10 minute"
 msgstr "minute 10 liu ba"
 
+#, fuzzy
+msgid "10-Day Forecast Cards"
+msgstr "Kartaun Previzaun - Loron 10 nian"
+
 msgid "104 weeks"
 msgstr "semana 104"
 
@@ -849,6 +853,9 @@ msgstr "ABR"
 
 msgid "AQE"
 msgstr "AQE"
+
+msgid "AQI Map"
+msgstr "Mapa AQI"
 
 msgid "AUG"
 msgstr "AGO"
@@ -2527,6 +2534,10 @@ msgstr "Labele analiza string tempu [%(human_readable)s]"
 
 msgid "Cannot remove files that are uploading or already uploaded"
 msgstr "Labele apaga arkivu sira ne'ebé maka hatama hela ka hatama ona"
+
+#, fuzzy
+msgid "Carbon Monoxide (CO)"
+msgstr "Monóxidu Karbonu"
 
 msgid "CartoDB Voyager"
 msgstr "CartoDB Voyager"
@@ -4815,6 +4826,9 @@ msgstr "Documentasaun"
 msgid "Domain"
 msgstr "Domíniu"
 
+msgid "Dominant Pollutant"
+msgstr ""
+
 msgid "Don't have an account?"
 msgstr "La iha konta?"
 
@@ -6202,6 +6216,10 @@ msgstr "Obriga atu atualiza lista tabela nian"
 msgid "Forecast periods"
 msgstr "Períodu previzaun sira"
 
+#, fuzzy
+msgid "Forecasts"
+msgstr "Premiti preve"
+
 msgid "Foreign key"
 msgstr "Xave estranjeiru"
 
@@ -6338,6 +6356,9 @@ msgstr "Ba iha modo edit hodi konfigura painél no aumenta gráfiku sira"
 msgid "Gold"
 msgstr "Ouru"
 
+msgid "Good"
+msgstr "Diak"
+
 msgid "Google Sheet Name and URL"
 msgstr "Google Sheet nia naran no URL"
 
@@ -6430,11 +6451,18 @@ msgstr "Hashtag sira"
 msgid "Hashtags (comma-separated)"
 msgstr "Hashtag sira (haketak ho vírgula)"
 
+msgid "Hazardous"
+msgstr "Perigozu"
+
 msgid "Header"
 msgstr "Header"
 
 msgid "Header row"
 msgstr "Header  koluna"
+
+#, fuzzy
+msgid "Health Advisory"
+msgstr "fasilidade saúde"
 
 msgid "Heat Alert"
 msgstr "Alerta Temperatura"
@@ -8094,6 +8122,10 @@ msgstr "Nightingale"
 msgid "Nightingale Rose Chart"
 msgstr "Gráfiku Nightingale Rose"
 
+#, fuzzy
+msgid "Nitrogen Dioxide (NO₂)"
+msgstr "Dióksidu Nitrojéniu"
+
 msgid "No"
 msgstr "Lae/Laiha"
 
@@ -8808,11 +8840,21 @@ msgstr ""
 "Na'in sira maka lista ida hosi utilizadór sira ne'ebé bele altera painél."
 " Bele buka tuir naran ka naran utilizadór."
 
+#, fuzzy
+msgid "Ozone (O₃)"
+msgstr "Ozonu (o3)"
+
 msgid "PDF Preview"
 msgstr "Previzualizasaun dadus iha PDF"
 
 msgid "PDF download failed, please refresh and try again."
 msgstr "Falla atu download PDF, favór ida atualiza no koko fali."
+
+msgid "PM10"
+msgstr "PM10"
+
+msgid "PM2.5"
+msgstr "PM2.5"
 
 msgid "Page length"
 msgstr "Komprimentu pájina"
@@ -11711,6 +11753,10 @@ msgstr "Sufiksu"
 msgid "Suffix to apply after the percentage display"
 msgstr "Sufiksu atu aplika hafoin hatudu persentajen"
 
+#, fuzzy
+msgid "Sulfur Dioxide (SO₂)"
+msgstr "Dióksidu Enxofre"
+
 msgid "Sum"
 msgstr "Soma"
 
@@ -13701,6 +13747,12 @@ msgstr "Mapa ai-hun"
 msgid "Trend"
 msgstr "Tendénsia"
 
+msgid "Trendline"
+msgstr "Liña tendénsia"
+
+msgid "Trendlines"
+msgstr "Liña tendénsia sira"
+
 msgid "Triangle"
 msgstr "Triángulu"
 
@@ -13904,6 +13956,12 @@ msgstr "Formatu resposta ne'ebé la espera ba munisípiu sira"
 #, python-format
 msgid "Unexpected time range: %(error)s"
 msgstr "Tempu ne'ebé la espera: %(error)s"
+
+msgid "Unhealthy"
+msgstr "La saudavel"
+
+msgid "Unhealthy for Sensitive Groups"
+msgstr "La saudavel ba Grupu Sensivel sira"
 
 msgid "Unit to be displayed after the metric value"
 msgstr "Unidade atu hatudu hafoin valór métriku"
@@ -14304,6 +14362,9 @@ msgstr "Vertical"
 
 msgid "Vertical (Left)"
 msgstr "Vertical (karuk)"
+
+msgid "Very Unhealthy"
+msgstr "La saudavel tebes"
 
 msgid "Video game consoles"
 msgstr "Konsola videojogu sira"
