@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Superset VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-13 16:47+0800\n"
+"POT-Creation-Date: 2025-06-19 23:40+0800\n"
 "PO-Revision-Date: 2025-06-12 16:48+0800\n"
 "Last-Translator: \n"
 "Language: tet\n"
@@ -11613,7 +11613,6 @@ msgstr "Inisiu (Longitude, Latitude): "
 msgid "Start Bulk Upload"
 msgstr "Hahú Upload  barak"
 
-#
 msgid "Start Date"
 msgstr "Data Hahú"
 
