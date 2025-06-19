@@ -515,7 +515,7 @@ const Trendlines = () => {
   const [municipalities, setMunicipalities] = useState(['Dili']);
   const [startDate, setStartDate] = useState<Moment | null>(moment());
   const [daysRange, setDaysRange] = useState(10);
-  const [level, setLevel] = useState<Level>('municipality');
+  const [level, setLevel] = useState<Level>('national');
   const [showThresholds, setShowThresholds] = useState(true);
 
   const filters: Filters | null = useMemo(() => {
@@ -561,8 +561,8 @@ const Trendlines = () => {
                       onChange={e => handleLevelChange(e.target.value)}
                       value={level}
                     >
-                      <Radio value="municipality">{t('Municipality')}</Radio>
                       <Radio value="national">{t('National')}</Radio>
+                      <Radio value="municipality">{t('Municipality')}</Radio>
                     </Radio.Group>
                   </FilterItem>
                   <FilterItem>
