@@ -28,7 +28,7 @@ import { SupersetClient } from '@superset-ui/core';
 import StomachIcon from 'src/assets/images/icons/stomach.svg';
 import MosquitoIcon from 'src/assets/images/icons/mosquito.svg'; // Import mosquito SVG
 
-const ChartContainer = styled.div`
+export const ChartContainer = styled.div`
   width: 100%;
   height: 100%;
   display: flex;

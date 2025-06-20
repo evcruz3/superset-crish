@@ -1,8 +1,11 @@
+import ResponsiveChartSlug from "src/components/Chart/ResponsiveChartSlug";
 import withToasts from "src/components/MessageToasts/withToasts";
-import DashboardPage from "src/dashboard/containers/DashboardPage";
+import { ChartContainer } from "src/pages/Home";
 
 function AcuteRespiratoryInfection() {
-    return <DashboardPage idOrSlug={"diseases-ari"}/>;
+    return <ChartContainer>
+        <ResponsiveChartSlug slug="weekly-ari-cases" fillHeight />
+    </ChartContainer>
 }
 
 export default withToasts(AcuteRespiratoryInfection); 

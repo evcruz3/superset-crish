@@ -21,6 +21,8 @@ import DashboardTabs, { ChartContainer, TabContentContainer, StyledTabsContainer
 import { LineEditableTabs } from 'src/components/Tabs';
 import { t, useTheme } from '@superset-ui/core';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
+import Trendlines from './Trendlines';
+
 export default function DiseaseForecasts() {
 
   // return <DashboardTabs idOrSlug="disease_forecasts" selectedTabIndex={0} />;
@@ -72,7 +74,7 @@ export default function DiseaseForecasts() {
                     key="3"
                 >
                     <TabContentContainer>
-                        <DashboardTabs idOrSlug="disease_forecasts" selectedTabIndex={0} />
+                        <Trendlines />
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane

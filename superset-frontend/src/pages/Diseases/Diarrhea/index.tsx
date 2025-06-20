@@ -1,8 +1,11 @@
+import ResponsiveChartSlug from "src/components/Chart/ResponsiveChartSlug";
 import withToasts from "src/components/MessageToasts/withToasts";
-import DashboardPage from "src/dashboard/containers/DashboardPage";
+import { ChartContainer } from "src/pages/Home";
 
 function Diarrhea() {
-    return <DashboardPage idOrSlug={"diseases-diarrhea"}/>;
+    return <ChartContainer>
+        <ResponsiveChartSlug slug="weekly-diarrhea-cases" fillHeight />
+    </ChartContainer>
 }
 
 export default withToasts(Diarrhea); 

@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 import logging
-from datetime import date # For parsing date string
+from datetime import date, timedelta # For parsing date string
 from typing import Any
 import json
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, and_, cast, Date as SQLDate
 from flask_appbuilder.models.filters import Filters
 
 from flask import request, Response
@@ -132,7 +132,7 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             return None
 
     @expose("/", methods=["GET"])
-    # @protect()
+    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -165,6 +165,26 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             description: |
               A Rison-encoded query for comprehensive filtering, sorting, and pagination.
               Example: q=(filters:!((col:disease_type,opr:eq,value:Dengue)),page:0,page_size:25)
+          - name: forecast_date_start
+            in: query
+            required: false
+            schema:
+              type: string
+              format: date
+            description: "Filter by start date for a date range (inclusive, YYYY-MM-DD)."
+          - name: forecast_date_end
+            in: query
+            required: false
+            schema:
+              type: string
+              format: date
+            description: "Filter by end date for a date range (inclusive, YYYY-MM-DD)."
+          - name: days_range
+            in: query
+            required: false
+            schema:
+              type: integer
+            description: "Number of days to include from forecast_date_start. Used if forecast_date_end is not provided."
           - name: municipality_name
             in: query
             required: false
@@ -189,12 +209,6 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             schema:
               type: string
             description: Filter by exact alert level.
-          - name: forecast_date
-            in: query
-            required: false
-            schema:
-              type: string
-            description: Filter by exact forecast date (YYYY-MM-DD).
           - name: page
             in: query
             required: false
@@ -259,18 +273,51 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
         # 1. Start with a base SQLAlchemy query
         query = self.datamodel.session.query(self.datamodel.obj)
 
+        # Handle date range filtering first
+        forecast_date_start_str = request.args.get("forecast_date_start")
+        forecast_date_end_str = request.args.get("forecast_date_end")
+        days_range_str = request.args.get("days_range")
+
+        start_date = None
+        if forecast_date_start_str:
+            try:
+                start_date = date.fromisoformat(forecast_date_start_str)
+            except ValueError:
+                return self.response_400(message=f"Invalid date format for forecast_date_start: {forecast_date_start_str}")
+
+        end_date = None
+        if forecast_date_end_str:
+            try:
+                end_date = date.fromisoformat(forecast_date_end_str)
+            except ValueError:
+                return self.response_400(message=f"Invalid date format for forecast_date_end: {forecast_date_end_str}")
+
+        if start_date and days_range_str and not end_date:
+            try:
+                days_range = int(days_range_str)
+                if days_range > 0:
+                    end_date = start_date + timedelta(days=days_range - 1)
+            except ValueError:
+                logger.warning(f"Invalid value for days_range: {days_range_str}. Ignoring.")
+
+        if start_date:
+            logger.debug(f"Applying start_date filter: >= {start_date}")
+            query = query.filter(cast(self.datamodel.obj.forecast_date, SQLDate) >= start_date)
+        if end_date:
+            logger.debug(f"Applying end_date filter: <= {end_date}")
+            query = query.filter(cast(self.datamodel.obj.forecast_date, SQLDate) <= end_date)
+
         # 2. Apply direct URL parameter filters using SQLAlchemy
         direct_query_params_mapping = {
             "municipality_name": "municipality_name",
             "municipality_code": "municipality_code",
             "disease_type": "disease_type",
             "alert_level": "alert_level",
-            "forecast_date": "forecast_date", # Assuming forecast_date in model is string or compatible
         }
         for query_param_key, model_column_name in direct_query_params_mapping.items():
             if query_param_key in request.args:
                 param_value = request.args.get(query_param_key)
-                if param_value is not None and query_param_key.lower() not in ['q', 'page', 'page_size', 'order_column', 'order_direction', 'keys', 'columns']:
+                if param_value is not None and query_param_key.lower() not in ['q', 'page', 'page_size', 'order_column', 'order_direction', 'keys', 'columns', 'forecast_date_start', 'forecast_date_end', 'days_range']:
                     logger.info(f"Disease Alerts - Applying direct URL filter to SQLAlchemy query: {model_column_name} == {param_value}")
                     # Special handling if model_column_name is 'forecast_date' and DB stores it as Date
                     if model_column_name == 'forecast_date':

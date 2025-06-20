@@ -3,7 +3,6 @@ import {
   styled,
   t,
   SupersetClient,
-  useTheme,
   supersetTheme,
 } from '@superset-ui/core';
 import Echart from '../../../plugins/plugin-chart-echarts/src/components/Echart';
@@ -14,26 +13,28 @@ import moment, { Moment } from 'moment';
 import Loading from 'src/components/Loading';
 import { useResizeDetector } from 'react-resize-detector';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
+import SubMenu from 'src/features/home/SubMenu';
 
-const THRESHOLDS: Record<
+const ALERT_LEVEL_COLORS: Record<string, string> = {
+  Epidemic: '#d32f2f',
+  Alert: '#ef6c00',
+  Normal: '#20a7c9', // Color for 'Normal' or other levels
+};
+
+const DISEASE_THRESHOLDS: Record<
   string,
   Array<{ value: number; label: string; color: string }>
 > = {
-  heat_index: [
-    { value: 42, label: t('Extreme Danger'), color: '#d32f2f' },
-    { value: 40, label: t('Danger'), color: '#ef6c00' },
-    { value: 36, label: t('Extreme Caution'), color: '#fdd835' },
+  Dengue: [
+    { value: 6, label: 'Severe', color: '#d32f2f' },
+    { value: 2, label: 'High', color: '#ef6c00' },
+    { value: 1, label: 'Moderate', color: '#fdd835' },
   ],
-  rainfall: [
-    { value: 100, label: t('Extreme Danger'), color: '#d32f2f' },
-    { value: 50, label: t('Danger'), color: '#ef6c00' },
-    { value: 20, label: t('Extreme Caution'), color: '#fdd835' },
-  ],
-  wind_speed: [
-    { value: 25, label: t('Extreme Danger'), color: '#d32f2f' },
-    { value: 20, label: t('Danger'), color: '#ef6c00' },
-    { value: 15, label: t('Extreme Caution'), color: '#fdd835' },
+  Diarrhea: [
+    { value: 100, label: 'Severe', color: '#d32f2f' },
+    { value: 50, label: 'High', color: '#ef6c00' },
+    { value: 25, label: 'Moderate', color: '#fdd835' },
+    { value: 1, label: 'Low', color: '#20a7c9' },
   ],
 };
 
@@ -53,6 +54,11 @@ const MUNICIPALITY_OPTIONS = [
   'Raeoa',
   'Viqueque',
 ].map(name => ({ label: name, value: name }));
+
+const DISEASE_OPTIONS = ['Dengue', 'Diarrhea'].map(name => ({
+  label: name,
+  value: name,
+}));
 
 const TrendlinesContainer = styled.div`
   padding: ${({ theme }) => theme.gridUnit * 4}px;
@@ -90,7 +96,7 @@ const FilterItem = styled.div`
 const ChartContainer = styled.div`
   display: flex;
   flex-direction: column;
-  height: 300px;
+  height: 450px;
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
   border-radius: ${({ theme }) => theme.borderRadius}px;
   padding: ${({ theme }) => theme.gridUnit * 4}px;
@@ -108,54 +114,36 @@ const EchartContainer = styled.div`
   min-height: 0;
 `;
 
-const WEATHER_PARAMETER_UNITS: Record<string, string> = {
-  humidity: '%',
-  temp_max: '°C',
-  temp_min: '°C',
-  rainfall: 'mm',
-  wind_speed: 'km/h',
-  heat_index: '°C',
-};
-
-const WEATHER_PARAMETERS: Record<string, string> = {
-  'Relative Humidity': 'humidity',
-  'Max Temperature': 'temp_max',
-  'Min Temperature': 'temp_min',
-  Rainfall: 'rainfall',
-  Windspeed: 'wind_speed',
-};
-
-interface WeatherDataPoint {
+interface DiseaseDataPoint {
   forecast_date: string;
-  value: number;
+  predicted_cases: number;
+  alert_level: string;
 }
 
-interface WeatherDataSeries {
-  [municipality: string]: WeatherDataPoint[];
+interface DiseaseDataSeries {
+  [municipality: string]: DiseaseDataPoint[];
 }
 
 interface Filters {
   municipalities: string[];
   startDate: string;
-  daysRange: number;
+  endDate: string;
 }
 
 type Level = 'municipality' | 'national';
 
-const WeatherTrendChart = ({
-  parameter,
-  title,
+const DiseaseTrendChart = ({
   filters,
   level,
+  disease,
   showThresholds = true,
 }: {
-  parameter: string;
-  title: string;
   filters: Filters;
   level: Level;
+  disease: string;
   showThresholds?: boolean;
 }) => {
-  const [data, setData] = useState<WeatherDataSeries>({});
+  const [data, setData] = useState<DiseaseDataSeries>({});
   const [loading, setLoading] = useState(true);
   const { ref } = useResizeDetector();
   const echartRef = useRef<any>();
@@ -163,9 +151,12 @@ const WeatherTrendChart = ({
   useEffect(() => {
     let ignore = false;
     setLoading(true);
-    const { municipalities, startDate, daysRange } = filters;
+    const { municipalities, startDate, endDate } = filters;
 
-    if (level === 'municipality' && municipalities.length === 0) {
+    if (
+      (level === 'municipality' && municipalities.length === 0) ||
+      !disease
+    ) {
       setData({});
       setLoading(false);
       return () => {
@@ -173,35 +164,39 @@ const WeatherTrendChart = ({
       };
     }
 
+    const commonParams: Record<string, string> = {
+      page_size: '-1',
+      disease_type: disease,
+      forecast_date_start: startDate,
+      forecast_date_end: endDate,
+    };
+
     let fetchPromises;
 
     if (level === 'national') {
-      const params = new URLSearchParams({
-        forecast_date: startDate,
-        days_range: String(daysRange),
-        page_size: '-1', // Fetch all data points for the range
-      });
+      const params = new URLSearchParams(commonParams);
       fetchPromises = [
         SupersetClient.get({
-          endpoint: `/api/v1/weather_forecasts/${parameter}?${params}`,
+          endpoint: `/api/v1/disease_forecast_alert/?${params.toString()}`,
         }).then(response => {
-          const allData: WeatherDataPoint[] = response.json.result;
+          const allData: DiseaseDataPoint[] = response.json.result;
 
           const groupedByDate: Record<string, number[]> = {};
           allData.forEach(point => {
             if (!groupedByDate[point.forecast_date]) {
               groupedByDate[point.forecast_date] = [];
             }
-            groupedByDate[point.forecast_date].push(point.value);
+            groupedByDate[point.forecast_date].push(point.predicted_cases);
           });
 
-          const aggregatedData: WeatherDataPoint[] = Object.entries(
+          const aggregatedData: DiseaseDataPoint[] = Object.entries(
             groupedByDate,
           ).map(([date, values]) => {
             const sum = values.reduce((acc, val) => acc + val, 0);
             return {
               forecast_date: date,
-              value: sum / values.length,
+              predicted_cases: sum / values.length,
+              alert_level: 'National Average', // Cannot determine level for an average
             };
           });
 
@@ -218,17 +213,15 @@ const WeatherTrendChart = ({
     } else {
       fetchPromises = municipalities.map(municipality => {
         const params = new URLSearchParams({
+          ...commonParams,
           municipality_name: municipality,
-          forecast_date: startDate,
-          days_range: String(daysRange),
-          page_size: '-1', // Fetch all data points for the range
         });
         return SupersetClient.get({
-          endpoint: `/api/v1/weather_forecasts/${parameter}?${params}`,
+          endpoint: `/api/v1/disease_forecast_alert/?${params.toString()}`,
         }).then(response => ({
           municipality,
           data: response.json.result.sort(
-            (a: WeatherDataPoint, b: WeatherDataPoint) =>
+            (a: DiseaseDataPoint, b: DiseaseDataPoint) =>
               new Date(a.forecast_date).getTime() -
               new Date(b.forecast_date).getTime(),
           ),
@@ -239,7 +232,7 @@ const WeatherTrendChart = ({
     Promise.all(fetchPromises)
       .then(results => {
         if (ignore) return;
-        const newData: WeatherDataSeries = {};
+        const newData: DiseaseDataSeries = {};
         results.forEach(result => {
           if (result.data) {
             newData[result.municipality] = result.data;
@@ -249,7 +242,7 @@ const WeatherTrendChart = ({
       })
       .catch(error => {
         if (ignore) return;
-        console.error(`Error fetching ${title} data:`, error);
+        console.error(`Error fetching disease forecast data:`, error);
         setData({});
       })
       .finally(() => {
@@ -260,7 +253,7 @@ const WeatherTrendChart = ({
     return () => {
       ignore = true;
     };
-  }, [parameter, title, filters, level]);
+  }, [filters, level, disease]);
 
   const allDates = useMemo(
     () =>
@@ -272,7 +265,9 @@ const WeatherTrendChart = ({
     [data],
   );
 
-  const parameterThresholds = showThresholds ? THRESHOLDS[parameter] : undefined;
+  const diseaseThresholds = showThresholds
+    ? DISEASE_THRESHOLDS[disease]
+    : undefined;
 
   const FALLBACK_PALETTE = [
     '#5470c6',
@@ -289,7 +284,12 @@ const WeatherTrendChart = ({
   const seriesData = useMemo(
     () =>
       Object.entries(data).map(([municipality, munData], i) => {
-        const dataMap = new Map(munData.map(d => [d.forecast_date, d.value]));
+        const dataMap = new Map(
+          munData.map(d => [
+            moment(d.forecast_date).format('YYYY-MM-DD'),
+            d,
+          ]),
+        );
         const color = FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
         return {
           name: municipality,
@@ -298,18 +298,13 @@ const WeatherTrendChart = ({
           showSymbol: true,
           symbol: 'emptyCircle',
           symbolSize: 6,
-          lineStyle: {
-            color,
-          },
-          itemStyle: {
-            color,
-          },
+          lineStyle: { color },
+          itemStyle: { color },
           data: allDates.map(date => {
-            const value = dataMap.get(date);
+            const dataPoint = dataMap.get(moment(date).format('YYYY-MM-DD'));
+            if (!dataPoint) return null;
 
-            if (value === null || value === undefined) {
-              return null;
-            }
+            const { predicted_cases, alert_level } = dataPoint;
 
             const point: {
               value: number;
@@ -317,15 +312,13 @@ const WeatherTrendChart = ({
               symbol?: string;
               symbolSize?: number;
             } = {
-              value,
+              value: predicted_cases,
             };
 
-            if (parameterThresholds) {
-              // The thresholds are sorted from most severe to least severe.
-              // Find the first threshold that the value is greater than or equal to.
-              const threshold = [...parameterThresholds]
-                .reverse()
-                .find(t => value >= t.value);
+            if (diseaseThresholds) {
+              const threshold = diseaseThresholds.find(
+                t => predicted_cases >= t.value,
+              );
               if (threshold) {
                 point.itemStyle = {
                   color: threshold.color,
@@ -335,85 +328,76 @@ const WeatherTrendChart = ({
               }
             }
 
+            const alertColor = ALERT_LEVEL_COLORS[alert_level];
+            if (alertColor && alert_level !== 'Normal') {
+              point.itemStyle = { color: alertColor };
+              point.symbol = 'triangle';
+              point.symbolSize = 10;
+            }
+
             return point;
           }),
         };
       }),
-    [data, allDates, parameterThresholds],
+    [data, allDates, diseaseThresholds],
   );
 
   const echartOptions = useMemo(() => {
     const options: any = {
-      title: {
-        text: title,
-      },
       tooltip: {
         trigger: 'axis',
         formatter: (params: any[]) => {
-          if (!params.length) {
-            return '';
-          }
-
-          const unit = WEATHER_PARAMETER_UNITS[parameter] || '';
+          if (!params.length) return '';
           const date = moment(params[0].axisValue).format('DD MMM YYYY');
-
           const content = params
             .map(param => {
-              // The 'Thresholds' series for markLine should not be in tooltip
-              if (param.seriesName === 'Thresholds') {
-                return null;
-              }
-
               const pointValue =
                 typeof param.value === 'object' && param.value !== null
                   ? param.value.value
                   : param.value;
-
-              if (pointValue == null) {
-                return null;
-              }
+              if (pointValue == null) return null;
               return `${param.marker} ${
                 param.seriesName
-              }: <strong>${pointValue.toFixed(2)}${unit}</strong>`;
+              }: <strong>${pointValue.toFixed(0)} cases</strong>`;
             })
             .filter(Boolean)
             .join('<br />');
-
           return `${date}<br />${content}`;
         },
       },
       legend: {
         data: Object.keys(data),
         type: 'scroll',
+        bottom: 0,
       },
       xAxis: {
         type: 'category',
         data: allDates,
         axisLabel: {
-          formatter: (value: string) => moment(value).format('DD MMM YYYY'),
+          formatter: (value: string) => moment(value).format('DD MMM'),
         },
       },
       yAxis: {
         type: 'value',
-        name: WEATHER_PARAMETER_UNITS[parameter] || '',
+        name: t('Predicted Cases'),
       },
       series: seriesData,
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '10%',
+        bottom: '15%',
         containLabel: true,
       },
     };
 
-    if (showThresholds && parameterThresholds) {
+    if (showThresholds && diseaseThresholds) {
       options.series.push({
         name: 'Thresholds',
         type: 'line',
         markLine: {
           symbol: 'none',
           silent: true,
-          data: parameterThresholds.map(t => ({
+          data: diseaseThresholds.map(t => ({
             yAxis: t.value,
             name: t.label,
             lineStyle: {
@@ -430,10 +414,10 @@ const WeatherTrendChart = ({
       });
 
       const allDataValues = Object.values(data)
-        .flatMap(series => series.map(point => point.value))
+        .flatMap(series => series.map(point => point.predicted_cases))
         .filter(value => value !== null) as number[];
 
-      const thresholdValues = parameterThresholds.map(t => t.value);
+      const thresholdValues = diseaseThresholds.map(t => t.value);
       const combinedValues = [...allDataValues, ...thresholdValues];
 
       if (combinedValues.length > 0) {
@@ -453,57 +437,41 @@ const WeatherTrendChart = ({
         options.yAxis.max = Math.ceil(yMax);
       }
     }
+
     return options;
-  }, [
-    title,
-    parameter,
-    data,
-    allDates,
-    seriesData,
-    showThresholds,
-    parameterThresholds,
-  ]);
+  }, [data, allDates, seriesData, showThresholds, diseaseThresholds]);
 
-  if (loading) {
-    return <Loading />;
-  }
+  if (loading) return <Loading />;
 
-  if (Object.keys(data).length === 0 || echartOptions.series.length === 0) {
+  if (Object.keys(data).length === 0) {
     return (
-      <>
-        <h4>{title}</h4>
-        <div
-          ref={ref}
-          style={{
-            height: '100%',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-          }}
-        >
-          <p>{t('No data available for the selected criteria.')}</p>
-        </div>
-      </>
+      <div
+        style={{
+          height: '100%',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        <p>{t('No data available for the selected criteria.')}</p>
+      </div>
     );
   }
 
   return (
-    <>
-      <h4>{title}</h4>
-      <EchartContainer ref={ref}>
-        <AutoSizer>
-          {({ height, width }) => (
-            <Echart
-              height={height}
-              width={width}
-              echartOptions={echartOptions}
-              refs={{ echartRef }}
-            />
-          )}
-        </AutoSizer>
-      </EchartContainer>
-    </>
+    <EchartContainer ref={ref}>
+      <AutoSizer>
+        {({ height, width }) => (
+          <Echart
+            height={height}
+            width={width}
+            echartOptions={echartOptions}
+            refs={{ echartRef }}
+          />
+        )}
+      </AutoSizer>
+    </EchartContainer>
   );
 };
 
@@ -513,21 +481,23 @@ const PageContainer = styled.div`
 
 const Trendlines = () => {
   const [municipalities, setMunicipalities] = useState(['Dili']);
-  const [startDate, setStartDate] = useState<Moment | null>(moment());
-  const [daysRange, setDaysRange] = useState(10);
-  const [level, setLevel] = useState<Level>('national');
+  const [startDate, setStartDate] = useState<Moment | null>(
+    moment().startOf('isoWeek'),
+  );
+  const [endDate, setEndDate] = useState<Moment | null>(
+    moment().add(1, 'week').endOf('isoWeek'),
+  );
+  const [level, setLevel] = useState<Level>('municipality');
   const [showThresholds, setShowThresholds] = useState(true);
 
   const filters: Filters | null = useMemo(() => {
-    if (!startDate) {
-      return null;
-    }
+    if (!startDate || !endDate) return null;
     return {
       municipalities,
       startDate: startDate.format('YYYY-MM-DD'),
-      daysRange,
+      endDate: endDate.format('YYYY-MM-DD'),
     };
-  }, [municipalities, startDate, daysRange]);
+  }, [municipalities, startDate, endDate]);
 
   const handleLevelChange = (newLevel: Level) => {
     setLevel(newLevel);
@@ -538,66 +508,51 @@ const Trendlines = () => {
     }
   };
 
-  const subMenuButtons: SubMenuProps['buttons'] = [
-    {
-      name: t('Filter'),
-      buttonStyle: 'primary',
-      onClick: () => {},
-    },
-  ];
-
   return (
-    <PageContainer>
-      {/* <SubMenu name={t('Weather Forecast Trendlines')} buttons={[]} /> */}
-      <TrendlinesContainer>
-        <div className="superset-list-view">
-          <div className="header">
-            <div className="controls">
-              <FilterContainer>
-                <FilterGroup>
-                  <FilterItem>
-                    <label>{t('Level')}</label>
-                    <Radio.Group
-                      onChange={e => handleLevelChange(e.target.value)}
-                      value={level}
-                    >
-                      <Radio value="national">{t('National')}</Radio>
-                      <Radio value="municipality">{t('Municipality')}</Radio>
-                    </Radio.Group>
-                  </FilterItem>
-                  <FilterItem>
-                    <label>{t('Municipalities')}</label>
-                    <Select
-                      mode="multiple"
-                      placeholder={t('Select municipalities')}
-                      value={municipalities}
-                      onChange={values => setMunicipalities(values)}
-                      style={{ minWidth: 200, maxWidth: 400 }}
-                      options={MUNICIPALITY_OPTIONS}
-                      allowClear
-                      disabled={level === 'national'}
-                    />
-                  </FilterItem>
-                  <FilterItem>
-                    <label>{t('Start Date')}</label>
-                    <DatePicker
-                      value={startDate}
-                      onChange={date => setStartDate(date)}
-                    />
-                  </FilterItem>
-                  <FilterItem>
-                    <label>{t('Days Range')}</label>
-                    <Input
-                      placeholder={t('Days Range')}
-                      type="number"
-                      value={daysRange}
-                      onChange={e =>
-                        setDaysRange(Number(e.target.value) || 0)
-                      }
-                      style={{ width: 120 }}
-                    />
-                  </FilterItem>
-                </FilterGroup>
+    <TrendlinesContainer>
+      <div className="superset-list-view">
+        <div className="header">
+          <div className="controls">
+            <FilterContainer>
+              <FilterGroup>
+                <FilterItem>
+                  <label>{t('Level')}</label>
+                  <Radio.Group
+                    onChange={e => handleLevelChange(e.target.value)}
+                    value={level}
+                  >
+                    <Radio value="national">{t('National')}</Radio>
+                    <Radio value="municipality">{t('Municipality')}</Radio>
+                  </Radio.Group>
+                </FilterItem>
+                <FilterItem>
+                  <label>{t('Municipalities')}</label>
+                  <Select
+                    mode="multiple"
+                    placeholder={t('Select municipalities')}
+                    value={municipalities}
+                    onChange={values => setMunicipalities(values)}
+                    style={{ minWidth: 200, maxWidth: 400 }}
+                    options={MUNICIPALITY_OPTIONS}
+                    allowClear
+                    disabled={level === 'national'}
+                  />
+                </FilterItem>
+                <FilterItem>
+                  <label>{t('Start Date')}</label>
+                  <DatePicker
+                    value={startDate}
+                    onChange={date => setStartDate(date)}
+                  />
+                </FilterItem>
+                <FilterItem>
+                  <label>{t('End Date')}</label>
+                  <DatePicker
+                    value={endDate}
+                    onChange={date => setEndDate(date)}
+                  />
+                </FilterItem>
+              </FilterGroup>
                 <FilterItem>
                   <label>{t('Show Thresholds')}</label>
                   <Switch
@@ -606,44 +561,41 @@ const Trendlines = () => {
                     style={{ display: 'flex' }}
                   />
                 </FilterItem>
-              </FilterContainer>
-            </div>
-          </div>
-          <div className="body">
-            {filters ? (
-              <Row gutter={[16, 16]}>
-                <Col span={24} key="heat-index">
-                  <ChartContainer>
-                    <WeatherTrendChart
-                      parameter="heat_index"
-                      title={t('Heat Index')}
-                      filters={filters}
-                      level={level}
-                      showThresholds={showThresholds}
-                    />
-                  </ChartContainer>
-                </Col>
-                {Object.entries(WEATHER_PARAMETERS).map(([title, param]) => (
-                  <Col span={24} key={param}>
-                    <ChartContainer>
-                      <WeatherTrendChart
-                        parameter={param}
-                        title={t(title)}
-                        filters={filters}
-                        level={level}
-                        showThresholds={showThresholds}
-                      />
-                    </ChartContainer>
-                  </Col>
-                ))}
-              </Row>
-            ) : (
-              <Loading />
-            )}
+            </FilterContainer>
           </div>
         </div>
-      </TrendlinesContainer>
-    </PageContainer>
+        <div className="body">
+          {filters ? (
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <ChartContainer>
+                  <h4>{t('Forecast Trend for Dengue')}</h4>
+                  <DiseaseTrendChart
+                    filters={filters}
+                    level={level}
+                    disease="Dengue"
+                    showThresholds={showThresholds}
+                  />
+                </ChartContainer>
+              </Col>
+              <Col span={24}>
+                <ChartContainer>
+                  <h4>{t('Forecast Trend for Diarrhea')}</h4>
+                  <DiseaseTrendChart
+                    filters={filters}
+                    level={level}
+                    disease="Diarrhea"
+                    showThresholds={showThresholds}
+                  />
+                </ChartContainer>
+              </Col>
+            </Row>
+          ) : (
+            <Loading />
+          )}
+        </div>
+      </div>
+    </TrendlinesContainer>
   );
 };
 
