@@ -132,7 +132,6 @@ class DiseaseForecastAlertRestApi(BaseSupersetModelRestApi):
             return None
 
     @expose("/", methods=["GET"])
-    @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
