@@ -343,10 +343,13 @@ class DisseminateBulletinView(BaseView):
                         if not recipient_list:
                              raise ValueError("No recipients found in the selected email groups.")
 
+                        # Replace \n with <br> and append two new lines at the end of the html_email_body 
+                        html_email_body = message_body.replace('\n', '<br>') + "<br><br>"
+
                         send_email_smtp(
                             to=",".join(recipient_list),
                             subject=subject,
-                            html_content=message_body,
+                            html_content=html_email_body,
                             pdf={pdf_filename: pdf_data},
                             config=current_app.config
                         )
