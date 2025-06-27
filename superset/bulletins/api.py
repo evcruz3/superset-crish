@@ -22,6 +22,12 @@ import uuid
 import boto3
 from botocore.exceptions import ClientError
 from werkzeug.utils import secure_filename
+from datetime import datetime, date, timedelta
+import logging
+from sqlalchemy import cast, asc, desc
+from sqlalchemy.types import Date as SQLDate
+
+logger = logging.getLogger(__name__)
 
 def _get_s3_client():
     return boto3.client(
@@ -422,28 +428,220 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         return response
 
     @expose("/", methods=("GET",))
-    # @protect()
     @safe
-    @permission_name("get_list") 
-    @statsd_metrics 
-    @rison() 
+    @permission_name("get_list")
+    @statsd_metrics
+    @rison()
     def get_list(self, **kwargs: Any) -> Response:
-        # Eager loading is now handled by list_query_options
-        response = super().get_list(**kwargs)
-        
-        if response.status_code == 200:
+        """Get list of bulletins.
+        ---
+        get:
+          summary: Get a list of bulletins
+          description: >-
+            Retrieves a list of bulletins.
+            Supports pagination, sorting, and filtering.
+            Filters can be applied using the 'q' parameter with a Rison-encoded JSON object
+            (for complex queries like 'in', 'sw', 'ct', and for pagination/sorting)
+            or via direct query parameters for simple equality checks on specific fields.
+            Direct query parameters are ANDed with any filters specified in 'q'.
+          parameters:
+          - in: query
+            name: q
+            content:
+              application/json:
+                schema:
+                  type: string
+            description: >-
+              A Rison-encoded query for comprehensive filtering, sorting, and pagination.
+              Example: q=(filters:!((col:title,opr:ct,value:Dengue)),page:0,page_size:25)
+          - name: created_on_start
+            in: query
+            required: false
+            schema:
+              type: string
+              format: date
+            description: "Filter by start date for creation date range (inclusive, YYYY-MM-DD)."
+          - name: created_on_end
+            in: query
+            required: false
+            schema:
+              type: string
+              format: date
+            description: "Filter by end date for creation date range (inclusive, YYYY-MM-DD)."
+          - name: title
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by title (case-insensitive contains).
+          - name: hashtags
+            in: query
+            required: false
+            schema:
+              type: string
+            description: Filter by hashtags (case-insensitive contains).
+          - name: page
+            in: query
+            required: false
+            schema:
+              type: integer
+              default: 0
+            description: "Page number for pagination (0-indexed). Used if not specified in 'q'."
+          - name: page_size
+            in: query
+            required: false
+            schema:
+              type: integer
+              default: 25
+            description: "Number of results per page. Used if not specified in 'q'. Set to -1 to retrieve all results."
+          responses:
+            200:
+              description: A list of bulletins
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      ids:
+                        type: array
+                        items:
+                          type: integer
+                        description: A list of bulletin IDs
+                      count:
+                        type: integer
+                        description: The total number of bulletins found
+                      result:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/{{self.__class__.__name__}}.get_list'
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+                      total_pages:
+                        type: integer
+                      next_page_url:
+                        type: [string, "null"]
+                      prev_page_url:
+                        type: [string, "null"]
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        logger.debug(f"Bulletins - Original kwargs from framework/rison (from 'q' param): {kwargs.get('rison')}")
+        logger.debug(f"Bulletins - Request args (for direct filters): {request.args}")
+
+        query = self.datamodel.session.query(self.datamodel.obj).options(self.list_query_options[0])
+
+        # Date range filtering for created_on
+        created_on_start_str = request.args.get("created_on_start")
+        created_on_end_str = request.args.get("created_on_end")
+
+        if created_on_start_str:
             try:
-                data = json.loads(response.data)
-                if 'result' in data and isinstance(data['result'], list):
-                    for item_dict in data['result']:
-                        if isinstance(item_dict, dict):
-                             # _augment_with_presigned_url now expects attachments to be part of item_dict
-                             self._augment_with_presigned_url(item_dict) 
-                    response.data = json.dumps(data)
-                    response.headers['Content-Type'] = 'application/json'
-            except (json.JSONDecodeError, TypeError) as e:
-                current_app.logger.error(f"Error processing response for presigned URL list (get_list): {e}")
-        return response
+                start_date = date.fromisoformat(created_on_start_str)
+                query = query.filter(cast(self.datamodel.obj.created_on, SQLDate) >= start_date)
+            except ValueError:
+                return self.response_400(message=f"Invalid date format for created_on_start: {created_on_start_str}")
+
+        if created_on_end_str:
+            try:
+                end_date = date.fromisoformat(created_on_end_str)
+                query = query.filter(cast(self.datamodel.obj.created_on, SQLDate) <= end_date)
+            except ValueError:
+                return self.response_400(message=f"Invalid date format for created_on_end: {created_on_end_str}")
+
+        # Direct URL parameter filters for title and hashtags (contains search)
+        if 'title' in request.args:
+            title_filter = request.args['title']
+            query = query.filter(self.datamodel.obj.title.ilike(f"%{title_filter}%"))
+        
+        if 'hashtags' in request.args:
+            hashtags_filter = request.args['hashtags']
+            query = query.filter(self.datamodel.obj.hashtags.ilike(f"%{hashtags_filter}%"))
+
+        # Handle Rison 'q' parameter
+        rison_payload = kwargs.get("rison", {})
+        if not isinstance(rison_payload, dict):
+            rison_payload = {}
+
+        rison_filters_list = rison_payload.get("filters")
+        if rison_filters_list:
+            fab_rison_filters = self.datamodel.get_filters(filter_columns_list=rison_filters_list)
+            query = self.datamodel.apply_filters(query, fab_rison_filters)
+
+        item_count = query.count()
+
+        # Ordering
+        order_column_name = rison_payload.get("order_column", "changed_on")
+        order_direction = rison_payload.get("order_direction", "desc")
+        if hasattr(self.datamodel.obj, order_column_name):
+            column_attr = getattr(self.datamodel.obj, order_column_name)
+            if order_direction == "desc":
+                query = query.order_by(desc(column_attr))
+            else:
+                query = query.order_by(asc(column_attr))
+
+        # Pagination
+        page = rison_payload.get("page")
+        page_size = rison_payload.get("page_size")
+        if page is None: page = int(request.args.get("page", 0))
+        if page_size is None: page_size = int(request.args.get("page_size", 25))
+
+        total_pages = 0
+        actual_page_size = page_size
+        if page_size > 0:
+            total_pages = (item_count + page_size - 1) // page_size
+            offset = page * page_size
+            query = query.limit(page_size).offset(offset)
+        elif page_size == -1:
+            total_pages = 1 if item_count > 0 else 0
+            actual_page_size = item_count if item_count > 0 else 0
+
+        result_objects = query.all()
+
+        response_ids = [obj.id for obj in result_objects]
+        
+        # Use list_model_schema for serialization to match list columns
+        response_data = self.list_model_schema.dump(result_objects, many=True)
+
+        # Augment with presigned URLs
+        for item_dict in response_data:
+            self._augment_with_presigned_url(item_dict)
+
+        final_response = {
+            "ids": response_ids, 
+            "count": item_count,
+            "result": response_data,
+            "page": page,
+            "page_size": actual_page_size,
+            "total_pages": total_pages,
+            "next_page_url": None,
+            "prev_page_url": None,
+        }
+
+        if item_count > 0 and page_size > 0:
+            base_url = request.base_url
+            
+            def build_url(target_page):
+                params = request.args.copy()
+                params["page"] = target_page
+                params["page_size"] = actual_page_size
+                if 'q' in params: del params['q'] # Avoid conflict if q was in args
+                return f"{base_url}?{params.to_dict(flat=False)}"
+
+            if (page + 1) < total_pages:
+                final_response["next_page_url"] = build_url(page + 1)
+            
+            if page > 0 and total_pages > 0:
+                final_response["prev_page_url"] = build_url(page - 1)
+        
+        return self.response(200, **final_response)
 
     @expose("/<int:bulletin_id>/pdf/", methods=("GET",))
     # @protect() # This decorator is already commented out or was never present

@@ -514,20 +514,22 @@ const PageContainer = styled.div`
 const Trendlines = () => {
   const [municipalities, setMunicipalities] = useState(['Dili']);
   const [startDate, setStartDate] = useState<Moment | null>(moment());
-  const [daysRange, setDaysRange] = useState(10);
+  const [endDate, setEndDate] = useState<Moment | null>(moment().add(10, 'days'));
   const [level, setLevel] = useState<Level>('national');
   const [showThresholds, setShowThresholds] = useState(true);
 
   const filters: Filters | null = useMemo(() => {
-    if (!startDate) {
+    if (!startDate || !endDate) {
       return null;
     }
+    const daysRange = endDate.diff(startDate, 'days');
+
     return {
       municipalities,
       startDate: startDate.format('YYYY-MM-DD'),
-      daysRange,
+      daysRange: daysRange >= 0 ? daysRange : 0,
     };
-  }, [municipalities, startDate, daysRange]);
+  }, [municipalities, startDate, endDate]);
 
   const handleLevelChange = (newLevel: Level) => {
     setLevel(newLevel);
@@ -586,15 +588,10 @@ const Trendlines = () => {
                     />
                   </FilterItem>
                   <FilterItem>
-                    <label>{t('Days Range')}</label>
-                    <Input
-                      placeholder={t('Days Range')}
-                      type="number"
-                      value={daysRange}
-                      onChange={e =>
-                        setDaysRange(Number(e.target.value) || 0)
-                      }
-                      style={{ width: 120 }}
+                    <label>{t('End Date')}</label>
+                    <DatePicker
+                      value={endDate}
+                      onChange={date => setEndDate(date)}
                     />
                   </FilterItem>
                 </FilterGroup>
