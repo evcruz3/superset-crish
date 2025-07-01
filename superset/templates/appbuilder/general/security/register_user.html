@@ -257,4 +257,33 @@
 
     </div> {# End .login-container #}
 </div> {# End .login-body-container #}
+
+<script>
+$(document).ready(function() {
+    // Use jQuery to select the elements, as Select2 relies on it.
+    const $hasDisabilitySelect = $('#has_disability');
+    const $disabilityTypeContainer = $('label[for="disability_type"]').closest('tr');
+
+    if ($hasDisabilitySelect.length === 0 || $disabilityTypeContainer.length === 0) {
+        console.warn('Could not find the necessary fields for disability dynamic logic.');
+        return;
+    }
+
+    function toggleDisabilityType() {
+        // Use .val() from jQuery to get the value
+        if ($hasDisabilitySelect.val() === 'Yes') {
+            $disabilityTypeContainer.show(); // Use jQuery's show method
+        } else {
+            $disabilityTypeContainer.hide(); // Use jQuery's hide method
+        }
+    }
+
+    // Set the initial state on page load
+    toggleDisabilityType();
+
+    // Use jQuery's .on('change', ...) which correctly handles Select2 events
+    $hasDisabilitySelect.on('change', toggleDisabilityType);
+});
+</script>
+
 {% endblock %} 

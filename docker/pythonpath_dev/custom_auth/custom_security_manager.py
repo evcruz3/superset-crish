@@ -1,7 +1,8 @@
 from flask_appbuilder.security.forms import RegisterUserDBForm
 from flask_babel import lazy_gettext
-from wtforms import StringField, SelectField, PasswordField
+from wtforms import StringField, SelectField, PasswordField, SelectMultipleField
 from wtforms.validators import DataRequired, Email, EqualTo
+from wtforms.widgets import ListWidget, CheckboxInput
 # Import the original RegisterUserDBView directly
 from flask_appbuilder.security.registerviews import RegisterUserDBView as FabRegisterUserDBView
 # Import base UserDBModelView
@@ -56,33 +57,59 @@ class CustomRegisterUserDBForm(DynamicForm):
         widget=BS3TextFieldWidget(),
     )
     # Custom fields inserted in the desired order
-    gender = SelectField(
-        lazy_gettext('Gender'),
+    position = StringField(
+        lazy_gettext('Position'),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget()
+    )
+    contact_number = StringField(
+        lazy_gettext('Contact Number'),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget()
+    )
+    gender_preference = SelectField(
+        lazy_gettext('Gender Preference'),
         choices=[
-            ('', '-- Select Gender --'),
-            ('Female', 'Female'),
+            ('', '-- Select Gender Preference --'),
             ('Male', 'Male'),
-            ('Non-binary', 'Non-binary'),
-            ('Other', 'Other'),
-            ('Prefer not to say', 'Prefer not to say')
+            ('Female', 'Female'),
+            ('Prefer not to say', 'Prefer not to say'),
+            ('Other', 'Other')
         ],
         validators=[DataRequired()],
         widget=Select2Widget()
     )
-    age_range = SelectField(
-        lazy_gettext('Age Range'),
+    age_category = SelectField(
+        lazy_gettext('Age category (years old)'),
         choices=[
-            ('', '-- Select Age Range --'),
-            ('Under 18', 'Under 18'),
-            ('18-24', '18-24'),
-            ('25-34', '25-34'),
-            ('35-44', '35-44'),
-            ('45-54', '45-54'),
-            ('55-64', '55-64'),
-            ('65 or Over', '65 or Over')
+            ('', '-- Select Age Category --'),
+            ('Bellow 18', 'Bellow 18'),
+            ('Between 19-49', 'Between 19-49'),
+            ('More 50', 'More 50')
         ],
         validators=[DataRequired()],
         widget=Select2Widget()
+    )
+    has_disability = SelectField(
+        lazy_gettext('Do you consider yourself as a person with disabilities?'),
+        choices=[
+            ('No', 'No'),
+            ('Yes', 'Yes')
+        ],
+        validators=[DataRequired()],
+        widget=Select2Widget()
+    )
+    disability_type = SelectMultipleField(
+        lazy_gettext('If yes, please specify your disability type (you can select multiple)'),
+        choices=[
+            ('Seeing', 'Seeing'),
+            ('Listening', 'Listening'),
+            ('Walking', 'Walking'),
+            ('Speaking', 'Speaking'),
+            ('Others', 'Others')
+        ],
+        widget=ListWidget(prefix_label=False),
+        option_widget=CheckboxInput(),
     )
     email = StringField(
         lazy_gettext("Email"),
@@ -271,7 +298,7 @@ class CustomUserDBModelView(FabUserDBModelView): # Ensure this inherits from the
         ),
         (
             lazy_gettext("Personal Info"),
-            {"fields": ["first_name", "last_name", "email", "gender", "age_range"], "expanded": True},
+            {"fields": ["first_name", "last_name", "email", "position", "contact_number", "gender_preference", "age_category", "has_disability", "disability_type"], "expanded": True},
         ),
     ]
     show_fieldsets = [
@@ -281,7 +308,7 @@ class CustomUserDBModelView(FabUserDBModelView): # Ensure this inherits from the
         ),
         (
             lazy_gettext("Personal Info"),
-            {"fields": ["first_name", "last_name", "email", "gender", "age_range"], "expanded": True},
+            {"fields": ["first_name", "last_name", "email", "position", "contact_number", "gender_preference", "age_category", "has_disability", "disability_type"], "expanded": True},
         ),
         (
             lazy_gettext("Audit Info"),
@@ -314,8 +341,12 @@ class CustomUserDBModelView(FabUserDBModelView): # Ensure this inherits from the
         "created_by": lazy_gettext("Created by"),
         "changed_on": lazy_gettext("Changed on"),
         "changed_by": lazy_gettext("Changed by"),
-        "gender": lazy_gettext("Gender"), # Custom label
-        "age_range": lazy_gettext("Age Range"), # Custom label
+        "position": lazy_gettext("Position"),
+        "contact_number": lazy_gettext("Contact Number"),
+        "gender_preference": lazy_gettext("Gender Preference"),
+        "age_category": lazy_gettext("Age Category"),
+        "has_disability": lazy_gettext("Has Disability?"),
+        "disability_type": lazy_gettext("Disability Type"),
     }
 
 
@@ -417,7 +448,9 @@ class CustomSecurityManager(SupersetSecurityManager):
             return None
 
     def add_register_user(
-        self, username, first_name, last_name, email, password="", gender="", age_range=""
+        self, username, first_name, last_name, email, password="",
+        position="", contact_number="", gender_preference="", age_category="",
+        has_disability="", disability_type=None
     ):
         """
         Custom add_register_user method to handle additional fields.
@@ -429,8 +462,13 @@ class CustomSecurityManager(SupersetSecurityManager):
         register_user.first_name = first_name
         register_user.last_name = last_name
         register_user.password = generate_password_hash(password)
-        register_user.gender = gender
-        register_user.age_range = age_range
+        register_user.position = position
+        register_user.contact_number = contact_number
+        register_user.gender_preference = gender_preference
+        register_user.age_category = age_category
+        register_user.has_disability = has_disability
+        # Join list of disability types into a string
+        register_user.disability_type = ", ".join(disability_type) if disability_type else ""
         register_user.registration_hash = str(uuid.uuid1())
         try:
             self.appbuilder.get_session.add(register_user)
@@ -454,8 +492,12 @@ class CustomSecurityManager(SupersetSecurityManager):
             last_name=form.last_name.data,
             email=form.email.data,
             password=form.password.data,
-            gender=form.gender.data,  # Pass the gender field to add_register_user
-            age_range=form.age_range.data,  # Pass the age range field to add_register_user
+            position=form.position.data,
+            contact_number=form.contact_number.data,
+            gender_preference=form.gender_preference.data,
+            age_category=form.age_category.data,
+            has_disability=form.has_disability.data,
+            disability_type=form.disability_type.data,
         )
         
     def add_user(
@@ -467,8 +509,12 @@ class CustomSecurityManager(SupersetSecurityManager):
         role,
         password="",       # For plain password
         hashed_password="", # For already hashed password
-        gender="",
-        age_range="",
+        position="",
+        contact_number="",
+        gender_preference="",
+        age_category="",
+        has_disability="",
+        disability_type="",
     ):
         """
         Override add_user to include custom fields when creating a user.
@@ -480,8 +526,12 @@ class CustomSecurityManager(SupersetSecurityManager):
         user.username = username
         user.email = email
         user.active = True # User is activated by clicking the link
-        user.gender = gender
-        user.age_range = age_range
+        user.position = position
+        user.contact_number = contact_number
+        user.gender_preference = gender_preference
+        user.age_category = age_category
+        user.has_disability = has_disability
+        user.disability_type = disability_type
         # Ensure role is a list if it isn't already
         user.roles = role if isinstance(role, list) else [role]
 
@@ -514,8 +564,12 @@ class CustomSecurityManager(SupersetSecurityManager):
                 email=register_user.email,
                 role=self.find_role(self.auth_user_registration_role),
                 hashed_password=register_user.password, # Pass hashed password
-                gender=register_user.gender, 
-                age_range=register_user.age_range,
+                position=register_user.position,
+                contact_number=register_user.contact_number,
+                gender_preference=register_user.gender_preference,
+                age_category=register_user.age_category,
+                has_disability=register_user.has_disability,
+                disability_type=register_user.disability_type,
             )
             return user
         return None

@@ -577,229 +577,56 @@ def ingest_to_postgresql(dataframes):
         with psycopg2.connect(db_uri) as conn:
             conn.autocommit = True
             
+            # First, ingest all non-alert data tables
             for table_name, df in dataframes.items():
-                print(f"Ingesting data to PostgreSQL for table: {table_name}")
+                if table_name != 'weather_forecast_alerts':  # Handle alerts separately
+                    print(f"Ingesting data to PostgreSQL for table: {table_name}")
+                    
+                    # Write DataFrame to database using Polars native method with ADBC
+                    rows_affected = df.write_database(
+                        table_name=table_name,
+                        connection=db_uri,
+                        if_table_exists='replace',  # This will create new or replace existing table
+                        engine='adbc'  # Using ADBC engine instead of SQLAlchemy
+                    )
+                    
+                    print(f"Successfully inserted/updated {rows_affected} rows into {table_name}")
+            
+            # Handle weather_forecast_alerts separately to create linked bulletins
+            if 'weather_forecast_alerts' in dataframes:
+                weather_alerts_df = dataframes['weather_forecast_alerts']
+                print(f"Ingesting data to PostgreSQL for table: weather_forecast_alerts")
                 
                 # For weather_forecast_alerts, add extra debug info
-                if table_name == 'weather_forecast_alerts':
-                    # Count rows by weather parameter type
-                    param_counts = df.group_by('weather_parameter').agg(pl.count().alias('count'))
-                    print(f"Weather forecast alerts by parameter type:")
-                    print(param_counts)
-                    
-                    # Check alert level distribution
-                    level_counts = df.group_by(['weather_parameter', 'alert_level']).agg(pl.count().alias('count'))
-                    print(f"Weather forecast alerts by parameter and level:")
-                    print(level_counts)
-                    
-                    # Create bulletins for Danger or Extreme Danger alerts
-                    if df.shape[0] > 0:
-                        high_severity_alerts = df.filter(
-                            (pl.col('alert_level') == 'Danger') | 
-                            (pl.col('alert_level') == 'Extreme Danger')
-                        )
-                        
-                        if high_severity_alerts.shape[0] > 0:
-                            print(f"Creating bulletins for {high_severity_alerts.shape[0]} high severity weather alerts")
-                            alerts_to_process = high_severity_alerts.to_pandas()
-                            
-                            with conn.cursor() as cur:
-                                for _, alert_row in alerts_to_process.iterrows():
-                                    # Original forecast date string from the DataFrame
-                                    original_forecast_date_str = alert_row['forecast_date'] # This is YYYY-MM-DD
-                                    
-                                    # Create a formatted date for display purposes (e.g., title, captions)
-                                    # This should be done once from the original string.
-                                    try:
-                                        parsed_forecast_date = datetime.strptime(original_forecast_date_str, '%Y-%m-%d')
-                                        formatted_display_date = parsed_forecast_date.strftime('%d %B, %Y')
-                                    except ValueError:
-                                        # If parsing fails (should not happen if data is clean), use original as fallback for display
-                                        formatted_display_date = original_forecast_date_str 
-                                        print(f"Warning: Could not parse date {original_forecast_date_str} for display formatting.")
-
-                                    # Build the safety tips based on alert type
-                                    safety_tips = ""
-                                    if alert_row['weather_parameter'] == 'Heat Index':
-                                        safety_tips = (
-                                            "• Stay hydrated by drinking plenty of water\n"
-                                            "• Avoid outdoor activities during the hottest part of the day\n"
-                                            "• Wear lightweight, light-colored, loose-fitting clothing\n"
-                                            "• Check on vulnerable individuals like elderly and children regularly\n"
-                                            "• Know the signs of heat-related illness (dizziness, nausea, headache)"
-                                        )
-                                    elif alert_row['weather_parameter'] == 'Rainfall':
-                                        safety_tips = (
-                                            "• Avoid flood-prone areas and crossing flooded roads\n"
-                                            "• Secure your home against water damage\n"
-                                            "• Have emergency supplies ready\n"
-                                            "• Follow evacuation orders if issued\n"
-                                            "• Stay informed through local weather updates"
-                                        )
-                                    elif alert_row['weather_parameter'] == 'Wind Speed':
-                                        safety_tips = (
-                                            "• Secure or bring inside loose outdoor items\n"
-                                            "• Stay away from damaged buildings, power lines, and trees\n"
-                                            "• Avoid the coastline during strong winds\n"
-                                            "• Prepare for possible power outages\n"
-                                            "• If traveling, be aware of potential road hazards"
-                                        )
-                                    
-                                    title = f"{alert_row['alert_level']} Weather Alert: {alert_row['weather_parameter']} in {alert_row['municipality_name']} ({formatted_display_date})"
-                                    
-                                    parameter_value = round(alert_row['parameter_value'], 2)
-
-                                    parameter_unit = ""
-                                    if alert_row['weather_parameter'] == 'Heat Index': parameter_unit = "°C"
-                                    elif alert_row['weather_parameter'] == 'Rainfall': parameter_unit = "mm"
-                                    elif alert_row['weather_parameter'] == 'Wind Speed': parameter_unit = "km/h"
-
-                                    advisory = (
-                                        f"{alert_row['alert_title']} for {alert_row['municipality_name']} on {formatted_display_date}.\n\n"
-                                        f"{alert_row['alert_message']}\n\n"
-                                        f"{alert_row['weather_parameter']}: {parameter_value} {parameter_unit} ({alert_row['alert_level']})"
-                                    )
-                                    
-                                    # Create risks section
-                                    risks = ""
-                                    if alert_row['weather_parameter'] == 'Heat Index':
-                                        risks = (
-                                            "• Heat stroke and heat exhaustion\n"
-                                            "• Dehydration\n"
-                                            "• Increased vulnerability for elderly, children, and those with chronic illnesses\n"
-                                            "• Possible impacts on infrastructure and services"
-                                        )
-                                    elif alert_row['weather_parameter'] == 'Rainfall':
-                                        risks = (
-                                            "• Flooding in low-lying areas\n"
-                                            "• Landslides in mountainous regions\n"
-                                            "• Water contamination\n"
-                                            "• Travel disruptions\n"
-                                            "• Possible damage to crops and infrastructure"
-                                        )
-                                    elif alert_row['weather_parameter'] == 'Wind Speed':
-                                        risks = (
-                                            "• Flying debris causing injuries\n"
-                                            "• Damage to structures and vegetation\n"
-                                            "• Power outages\n"
-                                            "• Transportation hazards\n"
-                                            "• Coastal dangers including storm surge"
-                                        )
-                                    
-                                    # Create hashtags
-                                    hashtags = f"weather,alert,{alert_row['weather_parameter'].lower().replace(' ', '')},{alert_row['municipality_name'].lower()}"
-                                    
-                                    bulletin_s3_image_keys = []
-                                    parameter_source_table = None
-                                    if alert_row['weather_parameter'] == 'Heat Index': parameter_source_table = 'heat_index_daily_region'
-                                    elif alert_row['weather_parameter'] == 'Rainfall': parameter_source_table = 'rainfall_daily_weighted_average'
-                                    elif alert_row['weather_parameter'] == 'Wind Speed': parameter_source_table = 'ws_daily_avg_region'
-                                    
-                                    full_parameter_df_for_charts = None
-                                    if parameter_source_table and parameter_source_table in dataframes:
-                                        full_parameter_df_for_charts = dataframes[parameter_source_table].with_columns(
-                                            pl.lit(alert_row['weather_parameter']).alias("weather_parameter")
-                                        )
-
-                                    actual_s3_bucket = os.getenv("S3_BUCKET")
-                                    if not actual_s3_bucket: print("ERROR: S3_BUCKET environment variable not set. Cannot upload chart images.")
-
-                                    if full_parameter_df_for_charts is not None and GEOJSON_FILE_PATH and actual_s3_bucket:
-                                        # 1. Forecast Map Image
-                                        # Pass the original YYYY-MM-DD date string to chart functions
-                                        map_image_buffer = generate_forecast_map_image(
-                                            full_parameter_df_for_charts, 
-                                            alert_row['weather_parameter'], 
-                                            original_forecast_date_str, # Use original string
-                                            alert_row['municipality_name'],
-                                            alert_row['municipality_code'],
-                                            GEOJSON_FILE_PATH,
-                                            alert_row['parameter_value'],
-                                            parameter_unit
-                                        )
-                                        if map_image_buffer:
-                                            map_s3_key = f"bulletin_charts/map_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"
-                                            uploaded_map_key = upload_image_to_s3(map_image_buffer, map_s3_key, bucket_name=actual_s3_bucket) 
-                                            if uploaded_map_key:
-                                                bulletin_s3_image_keys.append({
-                                                    "key": uploaded_map_key, 
-                                                    "caption": f"{alert_row['weather_parameter']} forecast map for {alert_row['municipality_name']} on {formatted_display_date}" # Use display date for caption
-                                                })
-
-                                        # 2. Forecast Table Image
-                                        table_image_buffer = generate_forecast_table_image(
-                                            full_parameter_df_for_charts,
-                                            alert_row['weather_parameter'], 
-                                            original_forecast_date_str, # Use original string
-                                            alert_row['municipality_name']
-                                        )
-                                        if table_image_buffer:
-                                            table_s3_key = f"bulletin_charts/table_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"
-                                            uploaded_table_key = upload_image_to_s3(table_image_buffer, table_s3_key, bucket_name=actual_s3_bucket)
-                                            if uploaded_table_key:
-                                                bulletin_s3_image_keys.append({
-                                                    "key": uploaded_table_key, 
-                                                    "caption": f"{alert_row['weather_parameter']} forecast table for {alert_row['municipality_name']}" # Display date is implicit in table content
-                                                })
-                                    else:
-                                        if not GEOJSON_FILE_PATH:
-                                            print("Skipping map generation as GeoJSON_FILE_PATH is not set or file not found.")
-                                        if full_parameter_df_for_charts is None:
-                                            print(f"Skipping chart generation as source data for {alert_row['weather_parameter']} is not available.")
-                                        if not actual_s3_bucket:
-                                            print("Skipping chart image S3 upload as S3_BUCKET is not set.")
-
-                                    # Insert bulletin record
-                                    bulletin_insert_sql = """
-                                    INSERT INTO bulletins (
-                                        title, advisory, hashtags, created_by_fk, 
-                                        created_on, changed_on, risks, safety_tips
-                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                                    """
-                                    
-                                    current_time = datetime.now()
-                                    cur.execute(bulletin_insert_sql, (
-                                        title, # Uses formatted_display_date
-                                        advisory, # Uses formatted_display_date
-                                        hashtags,
-                                        1, 
-                                        current_time,
-                                        current_time,
-                                        risks, # Uses alert_row data
-                                        safety_tips # Uses alert_row data
-                                    ))
-                                    cur.execute("SELECT lastval()")
-                                    bulletin_id = cur.fetchone()[0]
-                                    print(f"Created bulletin: {title} with ID: {bulletin_id}")
-
-                                    # --- Insert image attachments if any ---
-                                    if bulletin_id and bulletin_s3_image_keys:
-                                        attachment_insert_sql = """
-                                        INSERT INTO bulletin_image_attachments (
-                                            bulletin_id, s3_key, caption, created_on, changed_on
-                                        ) VALUES (%s, %s, %s, %s, %s)
-                                        """
-                                        for img_data in bulletin_s3_image_keys:
-                                            cur.execute(attachment_insert_sql, (
-                                                bulletin_id,
-                                                img_data["key"],
-                                                img_data["caption"],
-                                                current_time,
-                                                current_time
-                                            ))
-                                            print(f"  Attached image: {img_data['key']} to bulletin {bulletin_id}")
-                                    
-                            print(f"Finished processing bulletins for high severity alerts.")
+                # Count rows by weather parameter type
+                param_counts = weather_alerts_df.group_by('weather_parameter').agg(pl.count().alias('count'))
+                print(f"Weather forecast alerts by parameter type:")
+                print(param_counts)
                 
-                # Write DataFrame to database using Polars native method with ADBC
-                rows_affected = df.write_database(
-                    table_name=table_name,
+                # Check alert level distribution
+                level_counts = weather_alerts_df.group_by(['weather_parameter', 'alert_level']).agg(pl.count().alias('count'))
+                print(f"Weather forecast alerts by parameter and level:")
+                print(level_counts)
+                
+                # First, ingest the weather forecast alerts to the database
+                rows_affected = weather_alerts_df.write_database(
+                    table_name='weather_forecast_alerts',
                     connection=db_uri,
-                    if_table_exists='replace',  # This will create new or replace existing table
-                    engine='adbc'  # Using ADBC engine instead of SQLAlchemy
+                    if_table_exists='replace',
+                    engine='adbc'
                 )
+                print(f"Successfully inserted/updated {rows_affected} rows into weather_forecast_alerts")
                 
-                print(f"Successfully inserted/updated {rows_affected} rows into {table_name}")
+                # Now create bulletins for high severity alerts and link them to the weather alerts
+                if weather_alerts_df.shape[0] > 0:
+                    high_severity_alerts = weather_alerts_df.filter(
+                        (pl.col('alert_level') == 'Danger') | 
+                        (pl.col('alert_level') == 'Extreme Danger')
+                    )
+                    
+                    if high_severity_alerts.shape[0] > 0:
+                        print(f"Creating bulletins for {high_severity_alerts.shape[0]} high severity weather alerts")
+                        create_weather_bulletins_with_links(high_severity_alerts, dataframes, conn)
             
             print("All data successfully ingested to PostgreSQL")
             
@@ -807,6 +634,209 @@ def ingest_to_postgresql(dataframes):
         print(f"Error ingesting data to PostgreSQL: {str(e)}")
         import traceback
         traceback.print_exc()
+
+def create_weather_bulletins_with_links(high_severity_alerts_df, all_dataframes, db_connection):
+    """
+    Creates bulletins for high severity weather alerts and links them using composite IDs.
+    
+    Args:
+        high_severity_alerts_df: Polars DataFrame with high severity weather alerts
+        all_dataframes: Dictionary of all dataframes for chart generation
+        db_connection: Database connection object
+    """
+    alerts_to_process = high_severity_alerts_df.to_pandas()
+    
+    with db_connection.cursor() as cur:
+        for _, alert_row in alerts_to_process.iterrows():
+            # Create composite ID for linking bulletin to weather forecast alert
+            composite_id = f"{alert_row['municipality_code']}_{alert_row['forecast_date']}_{alert_row['weather_parameter']}"
+            
+            # Original forecast date string from the DataFrame
+            original_forecast_date_str = alert_row['forecast_date']  # This is YYYY-MM-DD
+            
+            # Create a formatted date for display purposes (e.g., title, captions)
+            try:
+                parsed_forecast_date = datetime.strptime(original_forecast_date_str, '%Y-%m-%d')
+                formatted_display_date = parsed_forecast_date.strftime('%d %B, %Y')
+            except ValueError:
+                # If parsing fails (should not happen if data is clean), use original as fallback for display
+                formatted_display_date = original_forecast_date_str 
+                print(f"Warning: Could not parse date {original_forecast_date_str} for display formatting.")
+
+            # Build the safety tips based on alert type
+            safety_tips = ""
+            if alert_row['weather_parameter'] == 'Heat Index':
+                safety_tips = (
+                    "• Stay hydrated by drinking plenty of water\n"
+                    "• Avoid outdoor activities during the hottest part of the day\n"
+                    "• Wear lightweight, light-colored, loose-fitting clothing\n"
+                    "• Check on vulnerable individuals like elderly and children regularly\n"
+                    "• Know the signs of heat-related illness (dizziness, nausea, headache)"
+                )
+            elif alert_row['weather_parameter'] == 'Rainfall':
+                safety_tips = (
+                    "• Avoid flood-prone areas and crossing flooded roads\n"
+                    "• Secure your home against water damage\n"
+                    "• Have emergency supplies ready\n"
+                    "• Follow evacuation orders if issued\n"
+                    "• Stay informed through local weather updates"
+                )
+            elif alert_row['weather_parameter'] == 'Wind Speed':
+                safety_tips = (
+                    "• Secure or bring inside loose outdoor items\n"
+                    "• Stay away from damaged buildings, power lines, and trees\n"
+                    "• Avoid the coastline during strong winds\n"
+                    "• Prepare for possible power outages\n"
+                    "• If traveling, be aware of potential road hazards"
+                )
+            
+            title = f"{alert_row['alert_level']} Weather Alert: {alert_row['weather_parameter']} in {alert_row['municipality_name']} ({formatted_display_date})"
+            
+            parameter_value = round(alert_row['parameter_value'], 2)
+
+            parameter_unit = ""
+            if alert_row['weather_parameter'] == 'Heat Index': parameter_unit = "°C"
+            elif alert_row['weather_parameter'] == 'Rainfall': parameter_unit = "mm"
+            elif alert_row['weather_parameter'] == 'Wind Speed': parameter_unit = "km/h"
+
+            advisory = (
+                f"{alert_row['alert_title']} for {alert_row['municipality_name']} on {formatted_display_date}.\n\n"
+                f"{alert_row['alert_message']}\n\n"
+                f"{alert_row['weather_parameter']}: {parameter_value} {parameter_unit} ({alert_row['alert_level']})"
+            )
+            
+            # Create risks section
+            risks = ""
+            if alert_row['weather_parameter'] == 'Heat Index':
+                risks = (
+                    "• Heat stroke and heat exhaustion\n"
+                    "• Dehydration\n"
+                    "• Increased vulnerability for elderly, children, and those with chronic illnesses\n"
+                    "• Possible impacts on infrastructure and services"
+                )
+            elif alert_row['weather_parameter'] == 'Rainfall':
+                risks = (
+                    "• Flooding in low-lying areas\n"
+                    "• Landslides in mountainous regions\n"
+                    "• Water contamination\n"
+                    "• Travel disruptions\n"
+                    "• Possible damage to crops and infrastructure"
+                )
+            elif alert_row['weather_parameter'] == 'Wind Speed':
+                risks = (
+                    "• Flying debris causing injuries\n"
+                    "• Damage to structures and vegetation\n"
+                    "• Power outages\n"
+                    "• Transportation hazards\n"
+                    "• Coastal dangers including storm surge"
+                )
+            
+            # Create hashtags
+            hashtags = f"weather,alert,{alert_row['weather_parameter'].lower().replace(' ', '')},{alert_row['municipality_name'].lower()}"
+            
+            bulletin_s3_image_keys = []
+            parameter_source_table = None
+            if alert_row['weather_parameter'] == 'Heat Index': parameter_source_table = 'heat_index_daily_region'
+            elif alert_row['weather_parameter'] == 'Rainfall': parameter_source_table = 'rainfall_daily_weighted_average'
+            elif alert_row['weather_parameter'] == 'Wind Speed': parameter_source_table = 'ws_daily_avg_region'
+            
+            full_parameter_df_for_charts = None
+            if parameter_source_table and parameter_source_table in all_dataframes:
+                full_parameter_df_for_charts = all_dataframes[parameter_source_table].with_columns(
+                    pl.lit(alert_row['weather_parameter']).alias("weather_parameter")
+                )
+
+            actual_s3_bucket = os.getenv("S3_BUCKET")
+            if not actual_s3_bucket: print("ERROR: S3_BUCKET environment variable not set. Cannot upload chart images.")
+
+            if full_parameter_df_for_charts is not None and GEOJSON_FILE_PATH and actual_s3_bucket:
+                # 1. Forecast Map Image
+                # Pass the original YYYY-MM-DD date string to chart functions
+                map_image_buffer = generate_forecast_map_image(
+                    full_parameter_df_for_charts, 
+                    alert_row['weather_parameter'], 
+                    original_forecast_date_str, # Use original string
+                    alert_row['municipality_name'],
+                    alert_row['municipality_code'],
+                    GEOJSON_FILE_PATH,
+                    alert_row['parameter_value'],
+                    parameter_unit
+                )
+                if map_image_buffer:
+                    map_s3_key = f"bulletin_charts/map_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"
+                    uploaded_map_key = upload_image_to_s3(map_image_buffer, map_s3_key, bucket_name=actual_s3_bucket) 
+                    if uploaded_map_key:
+                        bulletin_s3_image_keys.append({
+                            "key": uploaded_map_key, 
+                            "caption": f"{alert_row['weather_parameter']} forecast map for {alert_row['municipality_name']} on {formatted_display_date}" # Use display date for caption
+                        })
+
+                # 2. Forecast Table Image
+                table_image_buffer = generate_forecast_table_image(
+                    full_parameter_df_for_charts,
+                    alert_row['weather_parameter'], 
+                    original_forecast_date_str, # Use original string
+                    alert_row['municipality_name']
+                )
+                if table_image_buffer:
+                    table_s3_key = f"bulletin_charts/table_{original_forecast_date_str}_{alert_row['weather_parameter'].replace(' ', '_')}_{alert_row['municipality_code']}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.png"
+                    uploaded_table_key = upload_image_to_s3(table_image_buffer, table_s3_key, bucket_name=actual_s3_bucket)
+                    if uploaded_table_key:
+                        bulletin_s3_image_keys.append({
+                            "key": uploaded_table_key, 
+                            "caption": f"{alert_row['weather_parameter']} forecast table for {alert_row['municipality_name']}" # Display date is implicit in table content
+                        })
+            else:
+                if not GEOJSON_FILE_PATH:
+                    print("Skipping map generation as GeoJSON_FILE_PATH is not set or file not found.")
+                if full_parameter_df_for_charts is None:
+                    print(f"Skipping chart generation as source data for {alert_row['weather_parameter']} is not available.")
+                if not actual_s3_bucket:
+                    print("Skipping chart image S3 upload as S3_BUCKET is not set.")
+
+            # Insert bulletin record with weather_forecast_alert_composite_id
+            bulletin_insert_sql = """
+            INSERT INTO bulletins (
+                title, advisory, hashtags, created_by_fk, 
+                created_on, changed_on, risks, safety_tips,
+                weather_forecast_alert_composite_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            
+            current_time = datetime.now()
+            cur.execute(bulletin_insert_sql, (
+                title, # Uses formatted_display_date
+                advisory, # Uses formatted_display_date
+                hashtags,
+                1, 
+                current_time,
+                current_time,
+                risks, # Uses alert_row data
+                safety_tips, # Uses alert_row data
+                composite_id  # Link to weather forecast alert using composite ID
+            ))
+            cur.execute("SELECT lastval()")
+            bulletin_id = cur.fetchone()[0]
+            print(f"Created bulletin: {title} with ID: {bulletin_id}, linked to weather alert: {composite_id}")
+
+            # --- Insert image attachments if any ---
+            if bulletin_id and bulletin_s3_image_keys:
+                attachment_insert_sql = """
+                INSERT INTO bulletin_image_attachments (
+                    bulletin_id, s3_key, caption, created_on, changed_on
+                ) VALUES (%s, %s, %s, %s, %s)
+                """
+                for img_data in bulletin_s3_image_keys:
+                    cur.execute(attachment_insert_sql, (
+                        bulletin_id,
+                        img_data["key"],
+                        img_data["caption"],
+                        current_time,
+                        current_time
+                    ))
+                    print(f"  Attached image: {img_data['key']} to bulletin {bulletin_id}")
+            
+    print(f"Finished processing bulletins for high severity weather alerts.")
 
 def main():
     # Process all weather files and get DataFrames

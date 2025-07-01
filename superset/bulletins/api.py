@@ -5,6 +5,8 @@ from flask_appbuilder.security.decorators import has_access_api
 from superset.views.base_api import BaseSupersetModelRestApi, RelatedFieldFilter
 from superset.extensions import db
 from superset.models.bulletins import Bulletin, BulletinImageAttachment
+from superset.disease_forecast_alerts.models import DiseaseForecastAlert
+from superset.weather_forecast_alerts.models import WeatherForecastAlert
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from typing import Any, Dict
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
@@ -24,7 +26,7 @@ from botocore.exceptions import ClientError
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 import logging
-from sqlalchemy import cast, asc, desc
+from sqlalchemy import cast, asc, desc, or_, and_
 from sqlalchemy.types import Date as SQLDate
 
 logger = logging.getLogger(__name__)
@@ -84,6 +86,11 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         "created_on",
         "changed_on",
         "image_attachments",
+        "disease_forecast_alert.municipality_code",
+        "disease_forecast_alert.municipality_name",
+        "disease_forecast_alert.disease_type",
+        "disease_forecast_alert.alert_level",
+        "weather_forecast_alert_composite_id",
     ]
     show_columns = list_columns
     list_select_columns = list_columns
@@ -96,9 +103,15 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         "title",
     ]
 
-    # Eager load image_attachments to avoid N+1 queries and issues with dynamic loading
-    list_query_options = [db.joinedload(Bulletin.image_attachments)]
-    show_query_options = [db.joinedload(Bulletin.image_attachments)]
+    # Eager load image_attachments and disease_forecast_alert to avoid N+1 queries and issues with dynamic loading
+    list_query_options = [
+        db.joinedload(Bulletin.image_attachments),
+        db.joinedload(Bulletin.disease_forecast_alert)
+    ]
+    show_query_options = [
+        db.joinedload(Bulletin.image_attachments),
+        db.joinedload(Bulletin.disease_forecast_alert)
+    ]
 
     def pre_add(self, item: Bulletin) -> None:
         """Set the created_by user before adding"""
@@ -409,6 +422,54 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             # Ensure the key exists even if there are no attachments or it's not a list
             item_dict['image_attachments'] = []
 
+    def _augment_with_alert_info(self, item_dict: dict) -> None:
+        """Augment bulletin dictionary with alert type and weather alert information."""
+        # Add alert_type field
+        if item_dict.get('disease_forecast_alert'):
+            item_dict['alert_type'] = 'disease'
+        elif item_dict.get('weather_forecast_alert_composite_id'):
+            item_dict['alert_type'] = 'weather'
+        else:
+            item_dict['alert_type'] = None
+            
+        # For weather alerts, add the parsed weather alert information
+        if item_dict.get('weather_forecast_alert_composite_id'):
+            try:
+                composite_id = item_dict['weather_forecast_alert_composite_id']
+                parts = composite_id.split('_', 2)
+                if len(parts) == 3:
+                    municipality_code, forecast_date, weather_parameter = parts
+                    
+                    # Try to get the full weather alert details
+                    weather_alert = db.session.query(WeatherForecastAlert).filter_by(
+                        municipality_code=municipality_code,
+                        forecast_date=forecast_date,
+                        weather_parameter=weather_parameter
+                    ).first()
+                    
+                    if weather_alert:
+                        item_dict['weather_forecast_alert'] = {
+                            'municipality_code': weather_alert.municipality_code,
+                            'municipality_name': weather_alert.municipality_name,
+                            'forecast_date': weather_alert.forecast_date,
+                            'weather_parameter': weather_alert.weather_parameter,
+                            'alert_level': weather_alert.alert_level,
+                            'parameter_value': weather_alert.parameter_value
+                        }
+                    else:
+                        # Fallback to parsed values
+                        item_dict['weather_forecast_alert'] = {
+                            'municipality_code': municipality_code,
+                            'municipality_name': None,
+                            'forecast_date': forecast_date,
+                            'weather_parameter': weather_parameter,
+                            'alert_level': None,
+                            'parameter_value': None
+                        }
+            except (ValueError, AttributeError) as e:
+                current_app.logger.warning(f"Error parsing weather alert composite ID {item_dict.get('weather_forecast_alert_composite_id')}: {e}")
+                item_dict['weather_forecast_alert'] = None
+
     @expose("/<pk>", methods=("GET",))
     # @protect()
     @safe
@@ -421,6 +482,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                 data = json.loads(response.data)
                 if 'result' in data and isinstance(data['result'], dict):
                     self._augment_with_presigned_url(data['result'])
+                    self._augment_with_alert_info(data['result'])
                     response.data = json.dumps(data)
                     response.headers['Content-Type'] = 'application/json' # Ensure content type is correct
             except (json.JSONDecodeError, TypeError) as e: # Added TypeError for response.data if not bytes/str
@@ -480,6 +542,34 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             schema:
               type: string
             description: Filter by hashtags (case-insensitive contains).
+          - name: bulletin_type
+            in: query
+            required: false
+            schema:
+              type: string
+              enum: [disease, weather]
+            description: Filter by bulletin type (disease or weather forecast).
+          - name: municipality_code
+            in: query
+            required: false
+            schema:
+              type: string
+              enum: [TL-AL, TL-AN, TL-AT, TL-BA, TL-BO, TL-CO, TL-DI, TL-ER, TL-MT, TL-MF, TL-LA, TL-LI, TL-OE, TL-VI]
+            description: Filter by municipality code from associated alerts.
+          - name: municipality_name
+            in: query
+            required: false
+            schema:
+              type: string
+              enum: [Aileu, Ainaro, Atauro, Baucau, Bobonaro, Covalima, Dili, Ermera, Manatuto, Manufahi, Lautem, Liquica, Raeoa, Viqueque]
+            description: Filter by municipality name (case-insensitive contains) from associated alerts.
+          - name: parameter
+            in: query
+            required: false
+            schema:
+              type: string
+              enum: ["Wind Speed", "Rainfall", "Temperature", "Dengue", "Diarrhea"]
+            description: Filter by parameter (disease_type for disease alerts, weather_parameter for weather alerts).
           - name: page
             in: query
             required: false
@@ -536,8 +626,12 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         logger.debug(f"Bulletins - Original kwargs from framework/rison (from 'q' param): {kwargs.get('rison')}")
         logger.debug(f"Bulletins - Request args (for direct filters): {request.args}")
 
-        query = self.datamodel.session.query(self.datamodel.obj).options(self.list_query_options[0])
-
+        # Build base query with eager loading
+        query = self.datamodel.session.query(self.datamodel.obj).options(*self.list_query_options)
+        
+        # Add left joins for alert relationships to support filtering
+        query = query.outerjoin(DiseaseForecastAlert, self.datamodel.obj.disease_forecast_alert_id == DiseaseForecastAlert.id)
+        
         # Date range filtering for created_on
         created_on_start_str = request.args.get("created_on_start")
         created_on_end_str = request.args.get("created_on_end")
@@ -564,6 +658,86 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         if 'hashtags' in request.args:
             hashtags_filter = request.args['hashtags']
             query = query.filter(self.datamodel.obj.hashtags.ilike(f"%{hashtags_filter}%"))
+
+        # Bulletin type filtering
+        if 'bulletin_type' in request.args:
+            bulletin_type = request.args['bulletin_type'].lower()
+            if bulletin_type == 'disease':
+                query = query.filter(self.datamodel.obj.disease_forecast_alert_id.isnot(None))
+            elif bulletin_type == 'weather':
+                query = query.filter(self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None))
+            else:
+                return self.response_400(message=f"Invalid bulletin_type: {bulletin_type}. Must be 'disease' or 'weather'.")
+
+        # Municipality code filtering (works for both alert types)
+        if 'municipality_code' in request.args:
+            municipality_code = request.args['municipality_code']
+            
+            # For disease alerts, filter by DiseaseForecastAlert.municipality_code
+            disease_filter = and_(
+                self.datamodel.obj.disease_forecast_alert_id.isnot(None),
+                DiseaseForecastAlert.municipality_code == municipality_code
+            )
+            
+            # For weather alerts, filter by parsing the composite ID
+            weather_filter = and_(
+                self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
+                self.datamodel.obj.weather_forecast_alert_composite_id.like(f"{municipality_code}_%")
+            )
+            
+            query = query.filter(or_(disease_filter, weather_filter))
+
+        # Municipality name filtering (works for both alert types)
+        if 'municipality_name' in request.args:
+            municipality_name = request.args['municipality_name']
+            
+            # For disease alerts, filter by DiseaseForecastAlert.municipality_name
+            disease_filter = and_(
+                self.datamodel.obj.disease_forecast_alert_id.isnot(None),
+                DiseaseForecastAlert.municipality_name.ilike(f"%{municipality_name}%")
+            )
+            
+            # For weather alerts, we need to join with the weather alerts table
+            # Since we can't easily join on composite ID, we'll create a subquery
+            weather_subquery = self.datamodel.session.query(WeatherForecastAlert.municipality_code, 
+                                                           WeatherForecastAlert.forecast_date, 
+                                                           WeatherForecastAlert.weather_parameter).filter(
+                WeatherForecastAlert.municipality_name.ilike(f"%{municipality_name}%")
+            ).subquery()
+            
+            # Build composite IDs from the subquery
+            weather_composite_ids = self.datamodel.session.query(
+                (weather_subquery.c.municipality_code + '_' + 
+                 weather_subquery.c.forecast_date + '_' + 
+                 weather_subquery.c.weather_parameter).label('composite_id')
+            ).all()
+            
+            weather_composite_id_list = [row.composite_id for row in weather_composite_ids]
+            
+            weather_filter = and_(
+                self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
+                self.datamodel.obj.weather_forecast_alert_composite_id.in_(weather_composite_id_list)
+            ) if weather_composite_id_list else False
+            
+            query = query.filter(or_(disease_filter, weather_filter))
+
+        # Parameter filtering (disease_type for disease alerts, weather_parameter for weather alerts)
+        if 'parameter' in request.args:
+            parameter = request.args['parameter']
+            
+            # For disease alerts, filter by DiseaseForecastAlert.disease_type
+            disease_filter = and_(
+                self.datamodel.obj.disease_forecast_alert_id.isnot(None),
+                DiseaseForecastAlert.disease_type.ilike(f"%{parameter}%")
+            )
+            
+            # For weather alerts, filter by parsing the composite ID
+            weather_filter = and_(
+                self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
+                self.datamodel.obj.weather_forecast_alert_composite_id.like(f"%_{parameter}")
+            )
+            
+            query = query.filter(or_(disease_filter, weather_filter))
 
         # Handle Rison 'q' parameter
         rison_payload = kwargs.get("rison", {})
@@ -610,9 +784,10 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         # Use list_model_schema for serialization to match list columns
         response_data = self.list_model_schema.dump(result_objects, many=True)
 
-        # Augment with presigned URLs
+        # Augment with presigned URLs and alert information
         for item_dict in response_data:
             self._augment_with_presigned_url(item_dict)
+            self._augment_with_alert_info(item_dict)
 
         final_response = {
             "ids": response_ids, 

@@ -387,7 +387,143 @@ def generate_disease_alert(
         "alert_message_template": selected_rule["alert_message"],
     }
 
-def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_data=DISEASE_THRESHOLDS_DATA, all_predictions_for_map=None):
+def create_and_ingest_disease_forecast_alerts(list_of_alerts, db_params):
+    """
+    Creates the disease_forecast_alerts table (dropping if exists) and ingests alert data.
+    Returns a mapping of alert data to their database IDs for linking to bulletins.
+    
+    Returns:
+        dict: Mapping of alert tuple to database ID for linking bulletins
+              Key: (municipality_code, forecast_date, disease_type, municipality_name)
+              Value: database ID
+    """
+    if not list_of_alerts:
+        print("No disease alerts to process for disease_forecast_alerts table.")
+        return {}
+
+    alerts_to_insert = []
+    alert_mapping = {}  # Will store (alert_data_dict, insert_index) for later ID mapping
+    
+    for i, alert_data in enumerate(list_of_alerts):
+        if not alert_data: # Skip if generate_disease_alert returned None
+            continue
+
+        formatted_title = alert_data["alert_title_template"].format(cases=alert_data["predicted_cases"])
+        formatted_message = alert_data["alert_message_template"].format(cases=alert_data["predicted_cases"])
+
+        alert_tuple = (
+            alert_data["municipality_code"],
+            alert_data["week_start"],  # This is the forecast_date for the table
+            alert_data["disease_type"],
+            alert_data["alert_level"],
+            formatted_title,
+            formatted_message,
+            alert_data["predicted_cases"],
+            alert_data["municipality_name"]
+        )
+        
+        alerts_to_insert.append(alert_tuple)
+        
+        # Create key for mapping back to alert_data
+        alert_key = (
+            alert_data["municipality_code"],
+            alert_data["week_start"],
+            alert_data["disease_type"],
+            alert_data["municipality_name"]
+        )
+        alert_mapping[alert_key] = {"alert_data": alert_data, "insert_index": len(alerts_to_insert) - 1}
+    
+    if not alerts_to_insert:
+        print("No valid alert data to insert into disease_forecast_alerts table.")
+        return {}
+
+    conn = None
+    alert_id_mapping = {}
+    
+    try:
+        conn = psycopg2.connect(**db_params)
+        with conn.cursor() as cur:
+            # 1. Create table only if it doesn't exist
+            create_table_sql = """
+            CREATE TABLE IF NOT EXISTS disease_forecast_alerts (
+                id SERIAL PRIMARY KEY,
+                municipality_code TEXT,
+                forecast_date DATE, -- Stores week_start
+                disease_type TEXT,
+                alert_level TEXT,
+                alert_title TEXT,
+                alert_message TEXT,
+                predicted_cases INTEGER,
+                municipality_name TEXT,
+                -- Add a constraint to help identify unique alerts if needed later
+                UNIQUE (municipality_code, forecast_date, disease_type, municipality_name)
+            );
+            """
+            cur.execute(create_table_sql)
+            print("Checked/Created table disease_forecast_alerts.")
+
+            # 2. Delete existing records for the specific alerts being inserted
+            keys_to_delete = set()
+            for alert_tuple in alerts_to_insert:
+                key = (alert_tuple[0], alert_tuple[1], alert_tuple[2])
+                keys_to_delete.add(key)
+            
+            delete_count = 0
+            if keys_to_delete:
+                delete_sql_base = "DELETE FROM disease_forecast_alerts WHERE municipality_code = %s AND forecast_date = %s AND disease_type = %s;"
+                delete_sql_null_code = "DELETE FROM disease_forecast_alerts WHERE municipality_code IS NULL AND forecast_date = %s AND disease_type = %s;"
+                for muni_code, f_date, d_type in keys_to_delete:
+                    if muni_code is None:
+                        cur.execute(delete_sql_null_code, (f_date, d_type))
+                    else:
+                        cur.execute(delete_sql_base, (muni_code, f_date, d_type))
+                    delete_count += cur.rowcount
+                print(f"Deleted {delete_count} existing alert records before insertion.")
+
+            # 3. Insert the new data and get the IDs
+            insert_sql = """
+            INSERT INTO disease_forecast_alerts (
+                municipality_code, forecast_date, disease_type, alert_level, 
+                alert_title, alert_message, predicted_cases, municipality_name
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            """
+            
+            # Insert one by one to get IDs
+            for i, alert_tuple in enumerate(alerts_to_insert):
+                cur.execute(insert_sql, alert_tuple)
+                alert_id = cur.fetchone()[0]
+                
+                # Find the corresponding alert_key for this insert
+                for alert_key, mapping_data in alert_mapping.items():
+                    if mapping_data["insert_index"] == i:
+                        alert_id_mapping[alert_key] = alert_id
+                        break
+            
+            conn.commit()
+            print(f"Successfully inserted {len(alerts_to_insert)} rows into disease_forecast_alerts.")
+            return alert_id_mapping
+
+    except psycopg2.errors.UniqueViolation as uve:
+        print(f"Database unique constraint violation: {uve}")
+        print("This might happen if multiple alerts for the same key were generated in this run. Check alert generation logic.")
+        if conn:
+            conn.rollback()
+        return {}
+    except psycopg2.DatabaseError as e:
+        print(f"Database error during disease_forecast_alerts ingestion: {e}")
+        if conn:
+            conn.rollback()
+        return {}
+    except Exception as e:
+        print(f"Error ingesting data to disease_forecast_alerts: {e}")
+        if conn:
+            conn.rollback()
+        return {}
+    finally:
+        if conn:
+            conn.close()
+
+def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_data=DISEASE_THRESHOLDS_DATA, all_predictions_for_map=None, alert_id_mapping=None):
     """
     Creates bulletins from alerts, generates images, uploads them, and ingests all into the PostgreSQL database.
 
@@ -397,9 +533,9 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
         disease_threshold_data (dict): Parsed threshold data.
         all_predictions_for_map (dict): Optional. A dictionary where keys are disease types (e.g., "Dengue", "Diarrhea")
                                         and values are lists of alert data for all municipalities for that disease.
-                                        Each item in the list should contain at least 'municipality_code' and 'alert_level'.
-                                        This is used to color all municipalities on the map.
-                                        Example: {"Dengue": [{'municipality_code': 'TL-DI', 'alert_level': 'High'}, ...]}
+        alert_id_mapping (dict): Optional. Mapping of alert keys to database IDs from disease_forecast_alerts.
+                                Key: (municipality_code, forecast_date, disease_type, municipality_name)
+                                Value: database ID
     """
     if not list_of_alerts:
         logging.info("No disease alerts to process for bulletins.")
@@ -426,8 +562,8 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
             bulletin_insert_sql = """
             INSERT INTO bulletins (
                 title, advisory, hashtags, created_by_fk, 
-                created_on, changed_on, risks, safety_tips
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
+                created_on, changed_on, risks, safety_tips, disease_forecast_alert_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
             """
             attachment_insert_sql = """
             INSERT INTO bulletin_image_attachments (
@@ -446,6 +582,21 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
                 predicted_cases = alert_data["predicted_cases"]
                 alert_level = alert_data["alert_level"]
                 week_start_for_alert = alert_data["week_start"] # YYYY-MM-DD
+                
+                # Get the disease_forecast_alert_id if mapping is provided
+                disease_forecast_alert_id = None
+                if alert_id_mapping:
+                    alert_key = (
+                        municipality_code,
+                        week_start_for_alert,
+                        disease_type,
+                        municipality_name
+                    )
+                    disease_forecast_alert_id = alert_id_mapping.get(alert_key)
+                    if disease_forecast_alert_id:
+                        logging.info(f"Linking bulletin to disease_forecast_alert ID: {disease_forecast_alert_id}")
+                    else:
+                        logging.warning(f"No disease_forecast_alert_id found for {alert_key}")
                 
                 # Format dates for titles and messages
                 try:
@@ -484,11 +635,12 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
                 bulletin_id = None
                 try:
                     cur.execute(bulletin_insert_sql, (
-                        title, advisory, hashtags, 1, current_time, current_time, risks, safety_tips
+                        title, advisory, hashtags, 1, current_time, current_time, risks, safety_tips, disease_forecast_alert_id
                     ))
                     bulletin_id = cur.fetchone()[0]
                     bulletins_created_count += 1
-                    logging.info(f"Inserted bulletin ID {bulletin_id} for {disease_type} in {municipality_name}")
+                    logging.info(f"Inserted bulletin ID {bulletin_id} for {disease_type} in {municipality_name}" + 
+                               (f" linked to disease_forecast_alert ID {disease_forecast_alert_id}" if disease_forecast_alert_id else " (no alert link)"))
                 except Exception as e:
                     logging.error(f"Error inserting bulletin for {disease_type} in {municipality_name}: {e}", exc_info=True)
                     conn.rollback() # Rollback this specific bulletin insertion attempt
@@ -543,8 +695,6 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
                                 logging.info(f"  Attached image {img_data['key']} to bulletin {bulletin_id}")
                             except Exception as e:
                                 logging.error(f"Error attaching image {img_data['key']} to bulletin {bulletin_id}: {e}", exc_info=True)
-                                # Decide if this error should rollback the bulletin insert too. For now, just log and continue.
-                                # conn.rollback() # This would rollback the bulletin if an attachment fails.
                     
                 elif not S3_BUCKET_NAME:
                     logging.warning(f"S3_BUCKET_NAME not set. Skipping image generation/upload for bulletin ID {bulletin_id}.")
@@ -564,122 +714,6 @@ def create_and_ingest_bulletins(list_of_alerts, db_params, disease_threshold_dat
             conn.rollback()
     except Exception as e:
         logging.error(f"General error during bulletin processing: {e}", exc_info=True)
-        if conn:
-            conn.rollback()
-    finally:
-        if conn:
-            conn.close()
-
-def create_and_ingest_disease_forecast_alerts(list_of_alerts, db_params):
-    """
-    Creates the disease_forecast_alerts table (dropping if exists) and ingests alert data.
-    Schema is based on weather_forecast_alerts:
-    - municipality_code (TEXT)
-    - forecast_date (DATE) -> from alert_data["week_start"]
-    - disease_type (TEXT) -> from alert_data["disease_type"]
-    - alert_level (TEXT)
-    - alert_title (TEXT) -> formatted
-    - alert_message (TEXT) -> formatted
-    - predicted_cases (INTEGER) -> from alert_data["predicted_cases"]
-    - municipality_name (TEXT)
-    """
-    if not list_of_alerts:
-        print("No disease alerts to process for disease_forecast_alerts table.")
-        return
-
-    alerts_to_insert = []
-    for alert_data in list_of_alerts:
-        if not alert_data: # Skip if generate_disease_alert returned None
-            continue
-
-        formatted_title = alert_data["alert_title_template"].format(cases=alert_data["predicted_cases"])
-        formatted_message = alert_data["alert_message_template"].format(cases=alert_data["predicted_cases"])
-
-        alerts_to_insert.append((
-            alert_data["municipality_code"],
-            alert_data["week_start"],  # This is the forecast_date for the table
-            alert_data["disease_type"],
-            alert_data["alert_level"],
-            formatted_title,
-            formatted_message,
-            alert_data["predicted_cases"],
-            alert_data["municipality_name"]
-        ))
-    
-    if not alerts_to_insert:
-        print("No valid alert data to insert into disease_forecast_alerts table.")
-        return
-
-    conn = None
-    try:
-        conn = psycopg2.connect(**db_params)
-        with conn.cursor() as cur:
-            # 1. Create table only if it doesn't exist
-            create_table_sql = """
-            CREATE TABLE IF NOT EXISTS disease_forecast_alerts (
-                id SERIAL PRIMARY KEY,
-                municipality_code TEXT,
-                forecast_date DATE, -- Stores week_start
-                disease_type TEXT,
-                alert_level TEXT,
-                alert_title TEXT,
-                alert_message TEXT,
-                predicted_cases INTEGER,
-                municipality_name TEXT,
-                -- Add a constraint to help identify unique alerts if needed later
-                UNIQUE (municipality_code, forecast_date, disease_type, municipality_name)
-            );
-            """
-            cur.execute(create_table_sql)
-            print("Checked/Created table disease_forecast_alerts.")
-
-            # 2. Delete existing records for the specific alerts being inserted
-            # This prevents duplicates if the script runs again for the same period
-            # Group alerts by their unique key (municipality, date, type) to minimize DELETE statements
-            keys_to_delete = set()
-            for alert_tuple in alerts_to_insert:
-                # Extract key fields (municipality_code, forecast_date, disease_type)
-                # Indices: 0=muni_code, 1=forecast_date, 2=disease_type
-                key = (alert_tuple[0], alert_tuple[1], alert_tuple[2])
-                keys_to_delete.add(key)
-            
-            delete_count = 0
-            if keys_to_delete:
-                delete_sql_base = "DELETE FROM disease_forecast_alerts WHERE municipality_code = %s AND forecast_date = %s AND disease_type = %s;"
-                delete_sql_null_code = "DELETE FROM disease_forecast_alerts WHERE municipality_code IS NULL AND forecast_date = %s AND disease_type = %s;"
-                for muni_code, f_date, d_type in keys_to_delete:
-                    if muni_code is None:
-                        cur.execute(delete_sql_null_code, (f_date, d_type))
-                    else:
-                        cur.execute(delete_sql_base, (muni_code, f_date, d_type))
-                    delete_count += cur.rowcount # Accumulate number of deleted rows
-                print(f"Deleted {delete_count} existing alert records before insertion.")
-
-            # 3. Insert the new data
-            insert_sql = """
-            INSERT INTO disease_forecast_alerts (
-                municipality_code, forecast_date, disease_type, alert_level, 
-                alert_title, alert_message, predicted_cases, municipality_name
-            ) VALUES %s
-            -- Optionally add ON CONFLICT DO NOTHING/UPDATE if strict uniqueness is handled by DB constraint
-            -- but explicit DELETE beforehand is clearer with the current logic.
-            """
-            execute_values(cur, insert_sql, alerts_to_insert, page_size=100)
-            
-            conn.commit()
-            print(f"Successfully inserted {len(alerts_to_insert)} rows into disease_forecast_alerts.")
-
-    except psycopg2.errors.UniqueViolation as uve:
-        print(f"Database unique constraint violation: {uve}")
-        print("This might happen if multiple alerts for the same key were generated in this run. Check alert generation logic.")
-        if conn:
-            conn.rollback()
-    except psycopg2.DatabaseError as e:
-        print(f"Database error during disease_forecast_alerts ingestion: {e}")
-        if conn:
-            conn.rollback()
-    except Exception as e:
-        print(f"Error ingesting data to disease_forecast_alerts: {e}")
         if conn:
             conn.rollback()
     finally:

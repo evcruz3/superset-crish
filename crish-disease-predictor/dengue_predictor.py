@@ -422,9 +422,15 @@ def main():
             if 'next_week' in pred_data:
                 print(f"             Next week: {pred_data['next_week']['predicted_cases']} cases")
 
-        # --- Ingest Bulletins ---    
+        # --- Ingest Alerts and Bulletins ---    
         if all_alerts:
-            print(f"\nAttempting to ingest {len(all_alerts)} Dengue alerts as bulletins...")
+            print(f"\nAttempting to ingest {len(all_alerts)} Dengue alerts...")
+            
+            # First, create disease forecast alerts and get their IDs
+            alert_id_mapping = create_and_ingest_disease_forecast_alerts(all_alerts, predictor.db_params)
+            
+            # Then create bulletins linked to those alerts
+            print(f"\nCreating bulletins linked to disease forecast alerts...")
             
             # Prepare data for full map coloring
             # The map needs a list of {'municipality_code', 'alert_level'} for all relevant alerts
@@ -439,11 +445,13 @@ def main():
             
             all_predictions_for_map_arg = {"Dengue": predictions_for_map_display}
             
-            create_and_ingest_bulletins(all_alerts, predictor.db_params, all_predictions_for_map=all_predictions_for_map_arg)
+            create_and_ingest_bulletins(
+                all_alerts, 
+                predictor.db_params, 
+                all_predictions_for_map=all_predictions_for_map_arg,
+                alert_id_mapping=alert_id_mapping
+            )
             bulletins_created_this_run = len(all_alerts) # This might be an overestimation if some bulletins fail
-
-            # Also ingest raw alerts to disease_forecast_alerts table
-            create_and_ingest_disease_forecast_alerts(all_alerts, predictor.db_params)
         else:
             print("\nNo Dengue alerts generated to create bulletins or store in disease_forecast_alerts table.")
         

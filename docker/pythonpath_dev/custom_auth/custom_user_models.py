@@ -7,8 +7,12 @@ class CustomRegisterUser(RegisterUser):
     """
     __tablename__ = 'ab_register_user'
     
-    gender = Column(String(50), nullable=True)
-    age_range = Column(String(50), nullable=True)
+    position = Column(String(100), nullable=True)
+    gender_preference = Column(String(50), nullable=True)
+    age_category = Column(String(50), nullable=True)
+    has_disability = Column(String(10), nullable=True)
+    disability_type = Column(String(255), nullable=True)  # For comma-separated values
+    contact_number = Column(String(50), nullable=True)
 
 class CustomUser(User):
     """
@@ -16,5 +20,9 @@ class CustomUser(User):
     """
     __tablename__ = 'ab_user'
     
-    gender = Column(String(50), nullable=True)
-    age_range = Column(String(50), nullable=True) 
+    position = Column(String(100), nullable=True)
+    gender_preference = Column(String(50), nullable=True)
+    age_category = Column(String(50), nullable=True)
+    has_disability = Column(String(10), nullable=True)
+    disability_type = Column(String(255), nullable=True)
+    contact_number = Column(String(50), nullable=True) 
