@@ -212,7 +212,7 @@ def main():
     logging.info("Starting scheduled data puller...")
     
     # Schedule job for midnight
-    schedule.every().day.at("08:00").do(pull_data)
+    schedule.every().day.at("09:00").do(pull_data)
     logging.info("Scheduled daily pull at midnight")
     
     # Run once at startup
