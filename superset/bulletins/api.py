@@ -27,7 +27,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 import logging
 from sqlalchemy import cast, asc, desc, or_, and_
-from sqlalchemy.types import Date as SQLDate
+from sqlalchemy.types import Date as SQLDate, String
 
 logger = logging.getLogger(__name__)
 
@@ -436,13 +436,14 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         if item_dict.get('weather_forecast_alert_composite_id'):
             try:
                 composite_id = item_dict['weather_forecast_alert_composite_id']
-                parts = composite_id.split('_', 2)
-                if len(parts) == 3:
-                    municipality_code, forecast_date, weather_parameter = parts
+                parts = composite_id.split('_', 3)
+                if len(parts) == 4:
+                    municipality_code, created_date, forecast_date, weather_parameter = parts
                     
                     # Try to get the full weather alert details
                     weather_alert = db.session.query(WeatherForecastAlert).filter_by(
                         municipality_code=municipality_code,
+                        created_date=created_date,
                         forecast_date=forecast_date,
                         weather_parameter=weather_parameter
                     ).first()
@@ -455,19 +456,23 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                             'forecast_date': weather_alert.forecast_date,
                             'weather_parameter': weather_alert.weather_parameter,
                             'alert_level': weather_alert.alert_level,
-                            'parameter_value': weather_alert.parameter_value
+                            'parameter_value': weather_alert.parameter_value,
+                            'alert_title': weather_alert.alert_title,
+                            'alert_message': weather_alert.alert_message
                         }
-                    else:
-                        # Fallback to parsed values
-                        item_dict['weather_forecast_alert'] = {
-                            'municipality_code': municipality_code,
-                            'municipality_name': None,
-                            'created_date': None,
-                            'forecast_date': forecast_date,
-                            'weather_parameter': weather_parameter,
-                            'alert_level': None,
-                            'parameter_value': None
-                        }
+                    # else:
+                    #     # Fallback to parsed values
+                    #     item_dict['weather_forecast_alert'] = {
+                    #         'municipality_code': municipality_code,
+                    #         'municipality_name': None,
+                    #         'created_date': None,
+                    #         'forecast_date': forecast_date,
+                    #         'weather_parameter': weather_parameter,
+                    #         'alert_level': None,
+                    #         'parameter_value': None,
+                    #         'alert_title': None,
+                    #         'alert_message': None
+                    #     }
             except (ValueError, AttributeError) as e:
                 current_app.logger.warning(f"Error parsing weather alert composite ID {item_dict.get('weather_forecast_alert_composite_id')}: {e}")
                 item_dict['weather_forecast_alert'] = None
@@ -645,8 +650,14 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         # Build base query with eager loading
         query = self.datamodel.session.query(self.datamodel.obj).options(*self.list_query_options)
         
+        # Extract forecast date parameters for use throughout the method
+        forecast_date_start_str = request.args.get("forecast_date_start")
+        forecast_date_end_str = request.args.get("forecast_date_end")
+        
         # Add left joins for alert relationships to support filtering
         query = query.outerjoin(DiseaseForecastAlert, self.datamodel.obj.disease_forecast_alert_id == DiseaseForecastAlert.id)
+        
+        logger.debug("Base query with joins: %s", query)
         
         # Date range filtering for created_on
         created_on_start_str = request.args.get("created_on_start")
@@ -667,19 +678,77 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                 return self.response_400(message=f"Invalid date format for created_on_end: {created_on_end_str}")
 
         # Date range filtering for forecast_date (applies to both disease and weather alerts)
-        forecast_date_start_str = request.args.get("forecast_date_start")
-        forecast_date_end_str = request.args.get("forecast_date_end")
+        logger.debug("Forecast date filtering - start_str: %s, end_str: %s", forecast_date_start_str, forecast_date_end_str)
 
         if forecast_date_start_str or forecast_date_end_str:
             forecast_filters = []
             
             # Disease alert forecast date filtering
             if forecast_date_start_str or forecast_date_end_str:
-                disease_forecast_filter = self.datamodel.obj.disease_forecast_alert_id.isnot(None)
+                # Start with bulletins that have disease forecast alerts AND the alert has valid data
+                disease_forecast_filter = and_(
+                    self.datamodel.obj.disease_forecast_alert_id.isnot(None),
+                    DiseaseForecastAlert.id.isnot(None),  # Ensure the join actually found a matching alert
+                    DiseaseForecastAlert.forecast_date.isnot(None)  # Ensure the alert has a valid forecast date
+                )
                 
                 if forecast_date_start_str:
                     try:
                         start_date = date.fromisoformat(forecast_date_start_str)
+                        logger.debug("Disease forecast start_date parsed: %s", start_date)
+                        
+                        # Debug: Check what disease forecast alerts exist for this date
+                        debug_alerts = self.datamodel.session.query(DiseaseForecastAlert).filter(
+                            cast(DiseaseForecastAlert.forecast_date, SQLDate) == start_date
+                        ).all()
+                        logger.debug("Disease alerts found for date %s: %d", start_date, len(debug_alerts))
+                        for alert in debug_alerts[:3]:  # Log first 3 for debugging
+                            logger.debug("Alert ID %s: forecast_date=%s (raw), municipality=%s, disease=%s", 
+                                       alert.id, alert.forecast_date, alert.municipality_name, alert.disease_type)
+                        
+                        # Debug: Also check with >= comparison to see if there are alerts that should match
+                        debug_alerts_gte = self.datamodel.session.query(DiseaseForecastAlert).filter(
+                            cast(DiseaseForecastAlert.forecast_date, SQLDate) >= start_date
+                        ).all()
+                        logger.debug("Disease alerts found with >= %s: %d", start_date, len(debug_alerts_gte))
+                        
+                        # Debug: Check raw forecast_date values around this date
+                        debug_all_alerts = self.datamodel.session.query(DiseaseForecastAlert).limit(5).all()
+                        logger.debug("Sample disease alerts (first 5):")
+                        for alert in debug_all_alerts:
+                            logger.debug("Alert ID %s: forecast_date=%s (type: %s)", 
+                                       alert.id, alert.forecast_date, type(alert.forecast_date))
+                        
+                        # Debug: Check bulletins linked to disease forecast alerts for this date
+                        debug_bulletins = self.datamodel.session.query(Bulletin).join(
+                            DiseaseForecastAlert, Bulletin.disease_forecast_alert_id == DiseaseForecastAlert.id
+                        ).filter(
+                            cast(DiseaseForecastAlert.forecast_date, SQLDate) == start_date
+                        ).all()
+                        logger.debug("Bulletins with disease alerts for date %s: %d", start_date, len(debug_bulletins))
+                        for bulletin in debug_bulletins[:3]:  # Log first 3
+                            logger.debug("Bulletin ID %s: title=%s, alert_id=%s", 
+                                       bulletin.id, bulletin.title, bulletin.disease_forecast_alert_id)
+                        
+                        # Debug: Try with >= to see if the comparison logic works
+                        debug_bulletins_gte = self.datamodel.session.query(Bulletin).join(
+                            DiseaseForecastAlert, Bulletin.disease_forecast_alert_id == DiseaseForecastAlert.id
+                        ).filter(
+                            cast(DiseaseForecastAlert.forecast_date, SQLDate) >= start_date
+                        ).all()
+                        logger.debug("Bulletins with disease alerts >= date %s: %d", start_date, len(debug_bulletins_gte))
+                        
+                        # Debug: Check if the issue is with the outerjoin vs inner join
+                        debug_bulletins_outerjoin = self.datamodel.session.query(Bulletin).outerjoin(
+                            DiseaseForecastAlert, Bulletin.disease_forecast_alert_id == DiseaseForecastAlert.id
+                        ).filter(
+                            and_(
+                                Bulletin.disease_forecast_alert_id.isnot(None),
+                                cast(DiseaseForecastAlert.forecast_date, SQLDate) >= start_date
+                            )
+                        ).all()
+                        logger.debug("Bulletins with outerjoin and disease alerts >= date %s: %d", start_date, len(debug_bulletins_outerjoin))
+                        
                         disease_forecast_filter = and_(
                             disease_forecast_filter,
                             cast(DiseaseForecastAlert.forecast_date, SQLDate) >= start_date
@@ -690,6 +759,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                 if forecast_date_end_str:
                     try:
                         end_date = date.fromisoformat(forecast_date_end_str)
+                        logger.debug("Disease forecast end_date parsed: %s", end_date)
                         disease_forecast_filter = and_(
                             disease_forecast_filter,
                             cast(DiseaseForecastAlert.forecast_date, SQLDate) <= end_date
@@ -697,52 +767,78 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                     except ValueError:
                         return self.response_400(message=f"Invalid date format for forecast_date_end: {forecast_date_end_str}")
                 
+                logger.debug("Disease forecast filter created: %s", disease_forecast_filter)
                 forecast_filters.append(disease_forecast_filter)
 
-            # Weather alert forecast date filtering (extract date from composite ID)
+            # Weather alert forecast date filtering - filter bulletins by their associated alert's forecast_date
             if forecast_date_start_str or forecast_date_end_str:
                 try:
-                    # Get all weather alerts within the date range
-                    weather_subquery = self.datamodel.session.query(
-                        WeatherForecastAlert.municipality_code,
-                        WeatherForecastAlert.forecast_date,
-                        WeatherForecastAlert.weather_parameter
-                    )
+                    # Build a filter condition that checks the forecast_date of the weather alert 
+                    # associated with each bulletin's composite ID
+                    weather_conditions = []
                     
                     if forecast_date_start_str:
                         start_date = date.fromisoformat(forecast_date_start_str)
-                        weather_subquery = weather_subquery.filter(
+                        logger.debug("Weather forecast start_date parsed: %s", start_date)
+                        weather_conditions.append(
                             cast(WeatherForecastAlert.forecast_date, SQLDate) >= start_date
                         )
                     
                     if forecast_date_end_str:
                         end_date = date.fromisoformat(forecast_date_end_str)
-                        weather_subquery = weather_subquery.filter(
+                        logger.debug("Weather forecast end_date parsed: %s", end_date)
+                        weather_conditions.append(
                             cast(WeatherForecastAlert.forecast_date, SQLDate) <= end_date
                         )
                     
-                    weather_results = weather_subquery.all()
-                    
-                    # Build composite IDs from the filtered results
-                    weather_composite_ids = [
-                        f"{row.municipality_code}_{row.forecast_date}_{row.weather_parameter}"
-                        for row in weather_results
-                    ]
-                    
-                    if weather_composite_ids:
+                    if weather_conditions:
+                        # Create a filter that:
+                        # 1. Ensures bulletin has a weather_forecast_alert_composite_id
+                        # 2. Joins with WeatherForecastAlert to check the forecast_date
+                        # 3. Uses a subquery to match composite IDs with forecast_date criteria
+                        
+                        # Subquery to find weather alerts that meet the date criteria
+                        weather_alerts_subquery = self.datamodel.session.query(
+                            (WeatherForecastAlert.municipality_code + '_' + 
+                             cast(WeatherForecastAlert.created_date, String) + '_' +
+                             cast(WeatherForecastAlert.forecast_date, String) + '_' + 
+                             WeatherForecastAlert.weather_parameter).label('composite_id')
+                        ).filter(and_(*weather_conditions)).subquery()
+                        
                         weather_forecast_filter = and_(
                             self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
-                            self.datamodel.obj.weather_forecast_alert_composite_id.in_(weather_composite_ids)
+                            self.datamodel.obj.weather_forecast_alert_composite_id.in_(
+                                self.datamodel.session.query(weather_alerts_subquery.c.composite_id)
+                            )
                         )
+                        
+                        # Debug: Check how many bulletins this would match
+                        debug_weather_bulletins = self.datamodel.session.query(self.datamodel.obj).filter(weather_forecast_filter).all()
+                        logger.debug("Bulletins with weather alerts matching date criteria: %d", len(debug_weather_bulletins))
+                        for bulletin in debug_weather_bulletins[:3]:
+                            logger.debug("Weather Bulletin ID %s: composite_id=%s", bulletin.id, bulletin.weather_forecast_alert_composite_id)
+                        
                         forecast_filters.append(weather_forecast_filter)
-                    
+                        
                 except ValueError as e:
-                    # forecast_date_start or forecast_date_end parsing already handled above
-                    pass
+                    logger.error("Error parsing weather forecast date: %s", e)
+                    return self.response_400(message=f"Invalid date format: {e}")
             
             # Apply the forecast date filters (OR condition between disease and weather)
             if forecast_filters:
+                logger.debug("Applying forecast filters (count: %d): %s", len(forecast_filters), forecast_filters)
                 query = query.filter(or_(*forecast_filters))
+                
+                # Debug: Check what the query returns after applying forecast date filter
+                debug_results_after_forecast_filter = query.all()
+                logger.debug("Results after forecast date filter: %d bulletins", len(debug_results_after_forecast_filter))
+                for bulletin in debug_results_after_forecast_filter[:3]:
+                    logger.debug("Bulletin ID %s: title=%s, alert_id=%s", 
+                               bulletin.id, bulletin.title, bulletin.disease_forecast_alert_id)
+                    if bulletin.disease_forecast_alert:
+                        logger.debug("  -> Alert forecast_date: %s", bulletin.disease_forecast_alert.forecast_date)
+
+        logger.debug("[DEBUG] query %s", query)
 
         # Direct URL parameter filters for title and hashtags (contains search)
         if 'title' in request.args:
@@ -843,7 +939,9 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             fab_rison_filters = self.datamodel.get_filters(filter_columns_list=rison_filters_list)
             query = self.datamodel.apply_filters(query, fab_rison_filters)
 
+        logger.debug("Final query before count: %s", query)
         item_count = query.count()
+        logger.debug("Item count after all filters: %d", item_count)
 
         # Ordering
         order_column_name = rison_payload.get("order_column", "changed_on")
