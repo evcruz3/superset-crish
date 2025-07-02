@@ -451,6 +451,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                         item_dict['weather_forecast_alert'] = {
                             'municipality_code': weather_alert.municipality_code,
                             'municipality_name': weather_alert.municipality_name,
+                            'created_date': weather_alert.created_date,
                             'forecast_date': weather_alert.forecast_date,
                             'weather_parameter': weather_alert.weather_parameter,
                             'alert_level': weather_alert.alert_level,
@@ -461,6 +462,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                         item_dict['weather_forecast_alert'] = {
                             'municipality_code': municipality_code,
                             'municipality_name': None,
+                            'created_date': None,
                             'forecast_date': forecast_date,
                             'weather_parameter': weather_parameter,
                             'alert_level': None,
@@ -530,6 +532,20 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
               type: string
               format: date
             description: "Filter by end date for creation date range (inclusive, YYYY-MM-DD)."
+          - name: forecast_date_start
+            in: query
+            required: false
+            schema:
+              type: string
+              format: date
+            description: "Filter by start date for forecast date range (inclusive, YYYY-MM-DD). Applies to both disease and weather forecast alerts."
+          - name: forecast_date_end
+            in: query
+            required: false
+            schema:
+              type: string
+              format: date
+            description: "Filter by end date for forecast date range (inclusive, YYYY-MM-DD). Applies to both disease and weather forecast alerts."
           - name: title
             in: query
             required: false
@@ -649,6 +665,84 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                 query = query.filter(cast(self.datamodel.obj.created_on, SQLDate) <= end_date)
             except ValueError:
                 return self.response_400(message=f"Invalid date format for created_on_end: {created_on_end_str}")
+
+        # Date range filtering for forecast_date (applies to both disease and weather alerts)
+        forecast_date_start_str = request.args.get("forecast_date_start")
+        forecast_date_end_str = request.args.get("forecast_date_end")
+
+        if forecast_date_start_str or forecast_date_end_str:
+            forecast_filters = []
+            
+            # Disease alert forecast date filtering
+            if forecast_date_start_str or forecast_date_end_str:
+                disease_forecast_filter = self.datamodel.obj.disease_forecast_alert_id.isnot(None)
+                
+                if forecast_date_start_str:
+                    try:
+                        start_date = date.fromisoformat(forecast_date_start_str)
+                        disease_forecast_filter = and_(
+                            disease_forecast_filter,
+                            cast(DiseaseForecastAlert.forecast_date, SQLDate) >= start_date
+                        )
+                    except ValueError:
+                        return self.response_400(message=f"Invalid date format for forecast_date_start: {forecast_date_start_str}")
+                
+                if forecast_date_end_str:
+                    try:
+                        end_date = date.fromisoformat(forecast_date_end_str)
+                        disease_forecast_filter = and_(
+                            disease_forecast_filter,
+                            cast(DiseaseForecastAlert.forecast_date, SQLDate) <= end_date
+                        )
+                    except ValueError:
+                        return self.response_400(message=f"Invalid date format for forecast_date_end: {forecast_date_end_str}")
+                
+                forecast_filters.append(disease_forecast_filter)
+
+            # Weather alert forecast date filtering (extract date from composite ID)
+            if forecast_date_start_str or forecast_date_end_str:
+                try:
+                    # Get all weather alerts within the date range
+                    weather_subquery = self.datamodel.session.query(
+                        WeatherForecastAlert.municipality_code,
+                        WeatherForecastAlert.forecast_date,
+                        WeatherForecastAlert.weather_parameter
+                    )
+                    
+                    if forecast_date_start_str:
+                        start_date = date.fromisoformat(forecast_date_start_str)
+                        weather_subquery = weather_subquery.filter(
+                            cast(WeatherForecastAlert.forecast_date, SQLDate) >= start_date
+                        )
+                    
+                    if forecast_date_end_str:
+                        end_date = date.fromisoformat(forecast_date_end_str)
+                        weather_subquery = weather_subquery.filter(
+                            cast(WeatherForecastAlert.forecast_date, SQLDate) <= end_date
+                        )
+                    
+                    weather_results = weather_subquery.all()
+                    
+                    # Build composite IDs from the filtered results
+                    weather_composite_ids = [
+                        f"{row.municipality_code}_{row.forecast_date}_{row.weather_parameter}"
+                        for row in weather_results
+                    ]
+                    
+                    if weather_composite_ids:
+                        weather_forecast_filter = and_(
+                            self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
+                            self.datamodel.obj.weather_forecast_alert_composite_id.in_(weather_composite_ids)
+                        )
+                        forecast_filters.append(weather_forecast_filter)
+                    
+                except ValueError as e:
+                    # forecast_date_start or forecast_date_end parsing already handled above
+                    pass
+            
+            # Apply the forecast date filters (OR condition between disease and weather)
+            if forecast_filters:
+                query = query.filter(or_(*forecast_filters))
 
         # Direct URL parameter filters for title and hashtags (contains search)
         if 'title' in request.args:

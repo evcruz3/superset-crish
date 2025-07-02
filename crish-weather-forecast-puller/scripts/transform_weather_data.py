@@ -249,7 +249,7 @@ def generate_weather_alerts(dataframes):
           .otherwise(pl.lit('Normal')).alias('alert_level'),
         pl.when(pl.col('value') > WIND_SPEED_EXTREME_DANGER).then(pl.lit('Severe Wind Alert'))
           .when(pl.col('value') >= WIND_SPEED_DANGER).then(pl.lit('Strong Wind Warning'))
-          .when(pl.col('value') >= WIND_SPEED_EXTREME_CAUTION).then(pl.lit('Wind Speed Advisory'))
+          .when(pl.col('value') >= WIND_SPEED_EXTREME_CAUTION).then(pl.lit('Wind Speed Extreme Caution'))
           .otherwise(pl.lit('Calm Conditions')).alias('alert_title'),
         pl.when(pl.col('value') > WIND_SPEED_EXTREME_DANGER).then(pl.lit('Extremely strong winds expected. Major damage possible.'))
           .when(pl.col('value') >= WIND_SPEED_DANGER).then(pl.lit('Strong winds expected. Secure loose objects and take precautions.'))
@@ -608,6 +608,11 @@ def ingest_to_postgresql(dataframes):
                 print(f"Weather forecast alerts by parameter and level:")
                 print(level_counts)
                 
+                # Add a column for the current date today
+                weather_alerts_df = weather_alerts_df.with_columns(
+                    pl.lit(datetime.now().strftime('%Y-%m-%d')).alias('created_date')
+                )
+                
                 # First, ingest the weather forecast alerts to the database
                 rows_affected = weather_alerts_df.write_database(
                     table_name='weather_forecast_alerts',
@@ -621,7 +626,8 @@ def ingest_to_postgresql(dataframes):
                 if weather_alerts_df.shape[0] > 0:
                     high_severity_alerts = weather_alerts_df.filter(
                         (pl.col('alert_level') == 'Danger') | 
-                        (pl.col('alert_level') == 'Extreme Danger')
+                        (pl.col('alert_level') == 'Extreme Danger') |
+                        (pl.col('alert_level') == 'Extreme Caution')
                     )
                     
                     if high_severity_alerts.shape[0] > 0:
@@ -649,7 +655,7 @@ def create_weather_bulletins_with_links(high_severity_alerts_df, all_dataframes,
     with db_connection.cursor() as cur:
         for _, alert_row in alerts_to_process.iterrows():
             # Create composite ID for linking bulletin to weather forecast alert
-            composite_id = f"{alert_row['municipality_code']}_{alert_row['forecast_date']}_{alert_row['weather_parameter']}"
+            composite_id = f"{alert_row['municipality_code']}_{alert_row['created_date']}_{alert_row['forecast_date']}_{alert_row['weather_parameter']}"
             
             # Original forecast date string from the DataFrame
             original_forecast_date_str = alert_row['forecast_date']  # This is YYYY-MM-DD
@@ -794,30 +800,68 @@ def create_weather_bulletins_with_links(high_severity_alerts_df, all_dataframes,
                 if not actual_s3_bucket:
                     print("Skipping chart image S3 upload as S3_BUCKET is not set.")
 
-            # Insert bulletin record with weather_forecast_alert_composite_id
-            bulletin_insert_sql = """
-            INSERT INTO bulletins (
-                title, advisory, hashtags, created_by_fk, 
-                created_on, changed_on, risks, safety_tips,
-                weather_forecast_alert_composite_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            
+            # Check if bulletin with same composite_id already exists
             current_time = datetime.now()
-            cur.execute(bulletin_insert_sql, (
-                title, # Uses formatted_display_date
-                advisory, # Uses formatted_display_date
-                hashtags,
-                1, 
-                current_time,
-                current_time,
-                risks, # Uses alert_row data
-                safety_tips, # Uses alert_row data
-                composite_id  # Link to weather forecast alert using composite ID
-            ))
-            cur.execute("SELECT lastval()")
-            bulletin_id = cur.fetchone()[0]
-            print(f"Created bulletin: {title} with ID: {bulletin_id}, linked to weather alert: {composite_id}")
+            check_existing_sql = """
+            SELECT id FROM bulletins 
+            WHERE weather_forecast_alert_composite_id = %s
+            """
+            cur.execute(check_existing_sql, (composite_id,))
+            existing_bulletin = cur.fetchone()
+            
+            if existing_bulletin:
+                # Update existing bulletin
+                bulletin_id = existing_bulletin[0]
+                bulletin_update_sql = """
+                UPDATE bulletins SET
+                    title = %s,
+                    advisory = %s,
+                    hashtags = %s,
+                    changed_on = %s,
+                    risks = %s,
+                    safety_tips = %s
+                WHERE id = %s
+                """
+                cur.execute(bulletin_update_sql, (
+                    title, # Uses formatted_display_date
+                    advisory, # Uses formatted_display_date
+                    hashtags,
+                    current_time,
+                    risks, # Uses alert_row data
+                    safety_tips, # Uses alert_row data
+                    bulletin_id
+                ))
+                print(f"Updated existing bulletin: {title} with ID: {bulletin_id}, linked to weather alert: {composite_id}")
+                
+                # Delete existing image attachments for this bulletin
+                delete_attachments_sql = """
+                DELETE FROM bulletin_image_attachments WHERE bulletin_id = %s
+                """
+                cur.execute(delete_attachments_sql, (bulletin_id,))
+                print(f"  Deleted existing image attachments for bulletin {bulletin_id}")
+            else:
+                # Insert new bulletin record
+                bulletin_insert_sql = """
+                INSERT INTO bulletins (
+                    title, advisory, hashtags, created_by_fk, 
+                    created_on, changed_on, risks, safety_tips,
+                    weather_forecast_alert_composite_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                cur.execute(bulletin_insert_sql, (
+                    title, # Uses formatted_display_date
+                    advisory, # Uses formatted_display_date
+                    hashtags,
+                    1, 
+                    current_time,
+                    current_time,
+                    risks, # Uses alert_row data
+                    safety_tips, # Uses alert_row data
+                    composite_id  # Link to weather forecast alert using composite ID
+                ))
+                cur.execute("SELECT lastval()")
+                bulletin_id = cur.fetchone()[0]
+                print(f"Created new bulletin: {title} with ID: {bulletin_id}, linked to weather alert: {composite_id}")
 
             # --- Insert image attachments if any ---
             if bulletin_id and bulletin_s3_image_keys:

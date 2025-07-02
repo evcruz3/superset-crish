@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from sqlalchemy import Column, Date, Integer, Text, UniqueConstraint
+from sqlalchemy import Column, Date, Integer, Text, UniqueConstraint, DateTime
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql import func
 import sqlalchemy.types
 from datetime import datetime
 

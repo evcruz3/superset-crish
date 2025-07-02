@@ -482,7 +482,7 @@ class WeatherForecastAlertRestApi(BaseSupersetModelRestApi):
         db.session.commit()
         
         # Generate composite id for response
-        composite_id = f"{new_alert.municipality_code}_{new_alert.forecast_date}_{new_alert.weather_parameter}"
+        composite_id = f"{new_alert.municipality_code}_{new_alert.created_date}_{new_alert.forecast_date}_{new_alert.weather_parameter}"
         return self.response(201, id=composite_id)
         
     @expose("/<composite_id>", methods=["PUT"])

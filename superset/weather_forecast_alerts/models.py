@@ -43,10 +43,11 @@ class WeatherForecastAlert(Model):
     alert_title = Column(String(100), nullable=False)
     alert_message = Column(Text, nullable=False)
     parameter_value = Column(Float, nullable=False)
+    created_date = Column(DateTime, nullable=False)
     
     # Create a composite primary key
     __table_args__ = (
-        PrimaryKeyConstraint('municipality_code', 'forecast_date', 'weather_parameter'),
+        PrimaryKeyConstraint('municipality_code', 'created_date', 'forecast_date', 'weather_parameter'),
     )
     
     def __repr__(self) -> str:
