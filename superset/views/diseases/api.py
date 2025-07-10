@@ -20,7 +20,7 @@ from flask_appbuilder.models.sqla.filters import FilterEqual, FilterStartsWith, 
 from sqlalchemy import asc, desc
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.views.diseases.models import DiseaseData
-from superset.views.diseases.schemas import DiseaseDataSchema, openapi_spec_methods_override as disease_openapi_spec_methods_override
+from superset.views.diseases.schemas import DiseaseDataSchema
 from superset.views.base_api import BaseSupersetModelRestApi, statsd_metrics
 
 logger = logging.getLogger(__name__)
@@ -788,7 +788,7 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
     
     # OpenAPI specification details
     openapi_spec_tag = "CRISH Disease Data" # New tag for this API
-    openapi_spec_methods = disease_openapi_spec_methods_override # Use the one from schemas.py
+    # openapi_spec_methods = disease_openapi_spec_methods_override # Use the one from schemas.py
     openapi_spec_component_schemas = (DiseaseDataSchema,)
 
 

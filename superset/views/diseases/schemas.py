@@ -125,119 +125,119 @@ class DiseaseDataSchema(Schema):
         # This method assumes 'obj' is an instance of the DiseaseData model
         return f"{obj.year}_{obj.week_number}_{obj.disease}_{obj.municipality_code}"
 
-openapi_spec_methods_override = {
-    "get_list": {
-        "get": {
-            "summary": "Get a list of disease data entries",
-            "description": (
-                "Retrieves a list of disease data entries. "
-                "Supports filtering via direct query parameters (e.g., year=2023, disease=Dengue) "
-                "and/or the 'q' rison parameter for complex queries (filters, ordering, pagination). "
-                "Pagination can be controlled using `page` and `page_size` either directly as query "
-                "parameters or within the 'q' rison payload. Set `page_size` to -1 to retrieve all matching entries."
-            ),
-            "parameters": [
-                {
-                    "in": "query",
-                    "name": "q",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/get_list_schema"
-                            }
-                        }
-                    },
-                    "description": (
-                        "A Rison-encoded query for comprehensive filtering, sorting, and pagination. "
-                        "Example for filtering by Dengue and first page: "
-                        "q=(filters:!((col:disease,opr:eq,value:Dengue)),page:0,page_size:25)"
-                    )
-                },
-                {
-                    "name": "year",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "integer"},
-                    "description": "Filter by exact year (e.g., 2023)."
-                },
-                {
-                    "name": "week_number",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "integer"},
-                    "description": "Filter by exact week number."
-                },
-                {
-                    "name": "disease",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "string"},
-                    "description": "Filter by exact disease name (case-sensitive)."
-                },
-                {
-                    "name": "municipality_code",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "string"},
-                    "description": "Filter by exact municipality code."
-                },
-                {
-                    "name": "municipality",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "string"},
-                    "description": "Filter by exact municipality name (case-sensitive)."
-                },
-                {
-                    "name": "page",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "integer"},
-                    "description": "Page number for pagination (0-indexed). Used if 'page' is not in 'q'."
-                },
-                {
-                    "name": "page_size",
-                    "in": "query",
-                    "required": False,
-                    "schema": {"type": "integer"},
-                    "description": "Number of results per page. Set to -1 to retrieve all results. Used if 'page_size' is not in 'q'."
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "A list of disease data entries",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "ids": {
-                                        "type": "array",
-                                        "items": {"type": "string"},
-                                        "description": "A list of entry IDs (composite keys)"
-                                    },
-                                    "count": {"type": "integer"},
-                                    "result": {
-                                        "type": "array",
-                                        "items": {
-                                            "$ref": "#/components/schemas/DiseaseDataSchema"
-                                        }
-                                    },
-                                    "page": {"type": "integer"},
-                                    "page_size": {"type": "integer"},
-                                    "total_pages": {"type": "integer"},
-                                    "next_page_url": {"type": ["string", "null"]},
-                                    "prev_page_url": {"type": ["string", "null"]}
-                                }
-                            }
-                        }
-                    }
-                },
-                "400": {"$ref": "#/components/responses/400"},
-                "401": {"$ref": "#/components/responses/401"},
-                "422": {"$ref": "#/components/responses/422"},
-                "500": {"$ref": "#/components/responses/500"}
-            }
-        }
-    }
-} 
+# openapi_spec_methods_override = {
+#     "get_list": {
+#         "get": {
+#             "summary": "Get a list of disease data entries",
+#             "description": (
+#                 "Retrieves a list of disease data entries. "
+#                 "Supports filtering via direct query parameters (e.g., year=2023, disease=Dengue) "
+#                 "and/or the 'q' rison parameter for complex queries (filters, ordering, pagination). "
+#                 "Pagination can be controlled using `page` and `page_size` either directly as query "
+#                 "parameters or within the 'q' rison payload. Set `page_size` to -1 to retrieve all matching entries."
+#             ),
+#             "parameters": [
+#                 {
+#                     "in": "query",
+#                     "name": "q",
+#                     "content": {
+#                         "application/json": {
+#                             "schema": {
+#                                 "$ref": "#/components/schemas/get_list_schema"
+#                             }
+#                         }
+#                     },
+#                     "description": (
+#                         "A Rison-encoded query for comprehensive filtering, sorting, and pagination. "
+#                         "Example for filtering by Dengue and first page: "
+#                         "q=(filters:!((col:disease,opr:eq,value:Dengue)),page:0,page_size:25)"
+#                     )
+#                 },
+#                 {
+#                     "name": "year",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "integer"},
+#                     "description": "Filter by exact year (e.g., 2023)."
+#                 },
+#                 {
+#                     "name": "week_number",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "integer"},
+#                     "description": "Filter by exact week number."
+#                 },
+#                 {
+#                     "name": "disease",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "string"},
+#                     "description": "Filter by exact disease name (case-sensitive)."
+#                 },
+#                 {
+#                     "name": "municipality_code",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "string"},
+#                     "description": "Filter by exact municipality code."
+#                 },
+#                 {
+#                     "name": "municipality",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "string"},
+#                     "description": "Filter by exact municipality name (case-sensitive)."
+#                 },
+#                 {
+#                     "name": "page",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "integer"},
+#                     "description": "Page number for pagination (0-indexed). Used if 'page' is not in 'q'."
+#                 },
+#                 {
+#                     "name": "page_size",
+#                     "in": "query",
+#                     "required": False,
+#                     "schema": {"type": "integer"},
+#                     "description": "Number of results per page. Set to -1 to retrieve all results. Used if 'page_size' is not in 'q'."
+#                 }
+#             ],
+#             "responses": {
+#                 "200": {
+#                     "description": "A list of disease data entries",
+#                     "content": {
+#                         "application/json": {
+#                             "schema": {
+#                                 "type": "object",
+#                                 "properties": {
+#                                     "ids": {
+#                                         "type": "array",
+#                                         "items": {"type": "string"},
+#                                         "description": "A list of entry IDs (composite keys)"
+#                                     },
+#                                     "count": {"type": "integer"},
+#                                     "result": {
+#                                         "type": "array",
+#                                         "items": {
+#                                             "$ref": "#/components/schemas/DiseaseDataSchema"
+#                                         }
+#                                     },
+#                                     "page": {"type": "integer"},
+#                                     "page_size": {"type": "integer"},
+#                                     "total_pages": {"type": "integer"},
+#                                     "next_page_url": {"type": ["string", "null"]},
+#                                     "prev_page_url": {"type": ["string", "null"]}
+#                                 }
+#                             }
+#                         }
+#                     }
+#                 },
+#                 "400": {"$ref": "#/components/responses/400"},
+#                 "401": {"$ref": "#/components/responses/401"},
+#                 "422": {"$ref": "#/components/responses/422"},
+#                 "500": {"$ref": "#/components/responses/500"}
+#             }
+#         }
+#     }
+# } 
