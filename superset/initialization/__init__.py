@@ -378,6 +378,44 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category_icon="",
         )
 
+
+        # Dissemination Menu
+        appbuilder.add_view(
+            EmailGroupsSPAView,       # Use the new SPA host view
+            "Email Groups List",      # View name for FAB (must be unique)
+            label=__("Email Groups"), # Label in UI
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-users-cog",       # Or fa-users
+            href='/emailgroups/list/'  # Path for the menu item
+        )
+        appbuilder.add_view(
+            WhatsAppGroupsSPAView,      # CHANGED from WhatsAppGroupModelView
+            "WhatsApp Groups List",     # CHANGED to a unique name for FAB, and to denote SPA
+            label=__("WhatsApp Groups"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-whatsapp",
+            href='/whatsappgroups/list/' # ADDED href to point to the SPA route
+        )
+        
+        appbuilder.add_view(
+            DisseminateBulletinView,
+            "Disseminate Bulletin",
+            label=__("Disseminate Bulletin"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-envelope-o",
+        )
+        appbuilder.add_view(
+            DisseminatedBulletinLogModelView,
+            "View Dissemination Logs",
+            label=__("Dissemination Logs"),
+            category="Dissemination",
+            category_label=__("Dissemination"),
+            icon="fa-history",
+        )
+
         appbuilder.add_view(
             PublicEducationView,
             "Public Education",
@@ -547,50 +585,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category="Security",
             category_label=__("Security"),
             icon="fa-lock",
-        )
-
-        # Dissemination Menu
-        # appbuilder.add_view(
-        #     EmailGroupModelView,
-        #     "Manage Email Groups",
-        #     label=__("Email Groups"),
-        #     category="Dissemination",
-        #     category_label=__("Dissemination"),
-        #     icon="fa-users",
-        # ) # Commented out old ModelView
-        appbuilder.add_view(
-            EmailGroupsSPAView,       # Use the new SPA host view
-            "Email Groups List",      # View name for FAB (must be unique)
-            label=__("Email Groups"), # Label in UI
-            category="Dissemination",
-            category_label=__("Dissemination"),
-            icon="fa-users-cog",       # Or fa-users
-            href='/emailgroups/list/'  # Path for the menu item
-        )
-        appbuilder.add_view(
-            WhatsAppGroupsSPAView,      # CHANGED from WhatsAppGroupModelView
-            "WhatsApp Groups List",     # CHANGED to a unique name for FAB, and to denote SPA
-            label=__("WhatsApp Groups"),
-            category="Dissemination",
-            category_label=__("Dissemination"),
-            icon="fa-whatsapp",
-            href='/whatsappgroups/list/' # ADDED href to point to the SPA route
-        )
-        appbuilder.add_view(
-            DisseminateBulletinView,
-            "Disseminate Bulletin",
-            label=__("Disseminate Bulletin"),
-            category="Dissemination",
-            category_label=__("Dissemination"),
-            icon="fa-envelope-o",
-        )
-        appbuilder.add_view(
-            DisseminatedBulletinLogModelView,
-            "View Dissemination Logs",
-            label=__("Dissemination Logs"),
-            category="Dissemination",
-            category_label=__("Dissemination"),
-            icon="fa-history",
         )
 
         appbuilder.add_view(
