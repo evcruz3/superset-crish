@@ -751,7 +751,7 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
     search_filters = {
         "year": [FilterEqual],
         "week_number": [FilterEqual],
-        "disease": [FilterEqual, FilterStartsWith, FilterInFunction], # Allow for flexible disease searching
+        "disease": [FilterEqual], # Limited to specific disease groups: Dengue, Diarrhea, ISPA/ARI
         "municipality_code": [FilterEqual, FilterInFunction],
         "municipality": [FilterEqual, FilterStartsWith, FilterInFunction],
     }
@@ -772,10 +772,10 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
         return None
 
     # Base filters for direct URL query parameters
+    # Note: disease filtering is handled manually in get_list() with custom regex logic
     base_filters = [
         ["year", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("year", int)],
         ["week_number", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("week_number", int)],
-        ["disease", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("disease")],
         ["municipality_code", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("municipality_code")],
         ["municipality", FilterEqual, lambda: DiseaseDataRestApi._get_arg_for_filter("municipality")],
     ]
@@ -817,7 +817,7 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
               description: >-
                 Rison-encoded string for complex queries.
                 Allows specifying filters, ordering, page, and page_size.
-                Example for filters: (filters:!((col:year,opr:eq,value:2023),(col:disease,opr:sw,value:Den)))
+                Example for filters: (filters:!((col:year,opr:eq,value:2023),(col:disease,opr:eq,value:Dengue)))
                 Example for ordering: (order_column:week_number,order_direction:desc)
                 Example for pagination: (page:0,page_size:25)
                 Example for fetching all items: (page_size:-1)
@@ -843,8 +843,15 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
               description: Filter by exact week number (e.g., 42). Applied if 'q' does not filter on week_number.
             - name: disease
               in: query
-              schema: { type: string }
-              description: Filter by exact disease name (e.g., Dengue). Applied if 'q' does not filter on disease.
+              schema: 
+                type: string
+                enum: ["Dengue", "Diarrhea", "ISPA/ARI"]
+              description: >-
+                Filter by disease group. Only three values are allowed:
+                - "Dengue": Matches diseases containing "dengue" (case-insensitive)
+                - "Diarrhea": Matches diseases containing "diarrhea" or "diarrrhea" (case-insensitive)  
+                - "ISPA/ARI": Matches diseases containing "ispa/ari", "ispa", or "ari" (case-insensitive)
+                Applied if 'q' does not filter on disease.
             - name: municipality_code
               in: query
               schema: { type: string }
@@ -900,7 +907,7 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
                         nullable: true
                         description: URL for the previous page of results, if available.
             400:
-              description: Bad Request (e.g., invalid parameter format, malformed Rison).
+              description: Bad Request (e.g., invalid parameter format, malformed Rison, invalid disease parameter value).
             401:
               description: Unauthorized.
             500:
@@ -921,23 +928,50 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
             "municipality_code": "municipality_code",
             "municipality": "municipality",
         }
+        
+        # Define allowed disease groups and their regex patterns
+        allowed_disease_groups = {
+            "Dengue": r'\ydengue\y',
+            "Diarrhea": r'\ydiarr?hea\y', 
+            "ISPA/ARI": r'\y(ispa\s*/\s*ari|ispa|ari)\y'
+        }
+        
         for query_param_key, model_column_name in direct_query_params_mapping.items():
             if query_param_key in request.args:
                 param_value = request.args.get(query_param_key)
                 # Ensure param_value is not None and not one of the special FAB params
                 if param_value is not None and query_param_key.lower() not in ['q', 'page', 'page_size', 'order_column', 'order_direction', 'keys', 'columns']:
-                    logger.info(f"Applying direct URL filter to SQLAlchemy query: {model_column_name} == {param_value}")
                     
-                    # Handle type conversion for integer fields based on model
-                    column_attr = getattr(self.datamodel.obj, model_column_name)
-                    if str(column_attr.type).lower() == "integer":
-                        try:
-                            param_value = int(param_value)
-                        except ValueError:
-                            logger.warning(f"Skipping filter for {model_column_name}: could not convert '{param_value}' to int.")
-                            continue # Skip this filter if conversion fails
-                    
-                    query = query.filter(getattr(self.datamodel.obj, model_column_name) == param_value)
+                    # Special handling for disease parameter
+                    if query_param_key == "disease":
+                        if param_value in allowed_disease_groups:
+                            # Apply regex pattern filtering for disease groups
+                            regex_pattern = allowed_disease_groups[param_value]
+                            logger.info(f"Applying disease group filter to SQLAlchemy query: {param_value} using pattern {regex_pattern}")
+                            
+                            # Use PostgreSQL regex operator ~* (case-insensitive match)
+                            disease_column = getattr(self.datamodel.obj, model_column_name)
+                            query = query.filter(db.func.lower(disease_column).op('~*')(regex_pattern))
+                        else:
+                            # If disease value is not in allowed groups, return error
+                            allowed_values = list(allowed_disease_groups.keys())
+                            error_msg = f"Invalid disease parameter. Allowed values are: {', '.join(allowed_values)}"
+                            logger.warning(error_msg)
+                            return self.response_400(message=error_msg)
+                    else:
+                        # Normal filtering for non-disease parameters
+                        logger.info(f"Applying direct URL filter to SQLAlchemy query: {model_column_name} == {param_value}")
+                        
+                        # Handle type conversion for integer fields based on model
+                        column_attr = getattr(self.datamodel.obj, model_column_name)
+                        if str(column_attr.type).lower() == "integer":
+                            try:
+                                param_value = int(param_value)
+                            except ValueError:
+                                logger.warning(f"Skipping filter for {model_column_name}: could not convert '{param_value}' to int.")
+                                continue # Skip this filter if conversion fails
+                        
+                        query = query.filter(getattr(self.datamodel.obj, model_column_name) == param_value)
         
         # 3. Handle Rison 'q' parameter (filters, pagination, ordering)
         rison_payload = kwargs.get("rison", {})
@@ -947,10 +981,38 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
         # 3a. Apply filters from Rison 'q' parameter
         rison_filters_list = rison_payload.get("filters") 
         if rison_filters_list:
+            # Validate disease filters in Rison before applying
+            for filter_item in rison_filters_list:
+                if isinstance(filter_item, dict) and filter_item.get("col") == "disease":
+                    disease_value = filter_item.get("value")
+                    if disease_value and disease_value not in allowed_disease_groups:
+                        allowed_values = list(allowed_disease_groups.keys())
+                        error_msg = f"Invalid disease filter value in 'q' parameter. Allowed values are: {', '.join(allowed_values)}"
+                        logger.warning(error_msg)
+                        return self.response_400(message=error_msg)
+            
             try:
                 fab_rison_filters = self.datamodel.get_filters(filter_columns_list=rison_filters_list)
                 logger.debug(f"Applying Rison filters (from q param) to SQLAlchemy query: {rison_filters_list}")
-                query = self.datamodel.apply_filters(query, fab_rison_filters)
+                
+                # Apply custom disease filtering for Rison filters
+                modified_query = query
+                for filter_item in rison_filters_list:
+                    if isinstance(filter_item, dict) and filter_item.get("col") == "disease":
+                        disease_value = filter_item.get("value")
+                        if disease_value in allowed_disease_groups:
+                            # Apply regex pattern filtering instead of exact match
+                            regex_pattern = allowed_disease_groups[disease_value]
+                            logger.debug(f"Applying Rison disease group filter: {disease_value} using pattern {regex_pattern}")
+                            disease_column = getattr(self.datamodel.obj, "disease")
+                            modified_query = modified_query.filter(db.func.lower(disease_column).op('~*')(regex_pattern))
+                            
+                            # Remove the disease filter from fab_rison_filters to avoid double filtering
+                            fab_rison_filters = [f for f in fab_rison_filters if not (hasattr(f, 'column') and f.column.name == 'disease')]
+                
+                # Apply remaining non-disease filters
+                query = self.datamodel.apply_filters(modified_query, fab_rison_filters)
+                
             except Exception as e: # Catch potential errors from get_filters or apply_filters
                 logger.error(f"Error applying Rison filters: {e}")
                 return self.response_400(message=f"Error in Rison filter format: {e}")
