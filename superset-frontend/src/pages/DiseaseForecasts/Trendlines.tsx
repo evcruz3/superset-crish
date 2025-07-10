@@ -120,8 +120,18 @@ interface DiseaseDataPoint {
   alert_level: string;
 }
 
+interface ActualDataPoint {
+  week_start_date: string;
+  totalCases: number;
+  disease: string;
+}
+
 interface DiseaseDataSeries {
   [municipality: string]: DiseaseDataPoint[];
+}
+
+interface ActualDataSeries {
+  [municipality: string]: ActualDataPoint[];
 }
 
 interface Filters {
@@ -137,16 +147,152 @@ const DiseaseTrendChart = ({
   level,
   disease,
   showThresholds = true,
+  showActualData = false,
 }: {
   filters: Filters;
   level: Level;
   disease: string;
   showThresholds?: boolean;
+  showActualData?: boolean;
 }) => {
   const [data, setData] = useState<DiseaseDataSeries>({});
+  const [actualData, setActualData] = useState<ActualDataSeries>({});
   const [loading, setLoading] = useState(true);
   const { ref } = useResizeDetector();
   const echartRef = useRef<any>();
+
+  // Helper function to convert date range to year/week range
+  const getWeekRangeFromDates = (startDate: string, endDate: string) => {
+    const start = moment(startDate);
+    const end = moment(endDate);
+    
+    const weeks: Array<{year: number, week: number}> = [];
+    
+    // Iterate through each week in the date range
+    let current = start.clone().startOf('isoWeek');
+    const endWeek = end.clone().endOf('isoWeek');
+    
+    while (current.isSameOrBefore(endWeek)) {
+      weeks.push({
+        year: current.isoWeekYear(),
+        week: current.isoWeek()
+      });
+      current.add(1, 'week');
+    }
+    
+    return weeks;
+  };
+
+  // Helper function to fetch actual case data
+  const fetchActualData = (municipalities: string[], startDate: string, endDate: string, disease: string): Promise<Array<{ municipality: string; data: ActualDataPoint[]; }>> => {
+    // Convert date range to year/week combinations for efficient backend filtering
+    const weekRanges = getWeekRangeFromDates(startDate, endDate);
+    
+    // Create multiple API calls for each year/week combination to leverage backend filtering
+    const fetchPromises = weekRanges.map(({year, week}) => {
+      const commonParams: Record<string, string> = {
+        page_size: '-1',
+        disease: disease,
+        year: year.toString(),
+        week_number: week.toString(),
+      };
+
+      if (level === 'national') {
+        const params = new URLSearchParams(commonParams);
+        return SupersetClient.get({
+          endpoint: `/api/v1/disease_data/?${params.toString()}`,
+        }).then(response => ({
+          year,
+          week,
+          municipality: 'National',
+          data: response.json.result
+        }));
+      } else {
+        return Promise.all(
+          municipalities.map(municipality => {
+            const params = new URLSearchParams({
+              ...commonParams,
+              municipality: municipality,
+            });
+            return SupersetClient.get({
+              endpoint: `/api/v1/disease_data/?${params.toString()}`,
+            }).then(response => ({
+              year,
+              week,
+              municipality,
+              data: response.json.result
+            }));
+          })
+        );
+      }
+    });
+
+    return Promise.all(fetchPromises).then(results => {
+      // Flatten and aggregate results by municipality
+      const municipalityData: Record<string, ActualDataPoint[]> = {};
+      
+      results.forEach(result => {
+        if (Array.isArray(result)) {
+          // Multiple municipalities result
+          result.forEach(munResult => {
+            if (!municipalityData[munResult.municipality]) {
+              municipalityData[munResult.municipality] = [];
+            }
+            municipalityData[munResult.municipality].push(...munResult.data);
+          });
+        } else {
+          // Single municipality/national result
+          if (!municipalityData[result.municipality]) {
+            municipalityData[result.municipality] = [];
+          }
+          municipalityData[result.municipality].push(...result.data);
+        }
+      });
+
+      // Process national aggregation if needed
+      if (level === 'national') {
+        const allData = Object.values(municipalityData).flat();
+        
+        // Group by week_start_date for national aggregation
+        const groupedByDate: Record<string, ActualDataPoint[]> = {};
+        allData.forEach(point => {
+          const dateKey = moment(point.week_start_date).format('YYYY-MM-DD');
+          if (!groupedByDate[dateKey]) {
+            groupedByDate[dateKey] = [];
+          }
+          groupedByDate[dateKey].push(point);
+        });
+
+        const aggregatedData: ActualDataPoint[] = Object.entries(groupedByDate).map(([date, points]) => {
+          const totalCases = points.reduce((sum, point) => sum + point.totalCases, 0);
+          return {
+            week_start_date: date,
+            totalCases: totalCases / points.length, // Average across municipalities
+            disease: disease,
+          };
+        });
+
+        return [{
+          municipality: 'National',
+          data: aggregatedData.sort(
+            (a, b) =>
+              new Date(a.week_start_date).getTime() -
+              new Date(b.week_start_date).getTime(),
+          ),
+        }];
+      } else {
+        // Return data for each municipality
+        return Object.entries(municipalityData).map(([municipality, data]) => ({
+          municipality,
+          data: data.sort(
+            (a: ActualDataPoint, b: ActualDataPoint) =>
+              new Date(a.week_start_date).getTime() -
+              new Date(b.week_start_date).getTime(),
+          ),
+        }));
+      }
+    });
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -158,6 +304,7 @@ const DiseaseTrendChart = ({
       !disease
     ) {
       setData({});
+      setActualData({});
       setLoading(false);
       return () => {
         ignore = true;
@@ -229,21 +376,51 @@ const DiseaseTrendChart = ({
       });
     }
 
-    Promise.all(fetchPromises)
+    // Fetch forecast data
+    const forecastPromise = Promise.all(fetchPromises);
+    
+    // Create promises array
+    const promises: Promise<any>[] = [forecastPromise];
+    
+    // Add actual data fetching if enabled
+    if (showActualData) {
+      promises.push(fetchActualData(municipalities, startDate, endDate, disease));
+    }
+
+    Promise.all(promises)
       .then(results => {
         if (ignore) return;
+        
+        // Handle forecast data (first promise result)
+        const forecastResults = results[0];
         const newData: DiseaseDataSeries = {};
-        results.forEach(result => {
+        forecastResults.forEach((result: any) => {
           if (result.data) {
             newData[result.municipality] = result.data;
           }
         });
         setData(newData);
+
+        // Handle actual data (second promise result, if present)
+        if (showActualData && results.length > 1) {
+          const actualResults = results[1];
+          const newActualData: ActualDataSeries = {};
+          
+          actualResults.forEach((result: any) => {
+            if (result.data) {
+              newActualData[result.municipality] = result.data;
+            }
+          });
+          setActualData(newActualData);
+        } else {
+          setActualData({});
+        }
       })
       .catch(error => {
         if (ignore) return;
-        console.error(`Error fetching disease forecast data:`, error);
+        console.error(`Error fetching disease data:`, error);
         setData({});
+        setActualData({});
       })
       .finally(() => {
         if (ignore) return;
@@ -253,16 +430,18 @@ const DiseaseTrendChart = ({
     return () => {
       ignore = true;
     };
-  }, [filters, level, disease]);
+  }, [filters, level, disease, showActualData]);
 
   const allDates = useMemo(
-    () =>
-      [
-        ...new Set(
-          Object.values(data).flatMap(d => d.map(item => item.forecast_date)),
-        ),
-      ].sort((a, b) => new Date(a).getTime() - new Date(b).getTime()),
-    [data],
+    () => {
+      const forecastDates = Object.values(data).flatMap(d => d.map(item => item.forecast_date));
+      const actualDates = Object.values(actualData).flatMap(d => d.map(item => moment(item.week_start_date).format('YYYY-MM-DD')));
+      
+      return [
+        ...new Set([...forecastDates, ...actualDates]),
+      ].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    },
+    [data, actualData],
   );
 
   const diseaseThresholds = showThresholds
@@ -282,8 +461,11 @@ const DiseaseTrendChart = ({
   ];
 
   const seriesData = useMemo(
-    () =>
-      Object.entries(data).map(([municipality, munData], i) => {
+    () => {
+      const series: any[] = [];
+      
+      // Add forecast series
+      Object.entries(data).forEach(([municipality, munData], i) => {
         const dataMap = new Map(
           munData.map(d => [
             moment(d.forecast_date).format('YYYY-MM-DD'),
@@ -291,14 +473,15 @@ const DiseaseTrendChart = ({
           ]),
         );
         const color = FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
-        return {
-          name: municipality,
+        
+        series.push({
+          name: `${municipality} (Forecast)`,
           type: 'line',
           smooth: true,
           showSymbol: true,
           symbol: 'emptyCircle',
           symbolSize: 6,
-          lineStyle: { color },
+          lineStyle: { color, type: 'dashed' },
           itemStyle: { color },
           data: allDates.map(date => {
             const dataPoint = dataMap.get(moment(date).format('YYYY-MM-DD'));
@@ -337,9 +520,66 @@ const DiseaseTrendChart = ({
 
             return point;
           }),
-        };
-      }),
-    [data, allDates, diseaseThresholds],
+        });
+      });
+
+      // Add actual data series if enabled
+      if (showActualData) {
+        Object.entries(actualData).forEach(([municipality, munData], i) => {
+          const dataMap = new Map(
+            munData.map(d => [
+              moment(d.week_start_date).format('YYYY-MM-DD'),
+              d,
+            ]),
+          );
+          const color = FALLBACK_PALETTE[i % FALLBACK_PALETTE.length];
+          
+          series.push({
+            name: `${municipality} (Actual)`,
+            type: 'line',
+            smooth: true,
+            showSymbol: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: { color, width: 3 },
+            itemStyle: { color },
+            data: allDates.map(date => {
+              const dataPoint = dataMap.get(moment(date).format('YYYY-MM-DD'));
+              if (!dataPoint) return null;
+
+              const { totalCases } = dataPoint;
+
+              const point: {
+                value: number;
+                itemStyle?: { color: string };
+                symbol?: string;
+                symbolSize?: number;
+              } = {
+                value: totalCases,
+              };
+
+              if (diseaseThresholds) {
+                const threshold = diseaseThresholds.find(
+                  t => totalCases >= t.value,
+                );
+                if (threshold) {
+                  point.itemStyle = {
+                    color: threshold.color,
+                  };
+                  point.symbol = 'diamond';
+                  point.symbolSize = 10;
+                }
+              }
+
+              return point;
+            }),
+          });
+        });
+      }
+
+      return series;
+    },
+    [data, actualData, allDates, diseaseThresholds, showActualData],
   );
 
   const echartOptions = useMemo(() => {
@@ -366,7 +606,7 @@ const DiseaseTrendChart = ({
         },
       },
       legend: {
-        data: Object.keys(data),
+        data: seriesData.map(s => s.name),
         type: 'scroll',
         bottom: 0,
       },
@@ -443,7 +683,7 @@ const DiseaseTrendChart = ({
 
   if (loading) return <Loading />;
 
-  if (Object.keys(data).length === 0) {
+  if (Object.keys(data).length === 0 && (!showActualData || Object.keys(actualData).length === 0)) {
     return (
       <div
         style={{
@@ -489,6 +729,7 @@ const Trendlines = () => {
   );
   const [level, setLevel] = useState<Level>('municipality');
   const [showThresholds, setShowThresholds] = useState(true);
+  const [showActualData, setShowActualData] = useState(false);
 
   const filters: Filters | null = useMemo(() => {
     if (!startDate || !endDate) return null;
@@ -561,6 +802,14 @@ const Trendlines = () => {
                     style={{ display: 'flex' }}
                   />
                 </FilterItem>
+                <FilterItem>
+                  <label>{t('Show Actual Data')}</label>
+                  <Switch
+                    checked={showActualData}
+                    onChange={setShowActualData}
+                    style={{ display: 'flex' }}
+                  />
+                </FilterItem>
             </FilterContainer>
           </div>
         </div>
@@ -575,6 +824,7 @@ const Trendlines = () => {
                     level={level}
                     disease="Dengue"
                     showThresholds={showThresholds}
+                    showActualData={showActualData}
                   />
                 </ChartContainer>
               </Col>
@@ -586,6 +836,7 @@ const Trendlines = () => {
                     level={level}
                     disease="Diarrhea"
                     showThresholds={showThresholds}
+                    showActualData={showActualData}
                   />
                 </ChartContainer>
               </Col>
