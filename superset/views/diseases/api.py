@@ -846,12 +846,12 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
               schema: 
                 type: string
                 enum: ["Dengue", "Diarrhea", "ISPA/ARI"]
-              description: >-
+              description: |
                 Filter by disease group. Only three values are allowed:
-                - "Dengue": Matches diseases containing "dengue" (case-insensitive)
-                - "Diarrhea": Matches diseases containing "diarrhea" or "diarrrhea" (case-insensitive)  
-                - "ISPA/ARI": Matches diseases containing "ispa/ari", "ispa", or "ari" (case-insensitive)
-                Applied if 'q' does not filter on disease.
+                - Dengue: Matches diseases containing dengue (case-insensitive)
+                - Diarrhea: Matches diseases containing diarrhea or diarrrhea (case-insensitive)
+                - ISPA/ARI: Matches diseases containing ispa/ari, ispa, or ari (case-insensitive)
+                Applied if q parameter does not filter on disease.
             - name: municipality_code
               in: query
               schema: { type: string }
