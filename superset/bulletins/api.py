@@ -680,11 +680,14 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         # Date range filtering for forecast_date (applies to both disease and weather alerts)
         logger.debug("Forecast date filtering - start_str: %s, end_str: %s", forecast_date_start_str, forecast_date_end_str)
 
+        # Get bulletin type filter to determine which forecast filters to apply
+        bulletin_type = request.args.get('bulletin_type', '').lower() if 'bulletin_type' in request.args else None
+
         if forecast_date_start_str or forecast_date_end_str:
             forecast_filters = []
             
-            # Disease alert forecast date filtering
-            if forecast_date_start_str or forecast_date_end_str:
+            # Disease alert forecast date filtering - only apply if not filtering for weather bulletins
+            if (forecast_date_start_str or forecast_date_end_str) and bulletin_type != 'weather':
                 # Start with bulletins that have disease forecast alerts AND the alert has valid data
                 disease_forecast_filter = and_(
                     self.datamodel.obj.disease_forecast_alert_id.isnot(None),
@@ -770,8 +773,8 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                 logger.debug("Disease forecast filter created: %s", disease_forecast_filter)
                 forecast_filters.append(disease_forecast_filter)
 
-            # Weather alert forecast date filtering - filter bulletins by their associated alert's forecast_date
-            if forecast_date_start_str or forecast_date_end_str:
+            # Weather alert forecast date filtering - only apply if not filtering for disease bulletins
+            if (forecast_date_start_str or forecast_date_end_str) and bulletin_type != 'disease':
                 try:
                     # Build a filter condition that checks the forecast_date of the weather alert 
                     # associated with each bulletin's composite ID
@@ -824,10 +827,12 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                     logger.error("Error parsing weather forecast date: %s", e)
                     return self.response_400(message=f"Invalid date format: {e}")
             
-            # Apply the forecast date filters (OR condition between disease and weather)
+            # Apply the forecast date filters (OR condition but with proper logic)
             if forecast_filters:
                 logger.debug("Applying forecast filters (count: %d): %s", len(forecast_filters), forecast_filters)
-                query = query.filter(or_(*forecast_filters))
+                # Create a combined filter that ensures each bulletin type meets its own criteria
+                combined_filter = or_(*forecast_filters)
+                query = query.filter(combined_filter)
                 
                 # Debug: Check what the query returns after applying forecast date filter
                 debug_results_after_forecast_filter = query.all()
