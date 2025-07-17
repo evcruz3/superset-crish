@@ -88,6 +88,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
         "image_attachments",
         "disease_forecast_alert.municipality_code",
         "disease_forecast_alert.municipality_name",
+        "disease_forecast_alert.forecast_date",
         "disease_forecast_alert.disease_type",
         "disease_forecast_alert.alert_level",
         "weather_forecast_alert_composite_id",
