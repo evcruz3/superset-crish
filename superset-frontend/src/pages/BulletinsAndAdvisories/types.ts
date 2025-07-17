@@ -19,6 +19,27 @@ export interface ImageAttachment {
   file?: File; // For client-side handling of new uploads
 }
 
+export interface DiseaseForecastAlert {
+  id: number;
+  municipality_code: string;
+  municipality_name: string;
+  forecast_date: string;
+  disease_type: string;
+  alert_level: string;
+}
+
+export interface WeatherForecastAlert {
+  municipality_code: string;
+  municipality_name: string;
+  created_date: string;
+  forecast_date: string;
+  weather_parameter: string;
+  alert_level: string;
+  parameter_value: number;
+  alert_title: string;
+  alert_message: string;
+}
+
 export interface Bulletin {
   id: number;
   title: string;
@@ -31,6 +52,9 @@ export interface Bulletin {
   created_on?: string;
   changed_on?: string;
   image_attachments?: ImageAttachment[]; // Updated from string to ImageAttachment[]
+  disease_forecast_alert?: DiseaseForecastAlert;
+  weather_forecast_alert?: WeatherForecastAlert;
+  weather_forecast_alert_composite_id?: string;
 }
 
 export interface BulletinApiResponse {

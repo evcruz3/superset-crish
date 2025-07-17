@@ -441,6 +441,8 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                 if len(parts) == 4:
                     municipality_code, created_date, forecast_date, weather_parameter = parts
                     
+                    logger.debug("Parsing weather composite ID: %s -> parts: %s", composite_id, parts)
+                    
                     # Try to get the full weather alert details
                     weather_alert = db.session.query(WeatherForecastAlert).filter_by(
                         municipality_code=municipality_code,
@@ -450,6 +452,7 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                     ).first()
                     
                     if weather_alert:
+                        logger.debug("Found weather alert for composite ID: %s", composite_id)
                         item_dict['weather_forecast_alert'] = {
                             'municipality_code': weather_alert.municipality_code,
                             'municipality_name': weather_alert.municipality_name,
@@ -461,6 +464,20 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
                             'alert_title': weather_alert.alert_title,
                             'alert_message': weather_alert.alert_message
                         }
+                    else:
+                        logger.debug("No weather alert found for composite ID: %s", composite_id)
+                        # Fallback to parsed values
+                        # item_dict['weather_forecast_alert'] = {
+                        #     'municipality_code': municipality_code,
+                        #     'municipality_name': None,
+                        #     'created_date': created_date,
+                        #     'forecast_date': forecast_date,
+                        #     'weather_parameter': weather_parameter,
+                        #     'alert_level': None,
+                        #     'parameter_value': None,
+                        #     'alert_title': None,
+                        #     'alert_message': None
+                        # }
                     # else:
                     #     # Fallback to parsed values
                     #     item_dict['weather_forecast_alert'] = {
@@ -477,6 +494,131 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
             except (ValueError, AttributeError) as e:
                 current_app.logger.warning(f"Error parsing weather alert composite ID {item_dict.get('weather_forecast_alert_composite_id')}: {e}")
                 item_dict['weather_forecast_alert'] = None
+        
+        # Fallback mechanism for disease bulletins without disease_forecast_alert_id
+        if item_dict['alert_type'] is None and not item_dict.get('weather_forecast_alert_composite_id'):
+            # Check if this is a disease bulletin by analyzing title and hashtags
+            title = item_dict.get('title', '').lower()
+            hashtags = item_dict.get('hashtags', '').lower()
+            
+            # Disease keywords to look for
+            disease_keywords = ['dengue', 'diarrhea', 'malaria', 'tuberculosis', 'covid', 'influenza', 'typhoid', 'cholera']
+            
+            # Check if title or hashtags contain disease keywords
+            is_disease_bulletin = any(keyword in title or keyword in hashtags for keyword in disease_keywords)
+            
+            if is_disease_bulletin:
+                logger.debug("Identified disease bulletin via fallback mechanism: %s", item_dict.get('title'))
+                item_dict['alert_type'] = 'disease'
+                
+                # Try to extract disease information from title/hashtags
+                extracted_info = self._extract_disease_info_from_content(title, hashtags, item_dict)
+                if extracted_info:
+                    item_dict['disease_forecast_alert'] = extracted_info
+
+    def _extract_disease_info_from_content(self, title: str, hashtags: str, item_dict: dict) -> dict:
+        """Extract disease information from bulletin title and hashtags."""
+        import re
+        from datetime import datetime
+        
+        # Municipality mapping (Tetun to code)
+        municipality_mapping = {
+            'aileu': 'TL-AL',
+            'ainaro': 'TL-AN', 
+            'atauro': 'TL-AT',
+            'baucau': 'TL-BA',
+            'bobonaro': 'TL-BO',
+            'covalima': 'TL-CO',
+            'dili': 'TL-DI',
+            'ermera': 'TL-ER',
+            'manatuto': 'TL-MT',
+            'manufahi': 'TL-MF',
+            'lautem': 'TL-LA',
+            'liquica': 'TL-LI',
+            'liquiça': 'TL-LI',  # Alternative spelling
+            'raeoa': 'TL-OE',
+            'viqueque': 'TL-VI',
+        }
+        
+        # Disease type mapping
+        disease_mapping = {
+            'dengue': 'Dengue',
+            'diarrhea': 'Diarrhea',
+            'malaria': 'Malaria',
+            'tuberculosis': 'Tuberculosis',
+            'covid': 'COVID-19',
+            'influenza': 'Influenza',
+            'typhoid': 'Typhoid',
+            'cholera': 'Cholera'
+        }
+        
+        # Alert level mapping
+        alert_level_mapping = {
+            'severe': 'Severe',
+            'high': 'High',
+            'moderate': 'Moderate',
+            'low': 'Low'
+        }
+        
+        extracted_info = {}
+        content = f"{title} {hashtags}".lower()
+        
+        # Extract disease type
+        for keyword, disease_type in disease_mapping.items():
+            if keyword in content:
+                extracted_info['disease_type'] = disease_type
+                break
+        
+        # Extract municipality
+        for municipality, code in municipality_mapping.items():
+            if municipality in content:
+                extracted_info['municipality_code'] = code
+                extracted_info['municipality_name'] = municipality.title()
+                break
+        
+        # Extract alert level
+        for level_keyword, level in alert_level_mapping.items():
+            if level_keyword in content:
+                extracted_info['alert_level'] = level
+                break
+        
+        # Extract or estimate forecast date
+        # Try to find date patterns in the content first
+        date_pattern = r'\b(\d{4})-(\d{1,2})-(\d{1,2})\b'
+        date_match = re.search(date_pattern, content)
+        
+        if date_match:
+            try:
+                extracted_date = f"{date_match.group(1)}-{date_match.group(2).zfill(2)}-{date_match.group(3).zfill(2)}"
+                extracted_info['forecast_date'] = extracted_date
+            except ValueError:
+                pass
+        
+        # If no date found, use creation date or estimate
+        if 'forecast_date' not in extracted_info:
+            created_on = item_dict.get('created_on')
+            if created_on:
+                try:
+                    # Parse the created_on date and use it as forecast date
+                    # Assuming bulletins are typically created for current or near-future forecasts
+                    created_date = datetime.fromisoformat(created_on.replace('Z', '+00:00'))
+                    forecast_date = created_date.date()
+                    extracted_info['forecast_date'] = forecast_date.isoformat()
+                except (ValueError, AttributeError):
+                    # Fallback to current date if parsing fails
+                    forecast_date = datetime.now().date()
+                    extracted_info['forecast_date'] = forecast_date.isoformat()
+            else:
+                # Last resort: use current date
+                forecast_date = datetime.now().date()
+                extracted_info['forecast_date'] = forecast_date.isoformat()
+        
+        # Set default values if not extracted
+        if 'alert_level' not in extracted_info:
+            extracted_info['alert_level'] = 'Moderate'  # Default level
+        
+        logger.debug("Extracted disease info from content: %s", extracted_info)
+        return extracted_info if extracted_info else None
 
     @expose("/<pk>", methods=("GET",))
     # @protect()
@@ -942,8 +1084,141 @@ class BulletinsRestApi(BaseSupersetModelRestApi):
 
         rison_filters_list = rison_payload.get("filters")
         if rison_filters_list:
-            fab_rison_filters = self.datamodel.get_filters(filter_columns_list=rison_filters_list)
-            query = self.datamodel.apply_filters(query, fab_rison_filters)
+            # Process custom filters that we handle manually
+            custom_filters = ['bulletin_type', 'forecast_date_start', 'forecast_date_end', 'created_on_start', 'municipality_code']
+            fab_filter_list = []
+            
+            # Get bulletin type from filters to determine forecast filtering behavior
+            bulletin_type = None
+            for filter_item in rison_filters_list:
+                if isinstance(filter_item, dict) and filter_item.get('col') == 'bulletin_type':
+                    bulletin_type = filter_item.get('value')
+                    break
+            
+            for filter_item in rison_filters_list:
+                if isinstance(filter_item, dict):
+                    col_name = filter_item.get('col')
+                    operator = filter_item.get('opr')
+                    value = filter_item.get('value')
+                    
+                    if col_name == 'bulletin_type' and operator == 'eq':
+                        # Handle bulletin type filter manually 
+                        if value == 'disease':
+                            query = query.filter(self.datamodel.obj.disease_forecast_alert_id.isnot(None))
+                        elif value == 'weather':
+                            query = query.filter(self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None))
+                    elif col_name == 'forecast_date_start' and operator == 'between':
+                        # Handle forecast date range filter manually
+                        if isinstance(value, list) and len(value) == 2:
+                            start_date_str, end_date_str = value
+                            try:
+                                start_date = date.fromisoformat(start_date_str) if start_date_str else None
+                                end_date = date.fromisoformat(end_date_str) if end_date_str else None
+                                
+                                logger.debug("Forecast date range filter - start: %s, end: %s", start_date, end_date)
+                                
+                                # Apply the existing forecast date filtering logic
+                                if start_date or end_date:
+                                    forecast_filters = []
+                                    
+                                    # Disease forecast filtering
+                                    if bulletin_type != 'weather':
+                                        disease_forecast_filter = and_(
+                                            self.datamodel.obj.disease_forecast_alert_id.isnot(None),
+                                            DiseaseForecastAlert.id.isnot(None),
+                                            DiseaseForecastAlert.forecast_date.isnot(None)
+                                        )
+                                        
+                                        if start_date:
+                                            disease_forecast_filter = and_(
+                                                disease_forecast_filter,
+                                                cast(DiseaseForecastAlert.forecast_date, SQLDate) >= start_date
+                                            )
+                                        
+                                        if end_date:
+                                            disease_forecast_filter = and_(
+                                                disease_forecast_filter,
+                                                cast(DiseaseForecastAlert.forecast_date, SQLDate) <= end_date
+                                            )
+                                        
+                                        forecast_filters.append(disease_forecast_filter)
+                                    
+                                    # Weather forecast filtering
+                                    if bulletin_type != 'disease':
+                                        weather_conditions = []
+                                        if start_date:
+                                            weather_conditions.append(cast(WeatherForecastAlert.forecast_date, SQLDate) >= start_date)
+                                        if end_date:
+                                            weather_conditions.append(cast(WeatherForecastAlert.forecast_date, SQLDate) <= end_date)
+                                        
+                                        if weather_conditions:
+                                            weather_alerts_subquery = self.datamodel.session.query(
+                                                (WeatherForecastAlert.municipality_code + '_' + 
+                                                 cast(WeatherForecastAlert.created_date, String) + '_' +
+                                                 cast(WeatherForecastAlert.forecast_date, String) + '_' + 
+                                                 WeatherForecastAlert.weather_parameter).label('composite_id')
+                                            ).filter(and_(*weather_conditions)).subquery()
+                                            
+                                            weather_forecast_filter = and_(
+                                                self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
+                                                self.datamodel.obj.weather_forecast_alert_composite_id.in_(
+                                                    self.datamodel.session.query(weather_alerts_subquery.c.composite_id)
+                                                )
+                                            )
+                                            
+                                            forecast_filters.append(weather_forecast_filter)
+                                    
+                                    # Apply forecast filters
+                                    if forecast_filters:
+                                        query = query.filter(or_(*forecast_filters))
+                                        
+                            except ValueError as e:
+                                logger.error("Error parsing forecast date range: %s", e)
+                                return self.response_400(message=f"Invalid date format: {e}")
+                    elif col_name == 'created_on_start' and operator == 'between':
+                        # Handle created date range filter manually
+                        if isinstance(value, list) and len(value) == 2:
+                            start_date_str, end_date_str = value
+                            try:
+                                start_date = datetime.fromtimestamp(int(start_date_str) / 1000) if start_date_str else None
+                                end_date = datetime.fromtimestamp(int(end_date_str) / 1000) if end_date_str else None
+                                
+                                logger.debug("Created date range filter - start: %s, end: %s", start_date, end_date)
+                                
+                                if start_date:
+                                    query = query.filter(self.datamodel.obj.created_on >= start_date)
+                                if end_date:
+                                    query = query.filter(self.datamodel.obj.created_on <= end_date)
+                                        
+                            except ValueError as e:
+                                logger.error("Error parsing created date range: %s", e)
+                                return self.response_400(message=f"Invalid date format: {e}")
+                    elif col_name == 'municipality_code' and operator == 'eq':
+                        # Handle municipality filter manually
+                        municipality_code = value
+                        logger.debug("Municipality filter - code: %s", municipality_code)
+                        
+                        # For disease alerts, filter by DiseaseForecastAlert.municipality_code
+                        disease_filter = and_(
+                            self.datamodel.obj.disease_forecast_alert_id.isnot(None),
+                            DiseaseForecastAlert.municipality_code == municipality_code
+                        )
+                        
+                        # For weather alerts, filter by parsing the composite ID
+                        weather_filter = and_(
+                            self.datamodel.obj.weather_forecast_alert_composite_id.isnot(None),
+                            self.datamodel.obj.weather_forecast_alert_composite_id.like(f"{municipality_code}_%")
+                        )
+                        
+                        query = query.filter(or_(disease_filter, weather_filter))
+                    elif col_name not in custom_filters:
+                        # Let Flask-AppBuilder handle standard filters
+                        fab_filter_list.append(filter_item)
+            
+            # Apply any remaining Flask-AppBuilder filters
+            if fab_filter_list:
+                fab_rison_filters = self.datamodel.get_filters(fab_filter_list)
+                query = self.datamodel.apply_filters(query, fab_rison_filters)
 
         logger.debug("Final query before count: %s", query)
         item_count = query.count()

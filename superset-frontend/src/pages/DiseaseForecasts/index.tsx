@@ -16,12 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import DashboardTabs, { ChartContainer, TabContentContainer, StyledTabsContainer } from '../WeatherForecasts/DashboardTabs';
 import { LineEditableTabs } from 'src/components/Tabs';
-import { t, useTheme } from '@superset-ui/core';
+import { styled, t, useTheme } from '@superset-ui/core';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 import Trendlines from './Trendlines';
+import { SupersetClient } from '@superset-ui/core';
+
+const DataSourceAttribution = styled.div`
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  z-index: 900;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+`;
+
+const DataUpdateInfo = styled.span`
+  margin-top: 3px;
+  font-size: 11px;
+  color: #888;
+`;
+
+// Type for Disease Pipeline Run History
+interface PipelineRunHistoryType {
+  id: number;
+  ran_at: string; // ISO format datetime string
+  pipeline_name: string;
+  status: string;
+  details?: string;
+  municipalities_processed_count?: number;
+  alerts_generated_count?: number;
+  bulletins_created_count?: number;
+}
 
 export default function DiseaseForecasts() {
 
@@ -29,10 +63,65 @@ export default function DiseaseForecasts() {
 
   const theme = useTheme();
     const [activeTab, setActiveTab] = useState('1');
+    const [lastDiseaseRunInfo, setLastDiseaseRunInfo] = useState<PipelineRunHistoryType | null>(null);
+    const [lastDiseaseRunLoading, setLastDiseaseRunLoading] = useState(false);
 
     const handleTabChange = (tabId: string) => {
         setActiveTab(tabId);
     };
+
+    // Fetch last disease pipeline run information
+    const fetchLastDiseaseRun = useCallback(async () => {
+        setLastDiseaseRunLoading(true);
+        try {
+            console.log("[Disease Pipeline Run] Fetching last successful run info");
+            const response = await SupersetClient.get({
+                endpoint: '/api/v1/disease_pipeline_run_history/last_successful_run',
+                headers: { Accept: 'application/json' },
+            });
+            
+            console.log("[Disease Pipeline Run] Response:", response.json);
+            
+            if (response.json?.result) {
+                setLastDiseaseRunInfo(response.json.result);
+                console.log("[Disease Pipeline Run] Last successful run:", response.json.result.ran_at);
+            } else {
+                console.log("[Disease Pipeline Run] No successful run info available");
+                setLastDiseaseRunInfo(null);
+            }
+        } catch (error) {
+            if (error.status === 404) {
+                console.log("[Disease Pipeline Run] No successful run history found");
+            } else {
+                console.error('Error fetching last disease run info:', error);
+            }
+            setLastDiseaseRunInfo(null);
+        } finally {
+            setLastDiseaseRunLoading(false);
+        }
+    }, []);
+
+    // Format date for display
+    const formatDisplayDate = useCallback((dateString: string) => {
+        try {
+            const date = new Date(dateString);
+            // Format: "May 15, 2023 at 10:30 AM"
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    }, []);
+
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchLastDiseaseRun();
+    }, [fetchLastDiseaseRun]);
 
     return (
         <StyledTabsContainer>
@@ -53,6 +142,20 @@ export default function DiseaseForecasts() {
                                 onError={(error) => console.error('Chart error:', error)}
                             />
                         </ChartContainer>
+                        
+                        {/* Data source attribution */}
+                        <DataSourceAttribution>
+                            <span>{t('Disease forecast data generated internally')}</span>
+                            {lastDiseaseRunLoading ? (
+                                <DataUpdateInfo>Loading last disease forecast time...</DataUpdateInfo>
+                            ) : lastDiseaseRunInfo ? (
+                                <DataUpdateInfo>
+                                    {t('Last successful disease forecast:')} {formatDisplayDate(lastDiseaseRunInfo.ran_at)}
+                                </DataUpdateInfo>
+                            ) : (
+                                <DataUpdateInfo>{t('Disease forecast history unavailable')}</DataUpdateInfo>
+                            )}
+                        </DataSourceAttribution>
                     </TabContentContainer>
                 </LineEditableTabs.TabPane>
                 <LineEditableTabs.TabPane

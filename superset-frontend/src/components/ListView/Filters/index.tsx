@@ -134,6 +134,7 @@ function UIFilters(
                 key={key}
                 name={id}
                 onSubmit={value => updateFilterValue(index, value)}
+                showTime={!['forecast_date_start', 'created_on_start'].includes(id)}
               />
             );
           }

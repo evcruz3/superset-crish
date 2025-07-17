@@ -33,6 +33,7 @@ import { BaseFilter, FilterHandler } from './Base';
 interface DateRangeFilterProps extends BaseFilter {
   onSubmit: (val: number[]) => void;
   name: string;
+  showTime?: boolean;
 }
 
 type ValueState = [number, number];
@@ -46,7 +47,7 @@ const RangeFilterContainer = styled.div`
 `;
 
 function DateRangeFilter(
-  { Header, initialValue, onSubmit }: DateRangeFilterProps,
+  { Header, initialValue, onSubmit, showTime = true }: DateRangeFilterProps,
   ref: RefObject<FilterHandler>,
 ) {
   const [value, setValue] = useState<ValueState | null>(initialValue ?? null);
@@ -67,7 +68,7 @@ function DateRangeFilter(
       <FormLabel>{Header}</FormLabel>
       <RangePicker
         placeholder={[t('Start date'), t('End date')]}
-        showTime
+        showTime={showTime}
         value={momentValue}
         onChange={momentRange => {
           if (!momentRange) {

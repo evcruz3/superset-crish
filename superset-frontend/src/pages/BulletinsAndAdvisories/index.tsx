@@ -46,6 +46,11 @@ const BULLETIN_COLUMNS_TO_FETCH = [
   'created_by.last_name',
   'created_on',
   'changed_on',
+  'disease_forecast_alert.municipality_code',
+  'disease_forecast_alert.municipality_name',
+  'disease_forecast_alert.forecast_date',
+  'disease_forecast_alert.disease_type',
+  'disease_forecast_alert.alert_level',
 ];
 
 const Actions = styled.div`
@@ -322,21 +327,60 @@ function BulletinsAndAdvisories({
         accessor: 'title',
       },
       {
-        Cell: ({ row: { original } }: any) => (
-          <FacePile 
-            users={[{
-              first_name: original.created_by.first_name,
-              last_name: original.created_by.last_name,
-              id: original.created_by.id,
-            }]} 
-          />
-        ),
-        Header: t('Created By'),
-        accessor: 'created_by',
+        Cell: ({ row: { original } }: any) => {
+          if (original.alert_type === 'disease') {
+            return <>{t('Disease')}</>;
+          }
+          if (original.alert_type === 'weather') {
+            return <>{t('Weather')}</>;
+          }
+          return null;
+        },
+        Header: t('Bulletin Type'),
+        accessor: 'alert_type',
+      },
+      {
+        Cell: ({ row: { original } }: any) => {
+          if (original.disease_forecast_alert?.disease_type) {
+            return <>{original.disease_forecast_alert.disease_type}</>;
+          }
+          if (original.weather_forecast_alert?.weather_parameter) {
+            return <>{original.weather_forecast_alert.weather_parameter}</>;
+          }
+          return null;
+        },
+        Header: t('Parameter'),
+        accessor: 'parameter',
+      },
+      {
+        Cell: ({ row: { original } }: any) => {
+          if (original.disease_forecast_alert?.municipality_name) {
+            return <>{original.disease_forecast_alert.municipality_name}</>;
+          }
+          if (original.weather_forecast_alert?.municipality_name) {
+            return <>{original.weather_forecast_alert.municipality_name}</>;
+          }
+          return null;
+        },
+        Header: t('Municipality'),
+        accessor: 'municipality_name',
+      },
+      {
+        Cell: ({ row: { original } }: any) => {
+          if (original.disease_forecast_alert?.forecast_date) {
+            return <>{moment(original.disease_forecast_alert.forecast_date).format('DD MMMM, YYYY')}</>;
+          }
+          if (original.weather_forecast_alert?.forecast_date) {
+            return <>{moment(original.weather_forecast_alert.forecast_date).format('DD MMMM, YYYY')}</>;
+          }
+          return null;
+        },
+        Header: t('Forecast Date'),
+        accessor: 'forecast_date',
       },
       {
         Cell: ({ row: { original } }: any) => <>{moment(original.created_on).format('DD MMMM, YYYY hh:mm A')}</>,
-        Header: t('Created'),
+        Header: t('Created Date'),
         accessor: 'created_on',
       },
       {
@@ -439,6 +483,52 @@ function BulletinsAndAdvisories({
         id: 'actions',
         disableSortBy: true,
       },
+      // Hidden columns for filter support
+      {
+        Header: '',
+        id: 'alert_type_hidden',
+        accessor: 'alert_type',
+        disableSortBy: true,
+        disableResizing: true,
+        disableFilters: false,
+        hidden: true,
+      },
+      {
+        Header: '',
+        id: 'created_on_start',
+        accessor: 'created_on_start',
+        disableSortBy: true,
+        disableResizing: true,
+        disableFilters: false,
+        hidden: true,
+      },
+      {
+        Header: '',
+        id: 'forecast_date_start',
+        accessor: 'forecast_date_start',
+        disableSortBy: true,
+        disableResizing: true,
+        disableFilters: false,
+        hidden: true,
+      },
+      {
+        Header: '',
+        id: 'bulletin_type',
+        accessor: 'bulletin_type',
+        disableSortBy: true,
+        disableResizing: true,
+        disableFilters: false,
+        hidden: true,
+      },
+      {
+        Header: '',
+        id: 'municipality_code',
+        accessor: 'municipality_code',
+        disableSortBy: true,
+        disableResizing: true,
+        disableFilters: false,
+        hidden: true,
+      },
     ],
     [hasPerm],
   );
@@ -452,6 +542,54 @@ function BulletinsAndAdvisories({
         input: 'search',
         operator: FilterOperator.Contains,
         debounceTime: 300,
+      },
+      {
+        Header: t('Created Date Range'),
+        id: 'created_on_start',
+        key: 'created_on_start',
+        input: 'datetime_range',
+        operator: FilterOperator.Between,
+      },
+      {
+        Header: t('Forecast Date Range'),
+        id: 'forecast_date_start',
+        key: 'forecast_date_start',
+        input: 'datetime_range',
+        operator: FilterOperator.Between,
+      },
+      {
+        Header: t('Bulletin Type'),
+        id: 'bulletin_type',
+        key: 'bulletin_type',
+        input: 'select',
+        operator: FilterOperator.Equals,
+        selects: [
+          { label: t('Disease'), value: 'disease' },
+          { label: t('Weather'), value: 'weather' },
+        ],
+      },
+      {
+        Header: t('Municipality'),
+        id: 'municipality_code',
+        key: 'municipality_code',
+        input: 'select',
+        operator: FilterOperator.Equals,
+        selects: [
+          { label: t('Aileu'), value: 'TL-AL' },
+          { label: t('Ainaro'), value: 'TL-AN' },
+          { label: t('Atauro'), value: 'TL-AT' },
+          { label: t('Baucau'), value: 'TL-BA' },
+          { label: t('Bobonaro'), value: 'TL-BO' },
+          { label: t('Covalima'), value: 'TL-CO' },
+          { label: t('Dili'), value: 'TL-DI' },
+          { label: t('Ermera'), value: 'TL-ER' },
+          { label: t('Manatuto'), value: 'TL-MT' },
+          { label: t('Manufahi'), value: 'TL-MF' },
+          { label: t('Lautém'), value: 'TL-LA' },
+          { label: t('Liquiça'), value: 'TL-LI' },
+          { label: t('Raeoa'), value: 'TL-OE' },
+          { label: t('Viqueque'), value: 'TL-VI' },
+        ],
       },
       // {
       //   Header: t('Hashtags'),
@@ -543,6 +681,32 @@ function BulletinsAndAdvisories({
               <span>
                 {' • '}
                 {t('Updated %s', moment(bulletin.changed_on).format('DD MMMM, YYYY hh:mm A'))}
+              </span>
+            )}
+            {(bulletin.disease_forecast_alert?.forecast_date || bulletin.weather_forecast_alert?.forecast_date) && (
+              <span>
+                {' • '}
+                {t('Forecast Date: %s', moment(
+                  bulletin.disease_forecast_alert?.forecast_date || bulletin.weather_forecast_alert?.forecast_date
+                ).format('DD MMMM, YYYY'))}
+              </span>
+            )}
+            {(bulletin.disease_forecast_alert?.municipality_name || bulletin.weather_forecast_alert?.municipality_name) && (
+              <span>
+                {' • '}
+                {t('Municipality: %s', bulletin.disease_forecast_alert?.municipality_name || bulletin.weather_forecast_alert?.municipality_name)}
+              </span>
+            )}
+            {bulletin.disease_forecast_alert?.disease_type && (
+              <span>
+                {' • '}
+                {t('Disease: %s', bulletin.disease_forecast_alert.disease_type)}
+              </span>
+            )}
+            {bulletin.weather_forecast_alert?.weather_parameter && (
+              <span>
+                {' • '}
+                {t('Parameter: %s', bulletin.weather_forecast_alert.weather_parameter)}
               </span>
             )}
           </div>
