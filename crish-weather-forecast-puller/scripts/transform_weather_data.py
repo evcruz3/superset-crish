@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import os
 import polars as pl
+import math
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import execute_values
@@ -53,9 +54,9 @@ HEAT_INDEX_DANGER = 40
 HEAT_INDEX_EXTREME_CAUTION = 36
 
 # Rainfall (mm)
-RAINFALL_EXTREME_DANGER = 100
-RAINFALL_DANGER = 50
-RAINFALL_EXTREME_CAUTION = 20
+RAINFALL_EXTREME_DANGER = 60
+RAINFALL_DANGER = 25
+RAINFALL_EXTREME_CAUTION = 15
 
 # Wind Speed (km/h)
 WIND_SPEED_EXTREME_DANGER = 25
@@ -92,7 +93,15 @@ def get_table_name(json_file):
     return os.path.basename(json_file).replace('_data.json', '')
 
 def calculate_heat_index(tmax_df, rh_df):
-    """Calculate heat index using temperature and relative humidity data."""
+    """
+    Calculate heat index using temperature and relative humidity data.
+    Implements the complete NWS heat index calculation including:
+    - Simple formula for conditions below 80°F
+    - Rothfusz regression for conditions 80°F and above
+    - Low humidity adjustment (RH < 13%, T between 80-112°F)
+    - High humidity adjustment (RH > 85%, T between 80-87°F)
+    """
+    
     # Merge temperature and humidity data
     merged_df = tmax_df.join(
         rh_df,
@@ -101,36 +110,68 @@ def calculate_heat_index(tmax_df, rh_df):
         suffix='_rh'
     )
     
-    # Calculate heat index using the formula
-    heat_index_df = merged_df.with_columns([
-        # Convert Celsius to Fahrenheit for the formula
-        (pl.col('value') * 9 / 5 + 32).alias('t_fahrenheit'),
-        pl.col('value_rh').alias('rh_value')
-    ]).with_columns([
-        # Heat Index formula
-        (-42.379 +
-         2.04901523 * pl.col('t_fahrenheit') +
-         10.14333127 * pl.col('rh_value') -
-         0.22475541 * pl.col('t_fahrenheit') * pl.col('rh_value') -
-         0.00683783 * pl.col('t_fahrenheit').pow(2) -
-         0.05481717 * pl.col('rh_value').pow(2) +
-         0.00122874 * pl.col('t_fahrenheit').pow(2) * pl.col('rh_value') +
-         0.00085282 * pl.col('t_fahrenheit') * pl.col('rh_value').pow(2) -
-         0.00000199 * pl.col('t_fahrenheit').pow(2) * pl.col('rh_value').pow(2)
-        ).alias('heat_index_f')
-    ]).with_columns([
-        # Convert back to Celsius
-        ((pl.col('heat_index_f') - 32) * 5 / 9).alias('value')
-    ])
+    # Convert to pandas for complex calculations, then back to polars
+    pandas_df = merged_df.to_pandas()
     
-    # Select and rename columns to match schema
-    return heat_index_df.select([
+    def calculate_hi_for_row(temp_c, rh):
+        """Calculate heat index for a single row using complete NWS algorithm."""
+        # Convert Celsius to Fahrenheit
+        temp_f = temp_c * 9 / 5 + 32
+        
+        # Step 1: Calculate simple formula first
+        simple_hi = 0.5 * (temp_f + 61.0 + ((temp_f - 68.0) * 1.2) + (rh * 0.094))
+        
+        # Step 2: Average with temperature
+        averaged_hi = (simple_hi + temp_f) / 2
+        
+        # Step 3: If averaged result is 80°F or higher, use full regression
+        if averaged_hi >= 80:
+            # Rothfusz regression equation
+            hi = (-42.379 + 
+                  2.04901523 * temp_f + 
+                  10.14333127 * rh - 
+                  0.22475541 * temp_f * rh - 
+                  0.00683783 * temp_f * temp_f - 
+                  0.05481717 * rh * rh + 
+                  0.00122874 * temp_f * temp_f * rh + 
+                  0.00085282 * temp_f * rh * rh - 
+                  0.00000199 * temp_f * temp_f * rh * rh)
+            
+            # Apply adjustments
+            # Low humidity adjustment (RH < 13% and T between 80-112°F)
+            if rh < 13 and 80 <= temp_f <= 112:
+                adjustment = ((13 - rh) / 4) * math.sqrt((17 - abs(temp_f - 95)) / 17)
+                hi = hi - adjustment
+            
+            # High humidity adjustment (RH > 85% and T between 80-87°F)
+            elif rh > 85 and 80 <= temp_f <= 87:
+                adjustment = ((rh - 85) / 10) * ((87 - temp_f) / 5)
+                hi = hi + adjustment
+            
+            return hi
+        else:
+            # Use the averaged simple formula result
+            return averaged_hi
+    
+    # Apply the calculation to each row
+    pandas_df['heat_index_f'] = pandas_df.apply(
+        lambda row: calculate_hi_for_row(row['value'], row['value_rh']), 
+        axis=1
+    )
+    
+    # Convert back to Celsius
+    pandas_df['heat_index_c'] = (pandas_df['heat_index_f'] - 32) * 5 / 9
+    
+    # Convert back to polars DataFrame
+    heat_index_df = pl.from_pandas(pandas_df).select([
         'forecast_date',
-        'day_name',
-        'value',
+        'day_name', 
+        pl.col('heat_index_c').alias('value'),
         'municipality_code',
         'municipality_name'
     ])
+    
+    return heat_index_df
 
 def get_alert_level_for_value(parameter_name, value):
     """Determines the alert level based on parameter name and value."""
@@ -204,8 +245,21 @@ def generate_weather_alerts(dataframes):
         print("Warning: Not all required weather parameters available for alert generation")
         return None
     
+    # Round weather parameter values to integers before threshold checking
+    heat_index_df = dataframes['heat_index_daily_region'].with_columns([
+        pl.col('value').round(0).alias('value')
+    ])
+    
+    rainfall_df = dataframes['rainfall_daily_weighted_average'].with_columns([
+        pl.col('value').round(0).alias('value')
+    ])
+    
+    wind_speed_df = dataframes['ws_daily_avg_region'].with_columns([
+        pl.col('value').round(0).alias('value')
+    ])
+    
     # Heat Index Alerts
-    heat_index_alerts = dataframes['heat_index_daily_region'].with_columns([
+    heat_index_alerts = heat_index_df.with_columns([
         pl.lit('Heat Index').alias('weather_parameter'),
         pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
           .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Danger'))
@@ -223,7 +277,7 @@ def generate_weather_alerts(dataframes):
     ])
 
     # Rainfall Alerts
-    rainfall_alerts = dataframes['rainfall_daily_weighted_average'].with_columns([
+    rainfall_alerts = rainfall_df.with_columns([
         pl.lit('Rainfall').alias('weather_parameter'),
         pl.when(pl.col('value') > RAINFALL_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
           .when(pl.col('value') >= RAINFALL_DANGER).then(pl.lit('Danger'))
@@ -241,7 +295,7 @@ def generate_weather_alerts(dataframes):
     ])
 
     # Wind Alerts
-    wind_alerts = dataframes['ws_daily_avg_region'].with_columns([
+    wind_alerts = wind_speed_df.with_columns([
         pl.lit('Wind Speed').alias('weather_parameter'),
         pl.when(pl.col('value') > WIND_SPEED_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
           .when(pl.col('value') >= WIND_SPEED_DANGER).then(pl.lit('Danger'))
@@ -360,7 +414,9 @@ def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, 
     """
     try:
         gdf = geopandas.read_file(geojson_path)
-        daily_forecast_df = forecast_df.filter(pl.col("forecast_date") == forecast_date_str)
+        daily_forecast_df = forecast_df.filter(pl.col("forecast_date") == forecast_date_str).with_columns([
+            pl.col("value").round(0).alias("value")
+        ])
         
         if 'value' not in daily_forecast_df.columns:
             print(f"Error: 'value' column not found in daily_forecast_df for map generation of {parameter_name}.")
@@ -452,7 +508,7 @@ def generate_forecast_map_image(forecast_df, parameter_name, forecast_date_str, 
         except ValueError:
             formatted_title_date = forecast_date_str # Fallback to original if parsing fails
 
-        ax.set_title(f'{parameter_name} Forecast for Timor-Leste - {formatted_title_date}\nAlert in {municipality_name} ({parameter_name}: {alert_value:.2f} {parameter_unit})', fontsize=15)
+        ax.set_title(f'{parameter_name} Forecast for Timor-Leste - {formatted_title_date}\nAlert in {municipality_name} ({parameter_name}: {int(round(alert_value))} {parameter_unit})', fontsize=15)
         ax.set_axis_off()
         plt.tight_layout()
 
@@ -473,10 +529,12 @@ def generate_forecast_table_image(forecast_df, parameter_name, forecast_date_str
     parameter and municipality.
     """
     try:
-        # Filter data for the municipality for all available dates
+        # Filter data for the municipality for all available dates and round values
         table_data_df = forecast_df.filter(
             (pl.col("municipality_name") == municipality_name)
-        ).select(["forecast_date", "value"]).sort("forecast_date")
+        ).select(["forecast_date", "value"]).with_columns([
+            pl.col("value").round(0).alias("value")
+        ]).sort("forecast_date")
 
         if table_data_df.is_empty():
             print(f"No data for {municipality_name} for table generation of {parameter_name}.")
@@ -507,9 +565,9 @@ def generate_forecast_table_image(forecast_df, parameter_name, forecast_date_str
             else:
                 formatted_row.append(row_data[0]) # Should be a string, but as a fallback
             
-            # Format value (second element)
+            # Format value (second element) - display as integer without decimal points
             if len(row_data) > 1 and isinstance(row_data[1], (float, int)):
-                formatted_row.append(f"{row_data[1]:.2f}")
+                formatted_row.append(f"{int(round(row_data[1]))}")
             elif len(row_data) > 1:
                 formatted_row.append(row_data[1]) # Keep original if not float/int
             else:

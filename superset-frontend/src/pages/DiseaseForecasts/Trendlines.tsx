@@ -794,6 +794,7 @@ const Trendlines = () => {
                   />
                 </FilterItem>
               </FilterGroup>
+              <FilterGroup>
                 <FilterItem>
                   <label>{t('Show Thresholds')}</label>
                   <Switch
@@ -810,6 +811,7 @@ const Trendlines = () => {
                     style={{ display: 'flex' }}
                   />
                 </FilterItem>
+              </FilterGroup>
             </FilterContainer>
           </div>
         </div>
