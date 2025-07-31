@@ -116,6 +116,7 @@ docker/requirements-local.txt
 
 cache/
 docker/*local*
+docker/credentials/
 
 .temp_cache
 

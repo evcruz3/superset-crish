@@ -56,6 +56,7 @@ dependencies = [
     "func_timeout",
     "geopy",
     "greenlet>=3.0.3, <=3.1.1",
+    "firebase-admin>=6.0.0, <7.0",
     "gunicorn>=22.0.0; sys_platform != 'win32'",
     "hashids>=1.3.1, <2",
     # known issue with holidays 0.26.0 and above related to prophet lib #25017

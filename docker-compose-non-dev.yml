@@ -28,6 +28,7 @@ x-superset-volumes:
   &superset-volumes # /app/pythonpath_docker will be appended to the PYTHONPATH in the final container
   - ./docker:/app/docker
   - superset_home:/app/superset_home
+  - ./docker/credentials/firebase-service-account.json:/app/docker/credentials/firebase-service-account.json:ro
 
 x-common-build: &common-build
   context: .

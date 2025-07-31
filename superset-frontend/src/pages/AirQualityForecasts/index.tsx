@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ElementType, ClassAttributes, HTMLAttributes } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { styled, useTheme, SupersetClient, SupersetTheme, JsonObject, t } from '@superset-ui/core';
 import { Spin, Alert, Select, Row, Col, DatePicker } from 'antd';
 import { DeckGL } from '@deck.gl/react';
@@ -8,86 +8,319 @@ import { BitmapLayer } from '@deck.gl/layers';
 import moment from 'moment';
 import { LineEditableTabs } from 'src/components/Tabs';
 import { StyledTabsContainer, TabContentContainer } from '../WeatherForecasts/DashboardTabs';
-import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
 
 // Recharts imports
 import {
-    ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Label
+    ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
 
 const { Option } = Select;
 
-const MapContainer = styled.div<{ theme: SupersetTheme }>`
-  background-color: ${({ theme }: { theme: SupersetTheme }) => theme.colors.grayscale.light5};
-  padding: ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit * 4}px;
-  border-radius: ${({ theme }: { theme: SupersetTheme }) => theme.borderRadius}px;
-  height: 70vh;
+const DataSourceAttribution = styled.div`
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: ${({ theme }) => theme.gridUnit * 2}px ${({ theme }) => theme.gridUnit * 3}px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  font-size: ${({ theme }) => theme.typography.sizes.s}px;
+  color: ${({ theme }) => theme.colors.grayscale.dark1};
+  z-index: 900;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(10px);
+`;
+
+const DataUpdateInfo = styled.span`
+  margin-top: ${({ theme }) => theme.gridUnit}px;
+  font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+  color: ${({ theme }) => theme.colors.grayscale.base};
+`;
+
+const AQIIndicatorBar = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
+  padding: ${({ theme }) => theme.gridUnit * 2}px;
+  background: ${({ theme }) => theme.colors.grayscale.light5};
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+`;
+
+const AQIScale = styled.div`
+  display: flex;
+  flex: 1;
+  height: 40px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  overflow: hidden;
+  margin-right: ${({ theme }) => theme.gridUnit * 3}px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+`;
+
+const AQIScaleSegment = styled.div<{ color: string; flex: number }>`
+  flex: ${({ flex }) => flex};
+  background: ${({ color }) => color};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+  font-weight: ${({ theme }) => theme.typography.weights.medium};
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  border-right: 1px solid rgba(255,255,255,0.2);
+  
+  &:last-child {
+    border-right: none;
+  }
+`;
+
+const CurrentAQIMarker = styled.div<{ position: number }>`
+  position: absolute;
+  left: ${({ position }) => position}%;
+  top: -10px;
+  transform: translateX(-50%);
+  
+  &::before {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 10px solid ${({ theme }) => theme.colors.grayscale.dark2};
+  }
+  
+  &::after {
+    content: attr(data-value);
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${({ theme }) => theme.colors.grayscale.dark2};
+    color: white;
+    padding: ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit * 2}px;
+    border-radius: ${({ theme }) => theme.borderRadius}px;
+    font-size: ${({ theme }) => theme.typography.sizes.s}px;
+    font-weight: ${({ theme }) => theme.typography.weights.bold};
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+`;
+
+const MapContainer = styled.div`
+  background-color: ${({ theme }) => theme.colors.grayscale.light5};
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  height: calc(100vh - 280px);
+  min-height: 500px;
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 `;
 
 const LegendContainer = styled.div`
   position: absolute;
-  bottom: 20px;
-  right: 20px;
-  background-color: white;
-  padding: 10px;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  bottom: ${({ theme }) => theme.gridUnit * 4}px;
+  right: ${({ theme }) => theme.gridUnit * 4}px;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: ${({ theme }) => theme.gridUnit * 3}px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
   z-index: 1000;
+  backdrop-filter: blur(10px);
+  min-width: 200px;
+  
   h4 {
-    margin-top: 0;
-    margin-bottom: 5px;
+    margin: 0 0 ${({ theme }) => theme.gridUnit * 2}px 0;
+    font-size: ${({ theme }) => theme.typography.sizes.m}px;
+    font-weight: ${({ theme }) => theme.typography.weights.bold};
+    color: ${({ theme }) => theme.colors.grayscale.dark2};
   }
-  div {
+  
+  .legend-item {
     display: flex;
     align-items: center;
-    margin-bottom: 3px;
+    margin-bottom: ${({ theme }) => theme.gridUnit * 1.5}px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      transform: translateX(4px);
+    }
   }
-  span {
-    width: 20px;
-    height: 20px;
-    margin-right: 8px;
-    border: 1px solid #ccc;
+  
+  .legend-color {
+    width: 24px;
+    height: 24px;
+    margin-right: ${({ theme }) => theme.gridUnit * 2}px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  
+  .legend-label {
+    font-size: ${({ theme }) => theme.typography.sizes.s}px;
+    color: ${({ theme }) => theme.colors.grayscale.dark1};
+    flex: 1;
+  }
+  
+  .legend-range {
+    font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+    color: ${({ theme }) => theme.colors.grayscale.base};
+    margin-left: ${({ theme }) => theme.gridUnit}px;
   }
 `;
 
-const ForecastCard = styled.div<{ theme: SupersetTheme }>`
+const ForecastCard = styled.div`
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  border-radius: ${({ theme }) => theme.borderRadius}px;
-  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  border-radius: ${({ theme }) => theme.gridUnit * 2}px;
+  padding: ${({ theme }) => theme.gridUnit * 5}px;
   margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, 
+      #00E400 0%, 
+      #FFFF00 20%, 
+      #FF7E00 40%, 
+      #FF0000 60%, 
+      #8F3F97 80%, 
+      #7E0023 100%);
+  }
+  
   h3 {
-    color: ${({ theme }) => theme.colors.primary.dark1};
-    margin-top: 0;
+    color: ${({ theme }) => theme.colors.grayscale.dark2};
+    margin: 0 0 ${({ theme }) => theme.gridUnit * 3}px 0;
+    font-size: ${({ theme }) => theme.typography.sizes.l}px;
+    font-weight: ${({ theme }) => theme.typography.weights.bold};
   }
-  p {
-    margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
-    line-height: 1.6;
+  
+  .forecast-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
   }
-  strong {
-    color: ${({ theme }) => theme.colors.grayscale.dark1};
+  
+  .pollutant-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: ${({ theme }) => theme.gridUnit * 2}px;
+    margin-top: ${({ theme }) => theme.gridUnit * 3}px;
+  }
+  
+  .pollutant-item {
+    background: ${({ theme }) => theme.colors.grayscale.light4};
+    padding: ${({ theme }) => theme.gridUnit * 2}px;
+    border-radius: ${({ theme }) => theme.borderRadius}px;
+    text-align: center;
+    
+    .pollutant-name {
+      font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+      color: ${({ theme }) => theme.colors.grayscale.base};
+      text-transform: uppercase;
+      margin-bottom: ${({ theme }) => theme.gridUnit}px;
+    }
+    
+    .pollutant-value {
+      font-size: ${({ theme }) => theme.typography.sizes.xl}px;
+      font-weight: ${({ theme }) => theme.typography.weights.bold};
+      color: ${({ theme }) => theme.colors.grayscale.dark2};
+    }
+    
+    .pollutant-unit {
+      font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+      color: ${({ theme }) => theme.colors.grayscale.base};
+    }
+  }
+  
+  .health-advisory {
+    margin-top: ${({ theme }) => theme.gridUnit * 3}px;
+    padding: ${({ theme }) => theme.gridUnit * 3}px;
+    background: ${({ theme }) => theme.colors.warning.light2};
+    border-radius: ${({ theme }) => theme.borderRadius}px;
+    border-left: 4px solid ${({ theme }) => theme.colors.warning.base};
+    
+    .advisory-title {
+      font-weight: ${({ theme }) => theme.typography.weights.bold};
+      color: ${({ theme }) => theme.colors.grayscale.dark2};
+      margin-bottom: ${({ theme }) => theme.gridUnit}px;
+    }
+    
+    .advisory-text {
+      color: ${({ theme }) => theme.colors.grayscale.dark1};
+      line-height: 1.6;
+    }
   }
 `;
 
 interface PollutantPillProps {
-  theme: SupersetTheme;
   aqi: number;
-  className?: string;
 }
 
 const PollutantPill = styled.span<PollutantPillProps>`
   background-color: ${({ theme, aqi }) => getAqiColor(aqi, theme, true)};
   color: white;
-  padding: ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit * 2}px;
+  padding: ${({ theme }) => theme.gridUnit * 1.5}px ${({ theme }) => theme.gridUnit * 3}px;
+  border-radius: 20px;
+  font-size: ${({ theme }) => theme.typography.sizes.m}px;
+  font-weight: ${({ theme }) => theme.typography.weights.bold};
+  display: inline-flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.gridUnit}px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  
+  &::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+`;
+
+const FilterContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.gridUnit * 3}px;
+  padding: ${({ theme }) => theme.gridUnit * 3}px;
+  background: ${({ theme }) => theme.colors.grayscale.light5};
   border-radius: ${({ theme }) => theme.borderRadius}px;
-  font-size: ${({ theme }) => theme.typography.sizes.s}px;
-  margin-right: ${({ theme }) => theme.gridUnit * 2}px;
-  display: inline-block;
-  margin-bottom: ${({ theme }) => theme.gridUnit}px;
+  margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  flex-wrap: wrap;
+  
+  .filter-label {
+    font-weight: ${({ theme }) => theme.typography.weights.medium};
+    color: ${({ theme }) => theme.colors.grayscale.dark1};
+    min-width: fit-content;
+  }
+  
+  .ant-select, .ant-picker {
+    min-width: 180px;
+  }
 `;
 
 interface AirQualityData {
@@ -114,12 +347,12 @@ const INITIAL_VIEW_STATE = {
 };
 
 const AQI_LEVELS = [
-  { range: [0, 50], label: t('Good'), colorKey: 'success.base' },
-  { range: [51, 100], label: t('Moderate'), colorKey: 'warning.base' },
-  { range: [101, 150], label: t('Unhealthy for Sensitive Groups'), colorKey: 'error.base' },
-  { range: [151, 200], label: t('Unhealthy'), colorKey: 'error.dark1' },
-  { range: [201, 300], label: t('Very Unhealthy'), colorKey: 'error.dark2' },
-  { range: [301, Infinity], label: t('Hazardous'), colorKey: 'error.dark2' },
+  { range: [0, 50], label: t('Good'), colorKey: 'success.base', color: '#00E400', description: 'Air quality is satisfactory' },
+  { range: [51, 100], label: t('Moderate'), colorKey: 'warning.base', color: '#FFFF00', description: 'Acceptable for most people' },
+  { range: [101, 150], label: t('Unhealthy for Sensitive Groups'), colorKey: 'error.base', color: '#FF7E00', description: 'Sensitive groups may experience health effects' },
+  { range: [151, 200], label: t('Unhealthy'), colorKey: 'error.dark1', color: '#FF0000', description: 'Everyone may experience health effects' },
+  { range: [201, 300], label: t('Very Unhealthy'), colorKey: 'error.dark2', color: '#8F3F97', description: 'Health warnings of emergency conditions' },
+  { range: [301, Infinity], label: t('Hazardous'), colorKey: 'error.dark2', color: '#7E0023', description: 'Emergency conditions' },
 ];
 
 const getAqiColor = (aqi: number, theme: SupersetTheme, forPill: boolean = false): [number, number, number, number] | string => {
@@ -151,9 +384,18 @@ const getAqiColor = (aqi: number, theme: SupersetTheme, forPill: boolean = false
   return [r, g, b, 180];
 };
 
+// Type for Air Quality Pipeline Run History
+interface PipelineRunHistoryType {
+  id: number;
+  ran_at: string;
+  pipeline_name: string;
+  status: string;
+  details?: string;
+}
+
 export default function AirQualityForecastsPage() {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState('map');
+  const [activeTab, setActiveTab] = useState('1');
   const [forecastData, setForecastData] = useState<AirQualityData[]>([]);
   const [mapForecastData, setMapForecastData] = useState<AirQualityData[]>([]);
   const [geojson, setGeojson] = useState<JsonObject | null>(null);
@@ -163,6 +405,8 @@ export default function AirQualityForecastsPage() {
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   const [selectedPollutant, setSelectedPollutant] = useState<string>('overall_aqi');
   const [selectedDate, setSelectedDate] = useState(moment());
+  const [lastAirQualityRunInfo, setLastAirQualityRunInfo] = useState<PipelineRunHistoryType | null>(null);
+  const [lastAirQualityRunLoading, setLastAirQualityRunLoading] = useState(false);
 
   // State for Trendline Tab
   const [trendlineData, setTrendlineData] = useState<any[]>([]); // For Recharts data array
@@ -186,8 +430,60 @@ export default function AirQualityForecastsPage() {
       value: f.properties.ISO 
   })) || [];
 
+  // Format date for display
+  const formatDisplayDate = useCallback((dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateString;
+    }
+  }, []);
+
+  // Fetch last air quality pipeline run information
+  const fetchLastAirQualityRun = useCallback(async () => {
+    setLastAirQualityRunLoading(true);
+    try {
+      console.log("[Air Quality Pipeline Run] Fetching last successful run info");
+      const response = await SupersetClient.get({
+        endpoint: '/api/v1/air_quality_pipeline_run_history/last_successful_run',
+        headers: { Accept: 'application/json' },
+      });
+      
+      console.log("[Air Quality Pipeline Run] Response:", response.json);
+      
+      if (response.json?.result) {
+        setLastAirQualityRunInfo(response.json.result);
+        console.log("[Air Quality Pipeline Run] Last successful run:", response.json.result.ran_at);
+      } else {
+        console.log("[Air Quality Pipeline Run] No successful run info available");
+        setLastAirQualityRunInfo(null);
+      }
+    } catch (error) {
+      if (error.status === 404) {
+        console.log("[Air Quality Pipeline Run] No successful run history found");
+      } else {
+        console.error('Error fetching last air quality run info:', error);
+      }
+      setLastAirQualityRunInfo(null);
+    } finally {
+      setLastAirQualityRunLoading(false);
+    }
+  }, []);
+
+  // Fetch data on component mount
   useEffect(() => {
-    if (activeTab !== 'cards' && activeTab !== 'map') return;
+    fetchLastAirQualityRun();
+  }, [fetchLastAirQualityRun]);
+
+  useEffect(() => {
+    if (activeTab !== '2' && activeTab !== '1') return;
 
     const fetchCardData = async () => {
       setLoading(true);
@@ -207,7 +503,7 @@ export default function AirQualityForecastsPage() {
   }, [selectedMunicipality, activeTab]);
 
   useEffect(() => {
-    if (activeTab !== 'map') return;
+    if (activeTab !== '1') return;
 
     const fetchMapResources = async () => {
       setLoading(true);
@@ -241,7 +537,7 @@ export default function AirQualityForecastsPage() {
 
   // Effect for fetching Trendline data for Recharts
   useEffect(() => {
-    if (activeTab !== 'trendline') return;
+    if (activeTab !== '3') return;
 
     const fetchTrendlineData = async () => {
       setTrendlineLoading(true);
@@ -284,24 +580,84 @@ export default function AirQualityForecastsPage() {
   };
 
   const renderForecasts = () => {
-    if (loading && activeTab === 'cards') return <Spin tip="Loading forecast data..." />;
-    if (error && activeTab === 'cards') return <Alert message={error} type="error" showIcon />;
-    if (!forecastData || forecastData.length === 0 && activeTab === 'cards') return <Alert message="No forecast data available for the selected municipality." type="info" showIcon />;
+    if (loading && activeTab === '2') return <Spin tip="Loading forecast data..." />;
+    if (error && activeTab === '2') return <Alert message={error} type="error" showIcon />;
+    if (!forecastData || forecastData.length === 0 && activeTab === '2') return <Alert message="No forecast data available for the selected municipality." type="info" showIcon />;
 
-    return forecastData.map((data, index) => (
-      <ForecastCard key={index} theme={theme}>
-        <h3>{moment(data.forecast_date).format('DD MMMM, YYYY')} - {data.municipality_name}</h3>
-        <p><PollutantPill theme={theme} aqi={data.overall_aqi}>AQI: {data.overall_aqi}</PollutantPill></p>
-        {data.dominant_pollutant && <p><strong>{t('Dominant Pollutant')}:</strong> {data.dominant_pollutant}</p>}
-        {data.pm25 && <p><strong>{t('PM2.5')}:</strong> {data.pm25} µg/m³</p>}
-        {data.pm10 && <p><strong>{t('PM10')}:</strong> {data.pm10} µg/m³</p>}
-        {data.o3 && <p><strong>{t('Ozone (O₃)')}:</strong> {data.o3} ppm</p>}
-        {data.no2 && <p><strong>{t('Nitrogen Dioxide (NO₂)')}:</strong> {data.no2} ppm</p>}
-        {data.so2 && <p><strong>{t('Sulfur Dioxide (SO₂)')}:</strong> {data.so2} ppm</p>}
-        {data.co && <p><strong>{t('Carbon Monoxide (CO)')}:</strong> {data.co} ppm</p>}
-        {data.health_advisory && <p><strong>{t('Health Advisory')}:</strong> {data.health_advisory}</p>}
-      </ForecastCard>
-    ));
+    return forecastData.map((data, index) => {
+      const aqiLevel = AQI_LEVELS.find(l => data.overall_aqi >= l.range[0] && data.overall_aqi <= l.range[1]);
+      
+      return (
+        <ForecastCard key={index}>
+          <div className="forecast-header">
+            <h3>{moment(data.forecast_date).format('dddd, DD MMMM YYYY')}</h3>
+            <PollutantPill aqi={data.overall_aqi}>AQI {data.overall_aqi}</PollutantPill>
+          </div>
+          
+          <p style={{ color: theme.colors.grayscale.base, marginBottom: theme.gridUnit * 2 }}>
+            {data.municipality_name} • {aqiLevel?.description}
+          </p>
+          
+          <div className="pollutant-grid">
+            {data.pm25 && (
+              <div className="pollutant-item">
+                <div className="pollutant-name">PM2.5</div>
+                <div className="pollutant-value">{data.pm25}</div>
+                <div className="pollutant-unit">µg/m³</div>
+              </div>
+            )}
+            {data.pm10 && (
+              <div className="pollutant-item">
+                <div className="pollutant-name">PM10</div>
+                <div className="pollutant-value">{data.pm10}</div>
+                <div className="pollutant-unit">µg/m³</div>
+              </div>
+            )}
+            {data.o3 && (
+              <div className="pollutant-item">
+                <div className="pollutant-name">O₃</div>
+                <div className="pollutant-value">{data.o3}</div>
+                <div className="pollutant-unit">ppm</div>
+              </div>
+            )}
+            {data.no2 && (
+              <div className="pollutant-item">
+                <div className="pollutant-name">NO₂</div>
+                <div className="pollutant-value">{data.no2}</div>
+                <div className="pollutant-unit">ppm</div>
+              </div>
+            )}
+            {data.so2 && (
+              <div className="pollutant-item">
+                <div className="pollutant-name">SO₂</div>
+                <div className="pollutant-value">{data.so2}</div>
+                <div className="pollutant-unit">ppm</div>
+              </div>
+            )}
+            {data.co && (
+              <div className="pollutant-item">
+                <div className="pollutant-name">CO</div>
+                <div className="pollutant-value">{data.co}</div>
+                <div className="pollutant-unit">ppm</div>
+              </div>
+            )}
+          </div>
+          
+          {data.health_advisory && (
+            <div className="health-advisory">
+              <div className="advisory-title">{t('Health Advisory')}</div>
+              <div className="advisory-text">{data.health_advisory}</div>
+            </div>
+          )}
+          
+          {data.dominant_pollutant && (
+            <p style={{ marginTop: theme.gridUnit * 2, fontSize: theme.typography.sizes.s, color: theme.colors.grayscale.base }}>
+              {t('Primary pollutant')}: <strong>{data.dominant_pollutant}</strong>
+            </p>
+          )}
+        </ForecastCard>
+      );
+    });
   };
 
   const onHover = (info: any) => {
@@ -361,15 +717,21 @@ export default function AirQualityForecastsPage() {
     const pollutantName = selectedPollutant === 'overall_aqi' ? 'AQI' : selectedPollutant.toUpperCase();
 
     return (
-        <LegendContainer>
-        <h4>{pollutantName} Legend</h4>
+      <LegendContainer>
+        <h4>{pollutantName} {t('Scale')}</h4>
         {legendLevels.map(level => (
-            <div key={level.label}>
-            <span style={{ backgroundColor: getAqiColor(level.range[0], theme, true) as string }} />
-            {level.label} ({level.range[0]} - {level.range[1] === Infinity ? '500+' : level.range[1]})
+          <div key={level.label} className="legend-item">
+            <div 
+              className="legend-color" 
+              style={{ backgroundColor: level.color }} 
+            />
+            <div className="legend-label">{level.label}</div>
+            <div className="legend-range">
+              {level.range[0]}-{level.range[1] === Infinity ? '500+' : level.range[1]}
             </div>
+          </div>
         ))}
-        </LegendContainer>
+      </LegendContainer>
     );
   };
 
@@ -388,171 +750,325 @@ export default function AirQualityForecastsPage() {
   };
 
   return (
-    <StyledTabsContainer theme={theme}>
+    <StyledTabsContainer>
       <LineEditableTabs 
         activeKey={activeTab} 
         onChange={handleTabChange} 
         type="card"
       >
-        <LineEditableTabs.TabPane tab={t("AQI Map")} key="map">
-          <TabContentContainer theme={theme}>
-            {loading && activeTab === 'map' && <Spin tip="Loading map and data..." />}
-            {error && activeTab === 'map' && <Alert message={error} type="error" showIcon />}
-            {!loading && !error && activeTab === 'map' && geojson && (
+        <LineEditableTabs.TabPane tab={t("AQI Map")} key="1">
+          <TabContentContainer>
+            {loading && activeTab === '1' && <Spin tip="Loading map and data..." />}
+            {error && activeTab === '1' && <Alert message={error} type="error" showIcon />}
+            {!loading && !error && activeTab === '1' && geojson && (
               <>
-                <Row gutter={[16,16]} style={{marginBottom: theme.gridUnit * 2, paddingLeft: theme.gridUnit *2, paddingRight: theme.gridUnit*2, alignItems: 'center'}}>
-                    <Col>
-                        Select Pollutant:
-                    </Col>
-                    <Col>
-                        <Select 
-                            value={selectedPollutant} 
-                            onChange={handlePollutantChange}
-                            style={{width: 150, marginRight: theme.gridUnit * 2}}
-                        >
-                            <Option value="overall_aqi">Overall AQI</Option>
-                            <Option value="pm25">PM2.5</Option>
-                            <Option value="pm10">PM10</Option>
-                            <Option value="o3">Ozone (O₃)</Option>
-                            <Option value="no2">Nitrogen Dioxide (NO₂)</Option>
-                            <Option value="so2">Sulfur Dioxide (SO₂)</Option>
-                            <Option value="co">Carbon Monoxide (CO)</Option>
-                        </Select>
-                    </Col>
-                    <Col>
-                        Select Date:
-                    </Col>
-                    <Col>
-                        <DatePicker 
-                            onChange={handleDateChange} 
-                            value={selectedDate}
-                            format="YYYY-MM-DD"
-                            allowClear={false} 
-                        />
-                    </Col>
-                </Row>
-                <MapContainer theme={theme}>
+                <FilterContainer>
+                  <span className="filter-label">{t('View by')}:</span>
+                  <Select 
+                    value={selectedPollutant} 
+                    onChange={handlePollutantChange}
+                    placeholder="Select pollutant"
+                  >
+                    <Option value="overall_aqi">{t('Overall AQI')}</Option>
+                    <Option value="pm25">{t('PM2.5 Particulate')}</Option>
+                    <Option value="pm10">{t('PM10 Particulate')}</Option>
+                    <Option value="o3">{t('Ozone (O₃)')}</Option>
+                    <Option value="no2">{t('Nitrogen Dioxide (NO₂)')}</Option>
+                    <Option value="so2">{t('Sulfur Dioxide (SO₂)')}</Option>
+                    <Option value="co">{t('Carbon Monoxide (CO)')}</Option>
+                  </Select>
+                  
+                  <span className="filter-label">{t('Date')}:</span>
+                  <DatePicker 
+                    onChange={handleDateChange} 
+                    value={selectedDate}
+                    format="YYYY-MM-DD"
+                    allowClear={false}
+                    placeholder="Select date"
+                  />
+                </FilterContainer>
+                
+                {/* AQI Scale Indicator */}
+                <AQIIndicatorBar>
+                  <AQIScale>
+                    {AQI_LEVELS.map((level, index) => (
+                      <AQIScaleSegment 
+                        key={index} 
+                        color={level.color} 
+                        flex={index === AQI_LEVELS.length - 1 ? 2 : 1}
+                      >
+                        {level.range[0]}
+                      </AQIScaleSegment>
+                    ))}
+                  </AQIScale>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: theme.typography.sizes.s, color: theme.colors.grayscale.base }}>
+                      {t('Air Quality Index Scale')}
+                    </div>
+                  </div>
+                </AQIIndicatorBar>
+                
+                <MapContainer>
                   <DeckGL
                     initialViewState={INITIAL_VIEW_STATE}
                     controller={true}
                     layers={[baseMapLayer, geoJsonLayer].filter(Boolean) as any}
                   >
-                    {hoverInfo && hoverInfo.object && (
-                      <div style={{
-                        position: 'absolute',
-                        zIndex: 1,
-                        pointerEvents: 'none',
-                        left: hoverInfo.x,
-                        top: hoverInfo.y,
-                        backgroundColor: 'white',
-                        padding: '5px',
-                        borderRadius: '3px',
-                        boxShadow: '0 0 5px rgba(0,0,0,0.3)'
-                      }}>
-                        <strong>{hoverInfo.object.properties.ADM1}</strong><br />
-                        {selectedPollutant === 'overall_aqi' ? 'AQI' : selectedPollutant.toUpperCase()}: {mapForecastData.find(f => f.municipality_code === hoverInfo.object.properties.ISO)?.[selectedPollutant as keyof AirQualityData] || 'N/A'}<br />
-                        {selectedPollutant === 'overall_aqi' && (
-                            <>Dominant: {mapForecastData.find(f => f.municipality_code === hoverInfo.object.properties.ISO)?.dominant_pollutant || 'N/A'}<br /></>
-                        )}
-                      </div>
-                    )}
+                    {hoverInfo && hoverInfo.object && (() => {
+                      const municipalityData = mapForecastData.find(f => f.municipality_code === hoverInfo.object.properties.ISO);
+                      const value = municipalityData?.[selectedPollutant as keyof AirQualityData];
+                      const aqiLevel = selectedPollutant === 'overall_aqi' && value ? 
+                        AQI_LEVELS.find(l => value >= l.range[0] && value <= l.range[1]) : null;
+                      
+                      return (
+                        <div style={{
+                          position: 'absolute',
+                          zIndex: 1,
+                          pointerEvents: 'none',
+                          left: hoverInfo.x,
+                          top: hoverInfo.y,
+                          transform: 'translate(-50%, -100%)',
+                          marginTop: -10
+                        }}>
+                          <div style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            padding: `${theme.gridUnit * 3}px`,
+                            borderRadius: theme.borderRadius,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            backdropFilter: 'blur(10px)',
+                            minWidth: '200px'
+                          }}>
+                            <div style={{ 
+                              fontWeight: theme.typography.weights.bold, 
+                              fontSize: theme.typography.sizes.m,
+                              marginBottom: theme.gridUnit * 2,
+                              color: theme.colors.grayscale.dark2
+                            }}>
+                              {hoverInfo.object.properties.ADM1}
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: theme.gridUnit * 2 }}>
+                              <div style={{ 
+                                fontSize: theme.typography.sizes.xl,
+                                fontWeight: theme.typography.weights.bold,
+                                color: aqiLevel ? aqiLevel.color : theme.colors.grayscale.dark1
+                              }}>
+                                {value || 'N/A'}
+                              </div>
+                              <div style={{ fontSize: theme.typography.sizes.s, color: theme.colors.grayscale.base }}>
+                                {selectedPollutant === 'overall_aqi' ? 'AQI' : 
+                                 (selectedPollutant === 'pm25' || selectedPollutant === 'pm10' ? 'µg/m³' : 'ppm')}
+                              </div>
+                            </div>
+                            
+                            {selectedPollutant === 'overall_aqi' && aqiLevel && (
+                              <div style={{ 
+                                marginTop: theme.gridUnit * 2,
+                                paddingTop: theme.gridUnit * 2,
+                                borderTop: `1px solid ${theme.colors.grayscale.light2}`
+                              }}>
+                                <div style={{ fontSize: theme.typography.sizes.s, color: aqiLevel.color, fontWeight: theme.typography.weights.medium }}>
+                                  {aqiLevel.label}
+                                </div>
+                                {municipalityData?.dominant_pollutant && (
+                                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.grayscale.base, marginTop: theme.gridUnit }}>
+                                    Primary: {municipalityData.dominant_pollutant}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Arrow pointing down */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: -8,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 0,
+                            height: 0,
+                            borderLeft: '8px solid transparent',
+                            borderRight: '8px solid transparent',
+                            borderTop: '8px solid rgba(255, 255, 255, 0.95)',
+                            filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))'
+                          }} />
+                        </div>
+                      );
+                    })()}
                   </DeckGL>
                   {renderMapLegend()}
                 </MapContainer>
               </>
             )}
+            
+            {/* Data source attribution */}
+            <DataSourceAttribution>
+              <span>{t('Air quality data provided by internal models')}</span>
+              {lastAirQualityRunLoading ? (
+                <DataUpdateInfo>Loading last air quality update time...</DataUpdateInfo>
+              ) : lastAirQualityRunInfo ? (
+                <DataUpdateInfo>
+                  {t('Last successful air quality update:')} {formatDisplayDate(lastAirQualityRunInfo.ran_at)}
+                </DataUpdateInfo>
+              ) : (
+                <DataUpdateInfo>{t('Air quality update history unavailable')}</DataUpdateInfo>
+              )}
+            </DataSourceAttribution>
           </TabContentContainer>
         </LineEditableTabs.TabPane>
-        <LineEditableTabs.TabPane tab={t("10-Day Forecast Cards")} key="cards">
-            <Row gutter={[16,16]} style={{marginBottom: theme.gridUnit * 4}}>
-                <Col>
-                    Select Municipality:
-                </Col>
-                <Col>
-                    <Select 
-                        value={selectedMunicipality} 
-                        onChange={handleMunicipalityChange}
-                        style={{width: 200}}
-                        loading={loading && activeTab === 'map'}
-                        disabled={!geojson}
-                    >
-                        {municipalitiesOptions.map((m: {label: string, value: string}) => <Option key={m.value} value={m.value}>{m.label}</Option>)}
-                    </Select>
-                </Col>
-            </Row>
-          <TabContentContainer theme={theme}>
+        <LineEditableTabs.TabPane tab={t("10-Day Forecast")} key="2">
+          <TabContentContainer>
+            <FilterContainer>
+              <span className="filter-label">{t('Municipality')}:</span>
+              <Select 
+                value={selectedMunicipality} 
+                onChange={handleMunicipalityChange}
+                loading={loading && activeTab === '1'}
+                disabled={!geojson}
+                placeholder="Select municipality"
+              >
+                {municipalitiesOptions.map((m: {label: string, value: string}) => (
+                  <Option key={m.value} value={m.value}>{m.label}</Option>
+                ))}
+              </Select>
+            </FilterContainer>
             {renderForecasts()}
           </TabContentContainer>
         </LineEditableTabs.TabPane>
-        <LineEditableTabs.TabPane tab={t("Trendline")} key="trendline">
-          <TabContentContainer theme={theme}>
-            <Row gutter={[16, 16]} style={{ marginBottom: theme.gridUnit * 4 }}>
-              <Col>
-                Select Municipalities:
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: '100%', minWidth: 200, marginRight: theme.gridUnit * 2 }}
-                  placeholder="Select municipalities"
-                  value={selectedTrendMunicipalities}
-                  onChange={(value: string[]) => setSelectedTrendMunicipalities(value)}
-                  options={municipalitiesOptions} 
-                  disabled={!geojson}
-                />
-              </Col>
-              <Col>
-                Select Pollutants:
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: '100%', minWidth: 200 }}
-                  placeholder="Select pollutants"
-                  value={selectedTrendPollutants}
-                  onChange={(value: string[]) => setSelectedTrendPollutants(value)}
-                  options={ALL_POLLUTANTS_OPTIONS}
-                />
-              </Col>
-            </Row>
+        <LineEditableTabs.TabPane tab={t("Trendlines")} key="3">
+          <TabContentContainer>
+            <FilterContainer>
+              <span className="filter-label">{t('Municipalities')}:</span>
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="Select municipalities"
+                value={selectedTrendMunicipalities}
+                onChange={(value: string[]) => setSelectedTrendMunicipalities(value)}
+                options={municipalitiesOptions} 
+                disabled={!geojson}
+                style={{ minWidth: 250 }}
+              />
+              
+              <span className="filter-label">{t('Pollutants')}:</span>
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="Select pollutants"
+                value={selectedTrendPollutants}
+                onChange={(value: string[]) => setSelectedTrendPollutants(value)}
+                options={ALL_POLLUTANTS_OPTIONS}
+                style={{ minWidth: 250 }}
+              />
+            </FilterContainer>
 
             {trendlineLoading && <Spin tip="Loading trendline data..." />}
             {trendlineError && <Alert message={trendlineError} type="error" showIcon />}
             {!trendlineLoading && !trendlineError && trendlineData.length > 0 && (
-              <div style={{ height: '500px', width: '100%' }}>
-                <ResponsiveContainer>
-                  <LineChart data={trendlineData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
+              <div style={{ 
+                height: 'calc(100vh - 350px)', 
+                minHeight: '400px',
+                backgroundColor: theme.colors.grayscale.light5,
+                borderRadius: theme.borderRadius,
+                padding: theme.gridUnit * 3,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendlineData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                    <defs>
+                      {trendlineSeriesKeys.map((key, index) => {
+                        const colors = [
+                          { start: '#1890ff', end: '#096dd9' },
+                          { start: '#52c41a', end: '#389e0d' },
+                          { start: '#fa8c16', end: '#d46b08' },
+                          { start: '#f5222d', end: '#a8071a' },
+                          { start: '#722ed1', end: '#531dab' },
+                          { start: '#13c2c2', end: '#08979c' },
+                        ];
+                        const color = colors[index % colors.length];
+                        return (
+                          <linearGradient key={`gradient-${key}`} id={`gradient-${key}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color.start} stopOpacity={0.8} />
+                            <stop offset="100%" stopColor={color.end} stopOpacity={0.8} />
+                          </linearGradient>
+                        );
+                      })}
+                    </defs>
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={theme.colors.grayscale.light2}
+                      vertical={false}
+                    />
                     <XAxis 
-                        dataKey="date" 
-                        tickFormatter={(tick) => moment(tick).format('DD MMM, YYYY')} 
+                      dataKey="date" 
+                      tickFormatter={(tick) => moment(tick).format('MMM DD')} 
+                      stroke={theme.colors.grayscale.base}
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
                     />
-                    <YAxis />
+                    <YAxis 
+                      stroke={theme.colors.grayscale.base}
+                      tick={{ fontSize: 12 }}
+                      label={{ 
+                        value: selectedTrendPollutants.length === 1 ? 
+                          (selectedTrendPollutants[0] === 'pm25' || selectedTrendPollutants[0] === 'pm10' ? 'µg/m³' : 'ppm') : 
+                          'Value',
+                        angle: -90,
+                        position: 'insideLeft',
+                        style: { fontSize: 14, fill: theme.colors.grayscale.dark1 }
+                      }}
+                    />
                     <Tooltip 
-                        labelFormatter={(label) => moment(label).format('DD MMMM, YYYY')} 
+                      labelFormatter={(label) => moment(label).format('dddd, DD MMMM YYYY')}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        border: 'none',
+                        borderRadius: theme.borderRadius,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        padding: theme.gridUnit * 2
+                      }}
+                      labelStyle={{
+                        color: theme.colors.grayscale.dark2,
+                        fontWeight: theme.typography.weights.bold,
+                        marginBottom: theme.gridUnit
+                      }}
                     />
-                    <Legend />
+                    <Legend 
+                      verticalAlign="top"
+                      height={36}
+                      iconType="line"
+                      wrapperStyle={{
+                        paddingBottom: theme.gridUnit * 2
+                      }}
+                      formatter={(value) => {
+                        const parts = value.split('_');
+                        if (parts.length === 2) {
+                          const [pollutant, municipality] = parts;
+                          const municName = municipality.replace(/TLDI/g, 'Dili').replace(/TLBA/g, 'Baucau');
+                          const pollutantName = ALL_POLLUTANTS_OPTIONS.find(p => p.value === pollutant)?.label || pollutant.toUpperCase();
+                          return `${municName} - ${pollutantName}`;
+                        }
+                        return value;
+                      }}
+                    />
                     {trendlineSeriesKeys.map((key, index) => {
-                      // Cycle through a predefined list of theme colors for the lines
-                      const lineColors = [
-                        theme.colors.primary.base,
-                        theme.colors.secondary.base,
-                        theme.colors.success.base,
-                        theme.colors.info.base,
-                        theme.colors.error.base,
-                        theme.colors.warning.base,
-                        theme.colors.primary.dark1,
-                        theme.colors.secondary.dark1,
-                        theme.colors.success.dark1,
-                        theme.colors.info.dark1,
-                      ];
                       return (
                         <Line 
                           key={key} 
                           type="monotone" 
                           dataKey={key} 
-                          stroke={lineColors[index % lineColors.length]} 
-                          activeDot={{ r: 6 }}
-                          name={key.replace(/_/g, ' - ').replace(/TLDI/g, 'Dili').replace(/TLBA/g, 'Baucau')} // Example prettify
-                          strokeWidth={2}
+                          stroke={`url(#gradient-${key})`}
+                          strokeWidth={3}
+                          dot={{ fill: theme.colors.grayscale.light5, strokeWidth: 2, r: 4 }}
+                          activeDot={{ 
+                            r: 6, 
+                            fill: theme.colors.primary.base,
+                            stroke: theme.colors.grayscale.light5,
+                            strokeWidth: 2
+                          }}
+                          name={key}
                         />
                       );
                     })}

@@ -738,11 +738,18 @@ class DisseminateBulletinView(BaseView):
             if 'mobile_app_broadcast' in dissemination_channels:
                 processed_channels.append('mobile_app_broadcast')
                 logger.info("Processing Mobile App Broadcast dissemination channel.")
-                webhook_url = current_app.config.get("MOBILE_APP_BROADCAST_WEBHOOK_URL")
-                webhook_secret = current_app.config.get("MOBILE_APP_BROADCAST_SECRET") # Optional secret for auth
-
-                if not webhook_url or webhook_url == "YOUR_MOBILE_APP_WEBHOOK_URL_HERE":
-                    error_msg = "Mobile App Broadcast is not configured correctly: MOBILE_APP_BROADCAST_WEBHOOK_URL is missing or not set."
+                
+                # Import FCM helper
+                from superset.dissemination.fcm_helper import FCMDisseminationHelper
+                
+                # Check if FCM is configured
+                fcm_configured = (
+                    current_app.config.get("FCM_CREDENTIALS_JSON") or 
+                    current_app.config.get("FCM_CREDENTIALS_PATH")
+                )
+                
+                if not fcm_configured:
+                    error_msg = "Mobile App Broadcast is not configured correctly: FCM credentials are missing. Set either FCM_CREDENTIALS_JSON or FCM_CREDENTIALS_PATH in configuration."
                     logger.error(error_msg)
                     flash(_(error_msg), "warning")
                     log_entries.append(DisseminatedBulletinLog(
@@ -755,49 +762,46 @@ class DisseminateBulletinView(BaseView):
                         message_body_sent="Configuration Error"
                     ))
                 else:
-                    try:
-                        payload = {
-                            "bulletin_id": bulletin.id,
-                            "title": bulletin.title,
-                            "advisory": bulletin.advisory,
-                            "risks": bulletin.risks,
-                            "safety_tips": bulletin.safety_tips,
-                            "hashtags": bulletin.hashtags,
-                            # Potentially add a deep link URL if your app supports it
-                            # "deep_link_url": f"yourapp://bulletin/{bulletin.id}"
-                        }
-                        headers = {"Content-Type": "application/json"}
-                        if webhook_secret:
-                            headers["X-Broadcast-Secret"] = webhook_secret
-                        
-                        response = requests.post(webhook_url, json=payload, headers=headers, timeout=10) # 10 second timeout
-                        response.raise_for_status()  # Raises an HTTPError for bad responses (4XX or 5XX)
-                        
+                    # Send FCM notification
+                    success, status_msg, response_data = FCMDisseminationHelper.send_bulletin_notification(
+                        bulletin_id=bulletin.id,
+                        title=bulletin.title,
+                        advisory=bulletin.advisory,
+                        risks=bulletin.risks,
+                        safety_tips=bulletin.safety_tips,
+                        hashtags=bulletin.hashtags,
+                    )
+                    
+                    if success:
                         mobile_app_broadcast_success = True
                         log_entries.append(DisseminatedBulletinLog(
                             bulletin_id=bulletin.id,
                             disseminated_by_fk=g.user.id if g.user else None,
                             status="SUCCESS",
-                            details=f"Successfully sent broadcast to mobile app webhook. Response: {response.status_code}",
+                            details=f"Successfully sent FCM notification. {status_msg}",
                             channel="mobile_app_broadcast",
                             subject_sent=bulletin.title,
-                            message_body_sent=json.dumps(payload) # Log the sent payload
+                            message_body_sent=json.dumps({
+                                "target": response_data.get("target"),
+                                "message_id": response_data.get("message_id"),
+                                "bulletin_data": {
+                                    "id": bulletin.id,
+                                    "title": bulletin.title,
+                                    "advisory": bulletin.advisory[:100] + "...",  # Truncate for logging
+                                }
+                            })
                         ))
-                        logger.info(f"Mobile App Broadcast sent successfully for bulletin {bulletin.id}. Response: {response.status_code}")
-                    except requests.exceptions.RequestException as e_broadcast:
-                        logger.error(f"Error sending Mobile App Broadcast for bulletin {bulletin.id}: {e_broadcast}", exc_info=True)
-                        details = f"Webhook call failed: {str(e_broadcast)}"
-                        if e_broadcast.response is not None:
-                            details += f" - Status: {e_broadcast.response.status_code} - Body: {e_broadcast.response.text[:200]}" # Truncate body
-                        
+                        logger.info(f"Mobile App Broadcast (FCM) sent successfully for bulletin {bulletin.id}. Message ID: {response_data.get('message_id')}")
+                    else:
+                        logger.error(f"Error sending Mobile App Broadcast (FCM) for bulletin {bulletin.id}: {status_msg}")
                         log_entries.append(DisseminatedBulletinLog(
                             bulletin_id=bulletin.id,
                             disseminated_by_fk=g.user.id if g.user else None,
                             status="FAILED",
-                            details=details,
+                            details=f"FCM notification failed: {status_msg}",
                             channel="mobile_app_broadcast",
                             subject_sent=bulletin.title,
-                            message_body_sent=json.dumps(payload) if 'payload' in locals() else "Payload not generated"
+                            message_body_sent=json.dumps(response_data) if response_data else "No response data"
                         ))
 
             # --- Save all log entries ---
