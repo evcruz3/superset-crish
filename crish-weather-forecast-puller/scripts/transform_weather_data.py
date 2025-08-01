@@ -49,9 +49,9 @@ ALERT_LEVEL_COLORS = {
 
 # --- Weather Parameter Threshold Constants ---
 # Heat Index (°C)
-HEAT_INDEX_EXTREME_DANGER = 42
-HEAT_INDEX_DANGER = 40
-HEAT_INDEX_EXTREME_CAUTION = 36
+HEAT_INDEX_EXTREME_DANGER = 33
+HEAT_INDEX_DANGER = 30
+HEAT_INDEX_EXTREME_CAUTION = 27
 
 # Rainfall (mm)
 RAINFALL_EXTREME_DANGER = 60
@@ -177,7 +177,7 @@ def get_alert_level_for_value(parameter_name, value):
     """Determines the alert level based on parameter name and value."""
     if parameter_name == 'Heat Index':
         if value > HEAT_INDEX_EXTREME_DANGER: return 'Extreme Danger'
-        if value > HEAT_INDEX_DANGER: return 'Danger'
+        if value >= HEAT_INDEX_DANGER: return 'Danger'
         if value >= HEAT_INDEX_EXTREME_CAUTION: return 'Extreme Caution'
     elif parameter_name == 'Rainfall':
         if value > RAINFALL_EXTREME_DANGER: return 'Extreme Danger'
@@ -262,15 +262,15 @@ def generate_weather_alerts(dataframes):
     heat_index_alerts = heat_index_df.with_columns([
         pl.lit('Heat Index').alias('weather_parameter'),
         pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Extreme Danger'))
-          .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Danger'))
+          .when(pl.col('value') >= HEAT_INDEX_DANGER).then(pl.lit('Danger'))
           .when(pl.col('value') >= HEAT_INDEX_EXTREME_CAUTION).then(pl.lit('Extreme Caution'))
           .otherwise(pl.lit('Normal')).alias('alert_level'),
         pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Extreme Heat Index Alert'))
-          .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Dangerous Heat Index Alert'))
+          .when(pl.col('value') >= HEAT_INDEX_DANGER).then(pl.lit('Dangerous Heat Index Alert'))
           .when(pl.col('value') >= HEAT_INDEX_EXTREME_CAUTION).then(pl.lit('High Heat Index Warning'))
           .otherwise(pl.lit('Normal Conditions')).alias('alert_title'),
         pl.when(pl.col('value') > HEAT_INDEX_EXTREME_DANGER).then(pl.lit('Heat stroke imminent. Avoid any outdoor activities.'))
-          .when(pl.col('value') > HEAT_INDEX_DANGER).then(pl.lit('Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure.'))
+          .when(pl.col('value') >= HEAT_INDEX_DANGER).then(pl.lit('Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure.'))
           .when(pl.col('value') >= HEAT_INDEX_EXTREME_CAUTION).then(pl.lit('Heat cramps and heat exhaustion possible; continuing activity could result in heat stroke.'))
           .otherwise(pl.lit('No heat index alerts at this time.')).alias('alert_message'),
         pl.col('value').alias('parameter_value')

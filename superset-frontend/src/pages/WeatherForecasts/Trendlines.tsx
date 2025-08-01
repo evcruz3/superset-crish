@@ -21,9 +21,9 @@ const THRESHOLDS: Record<
   Array<{ value: number; label: string; color: string }>
 > = {
   heat_index: [
-    { value: 42, label: t('Extreme Danger'), color: '#d32f2f' },
-    { value: 40, label: t('Danger'), color: '#ef6c00' },
-    { value: 36, label: t('Extreme Caution'), color: '#fdd835' },
+    { value: 33, label: t('Extreme Danger'), color: '#d32f2f' },
+    { value: 30, label: t('Danger'), color: '#ef6c00' },
+    { value: 27, label: t('Extreme Caution'), color: '#fdd835' },
   ],
   rainfall: [
     { value: 100, label: t('Extreme Danger'), color: '#d32f2f' },
