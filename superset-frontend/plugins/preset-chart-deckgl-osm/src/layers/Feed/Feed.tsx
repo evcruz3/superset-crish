@@ -991,6 +991,8 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   const [timeRange, setTimeRange] = useState<[Date, Date] | undefined>();
   const containerRef = useRef<DeckGLContainerHandleExtended>();
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const activeDateRef = useRef<HTMLDivElement>(null);
   
   const { formData, payload, setControlValue, viewport: initialViewport, height, width, onAddFilter } = props;
 
@@ -1202,6 +1204,27 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
       }
     }
   }, [formData.temporal_column, payload.data?.data]);
+
+  // Add auto-scroll effect when currentTime changes
+  useEffect(() => {
+    if (currentTime && timelineContainerRef.current && activeDateRef.current) {
+      const container = timelineContainerRef.current;
+      const activeElement = activeDateRef.current;
+      
+      // Calculate if the active element is outside the visible area
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeElement.getBoundingClientRect();
+      
+      if (activeRect.left < containerRect.left || activeRect.right > containerRect.right) {
+        // Scroll the active element into view with smooth behavior
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }
+    }
+  }, [currentTime]);
 
     // Update selected region entries when current time changes
   useEffect(() => {
@@ -1448,7 +1471,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                 }}
               />
             </div>
-            <div className="timeline-container">
+            <div className="timeline-container" ref={timelineContainerRef}>
               {getDatesInRange(timeRange[0], timeRange[1], formData.time_granularity as TimeGranularity | null).map((date, index) => {
                 // Format date based on time grain
                 let dateFormat: Intl.DateTimeFormatOptions = {};
@@ -1472,6 +1495,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                     key={index} 
                     className={`day-label ${isActive ? 'active' : ''}`}
                     onClick={() => setCurrentTime(date)}
+                    ref={isActive ? activeDateRef : null}
                   >
                     {date.toLocaleDateString('en-US', dateFormat)}
                   </div>
