@@ -329,7 +329,19 @@ def cached_common_bootstrap_data(  # pylint: disable=unused-argument
     available_specs = get_available_engine_specs()
     frontend_config["HAS_GSHEETS_INSTALLED"] = bool(available_specs[GSheetsEngineSpec])
 
-    language = locale.language if locale else "en"
+    # Get the full locale string (e.g., "pt_TL") instead of just language ("pt")
+    # The session contains the correct locale string that matches our translation directories
+    from flask import session
+    session_locale = session.get("locale")
+    
+    if session_locale:
+        # Use the session locale which has the full locale string (e.g., "pt_TL")
+        language = session_locale
+    elif locale:
+        # Fallback to the Babel locale if no session locale
+        language = locale.language
+    else:
+        language = "en"
 
     bootstrap_data = {
         "conf": frontend_config,
