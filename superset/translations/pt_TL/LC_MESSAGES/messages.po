@@ -109,11 +109,9 @@ msgstr ""
 "            <p><b><a href=\"%(url)s\">%(call_to_action)s</a></b></p>\n"
 "            "
 
-#, fuzzy
 msgid " (Load Failed)"
 msgstr "Carregar arquivo"
 
-#, fuzzy
 msgid " (Loading...)"
 msgstr "Carregando..."
 
@@ -201,7 +199,7 @@ msgstr "!= (diferente)"
 msgid "${disease} Alert"
 msgstr ""
 
-#, fuzzy, python-format
+#, python-format
 msgid "% calculation"
 msgstr "Tipo de % cálculo"
 
@@ -267,7 +265,7 @@ msgstr "%(other)s recentes irão aparecer aqui"
 msgid "%(other)s saved queries will appear here"
 msgstr "%(other)s As consultas salvas aparecerão aqui"
 
-#, fuzzy, python-format
+#, python-format
 msgid "%(parameter)s Alert"
 msgid_plural "%(parameter)s Alerts"
 msgstr[0] "Parâmetros "
@@ -553,7 +551,6 @@ msgstr "Frequência de início de 1 ano"
 msgid "10 minute"
 msgstr "10 minutos"
 
-#, fuzzy
 msgid "10-Day Forecast Cards"
 msgstr "Previsão de 10 dias"
 
@@ -2530,7 +2527,6 @@ msgstr "Não é possível analisar a string de tempo [%(human_readable)s]"
 msgid "Cannot remove files that are uploading or already uploaded"
 msgstr "Não é possível remover arquivos que estão sendo enviados ou já enviados"
 
-#, fuzzy
 msgid "Carbon Monoxide (CO)"
 msgstr "Monóxido de Carbono"
 
@@ -3470,7 +3466,6 @@ msgstr "Controle"
 msgid "Control labeled "
 msgstr "Controle rotulado "
 
-#, fuzzy
 msgid "Controls labeled "
 msgstr "Controles rotulados"
 
@@ -4185,7 +4180,6 @@ msgstr "O tipo de fonte de dados é inválido"
 msgid "Datasource type is required when datasource_id is given"
 msgstr "O tipo de fonte de dados é necessário quando datasource_id é fornecido"
 
-#, fuzzy
 msgid "Date"
 msgstr "data"
 
@@ -4224,7 +4218,6 @@ msgstr "Dia (freq=D)"
 msgid "Days %s"
 msgstr "Dias %s"
 
-#, fuzzy
 msgid "Days Range"
 msgstr "28 dias atrás"
 
@@ -4670,7 +4663,6 @@ msgstr "Diamante"
 msgid "Diarrhea"
 msgstr "Diarréia"
 
-#, fuzzy
 msgid "Diarrhea Alert"
 msgstr "Diarréia"
 
@@ -5807,7 +5799,6 @@ msgstr "Parâmetros de url extras para uso em consultas de modelo Jinja"
 msgid "Extreme Caution"
 msgstr "Atenção"
 
-#, fuzzy
 msgid "Extreme Danger"
 msgstr "Atenção"
 
@@ -6234,7 +6225,6 @@ msgstr "Forçar atualização da lista de tabelas"
 msgid "Forecast periods"
 msgstr "Períodos de previsão"
 
-#, fuzzy
 msgid "Forecasts"
 msgstr "Habilitar previsão"
 
@@ -6478,15 +6468,12 @@ msgstr "Cabeçalho"
 msgid "Header row"
 msgstr "Linha de cabeçalho"
 
-#, fuzzy
 msgid "Health Advisory"
 msgstr "unidade de saúde"
 
-#, fuzzy
 msgid "Heat Alert"
 msgstr "alerta"
 
-#, fuzzy
 msgid "Heat Index"
 msgstr "Nome da planilha"
 
@@ -7250,7 +7237,6 @@ msgstr "Menor ou igual (<=)"
 msgid "Less than (<)"
 msgstr "Menos que (<)"
 
-#, fuzzy
 msgid "Level"
 msgstr "rótulo"
 
@@ -7987,7 +7973,6 @@ msgstr ""
 msgid "Multiplier"
 msgstr "Multiplicador"
 
-#, fuzzy
 msgid "Municipalities"
 msgstr "Município"
 
@@ -8102,7 +8087,6 @@ msgstr "Nome da sua etiqueta"
 msgid "Name your database"
 msgstr "Nome do seu banco de dados"
 
-#, fuzzy
 msgid "National"
 msgstr "Relacional"
 
@@ -8155,7 +8139,6 @@ msgstr "Rouxinol"
 msgid "Nightingale Rose Chart"
 msgstr "Gráfico Nightingale Rose"
 
-#, fuzzy
 msgid "Nitrogen Dioxide (NO₂)"
 msgstr "Dióxido de Nitrogênio"
 
@@ -8884,7 +8867,6 @@ msgstr ""
 "Os proprietários são uma lista de usuários que podem alterar o painel. "
 "Pesquisável por nome ou nome de usuário."
 
-#, fuzzy
 msgid "Ozone (O₃)"
 msgstr "Ozônio (o3)"
 
@@ -9609,7 +9591,6 @@ msgstr "Raio em metros"
 msgid "Radius in miles"
 msgstr "Raio em milhas"
 
-#, fuzzy
 msgid "Rainfall Alert"
 msgstr "Previsão de Chuva"
 
@@ -10780,7 +10761,6 @@ msgstr "Selecione primeiro valor do filtro por padrão"
 msgid "Select format"
 msgstr "Selecione o formato"
 
-#, fuzzy
 msgid "Select municipalities"
 msgstr "Municípios Desaparecidos"
 
@@ -11143,7 +11123,6 @@ msgstr "Mostrar Tabela"
 msgid "Show Text Labels"
 msgstr "Mostrar rótulos de texto"
 
-#, fuzzy
 msgid "Show Thresholds"
 msgstr "Limite Inferior"
 
@@ -11637,7 +11616,6 @@ msgstr "Início (Longitude, Latitude): "
 msgid "Start Bulk Upload"
 msgstr "Iniciar upload em massa"
 
-#, fuzzy
 msgid "Start Date"
 msgstr "Data de início"
 
@@ -11812,7 +11790,6 @@ msgstr "Sufixo"
 msgid "Suffix to apply after the percentage display"
 msgstr "Sufixo para aplicar após a apresentação da percentagem"
 
-#, fuzzy
 msgid "Sulfur Dioxide (SO₂)"
 msgstr "Dióxido de Enxofre"
 
@@ -12320,7 +12297,6 @@ msgstr "O banco de dados foi excluído."
 msgid "The database was not found."
 msgstr "O banco de dados não foi encontrado."
 
-#, fuzzy
 msgid "The dataset"
 msgstr "Novo conjunto de dados"
 
@@ -13180,11 +13156,9 @@ msgstr ""
 " e para usuários avançados que podem querer alterar parâmetros "
 "específicos."
 
-#, fuzzy
 msgid "This Week's Dengue Cases Forecast"
 msgstr "Previsão Semanal de Dengue"
 
-#, fuzzy
 msgid "This Week's Diarrhea Cases Forecast"
 msgstr "Previzaun Diarreia desta Semana"
 
@@ -14704,7 +14678,6 @@ msgstr ""
 "Não foi possível conectar-se ao seu banco de dados chamado "
 "\"%(database)s\". Verifique o nome do banco de dados e tente novamente."
 
-#, fuzzy
 msgid "Weather Forecast Trendlines"
 msgstr "Previsão do Tempo"
 
@@ -14714,7 +14687,6 @@ msgstr "Previsão do Tempo"
 msgid "Weather data provided by ECMWF"
 msgstr "Previzaun pelo ECMWF"
 
-#, fuzzy
 msgid "Weather update history unavailable"
 msgstr "A miniatura não está disponível"
 
@@ -15131,7 +15103,6 @@ msgstr "Largura do intervalo de confiança. Deve estar entre 0 e 1"
 msgid "Width of the sparkline"
 msgstr "Largura do brilho"
 
-#, fuzzy
 msgid "Wind Alert"
 msgstr "alerta"
 

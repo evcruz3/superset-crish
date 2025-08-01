@@ -89,11 +89,9 @@ msgstr ""
 "            <p>Favor haree Ita-boot nia painél/gráfiku ba erru sira.</p>\n"
 "            <p><b><a href=\"%(url)s\">%(call_to_action)s</a></b></p> "
 
-#, fuzzy
 msgid " (Load Failed)"
 msgstr "Upload Arkivu"
 
-#, fuzzy
 msgid " (Loading...)"
 msgstr "Upload hela..."
 
@@ -243,7 +241,7 @@ msgstr "%(other)s sira ne'ebé foin lalais sei mosu iha ne'e"
 msgid "%(other)s saved queries will appear here"
 msgstr "%(other)s pergunta sira ne'ebé rai ona sei mosu iha ne'e"
 
-#, fuzzy, python-format
+#, python-format
 msgid "%(parameter)s Alert"
 msgid_plural "%(parameter)s Alerts"
 msgstr[0] "Parámetru sira %{parameter}s"
@@ -529,7 +527,6 @@ msgstr "Frekuensia hahú tinan 1 nian"
 msgid "10 minute"
 msgstr "minute 10 liu ba"
 
-#, fuzzy
 msgid "10-Day Forecast Cards"
 msgstr "Kartaun Previzaun - Loron 10 nian"
 
@@ -1850,7 +1847,6 @@ msgstr "Aplika formatasaun kór kondisionál ba métrika sira"
 msgid "Apply conditional color formatting to numeric columns"
 msgstr "Aplika formatasaun kór kondisionál ba koluna numérika sira"
 
-#, fuzzy
 msgid "Apply conditional color formatting to string columns"
 msgstr "Aplika formatasaun kór kondisionál ba koluna numérika sira"
 
@@ -2535,7 +2531,6 @@ msgstr "Labele analiza string tempu [%(human_readable)s]"
 msgid "Cannot remove files that are uploading or already uploaded"
 msgstr "Labele apaga arkivu sira ne'ebé maka hatama hela ka hatama ona"
 
-#, fuzzy
 msgid "Carbon Monoxide (CO)"
 msgstr "Monóxidu Karbonu"
 
@@ -4177,7 +4172,6 @@ msgstr "Tipu fonte dadus la válidu"
 msgid "Datasource type is required when datasource_id is given"
 msgstr "Tipu fonte dadus nian presiza bainhira fó id_fontedadus"
 
-#, fuzzy
 msgid "Date"
 msgstr "data"
 
@@ -4216,7 +4210,6 @@ msgstr "Loron (freq=D)"
 msgid "Days %s"
 msgstr "Loron sira %s"
 
-#, fuzzy
 msgid "Days Range"
 msgstr "loron 30 liu ba"
 
@@ -6463,14 +6456,12 @@ msgstr "Header"
 msgid "Header row"
 msgstr "Header  koluna"
 
-#, fuzzy
 msgid "Health Advisory"
 msgstr "fasilidade saúde"
 
 msgid "Heat Alert"
 msgstr "Alerta Temperatura"
 
-#, fuzzy
 msgid "Heat Index"
 msgstr "Naran Folla"
 
@@ -7235,7 +7226,6 @@ msgstr "Menus ka hanesan (<=)"
 msgid "Less than (<)"
 msgstr "Menus husi (<)"
 
-#, fuzzy
 msgid "Level"
 msgstr "rótulu"
 
@@ -7973,7 +7963,6 @@ msgstr ""
 msgid "Multiplier"
 msgstr "Multiplikador"
 
-#, fuzzy
 msgid "Municipalities"
 msgstr "Munisipiu"
 
@@ -8088,7 +8077,6 @@ msgstr "Ita-boot nia tag nia naran"
 msgid "Name your database"
 msgstr "Fó naran ba ita-boot nia baze-dadus"
 
-#, fuzzy
 msgid "National"
 msgstr "Relasional"
 
@@ -8141,7 +8129,6 @@ msgstr "Nightingale"
 msgid "Nightingale Rose Chart"
 msgstr "Gráfiku Nightingale Rose"
 
-#, fuzzy
 msgid "Nitrogen Dioxide (NO₂)"
 msgstr "Dióksidu Nitrojéniu"
 
@@ -8862,7 +8849,6 @@ msgstr ""
 "Na'in sira maka lista ida hosi utilizadór sira ne'ebé bele altera painél."
 " Bele buka tuir naran ka naran utilizadór."
 
-#, fuzzy
 msgid "Ozone (O₃)"
 msgstr "Ozonu (o3)"
 
@@ -10765,7 +10751,6 @@ msgstr "Hili valór filtru dahuluk tuir padraun"
 msgid "Select format"
 msgstr "Hili formatu"
 
-#, fuzzy
 msgid "Select municipalities"
 msgstr "Munisípiu sira ne'ebé falta"
 
@@ -11124,7 +11109,6 @@ msgstr "Hatudu Tabela"
 msgid "Show Text Labels"
 msgstr "Hatudu Label Testu sira"
 
-#, fuzzy
 msgid "Show Thresholds"
 msgstr "Limite Inferiór"
 
@@ -11256,7 +11240,6 @@ msgstr "Hatudu sumáriu"
 msgid "Show the value on top of the bar"
 msgstr "Hatudu valór iha barra nia leten"
 
-#, fuzzy
 msgid "Show total"
 msgstr "Hatudu Totál"
 
@@ -11786,7 +11769,6 @@ msgstr "Sufiksu"
 msgid "Suffix to apply after the percentage display"
 msgstr "Sufiksu atu aplika hafoin hatudu persentajen"
 
-#, fuzzy
 msgid "Sulfur Dioxide (SO₂)"
 msgstr "Dióksidu Enxofre"
 
@@ -14162,7 +14144,6 @@ msgstr "Upload to'o PDF ka imajen 3 (másimu 5MB ida-idak)"
 msgid "Upload your completed Excel file using the upload area below"
 msgstr ""
 
-#, fuzzy
 msgid "Uploading"
 msgstr "Upload hela"
 
@@ -14274,7 +14255,6 @@ msgstr ""
 msgid "User"
 msgstr "Utilizadór"
 
-#, fuzzy
 msgid "User Name"
 msgstr "Naran Utilizadór"
 
@@ -14402,7 +14382,6 @@ msgstr "La saudavel tebes"
 msgid "Video game consoles"
 msgstr "Konsola videojogu sira"
 
-#, fuzzy
 msgid "Video thumbnail"
 msgstr "Gráfiku miniatura sira"
 
@@ -14679,7 +14658,6 @@ msgstr ""
 "\"%(database)s\". Favor verifika ita-boot nia naran baze-dadus no koko "
 "fali."
 
-#, fuzzy
 msgid "Weather Forecast Trendlines"
 msgstr "Previzaun Tempu"
 
@@ -14689,7 +14667,6 @@ msgstr "Previzaun Tempu"
 msgid "Weather data provided by ECMWF"
 msgstr "Dadus kona-ba tempu forsene husi ECMWF"
 
-#, fuzzy
 msgid "Weather update history unavailable"
 msgstr "Imajen ki'ik la disponivel"
 
