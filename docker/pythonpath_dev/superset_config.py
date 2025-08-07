@@ -150,7 +150,10 @@ ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
 SQLLAB_ASYNC_TIME_LIMIT_SEC = 0  # Setting to 0 forces synchronous execution
 
 # Disable thumbnail cache configuration
-THUMBNAIL_CACHE_CONFIG = None
+THUMBNAIL_CACHE_CONFIG = {
+    "CACHE_TYPE": "NullCache",
+    "CACHE_NO_NULL_WARNING": True,
+}
 
 WEBDRIVER_BASEURL = "http://superset:8088/"  # When using docker compose baseurl should be http://superset_app:8088/
 # The base URL for the email report hyperlinks.
