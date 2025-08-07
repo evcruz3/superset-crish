@@ -32,7 +32,6 @@ x-superset-volumes: &superset-volumes
   - ./superset-frontend:/app/superset-frontend
   - superset_home:/app/superset_home
   - ./tests:/app/tests
-  - ./docker/credentials/firebase-service-account.json:/app/docker/credentials/firebase-service-account.json:ro
 
 x-common-build: &common-build
   context: .

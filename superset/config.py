@@ -1038,6 +1038,7 @@ CELERY_CONFIG: type[CeleryConfig] = CeleryConfig
 
 # Set celery config to None to disable all the above configuration
 # CELERY_CONFIG = None
+# NOTE: Workers are disabled by default in docker deployments via superset_config_docker.py
 
 # Additional static HTTP headers to be served by your Superset server. Note
 # Flask-Talisman applies the relevant security HTTP headers.

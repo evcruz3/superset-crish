@@ -301,7 +301,6 @@ class DisseminateBulletinView(BaseView):
             email_success = False
             facebook_success = False
             whatsapp_success = False # Initialize WhatsApp success status
-            mobile_app_broadcast_success = False # Initialize Mobile App Broadcast success status
             log_entries = []
             processed_channels = []
 
@@ -734,76 +733,6 @@ class DisseminateBulletinView(BaseView):
                         if final_status == "SUCCESS":
                             logger.info("All WhatsApp messages disseminated successfully.")
 
-            # --- Mobile App Broadcast Dissemination ---
-            if 'mobile_app_broadcast' in dissemination_channels:
-                processed_channels.append('mobile_app_broadcast')
-                logger.info("Processing Mobile App Broadcast dissemination channel.")
-                
-                # Import FCM helper
-                from superset.dissemination.fcm_helper import FCMDisseminationHelper
-                
-                # Check if FCM is configured
-                fcm_configured = (
-                    current_app.config.get("FCM_CREDENTIALS_JSON") or 
-                    current_app.config.get("FCM_CREDENTIALS_PATH")
-                )
-                
-                if not fcm_configured:
-                    error_msg = "Mobile App Broadcast is not configured correctly: FCM credentials are missing. Set either FCM_CREDENTIALS_JSON or FCM_CREDENTIALS_PATH in configuration."
-                    logger.error(error_msg)
-                    flash(_(error_msg), "warning")
-                    log_entries.append(DisseminatedBulletinLog(
-                        bulletin_id=bulletin.id,
-                        disseminated_by_fk=g.user.id if g.user else None,
-                        status="FAILED",
-                        details=error_msg,
-                        channel="mobile_app_broadcast",
-                        subject_sent=f"Mobile App Broadcast attempt for: {bulletin.title}",
-                        message_body_sent="Configuration Error"
-                    ))
-                else:
-                    # Send FCM notification
-                    success, status_msg, response_data = FCMDisseminationHelper.send_bulletin_notification(
-                        bulletin_id=bulletin.id,
-                        title=bulletin.title,
-                        advisory=bulletin.advisory,
-                        risks=bulletin.risks,
-                        safety_tips=bulletin.safety_tips,
-                        hashtags=bulletin.hashtags,
-                    )
-                    
-                    if success:
-                        mobile_app_broadcast_success = True
-                        log_entries.append(DisseminatedBulletinLog(
-                            bulletin_id=bulletin.id,
-                            disseminated_by_fk=g.user.id if g.user else None,
-                            status="SUCCESS",
-                            details=f"Successfully sent FCM notification. {status_msg}",
-                            channel="mobile_app_broadcast",
-                            subject_sent=bulletin.title,
-                            message_body_sent=json.dumps({
-                                "target": response_data.get("target"),
-                                "message_id": response_data.get("message_id"),
-                                "bulletin_data": {
-                                    "id": bulletin.id,
-                                    "title": bulletin.title,
-                                    "advisory": bulletin.advisory[:100] + "...",  # Truncate for logging
-                                }
-                            })
-                        ))
-                        logger.info(f"Mobile App Broadcast (FCM) sent successfully for bulletin {bulletin.id}. Message ID: {response_data.get('message_id')}")
-                    else:
-                        logger.error(f"Error sending Mobile App Broadcast (FCM) for bulletin {bulletin.id}: {status_msg}")
-                        log_entries.append(DisseminatedBulletinLog(
-                            bulletin_id=bulletin.id,
-                            disseminated_by_fk=g.user.id if g.user else None,
-                            status="FAILED",
-                            details=f"FCM notification failed: {status_msg}",
-                            channel="mobile_app_broadcast",
-                            subject_sent=bulletin.title,
-                            message_body_sent=json.dumps(response_data) if response_data else "No response data"
-                        ))
-
             # --- Save all log entries ---
             if log_entries:
                 try:
@@ -823,7 +752,6 @@ class DisseminateBulletinView(BaseView):
                 email_channel_processed = 'email' in processed_channels
                 facebook_channel_processed = 'facebook' in processed_channels
                 whatsapp_channel_processed = 'whatsapp' in processed_channels
-                mobile_app_broadcast_channel_processed = 'mobile_app_broadcast' in processed_channels # New check
 
                 # Consolidate success/failure messages
                 results_summary = []
@@ -858,15 +786,6 @@ class DisseminateBulletinView(BaseView):
                     else:
                         error_detail = wa_log_entry.details if wa_log_entry else 'Unknown error'
                         results_summary.append(str(_("WhatsApp: Failed (%(error)s).", error=error_detail)))
-                        any_failures = True
-                
-                if mobile_app_broadcast_channel_processed:
-                    if mobile_app_broadcast_success:
-                        results_summary.append(str(_("Mobile App Broadcast: Success.")))
-                    else:
-                        mab_log_entry = next((log for log in log_entries if log.channel == 'mobile_app_broadcast' and log.status == 'FAILED'), None)
-                        error_detail = mab_log_entry.details if mab_log_entry else 'Unknown error'
-                        results_summary.append(str(_("Mobile App Broadcast: Failed (%(error)s).", error=error_detail)))
                         any_failures = True
 
                 if results_summary:

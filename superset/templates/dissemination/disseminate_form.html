@@ -740,7 +740,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let emailChannelSelected = false;
         let facebookChannelSelected = false; 
         let whatsappChannelSelected = false; // ADDED: to check for WhatsApp channel
-        let mobileAppBroadcastChannelSelected = false; // ADDED for Mobile App Broadcast
 
         disseminationChannelsCheckboxes.forEach(function(checkbox) {
             if (checkbox.value === 'email' && checkbox.checked) {
@@ -751,9 +750,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (checkbox.value === 'whatsapp' && checkbox.checked) { // ADDED: Check for WhatsApp
                 whatsappChannelSelected = true;
-            }
-            if (checkbox.value === 'mobile_app_broadcast' && checkbox.checked) { // ADDED: Check for Mobile App Broadcast
-                mobileAppBroadcastChannelSelected = true;
             }
         });
 
@@ -778,15 +774,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Toggle Subject and Message required stars based on Email OR Facebook OR WhatsApp
-        // If Mobile App Broadcast is the ONLY channel selected, Subject/Message might not be required.
-        // Modify this logic if Subject/Message are still desired for Mobile App Broadcast payload.
         if (emailChannelSelected || facebookChannelSelected || whatsappChannelSelected) { 
             if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.remove('hidden-field');
             if(emailMessageRequiredStar) emailMessageRequiredStar.classList.remove('hidden-field');
-        } else if (mobileAppBroadcastChannelSelected && !(emailChannelSelected || facebookChannelSelected || whatsappChannelSelected)) {
-            // If only mobile app broadcast is selected, hide subject/message required stars (assuming they are not strictly needed for payload)
-            if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.add('hidden-field');
-            if(emailMessageRequiredStar) emailMessageRequiredStar.classList.add('hidden-field');
         } else {
             if(emailSubjectRequiredStar) emailSubjectRequiredStar.classList.add('hidden-field');
             if(emailMessageRequiredStar) emailMessageRequiredStar.classList.add('hidden-field');

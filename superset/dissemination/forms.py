@@ -32,8 +32,7 @@ class DisseminationForm(FlaskForm):
         choices=[
             ('email', 'Email'),
             ('facebook', 'Facebook'),
-            ('whatsapp', 'WhatsApp'),
-            ('mobile_app_broadcast', 'Mobile App Broadcast')
+            ('whatsapp', 'WhatsApp')
         ],
         widget=widgets.ListWidget(prefix_label=False),
         option_widget=widgets.CheckboxInput(),

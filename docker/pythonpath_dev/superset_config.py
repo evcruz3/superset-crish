@@ -59,7 +59,8 @@ REDIS_PORT = os.getenv("REDIS_PORT", "6379")
 REDIS_CELERY_DB = os.getenv("REDIS_CELERY_DB", "0")
 REDIS_RESULTS_DB = os.getenv("REDIS_RESULTS_DB", "1")
 
-RESULTS_BACKEND = FileSystemCache("/app/superset_home/sqllab")
+# Disable async result backend when workers are disabled
+RESULTS_BACKEND = None
 
 CACHE_CONFIG = {
     "CACHE_TYPE": "RedisCache",
@@ -97,37 +98,65 @@ WHATSAPP_BUSINESS_ACCOUNT_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID") # Your 
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN") # IMPORTANT: Replace with your actual token
 WHATSAPP_DEFAULT_TEMPLATE_NAME = os.getenv("WHATSAPP_DEFAULT_TEMPLATE_NAME", "bulletin_alert") 
 
-class CeleryConfig:
-    broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"
-    imports = (
-        "superset.sql_lab",
-        "superset.tasks.scheduler",
-        "superset.tasks.thumbnails",
-        "superset.tasks.cache",
-    )
-    result_backend = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_RESULTS_DB}"
-    worker_prefetch_multiplier = 1
-    task_acks_late = False
-    beat_schedule = {
-        "reports.scheduler": {
-            "task": "reports.scheduler",
-            "schedule": crontab(minute="*", hour="*"),
-        },
-        "reports.prune_log": {
-            "task": "reports.prune_log",
-            "schedule": crontab(minute=10, hour=0),
-        },
-    }
+# Celery configuration disabled - no workers will be used
+# class CeleryConfig:
+#     broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"
+#     imports = (
+#         "superset.sql_lab",
+#         "superset.tasks.scheduler",
+#         "superset.tasks.thumbnails",
+#         "superset.tasks.cache",
+#     )
+#     result_backend = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_RESULTS_DB}"
+#     worker_prefetch_multiplier = 1
+#     task_acks_late = False
+#     beat_schedule = {
+#         "reports.scheduler": {
+#             "task": "reports.scheduler",
+#             "schedule": crontab(minute="*", hour="*"),
+#         },
+#         "reports.prune_log": {
+#             "task": "reports.prune_log",
+#             "schedule": crontab(minute=10, hour=0),
+#         },
+#     }
 
+# Disable Celery completely
+CELERY_CONFIG = None
 
-CELERY_CONFIG = CeleryConfig
+# Disable all async and worker-dependent features
+FEATURE_FLAGS = {
+    "ALERT_REPORTS": False,  # Disable scheduled reports and alerts
+    "ALERT_REPORT_TABS": False,  # Hide alert/report tabs in UI
+    "THUMBNAILS": False,  # Disable thumbnail generation
+    "ENABLE_DASHBOARD_SCREENSHOT_ENDPOINTS": False,  # Disable dashboard screenshots
+    "GLOBAL_ASYNC_QUERIES": False,  # Disable async queries globally
+    "SQLLAB_FORCE_RUN_ASYNC": False,  # Don't force async in SQL Lab
+    "ENABLE_TEMPLATE_PROCESSING": True,  # Keep template processing (doesn't need workers)
+}
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True}
+# CORS Configuration
+ENABLE_CORS = True
+CORS_OPTIONS = {
+    'allow_headers': ['Content-Type', 'Authorization', 'X-CSRFToken'],
+    'resources': [r'/*'],  # Allow CORS for all routes
+    'origins': ['*']  # Allow all origins
+}
+
+# Ensure dry run mode for any reports that might be configured
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
+
+# Force SQL Lab to run queries synchronously
+SQLLAB_ASYNC_TIME_LIMIT_SEC = 0  # Setting to 0 forces synchronous execution
+
+# Disable thumbnail cache configuration
+THUMBNAIL_CACHE_CONFIG = None
+
 WEBDRIVER_BASEURL = "http://superset:8088/"  # When using docker compose baseurl should be http://superset_app:8088/
 # The base URL for the email report hyperlinks.
 WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
 SQLLAB_CTAS_NO_LIMIT = True
+
 
 #
 # Optionally import superset_config_docker.py (which will have been included on

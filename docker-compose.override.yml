@@ -1,0 +1,19 @@
+# Override file to disable worker services
+# This file is automatically loaded by docker-compose and overrides the main docker-compose.yml
+
+services:
+  superset-worker:
+    profiles:
+      - disabled
+
+  superset-worker-beat:
+    profiles:
+      - disabled
+
+  superset-tests-worker:
+    profiles:
+      - disabled
+
+  case-reports-initializer:
+    profiles:
+      - disabled
