@@ -3,18 +3,14 @@ import {
   styled,
   t,
   SupersetClient,
-  useTheme,
-  supersetTheme,
 } from '@superset-ui/core';
 import Echart from '../../../plugins/plugin-chart-echarts/src/components/Echart';
 import { Row, Col, Select, Radio, Switch } from 'antd';
-import { Input } from 'src/components/Input';
 import { DatePicker } from 'src/components/DatePicker';
 import moment, { Moment } from 'moment';
 import Loading from 'src/components/Loading';
 import { useResizeDetector } from 'react-resize-detector';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 
 const THRESHOLDS: Record<
   string,
@@ -493,7 +489,7 @@ const WeatherTrendChart = ({
       <h4>{title}</h4>
       <EchartContainer ref={ref}>
         <AutoSizer>
-          {({ height, width }) => (
+          {({ height, width }: { height: number; width: number }) => (
             <Echart
               height={height}
               width={width}
@@ -539,14 +535,6 @@ const Trendlines = () => {
       setMunicipalities(['Dili']);
     }
   };
-
-  const subMenuButtons: SubMenuProps['buttons'] = [
-    {
-      name: t('Filter'),
-      buttonStyle: 'primary',
-      onClick: () => {},
-    },
-  ];
 
   return (
     <PageContainer>

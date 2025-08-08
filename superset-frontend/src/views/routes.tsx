@@ -16,8 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { lazy } from 'react';
-import { FeatureFlag, isFeatureEnabled, t } from '@superset-ui/core';
+import { lazy } from 'react';
+import { FeatureFlag, isFeatureEnabled } from '@superset-ui/core';
 import { ComponentType, ComponentProps } from 'react';
 import Diseases from 'src/pages/Diseases';
 import Dengue from 'src/pages/Diseases/Dengue';

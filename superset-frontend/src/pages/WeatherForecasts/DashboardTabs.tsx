@@ -65,17 +65,26 @@ interface DashboardTabsProps {
     selectedTabIndex?: number;
 }
 
-function findTabsComponent(layout: any) {
+interface TabsComponent {
+    id: string;
+    type: string;
+    children: string[];
+    meta?: {
+        text?: string;
+    };
+}
+
+function findTabsComponent(layout: any): TabsComponent | null {
     // First try to find a component of type TABS
     for (const [id, component] of Object.entries(layout)) {
-        if (component.type === 'TABS') {
+        if ((component as any).type === 'TABS') {
             // console.log('Found TABS component:', { id, component });
-            return component;
+            return component as TabsComponent;
         }
     }
     
     // Fallback to getRootLevelTabsComponent
-    return getRootLevelTabsComponent(layout);
+    return getRootLevelTabsComponent(layout) as TabsComponent | null;
 }
 
 function calculateDimensions(windowWidth: number) {
@@ -282,8 +291,8 @@ function DashboardTabs({ idOrSlug, selectedTabIndex = 0 }: DashboardTabsProps) {
     };
 
     // Ensure we have valid tab configurations before rendering
-    const validTabs = tabsComponent.children
-        .map(tabId => {
+    const validTabs = tabsComponent!.children
+        .map((tabId: string) => {
             const tabConfig = dashboardLayout[tabId];
             // console.log('Tab configuration:', {
             //     tabId,
@@ -296,7 +305,7 @@ function DashboardTabs({ idOrSlug, selectedTabIndex = 0 }: DashboardTabsProps) {
             return tabConfig && (tabConfig.type === 'TAB' || tabConfig.meta) ? 
                 { id: tabId, config: tabConfig } : null;
         })
-        .filter(tab => tab !== null);
+        .filter((tab: any) => tab !== null);
 
     if (validTabs.length === 0) {
         console.error('No valid tab configurations found');
@@ -308,12 +317,12 @@ function DashboardTabs({ idOrSlug, selectedTabIndex = 0 }: DashboardTabsProps) {
             <Global styles={globalStyles} />
             <StyledTabsContainer>
                 <LineEditableTabs
-                    id={tabsComponent.id}
-                    activeKey={tabsComponent.children[activeTabIndex]}
+                    id={tabsComponent!.id}
+                    activeKey={tabsComponent!.children[activeTabIndex]}
                     onChange={handleTabChange}
                     type="card"
                 >
-                    {validTabs.map(tab => (
+                    {validTabs.map((tab: { id: string; config: any }) => (
                         <LineEditableTabs.TabPane
                             key={tab.id}
                             tab={tab.config.meta?.text || tab.config.id || t('Untitled')}

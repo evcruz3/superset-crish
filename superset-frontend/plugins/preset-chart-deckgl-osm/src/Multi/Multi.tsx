@@ -25,9 +25,9 @@ import {
   t,
 } from '@superset-ui/core'
 import { Layer } from '@deck.gl/core'
-import { Slider, DatePicker } from 'antd'
+import { DatePicker } from 'antd'
 import Icons from 'src/components/Icons'
-import { TextLayer, IconLayer, GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers'
+import { TextLayer, IconLayer } from '@deck.gl/layers'
 import moment from 'moment'
 import { Moment } from 'moment'
 import locale from 'antd/es/date-picker/locale/en_US'
@@ -51,11 +51,11 @@ import layerGenerators from '../layers'
 import { Viewport } from '../utils/fitViewport'
 import { TooltipProps } from '../components/Tooltip'
 import { countries } from '../layers/Country/countries'
-import type { CountryKeys } from '../layers/Country/countries'
+// CountryKeys type is inferred from countries object
 import {
   FeedEntry,
   FeedGeoJSON,
-  FeedLayerProps,
+  FeedLayerProps as FeedLayerPropsImport,
   SelectedRegion,
   ProcessedFeedData,
   FeedFormData,
@@ -73,48 +73,10 @@ moment.updateLocale('en', {
   }
 });
 
-// Custom Card component
-const Card: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style = {} }) => (
-  <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', ...style }}>
-    {children}
-  </div>
-)
+// Removed unused components: Card, CardHeader, CardTitle, GuideText
 
-const CardHeader: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
-  <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
-    {children}
-  </div>
-)
-
-const CardTitle: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
-  <h3 style={{ 
-    fontSize: '0.875rem', 
-    fontWeight: '600', 
-    color: '#1f2937', 
-    marginBottom: '0.5rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em'
-  }}>
-    {children}
-  </h3>
-)
-
-const GuideText = styled.p`
-  font-size: 0.7rem;
-  color: #6b7280;
-  margin: 0;
-  line-height: 1.5;
-  font-style: italic;
-
-  span {
-    display: block;
-    margin-bottom: 0.35rem;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-`
+// Type alias for CountryKeys  
+type CountryKeys = keyof typeof countries;
 
 // const CardContent: React.FC<React.PropsWithChildren> = ({ children }) => (
 //   <div style={{ padding: '1rem' }}>
@@ -122,27 +84,10 @@ const GuideText = styled.p`
 //   </div>
 // )
 
-// Custom Checkbox component
-const Checkbox: React.FC<{
-  id: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}> = ({ id, checked, onCheckedChange }) => (
-  <input
-    type="checkbox"
-    id={id}
-    checked={checked}
-    onChange={(e) => onCheckedChange(e.target.checked)}
-    style={{ height: '1rem', width: '1rem', color: '#2563eb', transition: 'all 150ms ease-in-out' }}
-  />
-)
+// Removed unused components: Checkbox, Label
 
-// Custom Label component
-const Label: React.FC<React.PropsWithChildren<{ htmlFor: string }>> = ({ children, htmlFor }) => (
-  <label htmlFor={htmlFor} style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
-    {children}
-  </label>
-)
+// Type alias for FeedLayerProps to avoid naming conflict
+type FeedLayerProps = FeedLayerPropsImport;
 
 const geoJsonCache: { [key: string]: JsonObject } = {};
 
@@ -657,7 +602,7 @@ interface ExtendedLayer extends Layer {
 }
 
 // Add type definitions for the form data
-interface SubsliceFormData {
+interface SubsliceFormData extends QueryFormData {
   viz_type: string;
   filters?: any[];
   temporal_column?: string;
@@ -687,7 +632,8 @@ const getLargestTimeGrain = (timeGrains: string[]): string => {
   }, 'P1D'); // Default to daily if no valid grains found
 };
 
-const aggregateDataToTimeGrain = (
+// Unused function - commenting out to avoid type errors
+/* const aggregateDataToTimeGrain = (
   data: JsonObject[],
   sourceColumn: string,
   sourceGrain: string,
@@ -854,7 +800,7 @@ const aggregateDataToTimeGrain = (
   });
 
   return result;
-};
+}; */
 
 const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
   const dates: Date[] = [];
@@ -899,7 +845,7 @@ interface GeoJsonLoadingState {
 // Update the FeedLayerState interface
 interface FeedLayerState {
   geoJson: Record<number, FeedGeoJSON>;
-  selectedRegions: Record<number, SelectedRegion>;
+  selectedRegions: Record<number, SelectedRegion | null>;
   loadingState: GeoJsonLoadingState;
 }
 
@@ -986,7 +932,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     if (data.type !== 'FeatureCollection') return false;
     if (!Array.isArray(data.features)) return false;
     
-    return data.features.every(feature => {
+    return data.features.every((feature: any) => {
       if (!feature || typeof feature !== 'object') return false;
       if (feature.type !== 'Feature') return false;
       if (!feature.geometry || typeof feature.geometry !== 'object') return false;
@@ -1086,6 +1032,7 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, []);
 
+  /* Unused function - commented out
   const panToFeature = useCallback((feature: FeedGeoJSONFeature) => {
     
     try {
@@ -1114,10 +1061,10 @@ const DeckMulti = (props: DeckMultiProps) => {
     } catch (error) {
       console.error('Error calculating feature bounds:', error);
     }
-  }, [viewport, setViewport]);
+  }, [viewport, setViewport]); */
 
   // Add retry function for failed loads
-  const retryGeoJsonLoad = useCallback((sliceId: number, country: string) => {
+  /* const retryGeoJsonLoad = useCallback((sliceId: number, country: string) => {
     setFeedLayerState(prev => ({
       ...prev,
       loadingState: {
@@ -1126,7 +1073,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       },
     }));
     loadGeoJson(sliceId, country);
-  }, [loadGeoJson]);
+  }, [loadGeoJson]); */
 
   // Function to create layer based on filtered data
   const createLayer = useCallback((
@@ -1237,9 +1184,9 @@ const DeckMulti = (props: DeckMultiProps) => {
                           category: row['categorical_value'],
                         }
                       })
-                      .filter(item => item.category !== undefined && item.category !== null) // Filter out null/undefined categories
-                      .sort((a, b) => a.time - b.time)
-                      .map(item => ({
+                      .filter((item: any) => item.category !== undefined && item.category !== null) // Filter out null/undefined categories
+                      .sort((a: any, b: any) => a.time - b.time)
+                      .map((item: any) => ({
                         ...item,
                         timeFormatted: moment(item.time).format(subslice.form_data.date_format || 'DD MMM YYYY') // Format time
                       }));
@@ -1251,7 +1198,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                         <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
                           <h4>{subslice.form_data.categorical_column_label || categoricalColumn} Over Time</h4>
                           <ul style={{ listStyle: 'none', padding: 0 }}>
-                            {categoryTimelineData.map((item, index) => (
+                            {categoryTimelineData.map((item: any, index: any) => (
                               <li key={index} style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1609,8 +1556,8 @@ const DeckMulti = (props: DeckMultiProps) => {
     console.log('Toggling Layer Visibility:', {
       layerId,
       currentVisibility: visibleLayers[layerId],
-      layerType: props.payload.data.slices.find(s => s.slice_id === layerId)?.form_data.viz_type,
-      isFeedLayer: props.payload.data.slices.find(s => s.slice_id === layerId)?.form_data.viz_type === 'deck_feed'
+      layerType: props.payload.data.slices.find((s: any) => s.slice_id === layerId)?.form_data.viz_type,
+      isFeedLayer: props.payload.data.slices.find((s: any) => s.slice_id === layerId)?.form_data.viz_type === 'deck_feed'
     });
     
     setVisibleLayers(prev => {
@@ -1706,7 +1653,7 @@ const DeckMulti = (props: DeckMultiProps) => {
       .filter((id) => visibleLayers[id])
       .forEach((id) => {
         const layerGroup = subSlicesLayers[id];
-        const layerType = props.payload.data.slices.find(slice => slice.slice_id === id)?.form_data.viz_type;
+        const layerType = props.payload.data.slices.find((slice: any) => slice.slice_id === id)?.form_data.viz_type;
 
         // Ensure layerGroup is an array before iterating
         if (Array.isArray(layerGroup)) {
@@ -2382,7 +2329,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         {layerOrder
           .filter(id => visibleLayers[id])
           .map(id => {
-            const subslice = props.payload.data.slices.find(slice => slice.slice_id === id);
+            const subslice = props.payload.data.slices.find((slice: any) => slice.slice_id === id);
             const layer = subSlicesLayers[id]?.[0] as ExtendedLayer;
             
             if (!subslice || !layer) return null;

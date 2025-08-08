@@ -28,6 +28,8 @@ export interface FeedEntry {
   title: string;
   message: string;
   date?: string;
+  country_id?: string;
+  metric?: number;
   [key: string]: any; // Allow additional properties
 }
 
@@ -65,6 +67,7 @@ export interface FeedGeoJSONProperties {
   ADM1?: string;
   name?: string;
   NAME?: string;
+  id?: string;
   metric?: number;
   metricValue?: number;
   fillColor?: [number, number, number, number];

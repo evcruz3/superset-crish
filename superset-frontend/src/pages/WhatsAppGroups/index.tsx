@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { styled, t } from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
-import ListView, { ListViewProps, Filter, FilterOperator } from 'src/components/ListView';
+import ListView, { Filter, FilterOperator } from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import { WhatsAppGroup } from './types'; // Updated import
 import WhatsAppGroupCard from './WhatsAppGroupCard'; // Uncommented

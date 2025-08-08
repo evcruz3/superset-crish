@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { styled, t, useTheme } from '@superset-ui/core';
+import { styled, t } from '@superset-ui/core';
 import { LineEditableTabs } from 'src/components/Tabs';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
-import DashboardTabs, { ChartContainer, StyledTabsContainer, TabContentContainer } from './DashboardTabs';
+import { ChartContainer, StyledTabsContainer, TabContentContainer } from './DashboardTabs';
 import Trendlines from './Trendlines';
 import { SupersetClient } from '@superset-ui/core';
 
@@ -37,7 +37,6 @@ interface PullHistoryType {
 }
 
 function WeatherForecasts() {
-    const theme = useTheme();
     const [activeTab, setActiveTab] = useState('1');
     const [lastPullInfo, setLastPullInfo] = useState<PullHistoryType | null>(null);
     const [lastPullLoading, setLastPullLoading] = useState(false);

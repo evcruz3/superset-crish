@@ -30,7 +30,6 @@ export const DashboardPageWrapper = ({ idOrSlug }: DashboardPageWrapperProps) =>
   return (
     <DashboardPage 
       idOrSlug={idOrSlug}
-      forceHideNativeFilters 
     />
   );
 };
