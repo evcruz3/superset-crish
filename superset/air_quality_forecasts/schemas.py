@@ -1,20 +1,28 @@
 from marshmallow import Schema, fields
 from flask_appbuilder.api import get_list_schema
 
+class PollutantDataSchema(Schema):
+    status = fields.String(required=True)
+    color = fields.String(required=True)
+    value = fields.Float(required=True)
+
+class TimestampSchema(Schema):
+    date = fields.String(required=True)
+    timezone_type = fields.Integer(required=True)
+    timezone = fields.String(required=True)
+
 class AirQualityForecastSchema(Schema):
-    id = fields.Integer(dump_only=True)
-    municipality_code = fields.String(required=True)
-    municipality_name = fields.String(required=True)
-    forecast_date = fields.Date(required=True)
-    overall_aqi = fields.Integer(required=True)
-    pm25 = fields.Float(allow_none=True)
-    pm10 = fields.Float(allow_none=True)
-    o3 = fields.Float(allow_none=True)
-    no2 = fields.Float(allow_none=True)
-    so2 = fields.Float(allow_none=True)
-    co = fields.Float(allow_none=True)
-    dominant_pollutant = fields.String(allow_none=True)
-    health_advisory = fields.String(allow_none=True)
+    id = fields.String(dump_only=True)
+    station_id = fields.String(allow_none=True)
+    station_name = fields.String(required=True)
+    city_name = fields.String(required=True)
+    latitude = fields.String(allow_none=True)
+    longitude = fields.String(allow_none=True)
+    pm1 = fields.Nested(PollutantDataSchema, allow_none=True)
+    pm25 = fields.Nested(PollutantDataSchema, allow_none=True)
+    pm10 = fields.Nested(PollutantDataSchema, allow_none=True)
+    co2 = fields.Nested(PollutantDataSchema, allow_none=True)
+    ts = fields.Nested(TimestampSchema, required=True)
 
     class Meta:
         ordered = True

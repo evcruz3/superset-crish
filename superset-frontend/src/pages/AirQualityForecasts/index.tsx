@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { styled, useTheme, SupersetClient, SupersetTheme, JsonObject, t } from '@superset-ui/core';
 import { Spin, Alert, Select, Row, Col, DatePicker } from 'antd';
 import { DeckGL } from '@deck.gl/react';
@@ -38,42 +38,6 @@ const DataUpdateInfo = styled.span`
   color: ${({ theme }) => theme.colors.grayscale.base};
 `;
 
-const AQIIndicatorBar = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
-  padding: ${({ theme }) => theme.gridUnit * 2}px;
-  background: ${({ theme }) => theme.colors.grayscale.light5};
-  border-radius: ${({ theme }) => theme.borderRadius}px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-`;
-
-const AQIScale = styled.div`
-  display: flex;
-  flex: 1;
-  height: 40px;
-  border-radius: ${({ theme }) => theme.borderRadius}px;
-  overflow: hidden;
-  margin-right: ${({ theme }) => theme.gridUnit * 3}px;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-`;
-
-const AQIScaleSegment = styled.div<{ color: string; flex: number }>`
-  flex: ${({ flex }) => flex};
-  background: ${({ color }) => color};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: ${({ theme }) => theme.typography.sizes.xs}px;
-  font-weight: ${({ theme }) => theme.typography.weights.medium};
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  border-right: 1px solid rgba(255,255,255,0.2);
-  
-  &:last-child {
-    border-right: none;
-  }
-`;
 
 const CurrentAQIMarker = styled.div<{ position: number }>`
   position: absolute;
@@ -111,7 +75,7 @@ const CurrentAQIMarker = styled.div<{ position: number }>`
 const MapContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
   border-radius: ${({ theme }) => theme.borderRadius}px;
-  height: calc(100vh - 280px);
+  height: calc(100vh - 200px);
   min-height: 500px;
   position: relative;
   display: flex;
@@ -187,22 +151,6 @@ const ForecastCard = styled.div`
     transform: translateY(-2px);
   }
   
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, 
-      #00E400 0%, 
-      #FFFF00 20%, 
-      #FF7E00 40%, 
-      #FF0000 60%, 
-      #8F3F97 80%, 
-      #7E0023 100%);
-  }
-  
   h3 {
     color: ${({ theme }) => theme.colors.grayscale.dark2};
     margin: 0 0 ${({ theme }) => theme.gridUnit * 3}px 0;
@@ -269,12 +217,7 @@ const ForecastCard = styled.div`
   }
 `;
 
-interface PollutantPillProps {
-  aqi: number;
-}
-
-const PollutantPill = styled.span<PollutantPillProps>`
-  background-color: ${({ theme, aqi }) => getAqiColor(aqi, theme, true)};
+const PollutantPill = styled.span`
   color: white;
   padding: ${({ theme }) => theme.gridUnit * 1.5}px ${({ theme }) => theme.gridUnit * 3}px;
   border-radius: 20px;
@@ -323,17 +266,35 @@ const FilterContainer = styled.div`
   }
 `;
 
+interface PollutantData {
+  status: string;
+  color: string;
+  value: number;
+}
+
+interface TimestampData {
+  date: string;
+  timezone_type: number;
+  timezone: string;
+}
+
 interface AirQualityData {
-  municipality_code: string;
-  municipality_name: string;
-  forecast_date: string;
-  overall_aqi: number;
-  pm25?: number;
-  pm10?: number;
-  o3?: number;
-  no2?: number;
-  so2?: number;
-  co?: number;
+  id?: string;
+  station_id?: string;
+  station_name: string;
+  city_name: string;
+  latitude: string;
+  longitude: string;
+  pm1?: PollutantData;
+  pm25?: PollutantData;
+  pm10?: PollutantData;
+  co2?: PollutantData;
+  ts: TimestampData;
+  // Legacy fields for backward compatibility
+  municipality_code?: string;
+  municipality_name?: string;
+  forecast_date?: string;
+  overall_aqi?: number;
   dominant_pollutant?: string;
   health_advisory?: string;
 }
@@ -344,6 +305,59 @@ const INITIAL_VIEW_STATE = {
   zoom: 7.5,
   pitch: 0,
   bearing: 0,
+};
+
+// Helper function to process raw API data into trendline format
+const processTrendlineData = (
+  rawData: AirQualityData[], 
+  selectedStations: string[], 
+  selectedPollutants: string[]
+) => {
+  // Group data by date
+  const dataByDate: { [date: string]: any } = {};
+  const seriesKeys: string[] = [];
+  
+  // If no stations selected, use all available stations from the data
+  const stationIds = selectedStations.length > 0 ? selectedStations : 
+    [...new Set(rawData.map(item => item.id || item.station_id || ''))];
+  
+  
+  rawData.forEach(item => {
+    // Extract date from timestamp
+    const date = item.ts.date.split(' ')[0];
+    
+    // Get station identifier
+    const stationId = item.id || item.station_id || '';
+    
+    // Only process selected stations (or all if none selected)
+    if (!stationIds.includes(stationId)) {
+      return;
+    }
+    
+    if (!dataByDate[date]) {
+      dataByDate[date] = { date };
+    }
+    
+    // Process each selected pollutant
+    selectedPollutants.forEach(pollutant => {
+      const pollutantData = item[pollutant as keyof AirQualityData] as PollutantData;
+      if (pollutantData && typeof pollutantData === 'object' && 'value' in pollutantData) {
+        const seriesKey = `${pollutant}_${item.station_name.replace(/\s+/g, '_')}`;
+        dataByDate[date][seriesKey] = pollutantData.value;
+        
+        if (!seriesKeys.includes(seriesKey)) {
+          seriesKeys.push(seriesKey);
+        }
+      }
+    });
+  });
+  
+  // Convert to array and sort by date
+  const data = Object.values(dataByDate).sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  
+  return { data, keys: seriesKeys };
 };
 
 const AQI_LEVELS = [
@@ -401,9 +415,9 @@ export default function AirQualityForecastsPage() {
   const [geojson, setGeojson] = useState<JsonObject | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMunicipality, setSelectedMunicipality] = useState<string>("TL-DI");
+  const [selectedStation, setSelectedStation] = useState<string>("1");
   const [hoverInfo, setHoverInfo] = useState<any>(null);
-  const [selectedPollutant, setSelectedPollutant] = useState<string>('overall_aqi');
+  const [selectedPollutant, setSelectedPollutant] = useState<string>('pm25');
   const [selectedDate, setSelectedDate] = useState(moment());
   const [lastAirQualityRunInfo, setLastAirQualityRunInfo] = useState<PipelineRunHistoryType | null>(null);
   const [lastAirQualityRunLoading, setLastAirQualityRunLoading] = useState(false);
@@ -411,24 +425,35 @@ export default function AirQualityForecastsPage() {
   // State for Trendline Tab
   const [trendlineData, setTrendlineData] = useState<any[]>([]); // For Recharts data array
   const [trendlineSeriesKeys, setTrendlineSeriesKeys] = useState<string[]>([]); // To store dynamic series keys
-  const [selectedTrendPollutants, setSelectedTrendPollutants] = useState<string[]>(['pm25', 'pm10']);
-  const [selectedTrendMunicipalities, setSelectedTrendMunicipalities] = useState<string[]>(["TL-DI", "TL-BA"]);
+  const [selectedTrendPollutants, setSelectedTrendPollutants] = useState<string[]>(['pm1', 'pm25']);
+  const [selectedTrendStations, setSelectedTrendStations] = useState<string[]>(["1", "2"]);
   const [trendlineLoading, setTrendlineLoading] = useState(false); 
   const [trendlineError, setTrendlineError] = useState<string | null>(null); 
 
   const ALL_POLLUTANTS_OPTIONS = [
+    { label: t('PM1'), value: 'pm1' },
     { label: t('PM2.5'), value: 'pm25' },
     { label: t('PM10'), value: 'pm10' },
-    { label: t('Ozone (O₃)'), value: 'o3' },
-    { label: t('Nitrogen Dioxide (NO₂)'), value: 'no2' },
-    { label: t('Sulfur Dioxide (SO₂)'), value: 'so2' },
-    { label: t('Carbon Monoxide (CO)'), value: 'co' },
+    { label: t('Carbon Dioxide (CO₂)'), value: 'co2' },
   ];
 
-  const municipalitiesOptions = geojson?.features?.map((f: any) => ({ 
-      label: f.properties.ADM1, 
-      value: f.properties.ISO 
-  })) || [];
+  // Create station options from the map data
+  const stationOptions = useMemo(() => {
+    if (mapForecastData && mapForecastData.length > 0) {
+      return mapForecastData.map((station: AirQualityData) => ({ 
+        label: `${station.station_name} - ${station.city_name}`, 
+        value: station.id || station.station_id || ''
+      }));
+    }
+    // Default stations if no data loaded yet
+    return [
+      { label: 'Dili Environmental Station - Dili', value: '1' },
+      { label: 'Baucau MET Office - Baucau', value: '2' },
+      { label: 'Manatuto Monitoring Station - Manatuto', value: '3' },
+      { label: 'Viqueque Environmental Office - Viqueque', value: '4' },
+      { label: 'Aileu Highland Station - Aileu', value: '5' }
+    ];
+  }, [mapForecastData]);
 
   // Format date for display
   const formatDisplayDate = useCallback((dateString: string) => {
@@ -450,25 +475,18 @@ export default function AirQualityForecastsPage() {
   const fetchLastAirQualityRun = useCallback(async () => {
     setLastAirQualityRunLoading(true);
     try {
-      console.log("[Air Quality Pipeline Run] Fetching last successful run info");
       const response = await SupersetClient.get({
         endpoint: '/api/v1/air_quality_pipeline_run_history/last_successful_run',
         headers: { Accept: 'application/json' },
       });
       
-      console.log("[Air Quality Pipeline Run] Response:", response.json);
-      
       if (response.json?.result) {
         setLastAirQualityRunInfo(response.json.result);
-        console.log("[Air Quality Pipeline Run] Last successful run:", response.json.result.ran_at);
       } else {
-        console.log("[Air Quality Pipeline Run] No successful run info available");
         setLastAirQualityRunInfo(null);
       }
     } catch (error) {
-      if (error.status === 404) {
-        console.log("[Air Quality Pipeline Run] No successful run history found");
-      } else {
+      if (error.status !== 404) {
         console.error('Error fetching last air quality run info:', error);
       }
       setLastAirQualityRunInfo(null);
@@ -490,9 +508,9 @@ export default function AirQualityForecastsPage() {
       setError(null);
       try {
         const response = await SupersetClient.get({
-          endpoint: `/api/v1/air_quality_forecast/forecasts?municipality_code=${selectedMunicipality}&days=10`,
+          endpoint: `/api/v1/air_quality_forecast/forecast?station_id=${selectedStation}&days=10`,
         });
-        setForecastData(response.json.result);
+        setForecastData(response.json.data || []);
       } catch (e) {
         console.error('Failed to fetch card forecast data:', e);
         setError('Failed to load 10-day forecast data.');
@@ -500,7 +518,7 @@ export default function AirQualityForecastsPage() {
       setLoading(false);
     };
     fetchCardData();
-  }, [selectedMunicipality, activeTab]);
+  }, [selectedStation, activeTab]);
 
   useEffect(() => {
     if (activeTab !== '1') return;
@@ -521,9 +539,9 @@ export default function AirQualityForecastsPage() {
         }
 
         const mapDataResponse = await SupersetClient.get({
-          endpoint: `/api/v1/air_quality_forecast/map?forecast_date=${selectedDate.format('YYYY-MM-DD')}`,
+          endpoint: `/api/v1/air_quality_forecast/current`,
         });
-        setMapForecastData(mapDataResponse.json.result);
+        setMapForecastData(mapDataResponse.json.data || []);
 
       } catch (e: any) {
         console.error('Failed to fetch map resources:', e);
@@ -544,19 +562,15 @@ export default function AirQualityForecastsPage() {
       setTrendlineError(null);
       try {
         const response = await SupersetClient.get({
-          endpoint: `/api/v1/air_quality_forecast/trends?municipalities=${selectedTrendMunicipalities.join(',')}&pollutants=${selectedTrendPollutants.join(',')}&days=7`,
+          endpoint: `/api/v1/air_quality_forecast/daily?days=7`,
         });
-        const apiData = response.json.result;
-        setTrendlineData(apiData);
-
-        // Dynamically generate series keys from the first data point (if data exists)
-        if (apiData && apiData.length > 0) {
-          const firstPoint = apiData[0];
-          const keys = Object.keys(firstPoint).filter(key => key !== 'date');
-          setTrendlineSeriesKeys(keys);
-        } else {
-          setTrendlineSeriesKeys([]);
-        }
+        const rawData = response.json.data || [];
+        
+        // Process the raw data to create trendline format
+        const processedData = processTrendlineData(rawData, selectedTrendStations, selectedTrendPollutants);
+        
+        setTrendlineData(processedData.data);
+        setTrendlineSeriesKeys(processedData.keys);
 
       } catch (e) {
         console.error('Failed to fetch trendline data:', e);
@@ -567,13 +581,14 @@ export default function AirQualityForecastsPage() {
       setTrendlineLoading(false);
     };
 
-    if (selectedTrendMunicipalities.length > 0 && selectedTrendPollutants.length > 0) {
+    // Check if stations and pollutants are selected
+    if (selectedTrendStations.length > 0 && selectedTrendPollutants.length > 0) {
         fetchTrendlineData();
     } else {
         setTrendlineData([]);
         setTrendlineSeriesKeys([]);
     }
-  }, [activeTab, selectedTrendPollutants, selectedTrendMunicipalities]);
+  }, [activeTab, selectedTrendPollutants, selectedTrendStations]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -582,63 +597,63 @@ export default function AirQualityForecastsPage() {
   const renderForecasts = () => {
     if (loading && activeTab === '2') return <Spin tip="Loading forecast data..." />;
     if (error && activeTab === '2') return <Alert message={error} type="error" showIcon />;
-    if (!forecastData || forecastData.length === 0 && activeTab === '2') return <Alert message="No forecast data available for the selected municipality." type="info" showIcon />;
+    if (!forecastData || forecastData.length === 0 && activeTab === '2') return <Alert message="No forecast data available for the selected station." type="info" showIcon />;
 
     return forecastData.map((data, index) => {
-      const aqiLevel = AQI_LEVELS.find(l => data.overall_aqi >= l.range[0] && data.overall_aqi <= l.range[1]);
+      // Get the worst pollutant status for display
+      const pollutants = [data.pm1, data.pm25, data.pm10, data.co2].filter(p => p);
+      const worstPollutant = pollutants.reduce((worst, current) => {
+        if (!worst) return current;
+        const statusOrder = ['Good', 'Normal', 'Moderate', 'Unhealthy for Sensitive Groups', 'Unhealthy', 'Very Unhealthy', 'Hazardous'];
+        return statusOrder.indexOf(current.status) > statusOrder.indexOf(worst.status) ? current : worst;
+      }, null as PollutantData | null);
       
       return (
         <ForecastCard key={index}>
           <div className="forecast-header">
-            <h3>{moment(data.forecast_date).format('dddd, DD MMMM YYYY')}</h3>
-            <PollutantPill aqi={data.overall_aqi}>AQI {data.overall_aqi}</PollutantPill>
+            <h3>{moment(data.ts.date).format('dddd, DD MMMM YYYY')}</h3>
+            {worstPollutant && (
+              <PollutantPill style={{ backgroundColor: worstPollutant.color, color: '#fff' }}>
+                {worstPollutant.status}
+              </PollutantPill>
+            )}
           </div>
           
           <p style={{ color: theme.colors.grayscale.base, marginBottom: theme.gridUnit * 2 }}>
-            {data.municipality_name} • {aqiLevel?.description}
+            {data.station_name} • {data.city_name}
           </p>
           
           <div className="pollutant-grid">
-            {data.pm25 && (
-              <div className="pollutant-item">
-                <div className="pollutant-name">PM2.5</div>
-                <div className="pollutant-value">{data.pm25}</div>
+            {data.pm1 && (
+              <div className="pollutant-item" style={{ borderLeft: `4px solid ${data.pm1.color}` }}>
+                <div className="pollutant-name">PM1</div>
+                <div className="pollutant-value">{data.pm1.value}</div>
                 <div className="pollutant-unit">µg/m³</div>
+                <div style={{ fontSize: '12px', color: data.pm1.color, marginTop: '4px' }}>{data.pm1.status}</div>
+              </div>
+            )}
+            {data.pm25 && (
+              <div className="pollutant-item" style={{ borderLeft: `4px solid ${data.pm25.color}` }}>
+                <div className="pollutant-name">PM2.5</div>
+                <div className="pollutant-value">{data.pm25.value}</div>
+                <div className="pollutant-unit">µg/m³</div>
+                <div style={{ fontSize: '12px', color: data.pm25.color, marginTop: '4px' }}>{data.pm25.status}</div>
               </div>
             )}
             {data.pm10 && (
-              <div className="pollutant-item">
+              <div className="pollutant-item" style={{ borderLeft: `4px solid ${data.pm10.color}` }}>
                 <div className="pollutant-name">PM10</div>
-                <div className="pollutant-value">{data.pm10}</div>
+                <div className="pollutant-value">{data.pm10.value}</div>
                 <div className="pollutant-unit">µg/m³</div>
+                <div style={{ fontSize: '12px', color: data.pm10.color, marginTop: '4px' }}>{data.pm10.status}</div>
               </div>
             )}
-            {data.o3 && (
-              <div className="pollutant-item">
-                <div className="pollutant-name">O₃</div>
-                <div className="pollutant-value">{data.o3}</div>
+            {data.co2 && (
+              <div className="pollutant-item" style={{ borderLeft: `4px solid ${data.co2.color}` }}>
+                <div className="pollutant-name">CO₂</div>
+                <div className="pollutant-value">{data.co2.value}</div>
                 <div className="pollutant-unit">ppm</div>
-              </div>
-            )}
-            {data.no2 && (
-              <div className="pollutant-item">
-                <div className="pollutant-name">NO₂</div>
-                <div className="pollutant-value">{data.no2}</div>
-                <div className="pollutant-unit">ppm</div>
-              </div>
-            )}
-            {data.so2 && (
-              <div className="pollutant-item">
-                <div className="pollutant-name">SO₂</div>
-                <div className="pollutant-value">{data.so2}</div>
-                <div className="pollutant-unit">ppm</div>
-              </div>
-            )}
-            {data.co && (
-              <div className="pollutant-item">
-                <div className="pollutant-name">CO</div>
-                <div className="pollutant-value">{data.co}</div>
-                <div className="pollutant-unit">ppm</div>
+                <div style={{ fontSize: '12px', color: data.co2.color, marginTop: '4px' }}>{data.co2.status}</div>
               </div>
             )}
           </div>
@@ -664,34 +679,49 @@ export default function AirQualityForecastsPage() {
     setHoverInfo(info);
   };
 
-  const geoJsonLayer = geojson && new GeoJsonLayer<JsonObject, GeoJsonLayerProps<JsonObject>>({
-    id: 'geojson-layer',
-    data: geojson as any,
+  // Create station markers instead of municipality polygons
+  const stationMarkers = mapForecastData.map(station => {
+    const pollutantData = station[selectedPollutant as keyof AirQualityData] as PollutantData;
+    const color = pollutantData?.color || '#808080';
+    
+    return {
+      type: 'Feature',
+      properties: {
+        ...station,
+        color,
+        value: pollutantData?.value,
+        status: pollutantData?.status
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [parseFloat(station.longitude), parseFloat(station.latitude)]
+      }
+    };
+  });
+
+  const stationLayer = new GeoJsonLayer<JsonObject, GeoJsonLayerProps<JsonObject>>({
+    id: 'station-layer',
+    data: {
+      type: 'FeatureCollection',
+      features: stationMarkers
+    } as any,
     pickable: true,
     stroked: true,
     filled: true,
-    lineWidthMinPixels: 1,
+    pointType: 'circle',
+    getPointRadius: 8000, // 8km radius
     getFillColor: (d: any) => {
-        const municipalityCode = d.properties.ISO;
-        const forecast = mapForecastData.find(f => f.municipality_code === municipalityCode);
-        const aqiValue = forecast ? forecast[selectedPollutant as keyof AirQualityData] as number : undefined;
-        if (selectedPollutant !== 'overall_aqi' && aqiValue !== undefined) {
-            if (selectedPollutant === 'pm25') {
-                if (aqiValue <= 12) return [0, 255, 0, 180];
-                if (aqiValue <= 35.4) return [255, 255, 0, 180];
-                if (aqiValue <= 55.4) return [255, 165, 0, 180];
-                if (aqiValue <= 150.4) return [255, 0, 0, 180];
-                if (aqiValue <= 250.4) return [128, 0, 128, 180];
-                return [128, 0, 0, 180];
-            }
-            return getAqiColor(aqiValue, theme) as [number,number,number,number];
-        }
-        return aqiValue !== undefined ? getAqiColor(aqiValue, theme) as [number,number,number,number] : [200, 200, 200, 100];
+      const hex = d.properties.color || '#808080';
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return [r, g, b, 200];
     },
-    getLineColor: [0,0,0,200],
+    getLineColor: [0, 0, 0, 255],
+    lineWidthMinPixels: 2,
     onHover: onHover,
     updateTriggers: {
-        getFillColor: [mapForecastData, selectedPollutant]
+      getFillColor: [mapForecastData, selectedPollutant]
     }
   });
 
@@ -713,30 +743,76 @@ export default function AirQualityForecastsPage() {
   });
 
   const renderMapLegend = () => {
-    const legendLevels = AQI_LEVELS;
-    const pollutantName = selectedPollutant === 'overall_aqi' ? 'AQI' : selectedPollutant.toUpperCase();
+    // Define pollutant-specific levels
+    const getPollutantLevels = () => {
+      switch(selectedPollutant) {
+        case 'pm1':
+          return [
+            { label: t('Good'), color: '#2ecc40', range: '0-10' },
+            { label: t('Moderate'), color: '#f3eb12', range: '11-20' },
+            { label: t('Unhealthy for Sensitive Groups'), color: '#f39a3a', range: '21-30' },
+            { label: t('Unhealthy'), color: '#e62d39', range: '31-40' },
+            { label: t('Very Unhealthy'), color: '#8b008b', range: '40+' }
+          ];
+        case 'pm25':
+          return [
+            { label: t('Good'), color: '#2ecc40', range: '0-50' },
+            { label: t('Moderate'), color: '#f3eb12', range: '51-100' },
+            { label: t('Unhealthy for Sensitive Groups'), color: '#f39a3a', range: '101-150' },
+            { label: t('Unhealthy'), color: '#e62d39', range: '151-200' },
+            { label: t('Very Unhealthy'), color: '#8b008b', range: '201-300' },
+            { label: t('Hazardous'), color: '#7e0023', range: '300+' }
+          ];
+        case 'pm10':
+          return [
+            { label: t('Good'), color: '#2ecc40', range: '0-50' },
+            { label: t('Moderate'), color: '#f3eb12', range: '51-100' },
+            { label: t('Unhealthy for Sensitive Groups'), color: '#f39a3a', range: '101-150' },
+            { label: t('Unhealthy'), color: '#e62d39', range: '151-200' },
+            { label: t('Very Unhealthy'), color: '#8b008b', range: '201-300' },
+            { label: t('Hazardous'), color: '#7e0023', range: '300+' }
+          ];
+        case 'co2':
+          return [
+            { label: t('Normal'), color: '#2ecc40', range: '0-400' },
+            { label: t('Moderate'), color: '#f3eb12', range: '401-600' },
+            { label: t('Poor'), color: '#f39a3a', range: '601-1000' },
+            { label: t('Very Poor'), color: '#e62d39', range: '1000+' }
+          ];
+        default:
+          return [];
+      }
+    };
+
+    const levels = getPollutantLevels();
+    const pollutantNames = {
+      'pm1': 'PM1',
+      'pm25': 'PM2.5', 
+      'pm10': 'PM10',
+      'co2': 'CO₂'
+    };
+    const pollutantName = pollutantNames[selectedPollutant] || selectedPollutant.toUpperCase();
+    const unit = selectedPollutant === 'co2' ? 'ppm' : 'µg/m³';
 
     return (
       <LegendContainer>
-        <h4>{pollutantName} {t('Scale')}</h4>
-        {legendLevels.map(level => (
+        <h4>{pollutantName} {t('Scale')} ({unit})</h4>
+        {levels.map(level => (
           <div key={level.label} className="legend-item">
             <div 
               className="legend-color" 
               style={{ backgroundColor: level.color }} 
             />
             <div className="legend-label">{level.label}</div>
-            <div className="legend-range">
-              {level.range[0]}-{level.range[1] === Infinity ? '500+' : level.range[1]}
-            </div>
+            <div className="legend-range">{level.range}</div>
           </div>
         ))}
       </LegendContainer>
     );
   };
 
-  const handleMunicipalityChange = (value: string) => {
-    setSelectedMunicipality(value);
+  const handleStationChange = (value: string) => {
+    setSelectedStation(value);
   };
 
   const handlePollutantChange = (value: string) => {
@@ -770,12 +846,10 @@ export default function AirQualityForecastsPage() {
                     placeholder="Select pollutant"
                   >
                     <Option value="overall_aqi">{t('Overall AQI')}</Option>
+                    <Option value="pm1">{t('PM1 Particulate')}</Option>
                     <Option value="pm25">{t('PM2.5 Particulate')}</Option>
                     <Option value="pm10">{t('PM10 Particulate')}</Option>
-                    <Option value="o3">{t('Ozone (O₃)')}</Option>
-                    <Option value="no2">{t('Nitrogen Dioxide (NO₂)')}</Option>
-                    <Option value="so2">{t('Sulfur Dioxide (SO₂)')}</Option>
-                    <Option value="co">{t('Carbon Monoxide (CO)')}</Option>
+                    <Option value="co2">{t('Carbon Dioxide (CO₂)')}</Option>
                   </Select>
                   
                   <span className="filter-label">{t('Date')}:</span>
@@ -788,37 +862,15 @@ export default function AirQualityForecastsPage() {
                   />
                 </FilterContainer>
                 
-                {/* AQI Scale Indicator */}
-                <AQIIndicatorBar>
-                  <AQIScale>
-                    {AQI_LEVELS.map((level, index) => (
-                      <AQIScaleSegment 
-                        key={index} 
-                        color={level.color} 
-                        flex={index === AQI_LEVELS.length - 1 ? 2 : 1}
-                      >
-                        {level.range[0]}
-                      </AQIScaleSegment>
-                    ))}
-                  </AQIScale>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: theme.typography.sizes.s, color: theme.colors.grayscale.base }}>
-                      {t('Air Quality Index Scale')}
-                    </div>
-                  </div>
-                </AQIIndicatorBar>
-                
                 <MapContainer>
                   <DeckGL
                     initialViewState={INITIAL_VIEW_STATE}
                     controller={true}
-                    layers={[baseMapLayer, geoJsonLayer].filter(Boolean) as any}
+                    layers={[baseMapLayer, stationLayer].filter(Boolean) as any}
                   >
                     {hoverInfo && hoverInfo.object && (() => {
-                      const municipalityData = mapForecastData.find(f => f.municipality_code === hoverInfo.object.properties.ISO);
-                      const value = municipalityData?.[selectedPollutant as keyof AirQualityData];
-                      const aqiLevel = selectedPollutant === 'overall_aqi' && value ? 
-                        AQI_LEVELS.find(l => value >= l.range[0] && value <= l.range[1]) : null;
+                      const stationData = hoverInfo.object.properties;
+                      const pollutantData = stationData[selectedPollutant] as PollutantData;
                       
                       return (
                         <div style={{
@@ -844,37 +896,39 @@ export default function AirQualityForecastsPage() {
                               marginBottom: theme.gridUnit * 2,
                               color: theme.colors.grayscale.dark2
                             }}>
-                              {hoverInfo.object.properties.ADM1}
+                              {stationData.station_name}
                             </div>
                             
-                            <div style={{ display: 'flex', alignItems: 'center', gap: theme.gridUnit * 2 }}>
-                              <div style={{ 
-                                fontSize: theme.typography.sizes.xl,
-                                fontWeight: theme.typography.weights.bold,
-                                color: aqiLevel ? aqiLevel.color : theme.colors.grayscale.dark1
-                              }}>
-                                {value || 'N/A'}
-                              </div>
-                              <div style={{ fontSize: theme.typography.sizes.s, color: theme.colors.grayscale.base }}>
-                                {selectedPollutant === 'overall_aqi' ? 'AQI' : 
-                                 (selectedPollutant === 'pm25' || selectedPollutant === 'pm10' ? 'µg/m³' : 'ppm')}
-                              </div>
+                            <div style={{ 
+                              fontSize: theme.typography.sizes.s,
+                              marginBottom: theme.gridUnit * 2,
+                              color: theme.colors.grayscale.base
+                            }}>
+                              {stationData.city_name}
                             </div>
                             
-                            {selectedPollutant === 'overall_aqi' && aqiLevel && (
-                              <div style={{ 
-                                marginTop: theme.gridUnit * 2,
-                                paddingTop: theme.gridUnit * 2,
-                                borderTop: `1px solid ${theme.colors.grayscale.light2}`
-                              }}>
-                                <div style={{ fontSize: theme.typography.sizes.s, color: aqiLevel.color, fontWeight: theme.typography.weights.medium }}>
-                                  {aqiLevel.label}
-                                </div>
-                                {municipalityData?.dominant_pollutant && (
-                                  <div style={{ fontSize: theme.typography.sizes.xs, color: theme.colors.grayscale.base, marginTop: theme.gridUnit }}>
-                                    Primary: {municipalityData.dominant_pollutant}
+                            {pollutantData && (
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: theme.gridUnit * 2 }}>
+                                  <div style={{ 
+                                    fontSize: theme.typography.sizes.xl,
+                                    fontWeight: theme.typography.weights.bold,
+                                    color: pollutantData.color
+                                  }}>
+                                    {pollutantData.value}
                                   </div>
-                                )}
+                                  <div style={{ fontSize: theme.typography.sizes.s, color: theme.colors.grayscale.base }}>
+                                    {selectedPollutant === 'co2' ? 'ppm' : 'µg/m³'}
+                                  </div>
+                                </div>
+                                <div style={{ 
+                                  fontSize: theme.typography.sizes.s,
+                                  marginTop: theme.gridUnit,
+                                  color: pollutantData.color,
+                                  fontWeight: theme.typography.weights.medium
+                                }}>
+                                  {pollutantData.status}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -919,15 +973,15 @@ export default function AirQualityForecastsPage() {
         <LineEditableTabs.TabPane tab={t("10-Day Forecast")} key="2">
           <TabContentContainer>
             <FilterContainer>
-              <span className="filter-label">{t('Municipality')}:</span>
+              <span className="filter-label">{t('Station')}:</span>
               <Select 
-                value={selectedMunicipality} 
-                onChange={handleMunicipalityChange}
+                value={selectedStation} 
+                onChange={handleStationChange}
                 loading={loading && activeTab === '1'}
-                disabled={!geojson}
-                placeholder="Select municipality"
+                disabled={stationOptions.length === 0}
+                placeholder="Select station"
               >
-                {municipalitiesOptions.map((m: {label: string, value: string}) => (
+                {stationOptions.map((m: {label: string, value: string}) => (
                   <Option key={m.value} value={m.value}>{m.label}</Option>
                 ))}
               </Select>
@@ -938,15 +992,15 @@ export default function AirQualityForecastsPage() {
         <LineEditableTabs.TabPane tab={t("Trendlines")} key="3">
           <TabContentContainer>
             <FilterContainer>
-              <span className="filter-label">{t('Municipalities')}:</span>
+              <span className="filter-label">{t('Stations')}:</span>
               <Select
                 mode="multiple"
                 allowClear
-                placeholder="Select municipalities"
-                value={selectedTrendMunicipalities}
-                onChange={(value: string[]) => setSelectedTrendMunicipalities(value)}
-                options={municipalitiesOptions} 
-                disabled={!geojson}
+                placeholder="Select stations"
+                value={selectedTrendStations}
+                onChange={(value: string[]) => setSelectedTrendStations(value)}
+                options={stationOptions} 
+                disabled={stationOptions.length === 0}
                 style={{ minWidth: 250 }}
               />
               
@@ -1013,7 +1067,7 @@ export default function AirQualityForecastsPage() {
                       tick={{ fontSize: 12 }}
                       label={{ 
                         value: selectedTrendPollutants.length === 1 ? 
-                          (selectedTrendPollutants[0] === 'pm25' || selectedTrendPollutants[0] === 'pm10' ? 'µg/m³' : 'ppm') : 
+                          (selectedTrendPollutants[0] === 'pm1' || selectedTrendPollutants[0] === 'pm25' || selectedTrendPollutants[0] === 'pm10' ? 'µg/m³' : 'ppm') : 
                           'Value',
                         angle: -90,
                         position: 'insideLeft',
@@ -1043,12 +1097,13 @@ export default function AirQualityForecastsPage() {
                         paddingBottom: theme.gridUnit * 2
                       }}
                       formatter={(value) => {
-                        const parts = value.split('_');
-                        if (parts.length === 2) {
-                          const [pollutant, municipality] = parts;
-                          const municName = municipality.replace(/TLDI/g, 'Dili').replace(/TLBA/g, 'Baucau');
+                        // Format: pollutant_Station_Name_With_Spaces
+                        const firstUnderscore = value.indexOf('_');
+                        if (firstUnderscore !== -1) {
+                          const pollutant = value.substring(0, firstUnderscore);
+                          const stationName = value.substring(firstUnderscore + 1).replace(/_/g, ' ');
                           const pollutantName = ALL_POLLUTANTS_OPTIONS.find(p => p.value === pollutant)?.label || pollutant.toUpperCase();
-                          return `${municName} - ${pollutantName}`;
+                          return `${stationName} - ${pollutantName}`;
                         }
                         return value;
                       }}
@@ -1076,7 +1131,7 @@ export default function AirQualityForecastsPage() {
                 </ResponsiveContainer>
               </div>
             )}
-            {!trendlineLoading && !trendlineError && trendlineData.length === 0 && selectedTrendMunicipalities.length > 0 && selectedTrendPollutants.length > 0 && (
+            {!trendlineLoading && !trendlineError && trendlineData.length === 0 && selectedTrendStations.length > 0 && selectedTrendPollutants.length > 0 && (
                 <Alert message="No trendline data available for the current selection." type="info" showIcon />
             )}
           </TabContentContainer>
