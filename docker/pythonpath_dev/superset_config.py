@@ -161,6 +161,14 @@ WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
 SQLLAB_CTAS_NO_LIMIT = True
 
 
+# Import and configure the custom security manager
+from custom_auth.custom_security_manager import CustomSecurityManager
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager
+
+# Enable user self-registration (required for custom security manager)
+AUTH_USER_REGISTRATION = True
+AUTH_USER_REGISTRATION_ROLE = 'Alpha'
+
 #
 # Optionally import superset_config_docker.py (which will have been included on
 # the PYTHONPATH) in order to allow for local settings to be overridden
