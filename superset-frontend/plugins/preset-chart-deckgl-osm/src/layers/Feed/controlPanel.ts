@@ -139,6 +139,30 @@ const config: ControlPanelConfig = {
         ],
         [
           {
+            name: 'value_label',
+            config: {
+              type: 'TextControl',
+              label: t('Default Value Label'),
+              description: t('Default label to display instead of "Value" in feed entries'),
+              default: 'Value',
+              renderTrigger: true,
+            },
+          },
+        ],
+        [
+          {
+            name: 'parameter_mappings',
+            config: {
+              type: 'TextControl',
+              label: t('Parameter Mappings'),
+              description: t('Define custom labels and units for parameters. Format: "Parameter1:Label1:Unit1;Parameter2:Label2:Unit2" (e.g., "Heat Index:Temperature:°C;Rainfall:Precipitation:mm")'),
+              default: '',
+              renderTrigger: true,
+            },
+          },
+        ],
+        [
+          {
             name: 'temporal_column',
             config: {
               type: 'SelectControl',

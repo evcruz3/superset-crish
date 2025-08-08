@@ -1252,7 +1252,27 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
                           <div>
                             <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>{valueName}</div>
                             <div style={{ fontSize: '15px' }}>
-                              {typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(2)) : value}
+                              {(() => {
+                                if (typeof value === 'number') {
+                                  const formattedValue = Number.isInteger(value) ? value : value.toFixed(2);
+                                  // Add units based on parameter type
+                                  if (!alertGroup.isDisease) {
+                                    const weatherAlert = alert as WeatherAlertType;
+                                    if (weatherAlert.weather_parameter === 'Rainfall') {
+                                      return `${formattedValue} mm`;
+                                    } else if (weatherAlert.weather_parameter === 'Wind Speed') {
+                                      return `${formattedValue} km/h`;
+                                    } else if (weatherAlert.weather_parameter === 'Heat Index') {
+                                      return `${formattedValue} °C`;
+                                    }
+                                  } else {
+                                    // For disease cases, just show the number
+                                    return formattedValue;
+                                  }
+                                  return formattedValue;
+                                }
+                                return value;
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -1325,7 +1345,21 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         <div>
           <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Value</div>
           <div style={{ fontSize: '15px' }}>
-            {typeof alert.parameter_value === 'number' ? (Number.isInteger(alert.parameter_value) ? alert.parameter_value : alert.parameter_value.toFixed(2)) : alert.parameter_value}
+            {(() => {
+              if (typeof alert.parameter_value === 'number') {
+                const formattedValue = Number.isInteger(alert.parameter_value) ? alert.parameter_value : alert.parameter_value.toFixed(2);
+                // Add units based on weather parameter
+                if (alert.weather_parameter === 'Rainfall') {
+                  return `${formattedValue} mm`;
+                } else if (alert.weather_parameter === 'Wind Speed') {
+                  return `${formattedValue} km/h`;
+                } else if (alert.weather_parameter === 'Heat Index') {
+                  return `${formattedValue} °C`;
+                }
+                return formattedValue;
+              }
+              return alert.parameter_value;
+            })()}
           </div>
         </div>
       </div>

@@ -385,6 +385,10 @@ interface FeedEntry {
   message: string;
   country_id: string;
   metric: number;
+  parameter?: string;
+  status?: string;
+  value?: number;
+  forecast_date?: string;
   [key: string]: any; // Allow for dynamic temporal column
 }
 
@@ -408,6 +412,7 @@ interface FeedPanelProps {
   isExiting?: boolean;
   temporal_column: string;
   granularity: TimeGranularity | null;
+  formData: any; // Add formData to access value_label and metric_unit
 }
 
 interface ParameterDisplayProps {
@@ -445,6 +450,7 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   isExiting,
   temporal_column,
   granularity,
+  formData: propsFormData,
 }) => {
 
   console.log("entries", entries);
@@ -543,17 +549,52 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
 
   // Get form data from the payload (if available)
   const formData = useMemo(() => {
+    // Parse parameter mappings from simple string format
+    const parameterMappings: Array<{parameter: string, label: string, unit: string}> = [];
+    
+    if (propsFormData?.parameter_mappings && typeof propsFormData.parameter_mappings === 'string') {
+      // Format: "Parameter1:Label1:Unit1;Parameter2:Label2:Unit2"
+      const mappingPairs = propsFormData.parameter_mappings.split(';').filter((pair: string) => pair.trim());
+      
+      mappingPairs.forEach((pair: string) => {
+        const parts = pair.split(':').map((p: string) => p.trim());
+        if (parts.length >= 2) {
+          parameterMappings.push({
+            parameter: parts[0],
+            label: parts[1] || parts[0],
+            unit: parts[2] || ''
+          });
+        }
+      });
+    }
+    
     // Return default column names if not defined in form data
     return {
-      title_column: 'title',
-      message_column: 'message',
-      parameter_column: 'parameter',
-      status_column: 'status',
-      value_column: 'value',
+      title_column: propsFormData?.title_column || 'title',
+      message_column: propsFormData?.message_column || 'message',
+      parameter_column: propsFormData?.parameter_column || 'parameter',
+      status_column: propsFormData?.status_column || 'status',
+      value_column: propsFormData?.value_column || 'value',
+      value_label: propsFormData?.value_label || 'Value',
+      metric_unit: propsFormData?.metric_unit || '',
+      parameter_mappings: parameterMappings,
     };
-  }, []);
+  }, [propsFormData]);
+
+  // Helper function to get parameter-specific label and unit
+  const getParameterConfig = useCallback((parameterValue: string) => {
+    const mapping = formData.parameter_mappings.find(
+      (m: any) => m.parameter === parameterValue
+    );
+    return {
+      label: mapping?.label || formData.value_label,
+      unit: mapping?.unit || formData.metric_unit,
+    };
+  }, [formData.parameter_mappings, formData.value_label, formData.metric_unit]);
 
   console.log("sortedDates", sortedDates);
+  console.log("formData in FeedSidePanel:", formData);
+  console.log("Sample entry:", entries[0]);
 
   return (
     <FeedPanel isExiting={isExiting}>
@@ -565,7 +606,7 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
         {sortedDates.map(dateKey => {
           // Sort entries alphabetically by title
           const sortedEntries = [...entriesByDate[dateKey]].sort((a, b) => 
-            ((a[formData.title_column] || '') as string).localeCompare((b[formData.title_column] || '') as string)
+            ((a.title || '') as string).localeCompare((b.title || '') as string)
           );
           
           console.log("sortedEntries", sortedEntries);
@@ -578,36 +619,39 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
               {sortedEntries.map((entry, index) => (
                 <FeedItem key={`${dateKey}-${index}`} index={index}>
                   <FeedItemHeader>
-                    <FeedItemTitle>{entry[formData.title_column]}</FeedItemTitle>
-                    {entry[formData.status_column] && (
-                      <StatusBadge statusColor={getStatusColor(entry[formData.status_column] as string)}>
-                        {entry[formData.status_column]}
+                    <FeedItemTitle>{entry.title}</FeedItemTitle>
+                    {entry.status && (
+                      <StatusBadge statusColor={getStatusColor(entry.status as string)}>
+                        {entry.status}
                       </StatusBadge>
                     )}
                   </FeedItemHeader>
                   
                   <FeedItemBody>
                     <FeedItemGrid>
-                      {entry[formData.parameter_column] && (
+                      {entry.parameter && (
                         <FeedItemGridCell>
                           <FeedItemLabel>Parameter</FeedItemLabel>
-                          <FeedItemValue>{entry[formData.parameter_column]}</FeedItemValue>
+                          <FeedItemValue>{entry.parameter}</FeedItemValue>
                         </FeedItemGridCell>
                       )}
                       
-                      {entry[formData.value_column] !== undefined && (
+                      {entry.value !== undefined && (
                         <FeedItemGridCell>
-                          <FeedItemLabel>Value</FeedItemLabel>
-                          <FeedItemValue>{formatValue(entry[formData.value_column])}</FeedItemValue>
+                          <FeedItemLabel>{getParameterConfig(entry.parameter || '').label}</FeedItemLabel>
+                          <FeedItemValue>
+                            {formatValue(entry.value)}
+                            {getParameterConfig(entry.parameter || '').unit ? ` ${getParameterConfig(entry.parameter || '').unit}` : ''}
+                          </FeedItemValue>
                         </FeedItemGridCell>
                       )}
                     </FeedItemGrid>
                     
-                    {entry[formData.message_column] && (
+                    {entry.message && (
                       <FeedItemMessage>
                         <FeedItemLabel>Advisory Message</FeedItemLabel>
                         <FeedItemMessageContent>
-                          {entry[formData.message_column]}
+                          {entry.message}
                         </FeedItemMessageContent>
                       </FeedItemMessage>
                     )}
@@ -1512,6 +1556,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
             isExiting={isExiting}
             temporal_column={formData.temporal_column}
             granularity={formData.time_granularity as TimeGranularity | null}
+            formData={formData}
           />
         )}
       </DeckGLContainerStyledWrapper>

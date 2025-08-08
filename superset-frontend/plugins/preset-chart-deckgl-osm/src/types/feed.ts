@@ -104,6 +104,8 @@ export interface FeedFormData {
   metric_label?: string;
   metric_prefix?: string;
   metric_unit?: string;
+  value_label?: string;
+  parameter_mappings?: string; // Format: "Parameter1:Label1:Unit1;Parameter2:Label2:Unit2"
   number_format?: string;
   stroke_color_picker: {
     r: number;
