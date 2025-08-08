@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { HandlerFunction, JsonObject, QueryFormData } from '@superset-ui/core';
+import { JsonObject, QueryFormData } from '@superset-ui/core';
 import { LayerOptions } from './layers';
 import { TooltipProps } from 'antd-v5';
 

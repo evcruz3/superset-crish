@@ -61,7 +61,7 @@ import {
   FeedFormData,
   FeedGeoJSONFeature
 } from '../types/feed'
-import { FeedSidePanel } from '../layers/Feed/Feed'
+import { FeedSidePanel, FeedEntry } from '../layers/Feed/Feed'
 import RegionInfoModal from '../components/RegionInfoModal'
 import { Matrix4 } from '@math.gl/core'
 
@@ -1306,7 +1306,11 @@ const DeckMulti = (props: DeckMultiProps) => {
             // Fix TS error by ensuring the generator is callable and casting options
             const vizType = subslice.form_data.viz_type as keyof typeof layerGenerators;
             if (typeof layerGenerators[vizType] === 'function') {
-               const layers = layerGenerators[vizType](layerGeneratorOptions as any); // Use 'as any' if type matching is complex
+               // Check if the layer generator expects separate arguments or options object
+               const generator = layerGenerators[vizType];
+               const layers = generator.length === 1 
+                 ? generator(layerGeneratorOptions as any)
+                 : generator(layerGeneratorOptions.formData, layerGeneratorOptions.payload, layerGeneratorOptions.onAddFilter, layerGeneratorOptions.setTooltip);
                setSubSlicesLayers(prevLayers => ({
                  ...prevLayers,
                  // Ensure the result is always an array of Layers
@@ -1346,7 +1350,11 @@ const DeckMulti = (props: DeckMultiProps) => {
     } else if (typeof layerGenerators[subslice.form_data.viz_type as keyof typeof layerGenerators] === 'function') {
         // Fix TS error by ensuring the generator is callable and casting options
         const vizType = subslice.form_data.viz_type as keyof typeof layerGenerators;
-        const layer = layerGenerators[vizType](layerGeneratorOptions as any); // Use 'as any' for complex types
+        // Check if the layer generator expects separate arguments or options object
+        const generator = layerGenerators[vizType];
+        const layer = generator.length === 1 
+          ? generator(layerGeneratorOptions as any)
+          : generator(layerGeneratorOptions.formData, layerGeneratorOptions.payload, layerGeneratorOptions.onAddFilter, layerGeneratorOptions.setTooltip);
 
         setSubSlicesLayers((prevLayers) => ({
           ...prevLayers,
@@ -1733,7 +1741,7 @@ const DeckMulti = (props: DeckMultiProps) => {
               else if (layer) nonTextLayers.push(layer); // Push original if it exists but isn't cloneable?
             }
           });
-        } else if (layerGroup && typeof layerGroup.clone === 'function') {
+        } else if (layerGroup && typeof (layerGroup as any).clone === 'function') {
           // Handle single layer case (less common) - Ensure it's cloneable
           const normalizedPitch = currentMapPitch / 60;
           
@@ -1747,7 +1755,7 @@ const DeckMulti = (props: DeckMultiProps) => {
           const baseElevation = normalizedPitch * PITCH_SCALE_FACTOR * ( (visibleLayerIds.length > 0 && visibleLayerIndex !== -1) ? (visibleLayerIds.length - visibleLayerIndex) : 1);
           const modelMatrix = new Matrix4().translate([0, 0, baseElevation]);
           console.log('[DEBUG] Single Layer ID:', id, 'Index (visible):', visibleLayerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
-          const scaledLayer = layerGroup.clone({ modelMatrix });
+          const scaledLayer = (layerGroup as any).clone({ modelMatrix });
           nonTextLayers.push(scaledLayer); // Assume it's a non-text layer if single
         } else if (layerGroup) {
              console.warn('[DEBUG] Invalid single layer object encountered for ID:', id, layerGroup);
@@ -2044,9 +2052,9 @@ const DeckMulti = (props: DeckMultiProps) => {
           return (
             <FeedSidePanel
               key={sliceId}
-              entries={region.entries}
+              entries={region?.entries || []}
               onClose={() => clearFeedLayerSelection(Number(sliceId))}
-              regionName={region.name}
+              regionName={region?.name || 'Unknown Region'}
               temporal_column={temporalColumn}
             />
           );
@@ -2271,7 +2279,7 @@ const DeckMulti = (props: DeckMultiProps) => {
                                   style={{
                                     background: isVisible && (layer as ExtendedLayer).colorScale
                                       ? subslice?.form_data.categorical_column
-                                        ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[0])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(1, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])}, ${(layer as ExtendedLayer).colorScale((layer as ExtendedLayer).categoricalValues?.[Math.min(2, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])})`
+                                        ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale?.((layer as ExtendedLayer).categoricalValues?.[0])}, ${(layer as ExtendedLayer).colorScale?.((layer as ExtendedLayer).categoricalValues?.[Math.min(1, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])}, ${(layer as ExtendedLayer).colorScale?.((layer as ExtendedLayer).categoricalValues?.[Math.min(2, ((layer as ExtendedLayer).categoricalValues?.length || 1) - 1)])})`
                                         : (layer as ExtendedLayer).extent
                                           ? `linear-gradient(to right, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![0])}, ${(layer as ExtendedLayer).colorScale!((layer as ExtendedLayer).extent![1])})`
                                           : '#e5e7eb'
@@ -2345,11 +2353,11 @@ const DeckMulti = (props: DeckMultiProps) => {
             const formatter = getNumberFormatter(subslice.form_data.number_format || 'SMART_NUMBER');
             const metricPrefix = subslice.form_data.metric_prefix ? `${subslice.form_data.metric_prefix} ` : '';
             const metricUnit = subslice.form_data.metric_unit ? ` ${subslice.form_data.metric_unit}` : '';
-            const metricName = isCategorical
-              ? (subslice.form_data.categorical_column || 'Categories')
-              : (typeof subslice.form_data.metric === 'object' 
-                ? (subslice.form_data.metric.label || subslice.form_data.metric_label || 'Values')
-                : (subslice.form_data.metric || subslice.form_data.metric_label || 'Values'));
+            // const metricName = isCategorical
+            //   ? (subslice.form_data.categorical_column || 'Categories')
+            //   : (typeof subslice.form_data.metric === 'object' 
+            //     ? (subslice.form_data.metric.label || subslice.form_data.metric_label || 'Values')
+            //     : (subslice.form_data.metric || subslice.form_data.metric_label || 'Values'));
 
             return (
               <ColorLegend
