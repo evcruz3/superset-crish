@@ -26,6 +26,7 @@ from superset.commands.chart.exceptions import ChartNotFoundError
 from superset.daos.chart import ChartDAO
 from superset.commands.dataset.export import ExportDatasetsCommand
 from superset.commands.export.models import ExportModelsCommand
+from superset.commands.chart.exporters.multi_chart_handler import MultiChartExportHandler
 from superset.models.slice import Slice
 from superset.utils.dict_import_export import EXPORT_VERSION
 from superset.utils.file import get_filename
@@ -63,7 +64,20 @@ class ExportChartsCommand(ExportModelsCommand):
 
         if payload.get("params"):
             try:
-                payload["params"] = json.loads(payload["params"])
+                params = json.loads(payload["params"])
+                
+                # If this is a Multi chart, convert deck_slices IDs to UUIDs
+                if MultiChartExportHandler.is_multi_chart(model):
+                    deck_slice_ids = params.get("deck_slices", [])
+                    if deck_slice_ids:
+                        # Fetch the referenced charts
+                        referenced_charts = ChartDAO.find_by_ids(deck_slice_ids)
+                        # Update params with UUIDs
+                        params = MultiChartExportHandler.prepare_multi_chart_for_export(
+                            model, referenced_charts
+                        )
+                
+                payload["params"] = params
             except json.JSONDecodeError:
                 logger.info("Unable to decode `params` field: %s", payload["params"])
 
@@ -78,10 +92,20 @@ class ExportChartsCommand(ExportModelsCommand):
     def _export(
         model: Slice, export_related: bool = True
     ) -> Iterator[tuple[str, Callable[[], str]]]:
-        yield (
-            ExportChartsCommand._file_name(model),
-            lambda: ExportChartsCommand._file_content(model),
-        )
+        # Check if this is a Multi chart
+        if MultiChartExportHandler.is_multi_chart(model) and export_related:
+            # Use the MultiChartExportHandler for Multi charts
+            yield from MultiChartExportHandler.export_with_dependencies(
+                model,
+                export_chart_fn=ExportChartsCommand._export,
+                export_dataset_fn=lambda ids: ExportDatasetsCommand(ids).run(),
+            )
+        else:
+            # Standard export for other chart types
+            yield (
+                ExportChartsCommand._file_name(model),
+                lambda: ExportChartsCommand._file_content(model),
+            )
 
-        if model.table and export_related:
-            yield from ExportDatasetsCommand([model.table.id]).run()
+            if model.table and export_related:
+                yield from ExportDatasetsCommand([model.table.id]).run()

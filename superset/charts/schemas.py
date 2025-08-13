@@ -1548,7 +1548,11 @@ class GetFavStarIdsSchema(Schema):
 
 
 class ImportV1ChartSchema(Schema):
+    class Meta:  # pylint: disable=too-few-public-methods
+        unknown = EXCLUDE
+
     slice_name = fields.String(required=True)
+    slug = fields.String(allow_none=True)
     description = fields.String(allow_none=True)
     certified_by = fields.String(allow_none=True)
     certification_details = fields.String(allow_none=True)

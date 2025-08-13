@@ -26,6 +26,7 @@ from superset.migrations.shared.migrate_viz.base import MigrateViz
 from superset.models.slice import Slice
 from superset.utils import json
 from superset.utils.core import AnnotationType, get_user
+from superset.commands.chart.importers.v1.multi_chart_utils import MultiChartImportUtils
 
 
 def filter_chart_annotations(chart_config: dict[str, Any]) -> None:
@@ -41,6 +42,27 @@ def filter_chart_annotations(chart_config: dict[str, Any]) -> None:
     params["annotation_layers"] = [
         al for al in als if al.get("annotationType") == AnnotationType.FORMULA
     ]
+
+
+def validate_multi_chart_dependencies(config: dict[str, Any]) -> None:
+    """
+    Validate that all deck_slices referenced by a Multi chart exist.
+    Raises ImportFailedError if any dependencies are missing.
+    """
+    if not MultiChartImportUtils.is_multi_chart(config):
+        return
+    
+    deck_slice_ids = MultiChartImportUtils.get_deck_slices_from_config(config)
+    if not deck_slice_ids:
+        return
+    
+    existing_ids, missing_refs = MultiChartImportUtils.validate_deck_slices_exist(deck_slice_ids)
+    
+    if missing_refs:
+        raise ImportFailedError(
+            f"Multi chart '{config.get('slice_name', 'Unknown')}' references missing deck.gl charts "
+            f"with IDs/UUIDs: {missing_refs}. Please ensure all referenced charts are imported first."
+        )
 
 
 def import_chart(
@@ -72,6 +94,9 @@ def import_chart(
 
     # migrate old viz types to new ones
     config = migrate_chart(config)
+    
+    # Validate Multi chart dependencies before import
+    validate_multi_chart_dependencies(config)
 
     chart = Slice.import_from_dict(config, recursive=False, allow_reparenting=True)
     if chart.id is None:

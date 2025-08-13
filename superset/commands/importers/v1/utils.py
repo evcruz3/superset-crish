@@ -184,9 +184,25 @@ def load_configs(
                         db_ssh_tunnel_priv_key_passws[config["uuid"]]
                     )
 
+                # Debug logging for schema validation
+                if file_name.startswith("charts/"):
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Loading chart config for {file_name}")
+                    logger.info(f"Config keys: {list(config.keys())}")
+                    logger.info(f"Schema type: {type(schema).__name__}")
+                    logger.info(f"Schema fields: {list(schema.fields.keys()) if hasattr(schema, 'fields') else 'No fields'}")
+                
                 schema.load(config)
                 configs[file_name] = config
             except ValidationError as exc:
+                # More debug info for validation errors
+                if file_name.startswith("charts/"):
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Validation error for {file_name}: {exc.messages}")
+                    logger.error(f"Schema class: {schema.__class__.__module__}.{schema.__class__.__name__}")
+                
                 exc.messages = {file_name: exc.messages}
                 exceptions.append(exc)
 
