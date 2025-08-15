@@ -662,23 +662,39 @@ const DiseaseTrendChart = ({
         },
       });
 
-      const allDataValues = Object.values(data)
+      // Collect forecast data values
+      const forecastValues = Object.values(data)
         .flatMap(series => series.map(point => point.predicted_cases))
         .filter(value => value !== null) as number[];
+      
+      // Build the list of values to consider for y-axis range
+      let valuesToConsider = [...forecastValues];
+      
+      // Only include actual data values if showActualData is enabled
+      if (showActualData) {
+        const actualValues = Object.values(actualData)
+          .flatMap(series => series.map(point => point.totalCases))
+          .filter(value => value !== null) as number[];
+        valuesToConsider = [...valuesToConsider, ...actualValues];
+      }
+      
+      // Only include threshold values if thresholds are being shown
+      if (showThresholds && diseaseThresholds) {
+        const thresholdValues = diseaseThresholds.map(t => t.value);
+        valuesToConsider = [...valuesToConsider, ...thresholdValues];
+      }
 
-      const thresholdValues = diseaseThresholds.map(t => t.value);
-      const combinedValues = [...allDataValues, ...thresholdValues];
-
-      if (combinedValues.length > 0) {
-        let min = Math.min(...combinedValues);
-        let max = Math.max(...combinedValues);
+      if (valuesToConsider.length > 0) {
+        let min = Math.min(...valuesToConsider);
+        let max = Math.max(...valuesToConsider);
 
         if (min === max) {
           min -= 10;
           max += 10;
         }
 
-        const padding = (max - min) * 0.1 || 5;
+        // Use larger padding (25%) to ensure all lines are fully visible
+        const padding = (max - min) * 0.25 || 10;
         const yMin = min - padding;
         const yMax = max + padding;
 
@@ -688,7 +704,7 @@ const DiseaseTrendChart = ({
     }
 
     return options;
-  }, [data, allDates, seriesData, showThresholds, diseaseThresholds]);
+  }, [data, actualData, allDates, seriesData, showThresholds, diseaseThresholds]);
 
   if (loading) return <Loading />;
 
