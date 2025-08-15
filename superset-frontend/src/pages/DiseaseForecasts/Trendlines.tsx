@@ -36,6 +36,12 @@ const DISEASE_THRESHOLDS: Record<
     { value: 25, label: 'Moderate', color: '#fdd835' },
     { value: 1, label: 'Low', color: '#20a7c9' },
   ],
+  ISPA: [
+    { value: 500, label: 'Severe', color: '#d32f2f' },
+    { value: 250, label: 'High', color: '#ef6c00' },
+    { value: 100, label: 'Moderate', color: '#fdd835' },
+    { value: 50, label: 'Low', color: '#20a7c9' },
+  ],
 };
 
 const MUNICIPALITY_OPTIONS = [
@@ -55,7 +61,7 @@ const MUNICIPALITY_OPTIONS = [
   'Viqueque',
 ].map(name => ({ label: name, value: name }));
 
-const DISEASE_OPTIONS = ['Dengue', 'Diarrhea'].map(name => ({
+const DISEASE_OPTIONS = ['Dengue', 'Diarrhea', 'ISPA'].map(name => ({
   label: name,
   value: name,
 }));
@@ -837,6 +843,18 @@ const Trendlines = () => {
                     filters={filters}
                     level={level}
                     disease="Diarrhea"
+                    showThresholds={showThresholds}
+                    showActualData={showActualData}
+                  />
+                </ChartContainer>
+              </Col>
+              <Col span={24}>
+                <ChartContainer>
+                  <h4>{t('Forecast Trend for ISPA')}</h4>
+                  <DiseaseTrendChart
+                    filters={filters}
+                    level={level}
+                    disease="ISPA"
                     showThresholds={showThresholds}
                     showActualData={showActualData}
                   />
