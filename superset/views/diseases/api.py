@@ -791,6 +791,117 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
     # openapi_spec_methods = disease_openapi_spec_methods_override # Use the one from schemas.py
     openapi_spec_component_schemas = (DiseaseDataSchema,)
 
+    def _classify_disease_group(self, disease_name: str) -> str | None:
+        """Classify a disease name into a standard disease group using regex patterns."""
+        if not disease_name:
+            return None
+            
+        disease_lower = disease_name.lower()
+        
+        # Define regex patterns for disease groups (same as SQL query)
+        disease_patterns = {
+            'Dengue': r'\bdengue\b',
+            'Diarrhea': r'\bdiarr?h(o)?ea\b',  # Matches diarrhea or diarrhoea
+            'ISPA/ARI': r'\b(ispa\s*/\s*ari|ispa|ari)\b'
+        }
+        
+        for group_name, pattern in disease_patterns.items():
+            if re.search(pattern, disease_lower, re.IGNORECASE):
+                return group_name
+                
+        return None  # Disease doesn't match any group
+
+    def _aggregate_disease_results(self, results: List, is_disease_filtered: bool = False) -> List:
+        """Aggregate results by disease group, summing totalCases for each group."""
+        if not is_disease_filtered or not results:
+            return results
+            
+        # Dictionary to store aggregated results
+        # Key: (year, week_number, municipality_code, disease_group)
+        aggregated = {}
+        
+        for record in results:
+            # Classify the disease into a group
+            disease_group = self._classify_disease_group(record.disease)
+            if not disease_group:
+                # If disease doesn't match any group, keep original record
+                continue
+                
+            # Create aggregation key
+            key = (record.year, record.week_number, record.municipality_code, disease_group)
+            
+            if key not in aggregated:
+                # First occurrence - create a copy of the record
+                # We'll update the disease name and accumulate totalCases
+                aggregated[key] = {
+                    'record': record,
+                    'original_disease': disease_group,  # Store the group name
+                    'totalCases': record.totalCases or 0,
+                    'totalCasesMale': record.totalCasesMale or 0,
+                    'totalCasesFemale': record.totalCasesFemale or 0,
+                    'totalDeaths': record.totalDeaths or 0,
+                    'totalDeathsMale': record.totalDeathsMale or 0,
+                    'totalDeathsFemale': record.totalDeathsFemale or 0,
+                    # Also aggregate age group totals
+                    'LessThan1TotalCases': getattr(record, 'LessThan1TotalCases', 0) or 0,
+                    'OneToFourTotalCases': getattr(record, 'OneToFourTotalCases', 0) or 0,
+                    'FiveToFourteenTotalCases': getattr(record, 'FiveToFourteenTotalCases', 0) or 0,
+                    'FifteenPlusTotalCases': getattr(record, 'FifteenPlusTotalCases', 0) or 0,
+                    # New format age groups
+                    'FifteenToTwentyFourTotalCases': getattr(record, 'FifteenToTwentyFourTotalCases', 0) or 0,
+                    'TwentyFiveToThirtyNineTotalCases': getattr(record, 'TwentyFiveToThirtyNineTotalCases', 0) or 0,
+                    'FortyToFiftyNineTotalCases': getattr(record, 'FortyToFiftyNineTotalCases', 0) or 0,
+                    'SixtyPlusTotalCases': getattr(record, 'SixtyPlusTotalCases', 0) or 0,
+                }
+            else:
+                # Aggregate the values
+                agg = aggregated[key]
+                agg['totalCases'] += record.totalCases or 0
+                agg['totalCasesMale'] += record.totalCasesMale or 0
+                agg['totalCasesFemale'] += record.totalCasesFemale or 0
+                agg['totalDeaths'] += record.totalDeaths or 0
+                agg['totalDeathsMale'] += record.totalDeathsMale or 0
+                agg['totalDeathsFemale'] += record.totalDeathsFemale or 0
+                # Aggregate age groups
+                agg['LessThan1TotalCases'] += getattr(record, 'LessThan1TotalCases', 0) or 0
+                agg['OneToFourTotalCases'] += getattr(record, 'OneToFourTotalCases', 0) or 0
+                agg['FiveToFourteenTotalCases'] += getattr(record, 'FiveToFourteenTotalCases', 0) or 0
+                agg['FifteenPlusTotalCases'] += getattr(record, 'FifteenPlusTotalCases', 0) or 0
+                agg['FifteenToTwentyFourTotalCases'] += getattr(record, 'FifteenToTwentyFourTotalCases', 0) or 0
+                agg['TwentyFiveToThirtyNineTotalCases'] += getattr(record, 'TwentyFiveToThirtyNineTotalCases', 0) or 0
+                agg['FortyToFiftyNineTotalCases'] += getattr(record, 'FortyToFiftyNineTotalCases', 0) or 0
+                agg['SixtyPlusTotalCases'] += getattr(record, 'SixtyPlusTotalCases', 0) or 0
+        
+        # Convert aggregated dictionary back to list of records
+        final_results = []
+        for key, agg_data in aggregated.items():
+            record = agg_data['record']
+            # Update the record with aggregated values
+            record.disease = agg_data['original_disease']  # Use the disease group name
+            record.totalCases = agg_data['totalCases']
+            record.totalCasesMale = agg_data['totalCasesMale']
+            record.totalCasesFemale = agg_data['totalCasesFemale']
+            record.totalDeaths = agg_data['totalDeaths']
+            record.totalDeathsMale = agg_data['totalDeathsMale']
+            record.totalDeathsFemale = agg_data['totalDeathsFemale']
+            # Update age group totals
+            record.LessThan1TotalCases = agg_data['LessThan1TotalCases']
+            record.OneToFourTotalCases = agg_data['OneToFourTotalCases']
+            record.FiveToFourteenTotalCases = agg_data['FiveToFourteenTotalCases']
+            record.FifteenPlusTotalCases = agg_data['FifteenPlusTotalCases']
+            if hasattr(record, 'FifteenToTwentyFourTotalCases'):
+                record.FifteenToTwentyFourTotalCases = agg_data['FifteenToTwentyFourTotalCases']
+            if hasattr(record, 'TwentyFiveToThirtyNineTotalCases'):
+                record.TwentyFiveToThirtyNineTotalCases = agg_data['TwentyFiveToThirtyNineTotalCases']
+            if hasattr(record, 'FortyToFiftyNineTotalCases'):
+                record.FortyToFiftyNineTotalCases = agg_data['FortyToFiftyNineTotalCases']
+            if hasattr(record, 'SixtyPlusTotalCases'):
+                record.SixtyPlusTotalCases = agg_data['SixtyPlusTotalCases']
+                
+            final_results.append(record)
+            
+        return final_results
+
 
     @expose("/", methods=["GET"])
     # @protect()
@@ -917,6 +1028,9 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
         logger.debug(f"DiseaseDataRestApi.get_list called. Original kwargs from framework/rison (from 'q' param): {kwargs.get('rison')}")
         logger.debug(f"Request args (for direct filters): {request.args}")
 
+        # Track if disease filtering is active
+        is_disease_filtered = False
+
         # 1. Start with a base SQLAlchemy query
         query = self.datamodel.session.query(self.datamodel.obj)
 
@@ -952,6 +1066,7 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
                             # Use PostgreSQL regex operator ~* (case-insensitive match)
                             disease_column = getattr(self.datamodel.obj, model_column_name)
                             query = query.filter(db.func.lower(disease_column).op('~*')(regex_pattern))
+                            is_disease_filtered = True  # Mark that disease filtering is active
                         else:
                             # If disease value is not in allowed groups, return error
                             allowed_values = list(allowed_disease_groups.keys())
@@ -1006,6 +1121,7 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
                             logger.debug(f"Applying Rison disease group filter: {disease_value} using pattern {regex_pattern}")
                             disease_column = getattr(self.datamodel.obj, "disease")
                             modified_query = modified_query.filter(db.func.lower(disease_column).op('~*')(regex_pattern))
+                            is_disease_filtered = True  # Mark that disease filtering is active
                             
                             # Remove the disease filter from fab_rison_filters to avoid double filtering
                             fab_rison_filters = [f for f in fab_rison_filters if not (hasattr(f, 'column') and f.column.name == 'disease')]
@@ -1122,6 +1238,12 @@ class DiseaseDataRestApi(BaseSupersetModelRestApi):
         except Exception as e:
             logger.error(f"Error executing final data query: {e}")
             return self.response_500(message=f"Database error during data retrieval: {e}")
+
+        # 7a. Apply aggregation if disease filtering is active
+        if is_disease_filtered:
+            logger.debug(f"Applying disease group aggregation to {len(result)} results")
+            result = self._aggregate_disease_results(result, is_disease_filtered=True)
+            logger.debug(f"After aggregation: {len(result)} results")
 
         # 8. Prepare response
         # Get primary key values. Model should have a get_pk_value method for composite keys.
