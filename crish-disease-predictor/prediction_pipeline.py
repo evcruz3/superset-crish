@@ -31,6 +31,7 @@ class PredictionPipeline:
             'visual_crossing_puller.py',
             'dengue_predictor.py',
             'diarrhea_predictor.py',
+            'ispa_predictor.py',
             'upload_predictions.py'
         ]
 

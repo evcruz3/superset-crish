@@ -103,6 +103,27 @@ DISEASE_THRESHOLDS_DATA = {
 - Public education about hygiene practices
 - Healthcare facility preparation for cases
 - Clean water distribution in affected areas"""
+    },
+    "ISPA": {
+        "threshold_rules": [
+            {"min_cases": 500, "alert_level": "Severe", "alert_title": "Severe ISPA Alert", "alert_message": "Severe respiratory infection outbreak expected with {cases} cases. Immediate health response required."},
+            {"min_cases": 250, "alert_level": "High", "alert_title": "High ISPA Warning", "alert_message": "High risk of respiratory infection outbreak with {cases} cases. Community preventive measures critical."},
+            {"min_cases": 100, "alert_level": "Moderate", "alert_title": "Moderate ISPA Advisory", "alert_message": "Moderate risk with {cases} ISPA cases expected. Enhanced monitoring and prevention recommended."},
+            {"min_cases": 50, "alert_level": "Low", "alert_title": "Low ISPA Notice", "alert_message": "Low risk with {cases} ISPA cases expected. Standard preventive measures advised."},
+            {"min_cases": 0, "cases_condition": "< 1", "alert_level": "None", "alert_title": "No ISPA Cases Expected", "alert_message": "No significant respiratory infection risk at this time."} # Represents < 1 case (i.e., 0 cases)
+        ],
+        "prevention_measures": """- Wear masks in crowded or poorly ventilated areas
+- Practice respiratory hygiene (cover coughs and sneezes)
+- Wash hands frequently with soap and water
+- Maintain good ventilation in living and working spaces
+- Avoid close contact with people showing respiratory symptoms
+- Seek medical care early if experiencing persistent cough or breathing difficulties""",
+        "community_response": """- Enhance surveillance for respiratory symptoms
+- Ensure adequate medical supplies (masks, medications)
+- Public education on respiratory infection prevention
+- Monitor air quality and address pollution sources
+- Prepare healthcare facilities for increased respiratory cases
+- Consider temporary measures for crowded venues during outbreaks"""
     }
 }
 

@@ -211,6 +211,7 @@ def main():
         print("Directory: ", uploader.predictions_dir)
         print("Dengue file: ", f"{uploader.predictions_dir}/dengue_predictions_{current_date}.json")
         print("Diarrhea file: ", f"{uploader.predictions_dir}/diarrhea_predictions_{current_date}.json")
+        print("ISPA file: ", f"{uploader.predictions_dir}/ISPA_predictions_{current_date}.json")
         
         # Process dengue predictions
         dengue_file = f"{uploader.predictions_dir}/dengue_predictions_{current_date}.json"
@@ -229,6 +230,15 @@ def main():
             uploader.upload_predictions(diarrhea_predictions, 'diarrhea')
         else:
             print(f"No diarrhea predictions file found for {current_date}")
+        
+        # Process ISPA predictions
+        ispa_file = f"{uploader.predictions_dir}/ISPA_predictions_{current_date}.json"
+        if os.path.exists(ispa_file):
+            with open(ispa_file, 'r') as f:
+                ispa_predictions = json.load(f)
+            uploader.upload_predictions(ispa_predictions, 'ISPA')
+        else:
+            print(f"No ISPA predictions file found for {current_date}")
             
     except Exception as e:
         print(f"Error: {str(e)}")

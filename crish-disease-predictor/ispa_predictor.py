@@ -20,9 +20,9 @@ from disease_alert_generator import (
 # Load environment variables
 load_dotenv()
 
-class DenguePredictor:
+class ISPAPredictor:
     def __init__(self):
-        self.models_dir = os.getenv('NEW_MODELS_DIR', 'new_models/Dengue')
+        self.models_dir = os.getenv('NEW_ISPA_MODELS_DIR', 'new_models/ISPA')
         self.predictions_dir = os.getenv('PREDICTIONS_DIR', 'predictions')
         self.weather_data_dir = os.getenv('WEATHER_DATA_DIR', 'weather_data')
         self.default_prev_cases = int(os.getenv('DEFAULT_PREV_CASES', '1'))
@@ -77,7 +77,7 @@ class DenguePredictor:
             print("Database connection closed")
 
     def get_previous_cases(self, municipality, year, week):
-        """Get the most recent available dengue cases from the database for a municipality up to a specific week."""
+        """Get the most recent available ISPA cases from the database for a municipality up to a specific week."""
         try:
             # Get municipality code
             municipality_code = self.municipality_iso_codes.get(municipality)
@@ -90,7 +90,7 @@ class DenguePredictor:
             SELECT year, week_number
             FROM tlhis_diseases
             WHERE municipality_code = %s
-            AND lower(disease) ~* '\ydengue\y'
+            AND lower(disease) ~* '\y(ispa\s*/\s*ari|ispa|ari)\y'
             AND (year < %s OR (year = %s AND week_number <= %s))
             ORDER BY year DESC, week_number DESC
             LIMIT 1
@@ -100,7 +100,7 @@ class DenguePredictor:
 
             if not latest_week_data:
                 # No data found up to this week, return 0
-                # print(f"No previous dengue case data found for {municipality} up to {year}-W{week}") # Optional: for debugging
+                # print(f"No previous ISPA case data found for {municipality} up to {year}-W{week}") # Optional: for debugging
                 return 0
 
             latest_year, latest_week = latest_week_data
@@ -112,17 +112,17 @@ class DenguePredictor:
             WHERE municipality_code = %s
             AND year = %s
             AND week_number = %s
-            AND lower(disease) ~* '\ydengue\y'
+            AND lower(disease) ~* '\y(ispa\s*/\s*ari|ispa|ari)\y'
             """
             
             self.cursor.execute(query_cases, (municipality_code, latest_year, latest_week))
             result = self.cursor.fetchone()
             
-            # print(f"Using dengue data from {latest_year}-W{latest_week} for target {year}-W{week} for {municipality}: {int(result[0]) if result else 0} cases") # Optional: for debugging
+            # print(f"Using ISPA data from {latest_year}-W{latest_week} for target {year}-W{week} for {municipality}: {int(result[0]) if result else 0} cases") # Optional: for debugging
             return int(result[0]) if result else 0
             
         except Exception as e:
-            print(f"Error getting previous dengue cases for {municipality} up to {year}-W{week}: {str(e)}")
+            print(f"Error getting previous ISPA cases for {municipality} up to {year}-W{week}: {str(e)}")
             # Rollback the transaction on error
             if self.conn:
                 self.conn.rollback()
@@ -150,7 +150,7 @@ class DenguePredictor:
         available_municipalities = []
         for municipality in municipalities:
             try:
-                model_path = f'{self.models_dir}/{municipality}_Dengue.joblib'
+                model_path = f'{self.models_dir}/{municipality}_ISPA.joblib'
                 
                 if os.path.exists(model_path):
                     self.models[municipality] = joblib.load(model_path)
@@ -166,7 +166,7 @@ class DenguePredictor:
         """Prepare the 40-feature input sequence for the new models.
         
         Features order (40 total):
-        - Dengue_lag_1 to Dengue_lag_4 (4 features)
+        - ISPA_lag_1 to ISPA_lag_4 (4 features)
         - t2m_max_lag_1 to t2m_max_lag_4 (4 features)
         - t2m_mean_lag_1 to t2m_mean_lag_4 (4 features)
         - t2m_min_lag_1 to t2m_min_lag_4 (4 features)
@@ -178,7 +178,7 @@ class DenguePredictor:
         - relative_humidity_min_lag_1 to relative_humidity_min_lag_4 (4 features)
         """
         # Get previous cases for the last 4 weeks
-        dengue_lags = []
+        ispa_lags = []
         weather_data_by_lag = []
         
         # Process the 4 weeks in chronological order (oldest to newest)
@@ -186,20 +186,20 @@ class DenguePredictor:
         for week_data in weeks_data:
             week_year, week_num = self.get_week_info(week_data['week_start'])
             
-            # Get dengue cases for this week
+            # Get ISPA cases for this week
             cases = self.get_previous_cases(municipality, week_year, week_num)
-            dengue_lags.append(cases)
+            ispa_lags.append(cases)
             weather_data_by_lag.append(week_data)
         
         # Reverse to get lag_1 as most recent (last week in the list)
-        dengue_lags = dengue_lags[::-1]
+        ispa_lags = ispa_lags[::-1]
         weather_data_by_lag = weather_data_by_lag[::-1]
         
         # Build the feature array
         features = []
         
-        # Add dengue lags
-        features.extend(dengue_lags)
+        # Add ISPA lags
+        features.extend(ispa_lags)
         
         # Add weather features in the correct order
         # t2m_max
@@ -243,7 +243,7 @@ class DenguePredictor:
     def log_input_data(self, input_features):
         """Log the input data being used for prediction."""
         print("\nInput features for prediction:")
-        print(f"  Dengue cases (lag 1-4): {input_features[0][:4]}")
+        print(f"  ISPA cases (lag 1-4): {input_features[0][:4]}")
         print(f"  Temperature max (lag 1-4): {input_features[0][4:8]}")
         print(f"  Temperature mean (lag 1-4): {input_features[0][8:12]}")
         print(f"  Temperature min (lag 1-4): {input_features[0][12:16]}")
@@ -254,8 +254,8 @@ class DenguePredictor:
         print(f"  Humidity mean (lag 1-4): {input_features[0][32:36]}")
         print(f"  Humidity min (lag 1-4): {input_features[0][36:40]}")
 
-    def predict_dengue_cases(self, municipality, input_features):
-        """Predict dengue cases for a municipality using the new model format."""
+    def predict_ISPA_cases(self, municipality, input_features):
+        """Predict ISPA cases for a municipality using the new model format."""
         if municipality not in self.models:
             print(f"No model available for {municipality}")
             return None
@@ -294,7 +294,7 @@ class DenguePredictor:
         
         features = []
         
-        # Dengue lags: current_prediction becomes lag_1, previous lag_1-3 become lag_2-4
+        # ISPA lags: current_prediction becomes lag_1, previous lag_1-3 become lag_2-4
         features.append(current_prediction)
         features.extend(previous_features[0][:3])  # Previous lag_1 to lag_3
         
@@ -338,11 +338,11 @@ class DenguePredictor:
         next_week_features = np.array(features).reshape(1, -1)
         
         # Make prediction using the new features
-        return self.predict_dengue_cases(municipality, next_week_features)
+        return self.predict_ISPA_cases(municipality, next_week_features)
 
 def main():
-    predictor = DenguePredictor()
-    pipeline_name = "Dengue Predictor Pipeline"
+    predictor = ISPAPredictor()
+    pipeline_name = "ISPA Predictor Pipeline"
     pipeline_start_time = datetime.now() # For recording run
     municipalities_processed_count = 0
     alerts_generated_this_run = 0
@@ -399,7 +399,7 @@ def main():
                 input_features = predictor.prepare_input_sequence(municipality, weeks[-4:], year, week)
 
                 # Make prediction for current week
-                current_prediction = predictor.predict_dengue_cases(municipality, input_features)
+                current_prediction = predictor.predict_ISPA_cases(municipality, input_features)
                 
                 # Initialize next week prediction
                 next_week_prediction = None
@@ -461,7 +461,7 @@ def main():
                     # Alert for current week prediction
                     if current_prediction is not None:
                         current_alert = generate_disease_alert(
-                            disease_type="Dengue",
+                            disease_type="ISPA",
                             predicted_cases=int(current_prediction),
                             municipality_name=municipality,
                             forecast_date_str=alert_forecast_date_str, # Standardized
@@ -471,12 +471,12 @@ def main():
                         )
                         if current_alert:
                             all_alerts.append(current_alert)
-                            print(f"Generated current week Dengue alert for {municipality}: Level {current_alert['alert_level']}")
+                            print(f"Generated current week ISPA alert for {municipality}: Level {current_alert['alert_level']}")
 
                     # Alert for next week prediction
                     if next_week_prediction is not None:
                         next_week_alert = generate_disease_alert(
-                            disease_type="Dengue",
+                            disease_type="ISPA",
                             predicted_cases=int(next_week_prediction),
                             municipality_name=municipality,
                             forecast_date_str=alert_forecast_date_str, # Standardized
@@ -486,7 +486,7 @@ def main():
                         )
                         if next_week_alert:
                             all_alerts.append(next_week_alert)
-                            print(f"Generated next week Dengue alert for {municipality}: Level {next_week_alert['alert_level']}")
+                            print(f"Generated next week ISPA alert for {municipality}: Level {next_week_alert['alert_level']}")
 
                     processed_municipality_names.append(municipality)
         
@@ -496,14 +496,14 @@ def main():
         # Save predictions
         os.makedirs(predictor.predictions_dir, exist_ok=True)
         # Use standardized date suffix for predictions file
-        predictions_file = f"{predictor.predictions_dir}/dengue_predictions_{current_date_filename_suffix}.json"
+        predictions_file = f"{predictor.predictions_dir}/ISPA_predictions_{current_date_filename_suffix}.json"
         with open(predictions_file, 'w') as f:
             json.dump(predictions, f, indent=2)
         
         print(f"\nPredictions saved to {predictions_file}")
         
         # Print predictions
-        print("\nPredicted dengue cases for each municipality:")
+        print("\nPredicted ISPA cases for each municipality:")
         for municipality, pred_data in predictions.items():
             print(f"{municipality}: Current week: {pred_data['current_week']['predicted_cases']} cases")
             if 'next_week' in pred_data:
@@ -511,7 +511,7 @@ def main():
 
         # --- Ingest Alerts and Bulletins ---    
         if all_alerts:
-            print(f"\nAttempting to ingest {len(all_alerts)} Dengue alerts...")
+            print(f"\nAttempting to ingest {len(all_alerts)} ISPA alerts...")
             
             # First, create disease forecast alerts and get their IDs
             alert_id_mapping = create_and_ingest_disease_forecast_alerts(all_alerts, predictor.db_params)
@@ -521,7 +521,7 @@ def main():
             
             # Prepare data for full map coloring
             # The map needs a list of {'municipality_code', 'alert_level'} for all relevant alerts
-            # For dengue, all alerts in all_alerts are for Dengue.
+            # For ISPA, all alerts in all_alerts are for ISPA.
             predictions_for_map_display = []
             for alert_item in all_alerts:
                 if alert_item and 'municipality_code' in alert_item and 'alert_level' in alert_item:
@@ -530,7 +530,7 @@ def main():
                         'alert_level': alert_item['alert_level']
                     })
             
-            all_predictions_for_map_arg = {"Dengue": predictions_for_map_display}
+            all_predictions_for_map_arg = {"ISPA": predictions_for_map_display}
             
             create_and_ingest_bulletins(
                 all_alerts, 
@@ -540,7 +540,7 @@ def main():
             )
             bulletins_created_this_run = len(all_alerts) # This might be an overestimation if some bulletins fail
         else:
-            print("\nNo Dengue alerts generated to create bulletins or store in disease_forecast_alerts table.")
+            print("\nNo ISPA alerts generated to create bulletins or store in disease_forecast_alerts table.")
         
         record_disease_pipeline_run(
             db_params=predictor.db_params,

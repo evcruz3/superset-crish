@@ -3,7 +3,6 @@
 import os
 from dotenv import load_dotenv
 import numpy as np
-import tensorflow as tf
 import json
 from datetime import datetime, timedelta
 import joblib
@@ -23,13 +22,11 @@ load_dotenv()
 
 class DiarrheaPredictor:
     def __init__(self):
-        self.models_dir = os.getenv('DIARRHEA_MODELS_DIR', 'diarrheaModels')
+        self.models_dir = os.getenv('NEW_DIARRHEA_MODELS_DIR', 'new_models/Diarrhea')
         self.predictions_dir = os.getenv('PREDICTIONS_DIR', 'predictions')
         self.weather_data_dir = os.getenv('WEATHER_DATA_DIR', 'weather_data')
         self.default_prev_cases = int(os.getenv('DEFAULT_PREV_CASES', '1'))
-        self.keras = tf.keras
         self.models = {}
-        self.scalers = {}
         
         # Database connection parameters
         self.db_params = {
@@ -93,12 +90,12 @@ class DiarrheaPredictor:
             SELECT year, week_number
             FROM tlhis_diseases
             WHERE municipality_code = %s
-            AND (disease ILIKE %s OR disease ILIKE %s)
+            AND lower(disease) ~* '\ydiarr?hea\y'
             AND (year < %s OR (year = %s AND week_number <= %s))
             ORDER BY year DESC, week_number DESC
             LIMIT 1
             """
-            self.cursor.execute(query_latest_week, (municipality_code, '%diarhea%', '%diarrhea%', year, year, week))
+            self.cursor.execute(query_latest_week, (municipality_code, year, year, week))
             latest_week_data = self.cursor.fetchone()
 
             if not latest_week_data:
@@ -115,10 +112,10 @@ class DiarrheaPredictor:
             WHERE municipality_code = %s
             AND year = %s
             AND week_number = %s
-            AND (disease ILIKE %s OR disease ILIKE %s)
+            AND lower(disease) ~* '\ydiarr?hea\y'
             """
             
-            self.cursor.execute(query_cases, (municipality_code, latest_year, latest_week, '%diarhea%', '%diarrhea%'))
+            self.cursor.execute(query_cases, (municipality_code, latest_year, latest_week))
             result = self.cursor.fetchone()
             
             # print(f"Using data from {latest_year}-W{latest_week} for target {year}-W{week} for {municipality}: {int(result[0]) if result else 0} cases") # Optional: for debugging
@@ -148,107 +145,199 @@ class DiarrheaPredictor:
         return year, week
         
     def load_models(self, municipalities):
-        """Load models and scalers for each municipality."""
+        """Load joblib models for each municipality."""
         available_municipalities = []
         for municipality in municipalities:
             try:
-                model_path = f'{self.models_dir}/{municipality}.h5'
-                scaler_path = f'{self.models_dir}/{municipality}_minmax_scaler.pkl'
+                model_path = f'{self.models_dir}/{municipality}_Diarrhea.joblib'
                 
-                if os.path.exists(model_path) and os.path.exists(scaler_path):
-                    self.models[municipality] = self.keras.models.load_model(model_path)
-                    self.scalers[municipality] = joblib.load(scaler_path)
-                    print(f"Loaded model and scaler for {municipality}")
+                if os.path.exists(model_path):
+                    self.models[municipality] = joblib.load(model_path)
+                    print(f"Loaded model for {municipality} from {model_path}")
                     available_municipalities.append(municipality)
                 else:
-                    print(f"Skipping {municipality}: Model or scaler not found")
+                    print(f"Skipping {municipality}: Model not found at {model_path}")
             except Exception as e:
                 print(f"Error loading model for {municipality}: {str(e)}")
         return available_municipalities
 
-    def prepare_input_data(self, weekly_data, prev_cases=None):
-        """Prepare input data in the format expected by the model."""
-        if prev_cases is None:
-            prev_cases = self.default_prev_cases
+    def prepare_input_sequence(self, municipality, weeks_data, year, week):
+        """Prepare the 40-feature input sequence for the new models.
+        
+        Features order (40 total):
+        - Diarrhea_lag_1 to Diarrhea_lag_4 (4 features)
+        - t2m_max_lag_1 to t2m_max_lag_4 (4 features)
+        - t2m_mean_lag_1 to t2m_mean_lag_4 (4 features)
+        - t2m_min_lag_1 to t2m_min_lag_4 (4 features)
+        - tp_max_lag_1 to tp_max_lag_4 (4 features)
+        - tp_mean_lag_1 to tp_mean_lag_4 (4 features)
+        - tp_min_lag_1 to tp_min_lag_4 (4 features)
+        - relative_humidity_max_lag_1 to relative_humidity_max_lag_4 (4 features)
+        - relative_humidity_mean_lag_1 to relative_humidity_mean_lag_4 (4 features)
+        - relative_humidity_min_lag_1 to relative_humidity_min_lag_4 (4 features)
+        """
+        # Get previous cases for the last 4 weeks
+        diarrhea_lags = []
+        weather_data_by_lag = []
+        
+        # Process the 4 weeks in chronological order (oldest to newest)
+        # weeks_data is already in chronological order
+        for week_data in weeks_data:
+            week_year, week_num = self.get_week_info(week_data['week_start'])
             
-        input_data = np.array([
-            prev_cases,
-            weekly_data['temperature']['max'],
-            weekly_data['temperature']['avg'],
-            weekly_data['temperature']['min'],
-            weekly_data['precipitation'],
-            weekly_data['humidity']['max'],
-            weekly_data['humidity']['mean'],
-            weekly_data['humidity']['min']
-        ])
-        return input_data
+            # Get diarrhea cases for this week
+            cases = self.get_previous_cases(municipality, week_year, week_num)
+            diarrhea_lags.append(cases)
+            weather_data_by_lag.append(week_data)
+        
+        # Reverse to get lag_1 as most recent (last week in the list)
+        diarrhea_lags = diarrhea_lags[::-1]
+        weather_data_by_lag = weather_data_by_lag[::-1]
+        
+        # Build the feature array
+        features = []
+        
+        # Add diarrhea lags
+        features.extend(diarrhea_lags)
+        
+        # Add weather features in the correct order
+        # t2m_max
+        for week_data in weather_data_by_lag:
+            features.append(week_data['temperature']['max'])
+        
+        # t2m_mean (using avg as mean)
+        for week_data in weather_data_by_lag:
+            features.append(week_data['temperature']['avg'])
+            
+        # t2m_min
+        for week_data in weather_data_by_lag:
+            features.append(week_data['temperature']['min'])
+            
+        # tp_max (precipitation max - assuming single value, so using same for max/mean/min)
+        for week_data in weather_data_by_lag:
+            features.append(week_data['precipitation'])
+            
+        # tp_mean
+        for week_data in weather_data_by_lag:
+            features.append(week_data['precipitation'])
+            
+        # tp_min
+        for week_data in weather_data_by_lag:
+            features.append(week_data['precipitation'])
+            
+        # relative_humidity_max
+        for week_data in weather_data_by_lag:
+            features.append(week_data['humidity']['max'])
+            
+        # relative_humidity_mean
+        for week_data in weather_data_by_lag:
+            features.append(week_data['humidity']['mean'])
+            
+        # relative_humidity_min
+        for week_data in weather_data_by_lag:
+            features.append(week_data['humidity']['min'])
+        
+        return np.array(features).reshape(1, -1)
 
-    def log_input_data(self, municipality, input_sequence):
+    def log_input_data(self, input_features):
         """Log the input data being used for prediction."""
-        print(f"\nInput data for {municipality}:")
-        for week_idx, week_data in enumerate(input_sequence):
-            print(f"\nWeek {week_idx + 1}:")
-            print(f"  Previous cases: {week_data[0]}")
-            print(f"  Temperature (max/avg/min): {week_data[1]:.2f}°C / {week_data[2]:.2f}°C / {week_data[3]:.2f}°C")
-            print(f"  Precipitation: {week_data[4]:.2f}mm")
-            print(f"  Humidity (max/mean/min): {week_data[5]:.2f}% / {week_data[6]:.2f}% / {week_data[7]:.2f}%")
+        print("\nInput features for prediction:")
+        print(f"  Diarrhea cases (lag 1-4): {input_features[0][:4]}")
+        print(f"  Temperature max (lag 1-4): {input_features[0][4:8]}")
+        print(f"  Temperature mean (lag 1-4): {input_features[0][8:12]}")
+        print(f"  Temperature min (lag 1-4): {input_features[0][12:16]}")
+        print(f"  Precipitation max (lag 1-4): {input_features[0][16:20]}")
+        print(f"  Precipitation mean (lag 1-4): {input_features[0][20:24]}")
+        print(f"  Precipitation min (lag 1-4): {input_features[0][24:28]}")
+        print(f"  Humidity max (lag 1-4): {input_features[0][28:32]}")
+        print(f"  Humidity mean (lag 1-4): {input_features[0][32:36]}")
+        print(f"  Humidity min (lag 1-4): {input_features[0][36:40]}")
 
-    def predict_diarrhea_cases(self, municipality, input_sequence):
-        """Predict diarrhea cases for a municipality using a sequence of weekly data."""
-        if municipality not in self.models or municipality not in self.scalers:
+    def predict_diarrhea_cases(self, municipality, input_features):
+        """Predict diarrhea cases for a municipality using the new model format."""
+        if municipality not in self.models:
             print(f"No model available for {municipality}")
             return None
 
         # Log input data
-        self.log_input_data(municipality, input_sequence)
+        print(f"\nPredicting for {municipality}")
+        self.log_input_data(input_features)
 
         model = self.models[municipality]
-        scaler = self.scalers[municipality]
         
-        # Scale the input data
-        input_scaled = scaler.transform(input_sequence)
-        
-        # Reshape for LSTM input (samples, time steps, features)
-        input_reshaped = input_scaled.reshape(1, 4, input_sequence.shape[1])
-        
-        # Make prediction
-        scaled_prediction = model.predict(input_reshaped, verbose=0)
-        
-        # Inverse transform the prediction
-        predicted_cases = scaler.inverse_transform(
-            np.concatenate((scaled_prediction.reshape(-1, 1), 
-                          np.zeros((scaled_prediction.shape[0], input_sequence.shape[1]-1))), 
-                          axis=1))[:, 0]
+        # Make prediction directly (no scaling needed for new models)
+        prediction = model.predict(input_features)
         
         # Ensure non-negative prediction and round up to nearest integer
-        predicted_cases = math.ceil(max(0, float(predicted_cases[0])))
+        predicted_cases = math.ceil(max(0, float(prediction[0])))
+        
+        print(f"Predicted cases: {predicted_cases}")
         
         return predicted_cases
     
-    def predict_next_week_cases(self, municipality, input_sequence, current_prediction, forecast_data):
+    def predict_next_week_cases(self, municipality, previous_features, current_prediction, forecast_week_data):
         """Predict cases for next week using the current prediction and forecast data."""
         print(f"\nPredicting next week for {municipality}")
         
-        if municipality not in self.models or municipality not in self.scalers:
+        if municipality not in self.models:
             print(f"No model available for {municipality}")
             return None
             
-        if not forecast_data:
+        if not forecast_week_data:
             print(f"No forecast data available for {municipality}")
             return None
             
-        # Create new input sequence for next week prediction
-        # Use the last 3 weeks of historical data + current week prediction
-        next_week_sequence = np.copy(input_sequence[1:])  # Take last 3 weeks
+        # Create new input features for next week prediction
+        # Shift all lags by 1 (lag_1 becomes lag_2, etc.)
+        # Current prediction becomes new lag_1
         
-        # Prepare the forecast week data with predicted cases as "previous cases"
-        forecast_week_data = self.prepare_input_data(forecast_data[0], current_prediction)
+        features = []
         
-        # Combine previous 3 weeks with forecast week
-        next_week_sequence = np.vstack([next_week_sequence, forecast_week_data.reshape(1, -1)])
+        # Diarrhea lags: current_prediction becomes lag_1, previous lag_1-3 become lag_2-4
+        features.append(current_prediction)
+        features.extend(previous_features[0][:3])  # Previous lag_1 to lag_3
         
-        # Make prediction using the new sequence
-        return self.predict_diarrhea_cases(municipality, next_week_sequence)
+        # Weather features: forecast becomes lag_1, previous lag_1-3 become lag_2-4
+        # For each weather parameter, add forecast as lag_1 and shift others
+        
+        # Temperature max
+        features.append(forecast_week_data['temperature']['max'])
+        features.extend(previous_features[0][4:7])  # Previous t2m_max lag_1-3
+        
+        # Temperature mean
+        features.append(forecast_week_data['temperature']['avg'])
+        features.extend(previous_features[0][8:11])  # Previous t2m_mean lag_1-3
+        
+        # Temperature min
+        features.append(forecast_week_data['temperature']['min'])
+        features.extend(previous_features[0][12:15])  # Previous t2m_min lag_1-3
+        
+        # Precipitation max/mean/min (using same value)
+        features.append(forecast_week_data['precipitation'])
+        features.extend(previous_features[0][16:19])  # Previous tp_max lag_1-3
+        
+        features.append(forecast_week_data['precipitation'])
+        features.extend(previous_features[0][20:23])  # Previous tp_mean lag_1-3
+        
+        features.append(forecast_week_data['precipitation'])
+        features.extend(previous_features[0][24:27])  # Previous tp_min lag_1-3
+        
+        # Humidity max
+        features.append(forecast_week_data['humidity']['max'])
+        features.extend(previous_features[0][28:31])  # Previous humidity_max lag_1-3
+        
+        # Humidity mean
+        features.append(forecast_week_data['humidity']['mean'])
+        features.extend(previous_features[0][32:35])  # Previous humidity_mean lag_1-3
+        
+        # Humidity min
+        features.append(forecast_week_data['humidity']['min'])
+        features.extend(previous_features[0][36:39])  # Previous humidity_min lag_1-3
+        
+        next_week_features = np.array(features).reshape(1, -1)
+        
+        # Make prediction using the new features
+        return self.predict_diarrhea_cases(municipality, next_week_features)
 
 def main():
     predictor = DiarrheaPredictor()
@@ -300,18 +389,16 @@ def main():
             if len(weeks) >= int(os.getenv('MAX_WEEKS_HISTORY', '4')):  # Need minimum weeks of data
                 print(f"\nProcessing {municipality}")
                 
-                # Get previous cases for each week
-                input_sequences = []
-                for week_data in weeks[-int(os.getenv('MAX_WEEKS_HISTORY', '4')):]:
-                    year, week = predictor.get_week_info(week_data['week_start'])
-                    prev_cases = predictor.get_previous_cases(municipality, year, week)
-                    input_data = predictor.prepare_input_data(week_data, prev_cases)
-                    input_sequences.append(input_data)
+                # Prepare input sequence for the new model format
+                # Get the last week's info for reference
+                last_week = weeks[-1]
+                year, week = predictor.get_week_info(last_week['week_start'])
                 
-                input_sequence = np.array(input_sequences)
+                # Prepare the 40-feature input sequence
+                input_features = predictor.prepare_input_sequence(municipality, weeks[-4:], year, week)
 
                 # Make prediction for current week
-                current_prediction = predictor.predict_diarrhea_cases(municipality, input_sequence)
+                current_prediction = predictor.predict_diarrhea_cases(municipality, input_features)
                 
                 # Initialize next week prediction
                 next_week_prediction = None
@@ -326,9 +413,9 @@ def main():
                 if has_forecast and municipality in forecast_data and forecast_data[municipality]:
                     next_week_prediction = predictor.predict_next_week_cases(
                         municipality, 
-                        input_sequence, 
+                        input_features, 
                         current_prediction, 
-                        forecast_data[municipality]
+                        forecast_data[municipality][0]  # Pass the first forecast week
                     )
                 
                 if current_prediction is not None:

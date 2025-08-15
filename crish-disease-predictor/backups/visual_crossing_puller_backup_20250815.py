@@ -4,7 +4,7 @@ import requests
 from datetime import datetime, timedelta
 import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List
 import time
 from collections import defaultdict
 
@@ -41,56 +41,6 @@ class VisualCrossingPuller:
         start_date = datetime.now() + timedelta(days=1)  # Start from tomorrow
         end_date = start_date + timedelta(days=6)  # Get a full week
         return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-
-    def check_existing_data(self, municipality: str, data_type: str = "historical") -> Optional[Dict]:
-        """Check if data already exists for today and load it if available."""
-        filename = f"weather_data/{municipality}_{data_type}_{datetime.now().strftime('%Y%m%d')}.json"
-        
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r') as f:
-                    data = json.load(f)
-                print(f"Found existing {data_type} data for {municipality} in {filename}")
-                return data
-            except Exception as e:
-                print(f"Error loading existing data from {filename}: {str(e)}")
-                return None
-        return None
-
-    def check_consolidated_files_exist(self) -> tuple[bool, bool]:
-        """Check if consolidated weekly averages and forecast files exist for today."""
-        current_date = datetime.now().strftime('%Y%m%d')
-        weekly_file = f"weather_data/all_municipalities_weekly_averages_{current_date}.json"
-        forecast_file = f"weather_data/all_municipalities_forecast_{current_date}.json"
-        
-        return os.path.exists(weekly_file), os.path.exists(forecast_file)
-
-    def load_existing_consolidated_data(self) -> tuple[Dict, Dict]:
-        """Load existing consolidated data if available."""
-        current_date = datetime.now().strftime('%Y%m%d')
-        weekly_file = f"weather_data/all_municipalities_weekly_averages_{current_date}.json"
-        forecast_file = f"weather_data/all_municipalities_forecast_{current_date}.json"
-        
-        weekly_data = {}
-        forecast_data = {}
-        
-        if os.path.exists(weekly_file):
-            try:
-                with open(weekly_file, 'r') as f:
-                    weekly_data = json.load(f)
-                print(f"Loaded existing weekly averages from {weekly_file}")
-            except Exception as e:
-                print(f"Error loading weekly averages: {str(e)}")
-        
-        if os.path.exists(forecast_file):
-            try:
-                with open(forecast_file, 'r') as f:
-                    forecast_data = json.load(f)
-                print(f"Loaded existing forecast data from {forecast_file}")
-            except Exception as e:
-                print(f"Error loading forecast data: {str(e)}")
-        
-        return weekly_data, forecast_data
 
     def get_historical_weather(self, municipality: str, start_date: str, end_date: str) -> Dict:
         lat, lon = self.municipalities[municipality]
@@ -204,85 +154,40 @@ def main():
     puller = VisualCrossingPuller(API_KEY)
     start_date, end_date = puller.get_date_range()
     
-    print(f"Checking for existing weather data for {datetime.now().strftime('%Y-%m-%d')}")
+    print(f"Pulling historical data from {start_date} to {end_date}")
     
-    # Check if consolidated files already exist
-    weekly_exists, forecast_exists = puller.check_consolidated_files_exist()
-    
-    if weekly_exists and forecast_exists:
-        print("\n✓ All consolidated weather data files already exist for today!")
-        print("Skipping data pull to avoid unnecessary API calls.")
-        
-        # Load and display summary of existing data
-        weekly_data, forecast_data = puller.load_existing_consolidated_data()
-        print(f"\nExisting data summary:")
-        print(f"- Weekly averages available for {len(weekly_data)} municipalities")
-        print(f"- Forecast data available for {len(forecast_data)} municipalities")
-        
-        return
-    
-    print(f"\nPulling historical data from {start_date} to {end_date}")
-    
-    # Load any existing consolidated data
-    all_weekly_averages, all_forecast_data = puller.load_existing_consolidated_data()
-    
-    # Track which municipalities need data
-    municipalities_needing_data = []
+    # Dictionary to store weekly averages for all municipalities
+    all_weekly_averages = {}
+    all_forecast_data = {}
     
     for municipality in puller.municipalities:
-        # Check if we already have both historical and forecast data for this municipality
-        if municipality in all_weekly_averages and municipality in all_forecast_data:
-            print(f"\n✓ {municipality}: Data already available, skipping...")
-            continue
-        
-        municipalities_needing_data.append(municipality)
-    
-    if not municipalities_needing_data:
-        print("\n✓ All municipalities have data for today!")
-        return
-    
-    print(f"\nNeed to pull data for {len(municipalities_needing_data)} municipalities: {', '.join(municipalities_needing_data)}")
-    
-    # Process only municipalities that need data
-    for municipality in municipalities_needing_data:
         print(f"\nProcessing {municipality}")
         
-        # Check for existing individual files first
-        historical_data = puller.check_existing_data(municipality, "historical")
-        
-        # Get historical data if not already cached
-        if not historical_data:
-            historical_data = puller.get_historical_weather(municipality, start_date, end_date)
-            if historical_data:
-                # Save raw data
-                puller.save_data(municipality, historical_data, "historical")
-        
+        # Get historical data
+        historical_data = puller.get_historical_weather(municipality, start_date, end_date)
         if historical_data:
+            # Save raw data
+            puller.save_data(municipality, historical_data, "historical")
+            
             # Compute and store weekly averages
             weekly_averages = puller.compute_weekly_averages(historical_data)
             all_weekly_averages[municipality] = weekly_averages
         
-        # Check for existing forecast data
-        forecast_data = puller.check_existing_data(municipality, "forecast")
-        
-        # Get forecast data if not already cached
-        if not forecast_data:
-            try:    
-                forecast_data = puller.get_forecast_weather(municipality)
-                if forecast_data:
-                    # Save raw forecast data
-                    puller.save_data(municipality, forecast_data, "forecast")
-            except Exception as e:
-                print(f"Error getting forecast data for {municipality}: {str(e)}")
-        
-        if forecast_data:
-            # Compute and store weekly forecast
-            forecast_weekly = puller.compute_weekly_averages(forecast_data)
-            all_forecast_data[municipality] = forecast_weekly
+        try:    
+            # Get forecast data for next week
+            forecast_data = puller.get_forecast_weather(municipality)
+            if forecast_data:
+                # Save raw forecast data
+                puller.save_data(municipality, forecast_data, "forecast")
             
-        # Respect API rate limits (only when making API calls)
-        if not historical_data or not forecast_data:
-            time.sleep(1)
+                # Compute and store weekly forecast
+                forecast_weekly = puller.compute_weekly_averages(forecast_data)
+                all_forecast_data[municipality] = forecast_weekly
+        except Exception as e:
+            print(f"Error getting forecast data for {municipality}: {str(e)}")
+            
+        # Respect API rate limits
+        time.sleep(1)
     
     # Save all weekly averages to a single file
     weekly_averages_file = f"weather_data/all_municipalities_weekly_averages_{datetime.now().strftime('%Y%m%d')}.json"
@@ -297,4 +202,4 @@ def main():
     print(f"\nSaved forecast data for all municipalities to {forecast_file}")
 
 if __name__ == "__main__":
-    main()
+    main() 
