@@ -194,11 +194,14 @@ const DiseaseTrendChart = ({
     // Convert date range to year/week combinations for efficient backend filtering
     const weekRanges = getWeekRangeFromDates(startDate, endDate);
     
+    // Map disease name for API - ISPA needs to be ISPA/ARI for actual data
+    const apiDisease = disease === 'ISPA' ? 'ISPA/ARI' : disease;
+    
     // Create multiple API calls for each year/week combination to leverage backend filtering
     const fetchPromises = weekRanges.map(({year, week}) => {
       const commonParams: Record<string, string> = {
         page_size: '-1',
-        disease: disease,
+        disease: apiDisease,
         year: year.toString(),
         week_number: week.toString(),
       };

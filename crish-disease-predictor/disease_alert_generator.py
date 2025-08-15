@@ -484,22 +484,79 @@ def create_and_ingest_disease_forecast_alerts(list_of_alerts, db_params):
             print("Checked/Created table disease_forecast_alerts.")
 
             # 2. Delete existing records for the specific alerts being inserted
+            # First delete associated bulletins, then delete the alerts
             keys_to_delete = set()
             for alert_tuple in alerts_to_insert:
                 key = (alert_tuple[0], alert_tuple[1], alert_tuple[2])
                 keys_to_delete.add(key)
             
             delete_count = 0
+            bulletin_delete_count = 0
+            attachment_delete_count = 0
             if keys_to_delete:
+                # First delete bulletin_image_attachments that reference bulletins we're about to delete
+                delete_attachments_sql_base = """
+                DELETE FROM bulletin_image_attachments 
+                WHERE bulletin_id IN (
+                    SELECT b.id FROM bulletins b
+                    WHERE b.disease_forecast_alert_id IN (
+                        SELECT id FROM disease_forecast_alerts 
+                        WHERE municipality_code = %s AND forecast_date = %s AND disease_type = %s
+                    )
+                );
+                """
+                delete_attachments_sql_null_code = """
+                DELETE FROM bulletin_image_attachments 
+                WHERE bulletin_id IN (
+                    SELECT b.id FROM bulletins b
+                    WHERE b.disease_forecast_alert_id IN (
+                        SELECT id FROM disease_forecast_alerts 
+                        WHERE municipality_code IS NULL AND forecast_date = %s AND disease_type = %s
+                    )
+                );
+                """
+                
+                # Then delete bulletins that reference the alerts we're about to delete
+                delete_bulletins_sql_base = """
+                DELETE FROM bulletins 
+                WHERE disease_forecast_alert_id IN (
+                    SELECT id FROM disease_forecast_alerts 
+                    WHERE municipality_code = %s AND forecast_date = %s AND disease_type = %s
+                );
+                """
+                delete_bulletins_sql_null_code = """
+                DELETE FROM bulletins 
+                WHERE disease_forecast_alert_id IN (
+                    SELECT id FROM disease_forecast_alerts 
+                    WHERE municipality_code IS NULL AND forecast_date = %s AND disease_type = %s
+                );
+                """
+                
+                # Then delete the alerts
                 delete_sql_base = "DELETE FROM disease_forecast_alerts WHERE municipality_code = %s AND forecast_date = %s AND disease_type = %s;"
                 delete_sql_null_code = "DELETE FROM disease_forecast_alerts WHERE municipality_code IS NULL AND forecast_date = %s AND disease_type = %s;"
+                
                 for muni_code, f_date, d_type in keys_to_delete:
                     if muni_code is None:
+                        # Delete attachments first
+                        cur.execute(delete_attachments_sql_null_code, (f_date, d_type))
+                        attachment_delete_count += cur.rowcount
+                        # Then delete bulletins
+                        cur.execute(delete_bulletins_sql_null_code, (f_date, d_type))
+                        bulletin_delete_count += cur.rowcount
+                        # Finally delete alerts
                         cur.execute(delete_sql_null_code, (f_date, d_type))
                     else:
+                        # Delete attachments first
+                        cur.execute(delete_attachments_sql_base, (muni_code, f_date, d_type))
+                        attachment_delete_count += cur.rowcount
+                        # Then delete bulletins
+                        cur.execute(delete_bulletins_sql_base, (muni_code, f_date, d_type))
+                        bulletin_delete_count += cur.rowcount
+                        # Finally delete alerts
                         cur.execute(delete_sql_base, (muni_code, f_date, d_type))
                     delete_count += cur.rowcount
-                print(f"Deleted {delete_count} existing alert records before insertion.")
+                print(f"Deleted {attachment_delete_count} image attachments, {bulletin_delete_count} bulletins, and {delete_count} alert records before insertion.")
 
             # 3. Insert the new data and get the IDs
             insert_sql = """
