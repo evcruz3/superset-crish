@@ -22,7 +22,15 @@ set -e
 #
 /app/docker/docker-bootstrap.sh
 
-if [ "$SUPERSET_LOAD_EXAMPLES" = "yes" ]; then
+# Check if we have chart data to import
+CHART_DATA_EXISTS=false
+if [ -d "/app/chart_data" ] && [ "$(find /app/chart_data -name '*.zip' -type f | wc -l)" -gt 0 ]; then
+    CHART_DATA_EXISTS=true
+fi
+
+if [ "$SUPERSET_LOAD_EXAMPLES" = "yes" ] && [ "$CHART_DATA_EXISTS" = "true" ]; then
+    STEP_CNT=5
+elif [ "$SUPERSET_LOAD_EXAMPLES" = "yes" ] || [ "$CHART_DATA_EXISTS" = "true" ]; then
     STEP_CNT=4
 else
     STEP_CNT=3
@@ -79,4 +87,28 @@ if [ "$SUPERSET_LOAD_EXAMPLES" = "yes" ]; then
         superset load_examples --force
     fi
     echo_step "4" "Complete" "Loading examples"
+fi
+
+if [ "$CHART_DATA_EXISTS" = "true" ]; then
+    # Determine the step number based on whether examples were loaded
+    if [ "$SUPERSET_LOAD_EXAMPLES" = "yes" ]; then
+        CHART_STEP="5"
+    else
+        CHART_STEP="4"
+    fi
+    
+    # Import charts from chart_data directory
+    echo_step "$CHART_STEP" "Starting" "Importing charts"
+    
+    # Find and import all zip files in chart_data directory
+    for chart_file in /app/chart_data/*.zip; do
+        if [ -f "$chart_file" ]; then
+            echo "Importing chart: $(basename "$chart_file")"
+            superset import-charts --path "$chart_file" --username admin || {
+                echo "Warning: Failed to import $(basename "$chart_file")"
+            }
+        fi
+    done
+    
+    echo_step "$CHART_STEP" "Complete" "Importing charts"
 fi

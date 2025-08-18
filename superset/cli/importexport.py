@@ -169,6 +169,44 @@ def import_dashboards(path: str, username: Optional[str]) -> None:
 @click.option(
     "--path",
     "-p",
+    required=True,
+    help="Path to a single ZIP file",
+)
+@click.option(
+    "--username",
+    "-u",
+    required=False,
+    default="admin",
+    help="Specify the user name to assign charts to",
+)
+def import_charts(path: str, username: Optional[str] = "admin") -> None:
+    """Import charts from ZIP file"""
+    # pylint: disable=import-outside-toplevel
+    from superset.commands.chart.importers.dispatcher import ImportChartsCommand
+    from superset.commands.importers.v1.utils import get_contents_from_bundle
+
+    with override_user(user=security_manager.find_user(username=username)):
+        if is_zipfile(path):
+            with ZipFile(path) as bundle:
+                contents = get_contents_from_bundle(bundle)
+        else:
+            with open(path) as file:
+                contents = {path: file.read()}
+        try:
+            ImportChartsCommand(contents, overwrite=True).run()
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                "There was an error when importing the chart(s), please check "
+                "the exception traceback in the log"
+            )
+            sys.exit(1)
+
+
+@click.command()
+@with_appcontext
+@click.option(
+    "--path",
+    "-p",
     help="Path to a single ZIP file",
 )
 @click.option(
