@@ -184,6 +184,8 @@ services:
         required: true
       - path: docker/.env-local # optional override
         required: false
+    environment:
+      - MINIO_DISK_USAGE_THRESHOLD=5.0
     ports:
       - "9090:9000" # API port changed
       - "9091:9001" # Console port changed
