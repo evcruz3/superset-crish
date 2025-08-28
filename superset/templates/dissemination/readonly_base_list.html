@@ -1,0 +1,111 @@
+{#
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+#}
+{% import 'appbuilder/general/lib.html' as lib %}
+{% import "superset/macros.html" as macros %}
+
+{# Force all permissions to read-only #}
+{% set can_add = False %}
+{% set can_show = True %}
+{% set can_edit = False %}
+{% set can_delete = False %}
+{% set actions = [] %}
+
+{# No add button section #}
+
+{% if count > 0 %}
+
+    {% block begin_content scoped %}
+    {% endblock %}
+
+    {% block begin_loop_header scoped %}
+    {% endblock %}
+
+    {% block begin_loop_values %}
+    {% endblock %}
+
+    {% block end_content scoped %}
+    {% endblock %}
+
+<style>
+    /* Pagination styling */
+    .pagination-wrapper {
+        background-color: white;
+        padding: 20px 24px;
+        border-top: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+    
+    .pagination-info {
+        color: #8c8c8c;
+        font-size: 14px;
+    }
+    
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .pagination {
+        margin: 0;
+    }
+    
+    .pagination > li > a {
+        color: #1890ff;
+        border: 1px solid #d9d9d9;
+        padding: 6px 12px;
+        margin: 0 2px;
+        border-radius: 4px;
+        transition: all 0.3s;
+    }
+    
+    .pagination > li > a:hover {
+        border-color: #40a9ff;
+        color: #40a9ff;
+    }
+    
+    .pagination > li.active > a {
+        background-color: #1890ff;
+        border-color: #1890ff;
+        color: white;
+    }
+    
+    .pagination > li.disabled > a {
+        color: #d9d9d9;
+        cursor: not-allowed;
+    }
+</style>
+
+<div class="pagination-wrapper">
+    <div class="pagination-info">
+        <strong>{{ _('Total Records') }}:</strong> {{ count }}
+    </div>
+    <div class="pagination-controls">
+        {{ lib.render_set_page_size(page, page_size, count, modelview_name) }}
+        {{ lib.render_pagination(page, page_size, count, modelview_name) }}
+    </div>
+</div>
+
+{% else %}
+    <b>{{_("No records found")}}</b>
+{% endif %}

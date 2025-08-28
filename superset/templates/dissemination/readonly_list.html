@@ -1,0 +1,288 @@
+{#
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+#}
+{% extends 'dissemination/readonly_base_list.html' %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block begin_content scoped %}
+    <style>
+        /* Modern styling to match BulletinsAndAdvisories */
+        .dissemination-logs-container {
+            padding: 24px 0;
+            background-color: #f7f8fa;
+            min-height: calc(100vh - 100px);
+        }
+        
+        .logs-table-wrapper {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin: 0;
+        }
+        
+        .dissemination-logs-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: auto;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+        
+        .dissemination-logs-table thead {
+            background-color: #fafafa;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        
+        .dissemination-logs-table th {
+            padding: 16px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #262626;
+            text-align: left;
+            white-space: nowrap;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        
+        /* Column width adjustments */
+        .dissemination-logs-table th:nth-child(1) { /* Bulletin */
+            width: 25%;
+            min-width: 200px;
+        }
+        
+        .dissemination-logs-table th:nth-child(2) { /* Channel */
+            width: 10%;
+            min-width: 100px;
+        }
+        
+        .dissemination-logs-table th:nth-child(3) { /* Email Groups */
+            width: 15%;
+            min-width: 150px;
+        }
+        
+        .dissemination-logs-table th:nth-child(4) { /* WhatsApp Groups */
+            width: 15%;
+            min-width: 150px;
+        }
+        
+        .dissemination-logs-table th:nth-child(5) { /* Sent At */
+            width: 15%;
+            min-width: 150px;
+        }
+        
+        .dissemination-logs-table th:nth-child(6) { /* Status */
+            width: 10%;
+            min-width: 100px;
+        }
+        
+        .dissemination-logs-table th:nth-child(7) { /* Sent By */
+            width: 10%;
+            min-width: 120px;
+        }
+        
+        .dissemination-logs-table td {
+            padding: 16px;
+            font-size: 14px;
+            color: #595959;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .dissemination-logs-table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        
+        .dissemination-logs-table tbody tr:hover {
+            background-color: #fafafa;
+        }
+        
+        /* Status badges styling */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-success {
+            background-color: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+        
+        .status-failed {
+            background-color: #fff2e8;
+            color: #fa541c;
+            border: 1px solid #ffbb96;
+        }
+        
+        .status-partial-success {
+            background-color: #e6f7ff;
+            color: #1890ff;
+            border: 1px solid #91d5ff;
+        }
+        
+        .status-pending {
+            background-color: #fffbe6;
+            color: #faad14;
+            border: 1px solid #ffe58f;
+        }
+        
+        /* Channel badges */
+        .channel-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .channel-email {
+            background-color: #f0f5ff;
+            color: #2f54eb;
+        }
+        
+        .channel-facebook {
+            background-color: #e6f4ff;
+            color: #1677ff;
+        }
+        
+        .channel-whatsapp {
+            background-color: #f6ffed;
+            color: #52c41a;
+        }
+        
+        /* Bulletin title link styling */
+        .bulletin-link {
+            color: #1890ff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        
+        .bulletin-link:hover {
+            color: #40a9ff;
+            text-decoration: underline;
+        }
+        
+        /* Icon styling */
+        .bulletin-icon {
+            margin-right: 8px;
+            color: #8c8c8c;
+        }
+        
+        /* Groups text styling */
+        .group-names {
+            font-size: 13px;
+            color: #595959;
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        
+        /* Sort icons */
+        .sort-icon {
+            margin-left: 4px;
+            color: #bfbfbf;
+            font-size: 12px;
+        }
+        
+        .sort-icon-active {
+            color: #1890ff;
+        }
+    </style>
+    
+    <div class="dissemination-logs-container">
+        <div class="logs-table-wrapper">
+            <div class="table-responsive">
+                <table class="dissemination-logs-table">
+{% endblock %}
+
+{% block begin_loop_header scoped %}
+    <thead>
+    <tr>
+    {% for item in include_columns %}
+        {% if item in order_columns %}
+            {% set res = item | get_link_order(modelview_name) %}
+            <th>
+                <a href={{ item | link_order(modelview_name) }} style="color: inherit; text-decoration: none;">
+                    {{label_columns.get(item)}}
+                    {% if res == 2 %}
+                        <i class="fa fa-chevron-up sort-icon sort-icon-active"></i>
+                    {% elif res == 1 %}
+                        <i class="fa fa-chevron-down sort-icon sort-icon-active"></i>
+                    {% else %}
+                        <i class="fa fa-arrows-v sort-icon"></i>
+                    {% endif %}
+                </a>
+            </th>
+        {% else %}
+            <th>{{label_columns.get(item)}}</th>
+        {% endif %}
+    {% endfor %}
+    </tr>
+    </thead>
+{% endblock %}
+
+{% block begin_loop_values %}
+    {% for item in value_columns %}
+        {% set pk = pks[loop.index-1] %}
+        <tr>
+            {# No action checkboxes #}
+            {# No edit/delete buttons #}
+            
+            {% for value in include_columns %}
+                {% set formatter = formatters_columns.get(value) %}
+                <td>
+                    {% if loop.first and can_show %}
+                        <a href="{{ url_for(modelview_name + '.show', pk=pk) | safe }}">
+                            {% if formatter %}
+                                {{ formatter(item[value]) }}
+                            {% else %}
+                                {{ item[value] }}
+                            {% endif %}
+                        </a>
+                    {% else %}
+                        {% if formatter %}
+                            {{ formatter(item[value]) }}
+                        {% else %}
+                            {{ item[value] }}
+                        {% endif %}
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+{% endblock %}
+
+{% block end_content scoped %}
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

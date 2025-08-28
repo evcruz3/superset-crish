@@ -29,6 +29,7 @@ from typing import Optional
 from werkzeug.routing import BuildError
 
 log = logging.getLogger(__name__) # Add logger instance
+logger = logging.getLogger(__name__) # Add logger instance for sync_role_definitions
 # from superset import const as c # Optional: for FAB's log constants
 
 from superset.security.manager import SupersetSecurityManager
@@ -365,6 +366,31 @@ class CustomSecurityManager(SupersetSecurityManager):
     forgotpasswordview_class = ForgotPasswordView
     resetpasswordconfirmview_class = ResetPasswordConfirmView
 
+    # Health Official specific permissions - things they CAN do that Gamma users cannot
+    HEALTH_OFFICIAL_PERMISSIONS = {
+        "can_write",  # Allow editing health data
+        "can_add",    # Allow adding new health records
+        "can_edit",   # Allow editing existing records
+    }
+
+    # Health modules that Health Officials should have full access to
+    HEALTH_OFFICIAL_VIEW_MENUS = {
+        "disease_forecast_alert",  # From DiseaseForecastAlertRestApi
+        "weather_forecast_alerts", 
+        "health_facilities",  # From HealthFacilitiesRestApi
+        "bulletins_and_advisories",  # From BulletinsRestApi
+        "email_groups",  # From EmailGroupsRestApi  
+        "whatsapp_groups",  # From WhatsAppGroupsRestApi
+        "weather_forecasts",  # From WeatherForecastsApi
+        "air_quality_forecasts",
+        "disease_pipeline_run_history",  # From DiseasePipelineRunHistoryRestApi
+        # Also include variations that might exist
+        "dissemination",
+        "Bulletins",
+        "Health Facilities", 
+        "Dissemination"
+    }
+
     def __init__(self, appbuilder):
         super().__init__(appbuilder)
         # Initialize the serializer for password reset tokens
@@ -609,4 +635,192 @@ class CustomSecurityManager(SupersetSecurityManager):
             )
             log.info(f"Password reset email successfully sent to {email} via send_email_smtp.")
         except Exception as e:
-            log.error(f"Error sending password reset email to {email} using send_email_smtp: {e}", exc_info=True) 
+            log.error(f"Error sending password reset email to {email} using send_email_smtp: {e}", exc_info=True)
+
+    def _is_health_official_pvm(self, pvm):
+        """
+        Return True if the FAB permission/view is HealthOfficial user related, False otherwise.
+        
+        HealthOfficial role logic:
+        - Start with Gamma permissions (basic read access)
+        - Add SQL Lab access for health data queries
+        - Add write/edit permissions for health-specific modules
+        - Add access to specific health-related charts
+        - Exclude admin-only functions
+        
+        :param pvm: The FAB permission/view
+        :returns: Whether the FAB object is HealthOfficial related
+        """
+        # Log specific permissions we're interested in
+        if pvm.permission.name == "datasource_access":
+            logger.debug(f"[HealthOfficial] Evaluating permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+        elif pvm.view_menu.name in {"UserInfoEditView", "UserDBModelView", "ResetMyPasswordView"} or "form" in pvm.permission.name.lower():
+            logger.info(f"[HealthOfficial] 🔍 Evaluating user-related permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+        
+        # PRIORITY CHECK: UserInfoEditView permissions FIRST before all other checks
+        if pvm.view_menu.name == "UserInfoEditView":
+            logger.info(f"[HealthOfficial] 🔍 EXPLICIT CHECK - UserInfoEditView permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            if pvm.permission.name in {"can_this_form_get", "can_this_form_post"}:
+                logger.info(f"[HealthOfficial] ✅ EXPLICITLY GRANTED user profile edit: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+                return True
+            else:
+                logger.info(f"[HealthOfficial] ❌ EXPLICITLY DENIED unknown UserInfoEditView permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+                # Don't return False here - let it fall through to other checks
+                logger.info(f"[HealthOfficial] ⚠️ FALLING THROUGH to other checks for UserInfoEditView permission: '{pvm.permission.name}'")
+        
+        # First check if this is accessible to all users
+        if self._is_accessible_to_all(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[HealthOfficial] ✅ GRANTED via _is_accessible_to_all: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Exclude admin-only permissions
+        if self._is_admin_only(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[HealthOfficial] ❌ DENIED - admin only: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return False
+            
+        # Check for health-related datasets BEFORE excluding user-defined permissions
+        # This allows HealthOfficial to access specific health datasets
+        if self._is_health_chart_access(pvm):
+            # Logging is handled inside _is_health_chart_access method
+            return True
+        
+        # Exclude user-defined permissions (those are handled separately)
+        if self._is_user_defined_permission(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[HealthOfficial] ❌ DENIED - user defined: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return False
+        
+        # Include SQL Lab permissions for health data analysis
+        if self._is_sql_lab_pvm(pvm):
+            logger.debug(f"[HealthOfficial] ✅ GRANTED via SQL Lab: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Allow access to Database Connections (needed for health data queries)
+        if (pvm.view_menu.name == "Database" and pvm.permission.name in {"can_read", "menu_access"}):
+            logger.debug(f"[HealthOfficial] ✅ GRANTED database connection access: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # NOTE: UserInfoEditView permissions are now checked at the top of this function
+        
+        # Allow users to view their own info and reset password
+        if (pvm.view_menu.name == "UserDBModelView" and pvm.permission.name in {"can_userinfo", "resetmypassword"}):
+            logger.debug(f"[HealthOfficial] ✅ GRANTED user info access: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Allow password reset functionality
+        if (pvm.view_menu.name == "ResetMyPasswordView" and pvm.permission.name in {"can_this_form_get", "can_this_form_post"}):
+            logger.debug(f"[HealthOfficial] ✅ GRANTED password reset: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # For health-specific modules, allow write access (not just read)
+        if (pvm.view_menu.name in self.HEALTH_OFFICIAL_VIEW_MENUS and 
+            pvm.permission.name in self.HEALTH_OFFICIAL_PERMISSIONS):
+            logger.debug(f"[HealthOfficial] ✅ GRANTED via health module write: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Include all Gamma permissions (basic read access)
+        if self._is_gamma_pvm(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[HealthOfficial] ✅ GRANTED via Gamma permissions: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            elif pvm.view_menu.name == "UserInfoEditView":
+                logger.info(f"[HealthOfficial] ✅ GRANTED via Gamma permissions (UserInfoEditView): '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Final denial
+        if pvm.permission.name == "datasource_access":
+            logger.debug(f"[HealthOfficial] ❌ FINAL DENIAL: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            
+        return False
+
+    def _is_health_chart_access(self, pvm):
+        """
+        Check if this permission is for a health-related dataset that HealthOfficial should access
+        Based on actual CRISH datasets visible in the system
+        """
+        # Actual health-related datasets/tables from CRISH system
+        health_datasets = {
+            # Weather-related datasets
+            "combined weather parameter forecasts with heat index",
+            "weather_forecast_alerts",
+            
+            # Disease-related datasets  
+            "latest available weekly case reports",
+            "disease_forecast",
+            "disease_forecast_alerts", 
+            "disease historical vs forecast",
+            "tlhis_diseases",
+            
+            # Health facilities
+            "health_facilities",
+        }
+        
+        # Actual database name in CRISH system
+        health_databases = {
+            "superset"  # Main database name (checking lowercase since we convert view_name to lowercase)
+        }
+        
+        # Check if this is datasource_access permission for health-related data
+        if pvm.permission.name == "datasource_access":
+            view_name = pvm.view_menu.name.lower()  # Convert to lowercase for consistent matching
+            
+            # Log the permission being checked
+            logger.debug(f"[HealthOfficial] Checking datasource_access for: '{pvm.view_menu.name}' (lowercase: '{view_name}')")
+            
+            # Check for exact health dataset matches: [superset].[table_name](id:123)
+            for dataset in health_datasets:
+                dataset_lower = dataset.lower()
+                dataset_pattern1 = f".{dataset_lower}"
+                dataset_pattern2 = f".{dataset_lower}("
+                
+                # Match patterns like [superset].[dataset_name] or [superset].[dataset_name](id:
+                if dataset_pattern1 in view_name or dataset_pattern2 in view_name:
+                    logger.info(f"[HealthOfficial] ✅ GRANTED access to health dataset: '{dataset}' (matched pattern: '{dataset_pattern1}' in '{view_name}')")
+                    return True
+                else:
+                    logger.debug(f"[HealthOfficial] ❌ No match for dataset '{dataset}' (pattern '{dataset_pattern1}' not in '{view_name}')")
+            
+            # Check for health database patterns: [superset].[anything]
+            for database in health_databases:
+                database_pattern = f"[{database}]."
+                if database_pattern in view_name:
+                    logger.info(f"[HealthOfficial] ✅ GRANTED access to health database: '{database}' (matched pattern: '{database_pattern}' in '{view_name}')")
+                    return True
+                else:
+                    logger.debug(f"[HealthOfficial] ❌ No match for database '{database}' (pattern '{database_pattern}' not in '{view_name}')")
+            
+            # Log when no health datasets match
+            logger.debug(f"[HealthOfficial] ❌ DENIED access - no health dataset patterns matched for: '{pvm.view_menu.name}'")
+                    
+        return False
+
+    def sync_role_definitions(self):
+        """
+        Initialize roles including custom HealthOfficial role
+        """
+        logger.info("🏥 [CRISH] Syncing role definition with HealthOfficial")
+        
+        # Call parent method to create all standard roles
+        super().sync_role_definitions()
+        
+        # Add HealthOfficial role using the same pattern as built-in roles
+        pvms = self._get_all_pvms()
+        self.set_role("HealthOfficial", self._is_health_official_pvm, pvms)
+        
+        # Log the health datasets we're looking for
+        health_datasets = {
+            "combined weather parameter forecasts with heat index",
+            "weather_forecast_alerts",
+            "latest available weekly case reports", 
+            "disease_forecast",
+            "disease_forecast_alerts",
+            "disease historical vs forecast",
+            "tlhis_diseases",
+            "health_facilities",
+        }
+        
+        logger.info(f"🏥 [CRISH] HealthOfficial role created successfully with access to {len(health_datasets)} health datasets:")
+        for dataset in sorted(health_datasets):
+            logger.info(f"  📊 {dataset}")
+        logger.info("🏥 [CRISH] To troubleshoot permissions, check logs for '[HealthOfficial]' entries") 

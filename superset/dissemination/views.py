@@ -17,6 +17,7 @@ from superset.models.dissemination import EmailGroup, DisseminatedBulletinLog, W
 from superset.models.bulletins import Bulletin # For dropdown in dissemination form
 from superset.utils.core import send_email_smtp # For sending emails
 from superset.views.base import SupersetModelView, DeleteMixin, BaseSupersetView # Import BaseSupersetView
+from flask_appbuilder.widgets import ListWidget
 # Import the new form
 from .forms import DisseminationForm
 from superset.utils.pdf import generate_bulletin_pdf
@@ -31,6 +32,10 @@ import requests # Added for making HTTP requests for webhook
 
 # Import for celery task if we define it here or in a tasks.py file
 # from .tasks import send_bulletin_email_task
+
+class ReadOnlyListWidget(ListWidget):
+    """Custom list widget that hides add/edit/delete buttons"""
+    template = 'dissemination/readonly_list.html'
 
 class EmailGroupModelView(SupersetModelView, DeleteMixin):
     datamodel = SQLAInterface(EmailGroup)
@@ -112,7 +117,7 @@ class WhatsAppGroupModelView(SupersetModelView, DeleteMixin):
         if g.user:
             item.changed_by_fk = g.user.id
 
-class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
+class DisseminatedBulletinLogModelView(SupersetModelView):
     datamodel = SQLAInterface(DisseminatedBulletinLog)
     route_base = "/disseminatedbulletinlogs"
 
@@ -121,12 +126,28 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
    
     can_add = False
     can_edit = False
+    can_delete = False
+    can_show = True
+    can_export = False
+    
+    # Hide action column
+    include_actions = False
+    
+    # Disable bulk actions
+    bulk_delete = False
+    
+    # Use custom read-only list widget
+    list_widget = ReadOnlyListWidget
+    
+    # Use custom templates
+    list_template = 'dissemination/dissemination_logs_list.html'
+    show_template = 'dissemination/dissemination_logs_show.html'
 
     order_columns = ['sent_at']
     order_direction = 'desc'
     page_size = 25
 
-    list_columns = ["bulletin", "associated_email_group_names", "associated_whatsapp_group_names", "sent_at", "status", "subject_sent", "disseminated_by"]
+    list_columns = ["bulletin", "channel", "associated_email_group_names", "associated_whatsapp_group_names", "sent_at", "status", "disseminated_by"]
 
     # Custom formatters
     def format_sent_at(value=None) -> str:
@@ -146,17 +167,17 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
         
         status_str = str(status) # Ensure status is a string
         status_lower = status_str.lower()
-        chip_class = "label-default" # Default chip style
+        status_class = "status-badge" # Base class
         if status_lower == "success":
-            chip_class = "label-success"
+            status_class += " status-success"
         elif status_lower == "failed":
-            chip_class = "label-danger"
+            status_class += " status-failed"
         elif status_lower == "pending":
-            chip_class = "label-warning"
+            status_class += " status-pending"
         elif status_lower == "partial_success": # Assuming this status exists
-            chip_class = "label-info"
+            status_class += " status-partial-success"
         
-        return Markup(f'<span class="label {chip_class}">{status_str.upper()}</span>')
+        return Markup(f'<span class="{status_class}">{status_str.upper()}</span>')
 
     def format_bulletin_with_icon(bulletin=None) -> Markup:
         if not bulletin:
@@ -170,12 +191,37 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
             logging.warning(f"format_bulletin_with_icon: Bulletin (ID: {bulletin_id}) has no title.")
             bulletin_title = _('[Unknown Title]')
         
-        return Markup(f'<i class="fa fa-file-text-o" aria-hidden="true"></i> {bulletin_title}')
+        return Markup(f'<i class="fa fa-file-text-o bulletin-icon" aria-hidden="true"></i><span class="bulletin-link">{bulletin_title}</span>')
+    
+    def format_channel_badge(channel=None) -> Markup:
+        if not channel:
+            return Markup('')
+        
+        channel_str = str(channel).lower()
+        channel_class = f"channel-badge channel-{channel_str}"
+        icon = ""
+        
+        if channel_str == "email":
+            icon = '<i class="fa fa-envelope-o" style="margin-right: 4px;"></i>'
+        elif channel_str == "facebook":
+            icon = '<i class="fa fa-facebook" style="margin-right: 4px;"></i>'
+        elif channel_str == "whatsapp":
+            icon = '<i class="fa fa-whatsapp" style="margin-right: 4px;"></i>'
+            
+        return Markup(f'<span class="{channel_class}">{icon}{channel.upper()}</span>')
+    
+    def format_group_names(names=None) -> Markup:
+        if not names:
+            return Markup('<span class="group-names">-</span>')
+        return Markup(f'<span class="group-names" title="{names}">{names}</span>')
 
     formatters_columns = {
         'sent_at': format_sent_at,
         'status': format_status_as_chip,
         'bulletin': format_bulletin_with_icon,
+        'channel': format_channel_badge,
+        'associated_email_group_names': format_group_names,
+        'associated_whatsapp_group_names': format_group_names,
     }
     
     show_fieldsets = [
@@ -187,7 +233,8 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
     search_columns = ["status", "subject_sent"] 
 
     label_columns = {
-        "bulletin": _("Bulletin Title"),
+        "bulletin": _("Bulletin"),
+        "channel": _("Channel"),
         "associated_email_group_names": _("Email Groups"),
         "associated_whatsapp_group_names": _("WhatsApp Groups"),
         "sent_at": _("Sent At"),
@@ -195,7 +242,7 @@ class DisseminatedBulletinLogModelView(SupersetModelView, DeleteMixin):
         "subject_sent": _("Subject Sent"),
         "message_body_sent": _("Message Body Sent"),
         "details": _("Details/Errors"),
-        "disseminated_by": _("Disseminated By"),
+        "disseminated_by": _("Sent By"),
     }
 
 class DisseminateBulletinView(BaseView):
