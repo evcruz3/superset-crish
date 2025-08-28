@@ -1,0 +1,229 @@
+5c9082c4c6|2025-07-10|evcruz3|Update Trendlines.tsx
+bfd0958ebe|2025-07-10|evcruz3|commented out override for diseases api
+78d4ae902f|2025-07-10|evcruz3|Update api.py
+56ad3b3630|2025-07-10|evcruz3|Update __init__.py
+79d39fdaae|2025-07-10|evcruz3|Update api.py
+2f44a69a1b|2025-07-02|evcruz3|Update api.py
+684d66c9a9|2025-07-02|evcruz3|added created date in the bulletin's weather_forecast_composite_id
+15efc658a9|2025-07-02|evcruz3|Update scheduled_pull.py
+c28a490bd8|2025-07-01|evcruz3|updated user and bulletin model
+596d989535|2025-06-27|evcruz3|Update views.py
+71da5a6ef9|2025-06-27|evcruz3|updated bulletins api to take query parameters, minor ui updates, updated geojson
+1b2d2a7f3f|2025-06-25|evcruz3|Update api.py
+d199e95e5e|2025-06-20|evcruz3|trendlines chart for weather forecast; responsiveslugcontainers for diseases overview
+578eaeea85|2025-06-19|evcruz3|Update Trendlines.tsx
+42fb1334e5|2025-06-19|evcruz3|updated portuguese translation
+338d2a9a9c|2025-06-13|evcruz3|minor update
+a8e8d00c6c|2025-06-13|evcruz3|major ui update for weather forecast trendlines
+2e02fa4d92|2025-06-13|evcruz3|update translations
+f87b41390d|2025-06-13|evcruz3|Update Country.tsx
+27fcf78780|2025-06-13|evcruz3|updated translation
+4b4df738ef|2025-06-13|evcruz3|fixed bug on generating disease case prediction for week and next_week
+9256813c2c|2025-06-13|evcruz3|updated translation
+07d8732894|2025-06-13|evcruz3|Updated Translations for Tetum
+cb49d615cb|2025-06-12|evcruz3|update translations
+ce4f648bbb|2025-06-12|evcruz3|updated translations po files
+d8b245166e|2025-06-10|evcruz3|Update index.tsx
+d1035d3f07|2025-06-05|evcruz3|categorization and filtering of Feed based on parameter column
+17fcee4f57|2025-06-05|evcruz3|added parameter filtering for feed chart
+9520f19a58|2025-06-05|evcruz3|Update disease_alert_generator.py
+9d273cc039|2025-06-05|evcruz3|inclusion of threshold values on the legends for bulletins
+8c785c5b82|2025-06-05|evcruz3|update again
+9e253ba32f|2025-06-05|evcruz3|fixed bug on including the logo templates
+30fd9ec2b8|2025-06-05|evcruz3|Order of the logos for the login page: DNMG, RDTL, and then MOH RDTL should be higher and bigger
+c915ae9e5b|2025-06-05|evcruz3|Update Dockerfile
+15f9fc406a|2025-06-05|evcruz3|updated weather parameter thresholds
+356bcbc6d3|2025-06-03|evcruz3|Update api.py
+11db7e8eb4|2025-06-02|evcruz3|mde some endpoints public available
+8e4e1d3da0|2025-06-02|evcruz3|added disease data rest api
+a73e25a4d1|2025-05-30|evcruz3|Update index.tsx
+4d0452e30c|2025-05-30|evcruz3|updated .po files
+214b3fec94|2025-05-30|evcruz3|client-side whatsapp groups list render
+e82a0cf99a|2025-05-30|evcruz3|improved styling for forgot and reset password; cleaned right menu for login page
+f0d5819734|2025-05-29|evcruz3|Update index.tsx
+9301abf407|2025-05-29|evcruz3|Update custom_security_manager.py
+a08e1f39bf|2025-05-29|evcruz3|bulk update
+d592f3150c|2025-05-26|evcruz3|pagination for disease forecast alerts and weather_forecast_alerts
+02b3bd56a8|2025-05-26|evcruz3|include pagination information on the response
+1b8e1e8d88|2025-05-26|evcruz3|updated pyjwt version to resolve subject must be string error
+0929f3d16b|2025-05-23|evcruz3|weather forecast api
+abdba0ecef|2025-05-23|evcruz3|whats app dissemination
+9ec0e4bffd|2025-05-23|evcruz3|air quality and improvement of bulletin feed and navigation ellipsis
+dcf23d126f|2025-05-22|evcruz3|updated dev env access token
+4b2f635158|2025-05-22|evcruz3|facebook dissemination implementation
+08375f8298|2025-05-22|evcruz3|feed mode; chart image generation for disease predictor
+871449b7e0|2025-05-22|evcruz3|update the pdf rendering - removed "Attached Images" title
+fb0da2a78c|2025-05-22|evcruz3|Update docker-compose-non-dev.yml
+180401188e|2025-05-22|evcruz3|better date formats for generated map and table charts for bulletins
+a642bb0b44|2025-05-21|evcruz3|Update api.py
+6f0bc828ea|2025-05-21|evcruz3|updated healthcheck test
+9a51a4a377|2025-05-21|evcruz3|reverted to the latest minio version
+850f1e09ac|2025-05-21|evcruz3|added initialization for minio
+ae391bc5e1|2025-05-21|evcruz3|removed console address
+f95e61c14b|2025-05-21|evcruz3|Update docker-compose-non-dev.yml
+e26c830dd4|2025-05-21|evcruz3|update again the minio version
+35aaad7ac4|2025-05-21|evcruz3|update minio version for wider architecture compatibility
+18e74d9395|2025-05-21|evcruz3|added minio for file storage; multiple attachments and chart attachments for bulletin
+156143bdf3|2025-05-20|evcruz3|ui improvement for dissemination module; cleanup of some api endpoints for CRISH
+f1c0640a75|2025-05-19|evcruz3|initial api swagger cleanup for CRISH
+60028ea3cc|2025-05-19|evcruz3|set a default app_icon width
+213046a92c|2025-05-19|evcruz3|Updated ui for registration form
+948a21bf5d|2025-05-16|evcruz3|ui layer revision and map control for multi
+84c234189b|2025-05-16|evcruz3|Update register_user.html
+75bcff00cf|2025-05-14|evcruz3|updated the use of historical disease data for disease prediction
+1953f45a4b|2025-05-13|evcruz3|control panels for multi maps
+3e30fa546b|2025-05-13|evcruz3|Update stomach.svg
+bb90ea6ec8|2025-05-12|evcruz3|UI updates
+f9ff9195b7|2025-05-12|evcruz3|time granularity for Feed viz
+9582769a32|2025-05-12|evcruz3|updated login
+41c04f2244|2025-05-12|evcruz3|custom user registration
+a7cfb18867|2025-05-12|evcruz3|Updated logos
+20f9a4f737|2025-05-12|evcruz3|update login view
+b12aed983b|2025-05-12|evcruz3|Update pdf.py
+643abb2e01|2025-05-12|evcruz3|Update views.py
+76e6fd2093|2025-05-12|evcruz3|email dissemination of bulletins
+d36206cc79|2025-05-12|evcruz3|Update config.py
+0f6984b433|2025-05-12|evcruz3|Update BulletinDetailModal.tsx
+1d5c11251a|2025-05-12|evcruz3|Create Logos.png
+ff6b4a28bc|2025-05-08|evcruz3|Update index.tsx
+e79a4deafd|2025-05-08|evcruz3|Update index.tsx
+b065052c0b|2025-05-08|evcruz3|disease forecast alerts and bulletin
+f9dee038cf|2025-05-05|evcruz3|refactored responsivechartslug
+6dee2b36a0|2025-05-05|evcruz3|updated bulletins and advisories - default list view, share thru email
+d296810b49|2025-05-02|evcruz3|Color formatters for string-valued columns
+eb6112f8b3|2025-05-02|evcruz3|weather data pull history model and api
+bced8af34c|2025-05-02|evcruz3|able to update bulletin; weather alerts now automatically post to bulletin
+c9ba640344|2025-05-02|evcruz3|custom age and gender field for user model
+2bf1ce6a6f|2025-05-01|evcruz3|filterable table by column
+28a1b3198e|2025-05-01|evcruz3|Update D3Formatting.ts
+a98e4d3f78|2025-05-01|evcruz3|Update transform_weather_data.py
+8b278b9f79|2025-05-01|evcruz3|Updated Liquica's name; fixed bug on updating facilities
+dcc146f07b|2025-04-25|evcruz3|Update Multi.tsx
+b9df31ca4e|2025-04-25|evcruz3|updated deck feed to include  parameter, status, and value
+7b22a06f92|2025-04-25|evcruz3|attribution on Overview page
+145dace7ce|2025-04-15|evcruz3|modal display of trends fo Multi
+cbaba93604|2025-04-14|evcruz3|weather forecast alert api and ui implementation
+a3c354ef65|2025-04-14|evcruz3|added alert generator in crish-weather-forecast-puller
+23c69be8f4|2025-04-14|evcruz3|value range map control for Multi charts
+e9f25edc4e|2025-04-11|evcruz3|Update Multi.tsx
+8ab2a6af9c|2025-04-10|evcruz3|Revise DateTime string format for datepicker in Country and Multi
+3a9b0f0c6c|2025-04-10|evcruz3|Removed guideline for layerscard of multi
+46e6db3824|2025-04-10|evcruz3|Moved the "Get Direction" to the header of facilitydetailcard
+8febb9e5a2|2025-04-10|evcruz3|Compatible with new tlhis 2025 format for updating case reports
+75afe392cd|2025-04-02|evcruz3|reverted build scripts
+9aa5d38dd3|2025-04-02|evcruz3|Update update-keys.sh
+594375ef63|2025-04-02|evcruz3|updated build sh files
+c38a9ea7ca|2025-04-02|evcruz3|Update update-keys.sh
+6ceef07099|2025-04-02|evcruz3|Update MapViewTab.tsx
+8daf1af67c|2025-04-02|evcruz3|improved facilities map view
+35af836529|2025-03-31|evcruz3|Updated README.md
+42ce2d02c0|2025-03-31|evcruz3|Remove pipeline.log from git tracking
+515a7b4d52|2025-03-31|evcruz3|Configure Git LFS for large files
+76becf3078|2025-03-31|evcruz3|Ignore temporary cache files
+df3168d39a|2025-03-31|evcruz3|Merge branch 'master' of https://github.com/RIMESINT/GCF_HEALTH
+e33bb54ab6|2025-03-31|evcruz3|Resolve merge conflict
+8a87b0d1b0|2025-03-31|evcruz3|Initial commit
+f8dd37cdae|2025-03-31|evcruz3|Initial test commit
+ba569a014b|2025-03-28|evcruz3|uninstall unnecessary leaflet library
+a7d4bb8535|2025-03-28|evcruz3|initial implementation of facilities; improved visual feedback for timeline seeking
+89ce1f9c4d|2025-03-14|evcruz3|modal upon region clicked in standalone Country and Country in Multi; skip 0 alert render for Feed
+4e4eb55d0c|2025-03-06|evcruz3|disease predictor include this week and the following week prediction
+8f81b22ee9|2025-03-05|evcruz3|fixed bug in country and feed in displaying and panning
+1ca4a2bb5b|2025-03-04|evcruz3|update package for preset-chart-deckgl-osm plugin
+3295a55b41|2025-03-04|evcruz3|updated feed to support date pick
+eb08310403|2025-03-03|evcruz3|date filter and panning for feed and feed in multi
+91d9ba42dc|2025-03-01|evcruz3|Update Dockerfile
+3ce1114df8|2025-03-01|evcruz3|Update Dockerfile
+8aee3afd62|2025-03-01|evcruz3|Update Dockerfile
+c436fd845f|2025-03-01|evcruz3|updated po files
+f7e9824bdf|2025-03-01|evcruz3|updated the index for translation
+6237a91457|2025-02-28|evcruz3|Update docker-compose-non-dev.yml
+c2c39edd0d|2025-02-28|evcruz3|fix bug on slice api
+c7470fc6e6|2025-02-28|evcruz3|slug property for charts, chartslugcontainer implementation
+0b6e80ab81|2025-02-24|evcruz3|fixed bug on displaying chart preview when creating bulletin
+710179f9c4|2025-02-21|evcruz3|Update Multi.tsx
+c3384422c3|2025-02-21|evcruz3|integration of feed to multi
+280aab0726|2025-02-20|evcruz3|update hasperm checks on creating and bulk actions
+4573927d3f|2025-02-20|evcruz3|updated bulletins and public education to support delete and bulk delete
+e7d6522c33|2025-02-20|evcruz3|Update 2025_02_20_add_video_url_to_public_education.py
+419c0d9e00|2025-02-20|evcruz3|public education module support for embedded youtube video
+24d83457a9|2025-02-14|evcruz3|Update index.tsx
+4dbd21c7d8|2025-02-14|evcruz3|updated calendar picker's week's starting day to monday
+86b886916a|2025-02-14|evcruz3|update on bulletin, implementation of calendar picker for country and multi, added tmin for puller
+fa888007b0|2025-02-12|evcruz3|Update controlPanel.ts
+751a5da354|2025-02-12|evcruz3|Overview link; Option to hide text labels for Country and Multi
+a618bb8b81|2025-02-07|evcruz3|Update Dockerfile
+cc06f344c6|2025-02-07|evcruz3|Update Dockerfile
+5f3f8cac2d|2025-02-07|evcruz3|Update Dockerfile
+5db3122fcf|2025-02-07|evcruz3|Update Dockerfile
+969ea6194d|2025-02-07|evcruz3|snap to nearest current date for Country and Multi
+e4d9b60db8|2025-02-07|evcruz3|Update Multi.tsx
+9df4be0766|2025-02-07|evcruz3|granularity sqla for country viz
+a811815d24|2025-02-07|evcruz3|fixed render of dates in Country and Multi
+7b8d0a2aa8|2025-02-07|evcruz3|updated translations
+86c2263ac2|2025-02-07|evcruz3|Added WMO categorization color scheme
+62997d8df6|2025-02-06|evcruz3|fixed bugs on upserting crish-case-reports-initializer
+7eafe4832a|2025-02-06|evcruz3|disease forecast dashboard and initializer
+5b53c9fd7d|2025-02-05|evcruz3|Update Multi.tsx
+eb72397334|2025-02-05|evcruz3|support for categorical mapping of values for Country
+82d487c294|2025-02-05|evcruz3|fixed bug on opacity seeker
+d35c600f11|2025-02-05|evcruz3|added disease forecast module
+209eafeb69|2025-02-05|evcruz3|support for opacity control for Multi chart
+2b6522b674|2025-02-04|evcruz3|Updated Translations
+6ba9f4ebaf|2025-02-04|evcruz3|added more icons for big number viz
+ed941eeb9d|2025-01-24|evcruz3|refined UI to display date seeker and text layers
+10f3c8ac03|2025-01-23|evcruz3|Updated display of time seeker for Country.tsx and Multi.tsx
+4862d897f7|2025-01-23|evcruz3|Revert "Update requirements.txt"
+57744a0127|2025-01-23|evcruz3|Revert "Update requirements.txt"
+c8473eb141|2025-01-23|evcruz3|Revert "for older compatibility of tensorflow"
+32908f82a3|2025-01-22|evcruz3|for older compatibility of tensorflow
+b861d27ad9|2025-01-22|evcruz3|Update requirements.txt
+db1d2a4324|2025-01-22|evcruz3|Update requirements.txt
+34668ac6ed|2025-01-22|evcruz3|Update DashboardTabs.tsx
+16847f3e4c|2025-01-22|evcruz3|dashboard tab
+2ba6ea88ea|2025-01-22|evcruz3|updated requirements.txt
+19e7da4b35|2025-01-22|evcruz3|exception to requirements.txt on .gitignore
+433113d8ed|2025-01-22|evcruz3|updated weather-forecast-puller to use python image instead of pixi
+fe4d606a2f|2025-01-22|evcruz3|Update Country.tsx
+70ab59c6be|2025-01-21|evcruz3|revert
+66923bfbcc|2025-01-21|evcruz3|Update scheduled_pull.py
+392abbe6b5|2025-01-21|evcruz3|refactored code for weather-puller
+d87033229b|2025-01-21|evcruz3|updated forecast-puller
+ab3cd11648|2025-01-21|evcruz3|refinement of Deck Feed
+9ac9c292fa|2025-01-20|evcruz3|reset to last working integrated puller
+3272340da1|2025-01-20|evcruz3|trouble shoot dataex_region_data_analysis
+066d549bc5|2025-01-20|evcruz3|more logs for weather forecast puller
+2779ebf8d4|2025-01-20|evcruz3|updated weather-foreacast-puller for robust logging
+2a5ef5b51f|2025-01-20|evcruz3|python command instead of pixi
+d1e4edfe13|2025-01-20|evcruz3|Update Dockerfile
+31d895c61d|2025-01-20|evcruz3|troubleshoot pixi
+efcea475f0|2025-01-20|evcruz3|Update docker-entrypoint.sh
+ce561cc989|2025-01-20|evcruz3|verbose logging to check data ex credentials
+7f175e482d|2025-01-20|evcruz3|integrated ecmwf forecast puller
+e62583b26d|2025-01-20|evcruz3|initial implementation of Deck Feed Layer
+e6a8d6eb23|2025-01-19|evcruz3|legends and time seeker for Multi viz
+dd5a04d956|2025-01-19|evcruz3|working time seeker for Multi
+f4f3c91a24|2025-01-17|evcruz3|Update __init__.py
+38d868a753|2025-01-17|evcruz3|Update index.tsx
+7e1d1113c6|2025-01-17|evcruz3|Created DashboardPageWrapper, updated .env for slice id of overview chart
+a5e674534a|2025-01-16|evcruz3|Update Country.tsx
+4e17164f8c|2025-01-16|evcruz3|Update Country.tsx
+ebd6eb4307|2025-01-16|evcruz3|integrated disease predictor component
+9721ebc68d|2025-01-14|evcruz3|Removed filtering for created by on public education and bulletin
+01d435ad70|2025-01-14|evcruz3|Update BulletinDetailModal
+5055e655f0|2025-01-14|evcruz3|Update BulletinCard.tsx
+c4c7c7384b|2025-01-14|evcruz3|fixed bug on createbulletinmodal
+2ba80ed9ea|2025-01-14|evcruz3|updated and fixed bugs for public education and bulletin module
+1e86555584|2025-01-13|evcruz3|thumbnail preview for charts on bulletins
+4ecd9e6464|2025-01-13|evcruz3|updated tsconfig of custom plugin
+c9f0bd268c|2025-01-13|evcruz3|added back babel.config.js
+f493caa002|2025-01-13|evcruz3|imported React on Scatter, TooltipRow and Tooltip
+c5ee59701b|2025-01-13|evcruz3|Delete babel.config.js
+6d9d9db311|2025-01-13|evcruz3|updated Country to properly import React
+6ac71fddba|2025-01-13|evcruz3|Update package.json
+10a7d2ad7f|2025-01-13|evcruz3|Update MainPreset.js
+56bb4bb0f8|2025-01-13|evcruz3|Update package.json
+33d5fc1f5f|2025-01-12|evcruz3|Merge branch 'temp-backup-branch'
+f79452504a|2025-01-12|evcruz3|commiting everything before it messes up again
+b8faca8395|2025-01-12|evcruz3|Add custom views, configurations, and frontend changes
+1388eef60d|2025-01-12|evcruz3|Save changes before merging to master
