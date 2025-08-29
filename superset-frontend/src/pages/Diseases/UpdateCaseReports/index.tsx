@@ -1,9 +1,25 @@
-import React, { useState, useMemo } from 'react';
-import { t, styled } from '@superset-ui/core';
-import { Upload, message, Button, Space, Card, Typography, InputNumber, Table, Tag, Tooltip } from 'antd';
+import { useState, useMemo } from 'react';
+import { t, styled, SupersetClient } from '@superset-ui/core';
+import {
+  Upload,
+  message,
+  Button,
+  Space,
+  Card,
+  Typography,
+  InputNumber,
+  Table,
+  Tag,
+  Tooltip,
+} from 'antd';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
-import { InboxOutlined, UploadOutlined, DownloadOutlined, InfoCircleOutlined, DeleteOutlined } from '@ant-design/icons';
-import { SupersetClient } from '@superset-ui/core';
+import {
+  InboxOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  InfoCircleOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import { useHistory } from 'react-router-dom';
 
@@ -52,8 +68,21 @@ const FormItem = styled.div`
   margin-bottom: 16px;
 `;
 
-type MunicipalityCode = 'TL-AL' | 'TL-AN' | 'TL-AT' | 'TL-BA' | 'TL-BO' | 'TL-CO' | 'TL-DI' | 
-                        'TL-ER' | 'TL-LA' | 'TL-LI' | 'TL-MT' | 'TL-MF' | 'TL-OE' | 'TL-VI';
+type MunicipalityCode =
+  | 'TL-AL'
+  | 'TL-AN'
+  | 'TL-AT'
+  | 'TL-BA'
+  | 'TL-BO'
+  | 'TL-CO'
+  | 'TL-DI'
+  | 'TL-ER'
+  | 'TL-LA'
+  | 'TL-LI'
+  | 'TL-MT'
+  | 'TL-MF'
+  | 'TL-OE'
+  | 'TL-VI';
 
 // Municipality codes mapping
 const MUNICIPALITY_CODES: Record<MunicipalityCode, string> = {
@@ -70,17 +99,18 @@ const MUNICIPALITY_CODES: Record<MunicipalityCode, string> = {
   'TL-MT': 'Manatuto',
   'TL-MF': 'Manufahi',
   'TL-OE': 'Oecusse',
-  'TL-VI': 'Viqueque'
+  'TL-VI': 'Viqueque',
 };
 
 // Reverse mapping for name to code lookup
-const MUNICIPALITY_NAMES_TO_CODES: Record<string, MunicipalityCode> = Object.entries(MUNICIPALITY_CODES).reduce(
-  (acc, [code, name]) => ({
-    ...acc,
-    [name.toLowerCase()]: code as MunicipalityCode,
-  }),
-  {} as Record<string, MunicipalityCode>
-);
+const MUNICIPALITY_NAMES_TO_CODES: Record<string, MunicipalityCode> =
+  Object.entries(MUNICIPALITY_CODES).reduce(
+    (acc, [code, name]) => ({
+      ...acc,
+      [name.toLowerCase()]: code as MunicipalityCode,
+    }),
+    {} as Record<string, MunicipalityCode>,
+  );
 
 interface FileWithMunicipality extends Omit<UploadFile, 'status'> {
   file: File;
@@ -105,25 +135,33 @@ function UpdateCaseReports() {
   });
 
   // Function to detect municipality code from filename
-  const detectMunicipalityCode = (filename: string): MunicipalityCode | null => {
+  const detectMunicipalityCode = (
+    filename: string,
+  ): MunicipalityCode | null => {
     const normalizedFilename = filename.toLowerCase();
-    
+
     // Try to find a municipality name in the filename
-    const municipalityName = Object.values(MUNICIPALITY_CODES)
-      .find(name => normalizedFilename.includes(name.toLowerCase()));
-    
+    const municipalityName = Object.values(MUNICIPALITY_CODES).find(name =>
+      normalizedFilename.includes(name.toLowerCase()),
+    );
+
     if (municipalityName) {
       return MUNICIPALITY_NAMES_TO_CODES[municipalityName.toLowerCase()];
     }
-    
+
     // Fallback to code detection if name not found
-    return (Object.keys(MUNICIPALITY_CODES) as MunicipalityCode[])
-      .find(code => normalizedFilename.includes(code.toLowerCase())) || null;
+    return (
+      (Object.keys(MUNICIPALITY_CODES) as MunicipalityCode[]).find(code =>
+        normalizedFilename.includes(code.toLowerCase()),
+      ) || null
+    );
   };
 
   // Calculate missing municipalities
   const missingMunicipalities = useMemo(() => {
-    const selectedMunicipalities = new Set(fileList.map(f => f.municipalityCode));
+    const selectedMunicipalities = new Set(
+      fileList.map(f => f.municipalityCode),
+    );
     return (Object.entries(MUNICIPALITY_CODES) as [MunicipalityCode, string][])
       .filter(([code]) => !selectedMunicipalities.has(code))
       .map(([code, name]) => ({ code, name }));
@@ -135,10 +173,11 @@ function UpdateCaseReports() {
       const response = await fetch('/api/v1/update_case_reports/template', {
         method: 'GET',
         headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          Accept:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         },
       });
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -149,7 +188,7 @@ function UpdateCaseReports() {
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
-        
+
         message.success(t('Template downloaded successfully'));
       } else {
         const errorData = await response.json();
@@ -175,7 +214,7 @@ function UpdateCaseReports() {
         endpoint: '/api/v1/update_case_reports/upload',
         postPayload: formData,
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
       });
       return true;
@@ -234,7 +273,9 @@ function UpdateCaseReports() {
     }
 
     setUploading(false);
-    const successCount = updatedFiles.filter(f => f.status === 'success').length;
+    const successCount = updatedFiles.filter(
+      f => f.status === 'success',
+    ).length;
     if (successCount > 0) {
       message.success(`Successfully uploaded ${successCount} files`);
     }
@@ -247,7 +288,9 @@ function UpdateCaseReports() {
       render: (_: any, record: FileWithMunicipality) => (
         <span>
           {record.municipalityCode ? (
-            <Tag color="blue">{MUNICIPALITY_CODES[record.municipalityCode]}</Tag>
+            <Tag color="blue">
+              {MUNICIPALITY_CODES[record.municipalityCode]}
+            </Tag>
           ) : (
             <Tag color="red">{t('Unknown')}</Tag>
           )}
@@ -263,12 +306,17 @@ function UpdateCaseReports() {
       title: t('Status'),
       key: 'status',
       render: (_: any, record: FileWithMunicipality) => (
-        <Tag color={
-          record.status === 'success' ? 'success' :
-          record.status === 'error' ? 'error' :
-          record.status === 'uploading' ? 'processing' :
-          'default'
-        }>
+        <Tag
+          color={
+            record.status === 'success'
+              ? 'success'
+              : record.status === 'error'
+                ? 'error'
+                : record.status === 'uploading'
+                  ? 'processing'
+                  : 'default'
+          }
+        >
           {record.status || 'pending'}
         </Tag>
       ),
@@ -277,9 +325,18 @@ function UpdateCaseReports() {
       title: t('Actions'),
       key: 'actions',
       render: (_: any, record: FileWithMunicipality) => {
-        const canDelete = record.status !== 'success' && record.status !== 'uploading';
+        const canDelete =
+          record.status !== 'success' && record.status !== 'uploading';
         return (
-          <Tooltip title={!canDelete ? t('Cannot remove files that are uploading or already uploaded') : ''}>
+          <Tooltip
+            title={
+              !canDelete
+                ? t(
+                    'Cannot remove files that are uploading or already uploaded',
+                  )
+                : ''
+            }
+          >
             <Button
               type="text"
               danger
@@ -304,7 +361,14 @@ function UpdateCaseReports() {
     showUploadList: false, // Hide the default upload list since we're using our own table
     fileList: fileList.map(f => ({
       ...f,
-      status: f.status === 'pending' ? 'done' : f.status === 'uploading' ? 'uploading' : f.status === 'success' ? 'done' : 'error',
+      status:
+        f.status === 'pending'
+          ? 'done'
+          : f.status === 'uploading'
+            ? 'uploading'
+            : f.status === 'success'
+              ? 'done'
+              : 'error',
       originFileObj: f.file,
       type: f.file.type,
       size: f.file.size,
@@ -322,9 +386,13 @@ function UpdateCaseReports() {
       };
 
       if (!municipalityCode) {
-        message.warning(`Could not detect municipality code in filename: ${file.name}`);
+        message.warning(
+          `Could not detect municipality code in filename: ${file.name}`,
+        );
       } else if (fileList.some(f => f.municipalityCode === municipalityCode)) {
-        message.warning(`A file for ${MUNICIPALITY_CODES[municipalityCode]} has already been selected`);
+        message.warning(
+          `A file for ${MUNICIPALITY_CODES[municipalityCode]} has already been selected`,
+        );
         return false;
       }
 
@@ -336,7 +404,7 @@ function UpdateCaseReports() {
   return (
     <UploadContainer>
       <StyledTitle level={3}>{t('Update Disease Case Reports')}</StyledTitle>
-      
+
       <GuideCard>
         <Typography>
           <Title level={5}>
@@ -344,7 +412,9 @@ function UpdateCaseReports() {
             {t('Guide to Uploading Case Reports')}
           </Title>
           <Paragraph>
-            {t('Please ensure your files follow the TLHIS/22:Weekly surveillance Excel format and include the municipality name (e.g., Dili) or code (e.g., TL-DI) in the filename.')}
+            {t(
+              'Please ensure your files follow the TLHIS/22:Weekly surveillance Excel format and include the municipality name (e.g., Dili) or code (e.g., TL-DI) in the filename.',
+            )}
           </Paragraph>
           <Paragraph type="secondary">
             {t('Both .xls and .xlsx file formats are supported.')}
@@ -352,13 +422,18 @@ function UpdateCaseReports() {
         </Typography>
       </GuideCard>
 
-      <Space direction="vertical" style={{ width: '100%', marginBottom: '24px' }}>
+      <Space
+        direction="vertical"
+        style={{ width: '100%', marginBottom: '24px' }}
+      >
         <FormItem>
           <FormLabel>{t('Year')}</FormLabel>
           <InputNumber
             style={{ width: '200px' }}
             value={year}
-            onChange={(value: number | null) => setYear(value || new Date().getFullYear())}
+            onChange={(value: number | null) =>
+              setYear(value || new Date().getFullYear())
+            }
             min={2000}
             max={new Date().getFullYear() + 1}
             placeholder={t('Select Year')}
@@ -403,7 +478,9 @@ function UpdateCaseReports() {
               {t('Click or drag files to this area to upload')}
             </p>
             <p className="ant-upload-hint">
-              {t('Please include municipality name (e.g., Dili) or code (e.g., TL-DI) in filenames')}
+              {t(
+                'Please include municipality name (e.g., Dili) or code (e.g., TL-DI) in filenames',
+              )}
             </p>
           </Dragger>
         </FormItem>
@@ -441,7 +518,9 @@ function UpdateCaseReports() {
           onClick={handleBulkUpload}
           loading={uploading}
           icon={<UploadOutlined />}
-          disabled={fileList.length === 0 || !year || !week || week < 1 || week > 53}
+          disabled={
+            fileList.length === 0 || !year || !week || week < 1 || week > 53
+          }
           style={{ width: '200px' }}
         >
           {uploading ? t('Uploading') : t('Start Bulk Upload')}
@@ -451,4 +530,4 @@ function UpdateCaseReports() {
   );
 }
 
-export default withToasts(UpdateCaseReports); 
+export default withToasts(UpdateCaseReports);

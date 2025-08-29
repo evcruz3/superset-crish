@@ -42,20 +42,20 @@ const propertyMap = {
   color: 'fillColor',
   fill: 'fillColor',
   'fill-color': 'fillColor',
-  'stroke': 'strokeColor',
+  stroke: 'strokeColor',
   strokeColor: 'strokeColor',
   'stroke-color': 'strokeColor',
   'stroke-width': 'strokeWidth',
   'stroke-opacity': 'strokeOpacity',
-  'fill-opacity': 'fillOpacity'
+  'fill-opacity': 'fillOpacity',
 };
 
 const alterProps = (props: JsonObject, propOverrides: JsonObject) => {
   const newProps: JsonObject = {};
   Object.keys(props).forEach(k => {
     if (k in propertyMap) {
-      console.log("has propertyMap: " + k)
-      console.log(props[k])
+      console.log(`has propertyMap: ${k}`);
+      console.log(props[k]);
       newProps[propertyMap[k]] = props[k];
     } else {
       newProps[k] = props[k];
@@ -74,9 +74,9 @@ const alterProps = (props: JsonObject, propOverrides: JsonObject) => {
   const output = {
     ...newProps,
     // ...propOverrides,
-  }
+  };
 
-  console.log(output)
+  console.log(output);
 
   return output;
 };
@@ -123,12 +123,9 @@ const getFillColor = (feature: JsonObject) => feature?.properties?.fillColor;
 const getLineColor = (feature: JsonObject) => feature?.properties?.strokeColor;
 
 export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: HandlerFunction,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
+  options: any
 ) {
-  
+  const { formData, payload, onAddFilter, setTooltip } = options;
   const fd = formData;
   const fc = fd.fill_color_picker;
   const sc = fd.stroke_color_picker;
@@ -222,13 +219,12 @@ const DeckGLGeoJson = (props: DeckGLGeoJsonProps) => {
     width,
   ]);
 
-  const layer = getLayer(formData, payload, onAddFilter, setTooltip);
+  const layer = getLayer({ formData, payload, onAddFilter, setTooltip });
 
-  console.log("formData: ")
-  console.log(formData)
-  console.log("Payload: ")
-  console.log(payload)
-
+  console.log('formData: ');
+  console.log(formData);
+  console.log('Payload: ');
+  console.log(payload);
 
   return (
     <DeckGLContainerStyledWrapper

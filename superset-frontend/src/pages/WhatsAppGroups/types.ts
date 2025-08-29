@@ -13,4 +13,4 @@ export interface WhatsAppGroup {
   changed_on?: string | null; // ISO date string
   created_by?: User | null;
   changed_by?: User | null;
-} 
+}

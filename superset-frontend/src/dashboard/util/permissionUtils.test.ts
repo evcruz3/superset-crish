@@ -46,7 +46,7 @@ const ownerUser: UserWithPermissionsAndRoles = {
 const adminUser: UserWithPermissionsAndRoles = {
   ...ownerUser,
   roles: {
-    ...(ownerUser?.roles || {}),
+    Alpha: ownerUser.roles.Alpha,
     Admin: [['can_write', 'Dashboard']],
   },
   userId: 2,
@@ -75,7 +75,7 @@ const arbitraryPermissions: [string, string][] = [
 const sqlLabUser: UserWithPermissionsAndRoles = {
   ...ownerUser,
   roles: {
-    ...ownerUser.roles,
+    Alpha: ownerUser.roles.Alpha,
     sql_lab: [sqlLabMenuAccessPermission],
   },
 };

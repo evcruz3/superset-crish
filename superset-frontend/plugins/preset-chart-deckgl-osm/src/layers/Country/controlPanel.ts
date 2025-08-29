@@ -16,7 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ControlPanelConfig, getStandardizedControls, sharedControls } from '@superset-ui/chart-controls';
+import {
+  ControlPanelConfig,
+  getStandardizedControls,
+  sharedControls,
+} from '@superset-ui/chart-controls';
 import {
   t,
   validateNonEmpty,
@@ -47,9 +51,8 @@ interface MetricValue {
   [key: string]: any;
 }
 
-const isMetricValue = (value: any): value is MetricValue => {
-  return typeof value === 'object' && value !== null && 'column_name' in value;
-};
+const isMetricValue = (value: any): value is MetricValue =>
+  typeof value === 'object' && value !== null && 'column_name' in value;
 
 // Initialize color scheme registries
 const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
@@ -69,7 +72,11 @@ const debugLog = (context: string, value: any) => {
 };
 
 // Helper to safely get a color scheme
-const getColorScheme = (schemeMap: Record<string, any>, schemeName: string | undefined, defaultSchemeName: string) => {
+const getColorScheme = (
+  schemeMap: Record<string, any>,
+  schemeName: string | undefined,
+  defaultSchemeName: string,
+) => {
   if (!schemeName || !schemeMap[schemeName]) {
     return schemeMap[defaultSchemeName];
   }
@@ -103,10 +110,15 @@ const config: ControlPanelConfig = {
             config: {
               type: 'SelectControl',
               label: t('Categorical Column'),
-              description: t('Column to display in the text layer and tooltip instead of metric value'),
+              description: t(
+                'Column to display in the text layer and tooltip instead of metric value',
+              ),
               mapStateToProps: state => ({
-                choices: (state.datasource?.columns || [])
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  (state.datasource?.columns || []).map((c: any) => [
+                    c.column_name,
+                    c.column_name,
+                  ]) ?? [],
               }),
               default: null,
             },
@@ -118,11 +130,14 @@ const config: ControlPanelConfig = {
             config: {
               type: 'SelectControl',
               label: t('Time Column'),
-              description: t('Column containing datetime information for temporal filtering'),
+              description: t(
+                'Column containing datetime information for temporal filtering',
+              ),
               mapStateToProps: state => ({
-                choices: (state.datasource?.columns || [])
-                  .filter(c => c.is_dttm)
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  ((state.datasource?.columns as any[]) || [])
+                    .filter((c: any) => c.is_dttm)
+                    .map((c: any) => [c.column_name, c.column_name]) ?? [],
               }),
               default: null,
             },
@@ -156,8 +171,11 @@ const config: ControlPanelConfig = {
                 ['.2%', '.2% (12.34%)'],
                 [',.2r', ',.2r (12,300)'],
               ],
-              description: t('D3 format syntax: https://github.com/d3/d3-format'),
-              visibility: ({ controls }) => !controls?.categorical_column?.value,
+              description: t(
+                'D3 format syntax: https://github.com/d3/d3-format',
+              ),
+              visibility: ({ controls }) =>
+                !controls?.categorical_column?.value,
             },
           },
         ],
@@ -170,7 +188,8 @@ const config: ControlPanelConfig = {
               description: t('Text to be displayed before the metric value'),
               default: '',
               renderTrigger: true,
-              visibility: ({ controls }) => !controls?.categorical_column?.value,
+              visibility: ({ controls }) =>
+                !controls?.categorical_column?.value,
             },
           },
         ],
@@ -183,7 +202,8 @@ const config: ControlPanelConfig = {
               description: t('Unit to be displayed after the metric value'),
               default: '',
               renderTrigger: true,
-              visibility: ({ controls }) => !controls?.categorical_column?.value,
+              visibility: ({ controls }) =>
+                !controls?.categorical_column?.value,
             },
           },
         ],
@@ -201,7 +221,8 @@ const config: ControlPanelConfig = {
               label: t('Linear Color Scheme'),
               description: t('Color scheme for continuous values'),
               renderTrigger: true,
-              visibility: ({ controls }) => !controls?.categorical_column?.value,
+              visibility: ({ controls }) =>
+                !controls?.categorical_column?.value,
               default: 'blue_white_yellow',
               schemes: getSequentialSchemeMap,
               choices: () => {
@@ -210,7 +231,6 @@ const config: ControlPanelConfig = {
                 return choices;
               },
               isLinear: true,
-              
             },
           },
         ],
@@ -222,7 +242,8 @@ const config: ControlPanelConfig = {
               label: t('Categorical Color Scheme'),
               description: t('Color scheme for categorical values'),
               renderTrigger: true,
-              visibility: ({ controls }) => !!controls?.categorical_column?.value,
+              visibility: ({ controls }) =>
+                !!controls?.categorical_column?.value,
               default: 'supersetColors',
               schemes: getCategoricalSchemeMap,
               choices: () => {
@@ -231,12 +252,12 @@ const config: ControlPanelConfig = {
                 return choices;
               },
               isLinear: false,
-              mapStateToProps: (state) => {
+              mapStateToProps: state => {
                 debugLog('Categorical Color Scheme State', state);
                 return {};
               },
             },
-          }
+          },
         ],
         [
           {
@@ -244,27 +265,37 @@ const config: ControlPanelConfig = {
             config: {
               type: 'ValueMappedControl',
               label: t('Value to Color Mapping'),
-              description: t('Map specific values to colors. Click "+ Add Value" to add a new mapping.'),
+              description: t(
+                'Map specific values to colors. Click "+ Add Value" to add a new mapping.',
+              ),
               default: {},
               renderTrigger: true,
-              visibility: ({ controls }) => !!controls?.categorical_column?.value,
-              mapStateToProps: (state) => {
+              visibility: ({ controls }) =>
+                !!controls?.categorical_column?.value,
+              mapStateToProps: state => {
                 const metricValue = state.controls?.metric?.value;
-                const metricColumn = isMetricValue(metricValue) ? metricValue.column_name : undefined;
+                const metricColumn = isMetricValue(metricValue)
+                  ? metricValue.column_name
+                  : undefined;
                 const metricLabel = state.form_data?.metric?.label;
-                const currentColorScheme = state.controls?.categorical_color_scheme?.value as string | undefined;
-                
+                const currentColorScheme = state.controls
+                  ?.categorical_color_scheme?.value as string | undefined;
+
                 debugLog('Value Map State', {
                   metricValue,
                   metricColumn,
                   metricLabel,
                   currentColorScheme,
-                  state
+                  state,
                 });
 
                 const schemeMap = getCategoricalSchemeMap();
-                const currentScheme = getColorScheme(schemeMap, currentColorScheme, 'supersetColors');
-                
+                const currentScheme = getColorScheme(
+                  schemeMap,
+                  currentColorScheme,
+                  'supersetColors',
+                );
+
                 return {
                   valueLabel: t('Value'),
                   colorLabel: t('Color'),
@@ -282,27 +313,37 @@ const config: ControlPanelConfig = {
             config: {
               type: 'ValueRangeMapControl',
               label: t('Value Range to Color Mapping'),
-              description: t('Map specific ranges of values to colors. Click "+ Add Range" to add a new mapping.'),
+              description: t(
+                'Map specific ranges of values to colors. Click "+ Add Range" to add a new mapping.',
+              ),
               default: {},
               renderTrigger: true,
-              visibility: ({ controls }) => !controls?.categorical_column?.value,
-              mapStateToProps: (state) => {
+              visibility: ({ controls }) =>
+                !controls?.categorical_column?.value,
+              mapStateToProps: state => {
                 const metricValue = state.controls?.metric?.value;
-                const metricColumn = isMetricValue(metricValue) ? metricValue.column_name : undefined;
+                const metricColumn = isMetricValue(metricValue)
+                  ? metricValue.column_name
+                  : undefined;
                 const metricLabel = state.form_data?.metric?.label;
-                const currentColorScheme = state.controls?.linear_color_scheme?.value as string | undefined;
-                
+                const currentColorScheme = state.controls?.linear_color_scheme
+                  ?.value as string | undefined;
+
                 debugLog('Range Map State', {
                   metricValue,
                   metricColumn,
                   metricLabel,
                   currentColorScheme,
-                  state
+                  state,
                 });
 
                 const schemeMap = getSequentialSchemeMap();
-                const currentScheme = getColorScheme(schemeMap, currentColorScheme, 'blue_white_yellow');
-                
+                const currentScheme = getColorScheme(
+                  schemeMap,
+                  currentColorScheme,
+                  'blue_white_yellow',
+                );
+
                 return {
                   minLabel: t('Min Value'),
                   maxLabel: t('Max Value'),
@@ -332,10 +373,7 @@ const config: ControlPanelConfig = {
     {
       label: t('Map'),
       expanded: true,
-      controlSetRows: [
-        [osmStyle, viewport],
-        [autozoom],
-      ],
+      controlSetRows: [[osmStyle, viewport], [autozoom]],
     },
     {
       label: t('Map Settings'),

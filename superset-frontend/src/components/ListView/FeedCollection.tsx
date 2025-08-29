@@ -171,7 +171,11 @@ export default function FeedCollection({
         <FeedSidebar>
           {rows.map(row => {
             const original = row.original as FeedItem;
-            const displayLabel = original?.title || original?.name || original?.label || t('Item %(itemNumber)s', { itemNumber: row.index + 1 });
+            const displayLabel =
+              original?.title ||
+              original?.name ||
+              original?.label ||
+              t('Item %(itemNumber)s', { itemNumber: row.index + 1 });
             return (
               <SidebarItem
                 key={`sidebar-item-${row.id}`}
@@ -210,7 +214,12 @@ export default function FeedCollection({
                 onClick={e => handleBulkSelectClick(e, row.toggleRowSelected)}
                 role="none"
               >
-                {renderCard({ ...(row.original as FeedItem), loading, showThumbnails, isSelected: row.isSelected })}
+                {renderCard({
+                  ...(row.original as FeedItem),
+                  loading,
+                  showThumbnails,
+                  isSelected: row.isSelected,
+                })}
               </FeedItemWrapper>
             );
           })}

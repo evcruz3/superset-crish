@@ -267,7 +267,7 @@ export default function DrillDetailPane({
 
   const allowHTML = formData.allow_render_html ?? true;
 
-  let tableContent = null;
+  let tableContent: React.ReactNode = null;
   if (responseError) {
     // Render error if page download failed
     tableContent = (

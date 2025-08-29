@@ -89,14 +89,14 @@ function ParameterErrorMessage({
                         suggestions:
                           templateKeys.length === 1
                             ? templateKeys[0]
-                            : `${templateKeys.slice(0, -1).join(', ')} or ${
-                                templateKeys.at(-1)
-                              }`,
+                            : `${templateKeys.slice(0, -1).join(', ')} or ${templateKeys.at(
+                                -1,
+                              )}`,
                         undefinedParameter,
                       },
                     )}
                   </li>
-                )
+                ),
               )}
             </ul>
             <br />

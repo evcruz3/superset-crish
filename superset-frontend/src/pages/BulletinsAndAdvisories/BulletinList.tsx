@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, List, Tag, Tooltip, Dropdown, Menu, Button } from 'antd';
 import moment from 'moment';
-import { t, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
-import { DownloadOutlined, MailOutlined, MoreOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { t, isFeatureEnabled, FeatureFlag, styled } from '@superset-ui/core';
+import {
+  DownloadOutlined,
+  MailOutlined,
+  MoreOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
 import { Bulletin, BulletinApiResponse } from './types';
-import { styled } from '@superset-ui/core';
 import BulletinDetailModal from './BulletinDetailModal';
 
 const StyledCard = styled(Card)`
@@ -18,7 +23,7 @@ const StyledCard = styled(Card)`
     flex-shrink: 0;
     padding: ${({ theme }) => theme.gridUnit * 4}px;
     border-bottom: none;
-    
+
     .ant-card-head-title {
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -81,7 +86,7 @@ const ActionsContainer = styled.div`
 
 const ActionButton = styled(Button)`
   // Ensure buttons have consistent width if desired or let them size by content
-  // Example: width: 32px; 
+  // Example: width: 32px;
   // display: flex;
   // align-items: center;
   // justify-content: center;
@@ -115,7 +120,9 @@ export default function BulletinList({
   // const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   // const [total, setTotal] = useState(0);
   // const [loading, setLoading] = useState(false);
-  const [selectedBulletin, setSelectedBulletin] = useState<Bulletin | null>(null);
+  const [selectedBulletin, setSelectedBulletin] = useState<Bulletin | null>(
+    null,
+  );
 
   // Renamed to avoid conflict if parent also has this
   const handleLocalBulletinClick = (bulletin: Bulletin) => {
@@ -135,17 +142,30 @@ export default function BulletinList({
     onDeleteBulletin(bulletin);
   };
 
-
   const renderBulletin = (bulletin: Bulletin) => {
     const menu = (
       <Menu>
         {hasPerm && hasPerm('can_write') && (
-          <Menu.Item key="edit" icon={<EditOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleEdit(bulletin, e.domEvent as any); }}>
+          <Menu.Item
+            key="edit"
+            icon={<EditOutlined />}
+            onClick={e => {
+              e.domEvent.stopPropagation();
+              handleEdit(bulletin, e.domEvent as any);
+            }}
+          >
             {t('Edit')}
           </Menu.Item>
         )}
         {hasPerm && hasPerm('can_write') && (
-          <Menu.Item key="delete" icon={<DeleteOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleDelete(bulletin, e.domEvent as any); }}>
+          <Menu.Item
+            key="delete"
+            icon={<DeleteOutlined />}
+            onClick={e => {
+              e.domEvent.stopPropagation();
+              handleDelete(bulletin, e.domEvent as any);
+            }}
+          >
             {t('Delete')}
           </Menu.Item>
         )}
@@ -154,18 +174,23 @@ export default function BulletinList({
 
     return (
       <List.Item>
-        <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start' }}>
+        <div
+          style={{ display: 'flex', width: '100%', alignItems: 'flex-start' }}
+        >
           <StyledCard
             style={{ flexGrow: 1 }} // Make card take available space
             title={bulletin.title}
           >
-            <div 
-              className="bulletin-content" 
-              onClick={() => handleLocalBulletinClick(bulletin)} 
+            <div
+              className="bulletin-content"
+              onClick={() => handleLocalBulletinClick(bulletin)}
               style={{ cursor: 'pointer' }}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLocalBulletinClick(bulletin);}}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ')
+                  handleLocalBulletinClick(bulletin);
+              }}
             >
               {bulletin.advisory || ''}
             </div>
@@ -177,14 +202,15 @@ export default function BulletinList({
               </small>
             </p>
             <div className="bulletin-chart">
-              {!isFeatureEnabled(FeatureFlag.Thumbnails) ? (
-                null
-              ) : (
-                <div className="gradient-container" style={{ height: '100%', position: 'relative' }}>
+              {!isFeatureEnabled(FeatureFlag.Thumbnails) ? null : (
+                <div
+                  className="gradient-container"
+                  style={{ height: '100%', position: 'relative' }}
+                >
                   <ImageLoader
                     src={bulletin.thumbnail_url || ''}
-                    fallback={'/static/assets/images/placeholder-chart.png'}
-                    isLoading={!!(!bulletin.thumbnail_url)}
+                    fallback="/static/assets/images/placeholder-chart.png"
+                    isLoading={!bulletin.thumbnail_url}
                     position="top"
                   />
                 </div>
@@ -192,53 +218,56 @@ export default function BulletinList({
             </div>
             <div className="bulletin-meta">
               <small>
-                {t('Created by')} {bulletin.created_by?.first_name} {bulletin.created_by?.last_name} {' '}
+                {t('Created by')} {bulletin.created_by?.first_name}{' '}
+                {bulletin.created_by?.last_name}{' '}
                 {moment(bulletin.created_on).fromNow()}
               </small>
             </div>
             {/* Moved actions outside the card to ActionsContainer */}
           </StyledCard>
           <ActionsContainer>
-            {(hasPerm && hasPerm('can_write')) && <Tooltip title={t('Disseminate Bulletin')}>
-              <ActionButton // Using styled Button
-                icon={<MailOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Assuming handleBulletinClick opens a modal or similar, 
-                  // which might be relevant before disseminate
-                  handleLocalBulletinClick(bulletin); 
-                  // Add actual dissemination logic if different from just opening details
-                  // For example, directly call a disseminate function:
-                  // handleDisseminate(bulletin); 
-                }}
-                aria-label={t('Disseminate Bulletin')}
-              />
-            </Tooltip>}
+            {hasPerm && hasPerm('can_write') && (
+              <Tooltip title={t('Disseminate Bulletin')}>
+                <ActionButton // Using styled Button
+                  icon={<MailOutlined />}
+                  onClick={e => {
+                    e.stopPropagation();
+                    // Assuming handleBulletinClick opens a modal or similar,
+                    // which might be relevant before disseminate
+                    handleLocalBulletinClick(bulletin);
+                    // Add actual dissemination logic if different from just opening details
+                    // For example, directly call a disseminate function:
+                    // handleDisseminate(bulletin);
+                  }}
+                  aria-label={t('Disseminate Bulletin')}
+                />
+              </Tooltip>
+            )}
             <Tooltip title={t('Download PDF')}>
               <ActionButton // Using styled Button
                 icon={<DownloadOutlined />}
-                onClick={(e) => {
+                onClick={e => {
                   e.stopPropagation();
                   onDownloadPdf(bulletin.id, bulletin.title);
                 }}
                 aria-label={t('Download PDF')}
               />
             </Tooltip>
-            {(hasPerm && hasPerm('can_write')) && ( // Conditionally render "More" actions
-              <Dropdown overlay={menu} trigger={['click']}>
-                <ActionButton // Using styled Button
-                  icon={<MoreOutlined />}
-                  onClick={e => e.stopPropagation()} // Prevent card click
-                  aria-label={t('More actions')}
-                />
-              </Dropdown>
-            )}
+            {hasPerm &&
+              hasPerm('can_write') && ( // Conditionally render "More" actions
+                <Dropdown overlay={menu} trigger={['click']}>
+                  <ActionButton // Using styled Button
+                    icon={<MoreOutlined />}
+                    onClick={e => e.stopPropagation()} // Prevent card click
+                    aria-label={t('More actions')}
+                  />
+                </Dropdown>
+              )}
           </ActionsContainer>
         </div>
       </List.Item>
     );
   };
-
 
   return (
     <>
@@ -258,4 +287,4 @@ export default function BulletinList({
       />
     </>
   );
-} 
+}

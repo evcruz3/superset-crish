@@ -42,4 +42,4 @@ export default class FeedChartPlugin extends ChartPlugin {
       transformProps,
     });
   }
-} 
+}

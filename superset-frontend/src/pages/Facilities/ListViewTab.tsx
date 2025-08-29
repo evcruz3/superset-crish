@@ -1,9 +1,8 @@
-import React from 'react';
 import { t } from '@superset-ui/core';
 import ListView, { Filter } from 'src/components/ListView';
-import { Facility } from './types'; // Import shared Facility type
 import { Button, Tag } from 'antd';
 import { EnvironmentOutlined } from '@ant-design/icons';
+import { Facility } from './types'; // Import shared Facility type
 
 // Define props required by ListViewTab
 interface ListViewTabProps {
@@ -13,7 +12,7 @@ interface ListViewTabProps {
   fetchData: (loadOptions?: object) => void;
   refreshData: () => void;
   filters: Filter[];
-  handleFacilityClick: (facility: Facility) => void; 
+  handleFacilityClick: (facility: Facility) => void;
   setSelectedFacility: (facility: Facility | null) => void;
   setActiveTab: (tab: string) => void;
   addSuccessToast: (msg: string) => void;
@@ -35,7 +34,6 @@ const ListViewTab: React.FC<ListViewTabProps> = ({
   addDangerToast,
   pageSize = 25, // Default page size
 }) => {
-
   // Define columns specifically for the list view
   const columns = [
     {
@@ -54,7 +52,7 @@ const ListViewTab: React.FC<ListViewTabProps> = ({
     },
     {
       accessor: 'location', // Administrative Post
-      Header: t('Admin Post'), 
+      Header: t('Admin Post'),
       size: 'xl',
     },
     {
@@ -72,9 +70,9 @@ const ListViewTab: React.FC<ListViewTabProps> = ({
       Header: t('Actions'),
       size: 'xl',
       Cell: ({ row: { original } }: { row: { original: Facility } }) => (
-        <Button 
-          type="primary" 
-          size="small" 
+        <Button
+          type="primary"
+          size="small"
           icon={<EnvironmentOutlined />}
           onClick={() => {
             setSelectedFacility(original);
@@ -96,7 +94,7 @@ const ListViewTab: React.FC<ListViewTabProps> = ({
       count={facilityCount}
       data={facilities} // Use facilities directly, filtering happens via ListView
       fetchData={fetchData}
-      filters={filters} 
+      filters={filters}
       initialSort={[{ id: 'name', desc: false }]}
       loading={loading}
       pageSize={pageSize}
@@ -109,4 +107,4 @@ const ListViewTab: React.FC<ListViewTabProps> = ({
   );
 };
 
-export default ListViewTab; 
+export default ListViewTab;

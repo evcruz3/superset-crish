@@ -272,7 +272,7 @@ export default function transformProps(
           numberFormatter,
           percentCalculationType,
         });
-        const row = [];
+        const row: string[] = [];
         const enumName = EchartsFunnelLabelTypeType[tooltipLabelType];
         const title = enumName.includes('Key') ? name : undefined;
         if (enumName.includes('Value') || enumName.includes('Percent')) {

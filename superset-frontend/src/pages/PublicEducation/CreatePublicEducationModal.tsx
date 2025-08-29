@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Modal, Form, Input, Upload, Button } from 'antd';
-import { SupersetClient, t } from '@superset-ui/core';
+import { SupersetClient, t, getClientErrorObject } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
-import { getClientErrorObject } from '@superset-ui/core';
 import { UploadOutlined } from '@ant-design/icons';
 import { RcFile } from 'antd/lib/upload';
 import { CreatePublicEducationPayload } from './types';
@@ -23,7 +22,8 @@ const ALLOWED_FILE_TYPES = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // YouTube URL validation pattern
-const YOUTUBE_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/;
+const YOUTUBE_URL_PATTERN =
+  /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/;
 
 export default function CreatePublicEducationModal({
   visible,
@@ -68,7 +68,7 @@ export default function CreatePublicEducationModal({
     try {
       setLoading(true);
       const values = await form.validateFields();
-      
+
       const formData = new FormData();
       formData.append('title', values.title);
       formData.append('message', values.message);
@@ -84,7 +84,7 @@ export default function CreatePublicEducationModal({
         endpoint: '/api/v1/public_education/create/',
         postPayload: formData,
       });
-      
+
       addSuccessToast(t('Post created successfully'));
       form.resetFields();
       setFileList([]);
@@ -114,7 +114,7 @@ export default function CreatePublicEducationModal({
         >
           <Input />
         </Form.Item>
-        
+
         <Form.Item
           name="message"
           label={t('Message')}
@@ -122,11 +122,13 @@ export default function CreatePublicEducationModal({
         >
           <Input.TextArea rows={4} />
         </Form.Item>
-        
+
         <Form.Item
           name="hashtags"
           label={t('Hashtags')}
-          rules={[{ required: true, message: t('At least one hashtag is required') }]}
+          rules={[
+            { required: true, message: t('At least one hashtag is required') },
+          ]}
           help={t('Separate multiple hashtags with commas')}
         >
           <Input />
@@ -145,7 +147,7 @@ export default function CreatePublicEducationModal({
         >
           <Input placeholder="https://www.youtube.com/watch?v=..." />
         </Form.Item>
-        
+
         <Form.Item
           label={t('Attachments')}
           help={t('Upload up to 3 PDF or image files (max 5MB each)')}
@@ -157,7 +159,7 @@ export default function CreatePublicEducationModal({
             multiple
             accept={ALLOWED_FILE_TYPES.join(',')}
           >
-            <Button 
+            <Button
               icon={<UploadOutlined />}
               disabled={fileList.length >= MAX_FILES}
             >
@@ -168,4 +170,4 @@ export default function CreatePublicEducationModal({
       </Form>
     </Modal>
   );
-} 
+}

@@ -79,7 +79,9 @@ const ConditionalFormattingControl = ({
 }: ConditionalFormattingControlProps) => {
   const theme = useTheme();
   const [conditionalFormattingConfigs, setConditionalFormattingConfigs] =
-    useState<(ConditionalFormattingConfig | StringConditionalFormattingConfig)[]>(value ?? []);
+    useState<
+      (ConditionalFormattingConfig | StringConditionalFormattingConfig)[]
+    >(value ?? []);
 
   useEffect(() => {
     if (onChange) {
@@ -108,13 +110,15 @@ const ConditionalFormattingControl = ({
     );
   };
 
-  const onSave = (config: ConditionalFormattingConfig | StringConditionalFormattingConfig) => {
+  const onSave = (
+    config: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+  ) => {
     setConditionalFormattingConfigs(prevConfigs => [...prevConfigs, config]);
   };
 
   const onEdit = (
     newConfig: ConditionalFormattingConfig | StringConditionalFormattingConfig,
-    index: number
+    index: number,
   ) => {
     const newConfigs = [...conditionalFormattingConfigs];
     newConfigs.splice(index, 1, newConfig);
@@ -122,14 +126,16 @@ const ConditionalFormattingControl = ({
   };
 
   const createLabel = (
-    config: ConditionalFormattingConfig | StringConditionalFormattingConfig
+    config: ConditionalFormattingConfig | StringConditionalFormattingConfig,
   ) => {
-    const columnName = (config.column && verboseMap?.[config.column]) ?? config.column;
-    
+    const columnName =
+      (config.column && verboseMap?.[config.column]) ?? config.column;
+
     // If this is a string conditional formatting config
     if ('isString' in config && config.isString) {
-      const { operator, targetStringValue } = config as StringConditionalFormattingConfig;
-      
+      const { operator, targetStringValue } =
+        config as StringConditionalFormattingConfig;
+
       switch (operator) {
         case StringComparator.None:
           return `${columnName}`;
@@ -147,10 +153,11 @@ const ConditionalFormattingControl = ({
           return `${columnName} ${operator} "${targetStringValue}"`;
       }
     }
-    
+
     // Otherwise, it's a numeric conditional formatting config
-    const { operator, targetValue, targetValueLeft, targetValueRight } = config as ConditionalFormattingConfig;
-    
+    const { operator, targetValue, targetValueLeft, targetValueRight } =
+      config as ConditionalFormattingConfig;
+
     switch (operator) {
       case Comparator.None:
         return `${columnName}`;
@@ -180,9 +187,11 @@ const ConditionalFormattingControl = ({
               title={t('Edit formatter')}
               config={config}
               columns={columnOptions}
-              onChange={(newConfig: ConditionalFormattingConfig | StringConditionalFormattingConfig) =>
-                onEdit(newConfig, index)
-              }
+              onChange={(
+                newConfig:
+                  | ConditionalFormattingConfig
+                  | StringConditionalFormattingConfig,
+              ) => onEdit(newConfig, index)}
               destroyTooltipOnHide
               extraColorChoices={extraColorChoices}
               isStringFormatting={isStringFormatting}

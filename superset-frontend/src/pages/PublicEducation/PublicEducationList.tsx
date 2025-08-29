@@ -1,22 +1,25 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { styled, t } from '@superset-ui/core';
+import { useState, useCallback, useMemo } from 'react';
+import { styled, t, SupersetClient } from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
-import ListView, { ListViewProps, Filter, Filters } from 'src/components/ListView';
+import ListView, {
+  ListViewProps,
+  Filter,
+  Filters,
+  FilterOperator,
+} from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { PublicEducationPost } from './types';
-import PublicEducationCard from './PublicEducationCard';
-import CreatePublicEducationModal from './CreatePublicEducationModal';
-import PublicEducationDetailModal from './PublicEducationDetailModal';
 import moment from 'moment';
-import { SupersetClient } from '@superset-ui/core';
 import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
 import DeleteModal from 'src/components/DeleteModal';
 import Icons from 'src/components/Icons';
 import rison from 'rison';
 import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
-import { FilterOperator } from 'src/components/ListView';
+import PublicEducationDetailModal from './PublicEducationDetailModal';
+import CreatePublicEducationModal from './CreatePublicEducationModal';
+import PublicEducationCard from './PublicEducationCard';
+import { PublicEducationPost } from './types';
 
 const PAGE_SIZE = 25;
 
@@ -43,7 +46,7 @@ const POST_COLUMNS_TO_FETCH = [
 
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
-  
+
   .action-button {
     height: 100%;
     display: inline-block;
@@ -73,11 +76,11 @@ const StyledListView = styled(ListView)`
   .ant-row.card-container {
     margin: 0;
     padding: ${({ theme }) => theme.gridUnit * 4}px;
-    
+
     .ant-col {
       padding: 0;
       margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
-      
+
       &:last-child {
         margin-bottom: 0;
       }
@@ -94,14 +97,18 @@ const StyledListView = styled(ListView)`
   }
 `;
 
-function PublicEducationList({ 
-  addDangerToast, 
+function PublicEducationList({
+  addDangerToast,
   addSuccessToast,
-  user 
+  user,
 }: PublicEducationListProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<PublicEducationPost | null>(null);
-  const [postToDelete, setPostToDelete] = useState<PublicEducationPost | null>(null);
+  const [selectedPost, setSelectedPost] = useState<PublicEducationPost | null>(
+    null,
+  );
+  const [postToDelete, setPostToDelete] = useState<PublicEducationPost | null>(
+    null,
+  );
 
   const {
     state: {
@@ -118,6 +125,9 @@ function PublicEducationList({
     'public_education',
     t('public education post'),
     addDangerToast,
+    true,
+    [],
+    undefined,
     true,
     POST_COLUMNS_TO_FETCH,
   );
@@ -140,7 +150,7 @@ function PublicEducationList({
     try {
       await SupersetClient.delete({
         endpoint: `/api/v1/public_education/?q=${rison.encode(
-          postsToDelete.map(({ id }) => id)
+          postsToDelete.map(({ id }) => id),
         )}`,
       });
       refreshData();
@@ -172,26 +182,30 @@ function PublicEducationList({
       },
       {
         Cell: ({ row: { original } }: any) => (
-          <FacePile 
-            users={[{
-              first_name: original.created_by.first_name,
-              last_name: original.created_by.last_name,
-              id: original.created_by.id,
-            }]} 
+          <FacePile
+            users={[
+              {
+                first_name: original.created_by.first_name,
+                last_name: original.created_by.last_name,
+                id: original.created_by.id,
+              },
+            ]}
           />
         ),
         Header: t('Created by'),
         accessor: 'created_by',
       },
       {
-        Cell: ({ row: { original } }: any) => <>{moment(original.created_on).fromNow()}</>,
+        Cell: ({ row: { original } }: any) => (
+          <>{moment(original.created_on).fromNow()}</>
+        ),
         Header: t('Created'),
         accessor: 'created_on',
       },
       {
         Cell: ({ row: { original } }: any) => {
           const handleDelete = () => setPostToDelete(original);
-          
+
           return (
             <Actions className="actions">
               {hasPerm('can_write') && (
@@ -245,7 +259,8 @@ function PublicEducationList({
   );
 
   const renderCard = useCallback(
-    (post: PublicEducationPost) => {
+    (row: object & { loading: boolean }) => {
+      const post = row as PublicEducationPost & { loading: boolean };
       if (!post) {
         console.warn('Received undefined post in renderCard');
         return null;
@@ -308,12 +323,10 @@ function PublicEducationList({
   return (
     <>
       <SubMenu name={t('Public Education')} buttons={subMenuButtons} />
-      
+
       <ConfirmStatusChange
         title={t('Delete Posts')}
-        description={t(
-          'Are you sure you want to delete the selected posts?',
-        )}
+        description={t('Are you sure you want to delete the selected posts?')}
         onConfirm={handleBulkPostDelete}
       >
         {(showConfirm: Function) => (
@@ -346,6 +359,9 @@ function PublicEducationList({
             pageSize={PAGE_SIZE}
             renderCard={renderCard}
             defaultViewMode="card"
+            refreshData={refreshData}
+            addSuccessToast={addSuccessToast}
+            addDangerToast={addDangerToast}
           />
         )}
       </ConfirmStatusChange>
@@ -367,9 +383,7 @@ function PublicEducationList({
       {/* Delete Modal for single post delete */}
       {postToDelete && (
         <DeleteModal
-          description={t(
-            'Are you sure you want to delete this post?',
-          )}
+          description={t('Are you sure you want to delete this post?')}
           onConfirm={() => {
             if (postToDelete) {
               handlePostDelete(postToDelete);
@@ -384,4 +398,4 @@ function PublicEducationList({
   );
 }
 
-export default withToasts(PublicEducationList); 
+export default withToasts(PublicEducationList);

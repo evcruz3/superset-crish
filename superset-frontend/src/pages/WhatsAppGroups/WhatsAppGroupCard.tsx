@@ -1,13 +1,13 @@
-import React from 'react';
-import { WhatsAppGroup } from './types'; // Changed import
-import { Card, Tooltip } from 'antd'; 
+import type { FC, MouseEvent } from 'react';
+import { Card, Tooltip } from 'antd';
 import { styled, t } from '@superset-ui/core';
 import Icons from 'src/components/Icons';
 import moment from 'moment';
+import { WhatsAppGroup } from './types'; // Changed import
 
 interface WhatsAppGroupCardProps {
   whatsAppGroup: WhatsAppGroup; // Changed prop name and type
-  hasPerm: (permission: string) => boolean; 
+  hasPerm: (permission: string) => boolean;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -40,7 +40,8 @@ const StyledCard = styled(Card)`
     -webkit-box-orient: vertical;
     min-height: 2.8em; /* approx 2 lines */
   }
-  .phone-numbers-preview { // Changed class name
+  .phone-numbers-preview {
+    // Changed class name
     font-size: ${({ theme }) => theme.typography.sizes.s}px;
     color: ${({ theme }) => theme.colors.grayscale.base};
     margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
@@ -71,50 +72,76 @@ const CardActions = styled.div`
   }
 `;
 
-const WhatsAppGroupCard: React.FC<WhatsAppGroupCardProps> = ({ whatsAppGroup, hasPerm, onEdit, onDelete }) => {
-  const phoneNumbersString = whatsAppGroup.phone_numbers || ''; 
-  const numberList = phoneNumbersString.split(',').map(n => n.trim()).filter(n => n);
-  const numbersPreview = numberList.length > 2 
-    ? `${numberList.slice(0, 2).join(', ')} and ${numberList.length - 2} more...`
-    : numberList.join(', ');
+const WhatsAppGroupCard: FC<WhatsAppGroupCardProps> = ({
+  whatsAppGroup,
+  hasPerm,
+  onEdit,
+  onDelete,
+}) => {
+  const phoneNumbersString = whatsAppGroup.phone_numbers || '';
+  const numberList = phoneNumbersString
+    .split(',')
+    .map(n => n.trim())
+    .filter(n => n);
+  const numbersPreview =
+    numberList.length > 2
+      ? `${numberList.slice(0, 2).join(', ')} and ${numberList.length - 2} more...`
+      : numberList.join(', ');
 
   return (
-    <StyledCard 
-      title={whatsAppGroup.name}
-      hoverable
-    >
+    <StyledCard title={whatsAppGroup.name} hoverable>
       <div className="description">
         {whatsAppGroup.description || t('No description')}
       </div>
       <Tooltip title={numberList.join(', \n')}>
-        <div className="phone-numbers-preview"> {/* Changed class name */}
-          <strong>{t('Phone Numbers:')}</strong> {numbersPreview || t('No numbers listed')} {/* Changed label */}
+        <div className="phone-numbers-preview">
+          {' '}
+          {/* Changed class name */}
+          <strong>{t('Phone Numbers:')}</strong>{' '}
+          {numbersPreview || t('No numbers listed')} {/* Changed label */}
         </div>
       </Tooltip>
-      
+
       <div className="meta-data">
         <div>
-          {t('Created by:')} {whatsAppGroup.created_by ? `${whatsAppGroup.created_by.first_name || ''} ${whatsAppGroup.created_by.last_name || ''}`.trim() : t('N/A')}
+          {t('Created by:')}{' '}
+          {whatsAppGroup.created_by
+            ? `${whatsAppGroup.created_by.first_name || ''} ${whatsAppGroup.created_by.last_name || ''}`.trim()
+            : t('N/A')}
         </div>
         <div>
-          {t('Created on:')} {whatsAppGroup.created_on ? moment(whatsAppGroup.created_on).format('MMM D, YYYY') : t('N/A')}
+          {t('Created on:')}{' '}
+          {whatsAppGroup.created_on
+            ? moment(whatsAppGroup.created_on).format('MMM D, YYYY')
+            : t('N/A')}
         </div>
-        {whatsAppGroup.changed_on && whatsAppGroup.changed_on !== whatsAppGroup.created_on && (
-          <div>
-            {t('Modified:')} {moment(whatsAppGroup.changed_on).fromNow()}
-          </div>
-        )}
+        {whatsAppGroup.changed_on &&
+          whatsAppGroup.changed_on !== whatsAppGroup.created_on && (
+            <div>
+              {t('Modified:')} {moment(whatsAppGroup.changed_on).fromNow()}
+            </div>
+          )}
       </div>
       <CardActions>
         {/* Assuming permission name will be 'WhatsAppGroups' for consistency with API and SPA View */}
-        {hasPerm('can_write') && ( 
+        {hasPerm('can_write') && (
           <Tooltip title={t('Edit WhatsApp group')}>
-            <Icons.EditAlt onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit(); }} />
+            <Icons.EditAlt
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            />
           </Tooltip>
         )}
         {hasPerm('can_write') && (
           <Tooltip title={t('Delete WhatsApp group')}>
-            <Icons.Trash onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }} />
+            <Icons.Trash
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
           </Tooltip>
         )}
       </CardActions>
@@ -122,4 +149,4 @@ const WhatsAppGroupCard: React.FC<WhatsAppGroupCardProps> = ({ whatsAppGroup, ha
   );
 };
 
-export default WhatsAppGroupCard; 
+export default WhatsAppGroupCard;

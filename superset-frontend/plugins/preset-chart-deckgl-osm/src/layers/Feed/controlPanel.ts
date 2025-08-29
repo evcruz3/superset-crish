@@ -16,7 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ControlPanelConfig, getStandardizedControls } from '@superset-ui/chart-controls';
+import {
+  ControlPanelConfig,
+  getStandardizedControls,
+} from '@superset-ui/chart-controls';
 import { t, validateNonEmpty, GenericDataType } from '@superset-ui/core';
 import { countryOptions } from '../Country/countries';
 import {
@@ -65,8 +68,11 @@ const config: ControlPanelConfig = {
               label: t('Title Column'),
               description: t('Column containing titles for feed entries'),
               mapStateToProps: state => ({
-                choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  state.datasource?.columns.map(c => [
+                    c.column_name,
+                    c.column_name,
+                  ]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -81,8 +87,11 @@ const config: ControlPanelConfig = {
               label: t('Message Column'),
               description: t('Column containing messages for feed entries'),
               mapStateToProps: state => ({
-                choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  state.datasource?.columns.map(c => [
+                    c.column_name,
+                    c.column_name,
+                  ]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -95,10 +104,15 @@ const config: ControlPanelConfig = {
             config: {
               type: 'SelectControl',
               label: t('Parameter Column'),
-              description: t('Column containing parameter data for feed entries'),
+              description: t(
+                'Column containing parameter data for feed entries',
+              ),
               mapStateToProps: state => ({
-                choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  state.datasource?.columns.map(c => [
+                    c.column_name,
+                    c.column_name,
+                  ]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -111,10 +125,15 @@ const config: ControlPanelConfig = {
             config: {
               type: 'SelectControl',
               label: t('Status Column'),
-              description: t('Column containing status information for feed entries'),
+              description: t(
+                'Column containing status information for feed entries',
+              ),
               mapStateToProps: state => ({
-                choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  state.datasource?.columns.map(c => [
+                    c.column_name,
+                    c.column_name,
+                  ]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -127,10 +146,15 @@ const config: ControlPanelConfig = {
             config: {
               type: 'SelectControl',
               label: t('Value Column'),
-              description: t('Column containing numeric values for feed entries'),
+              description: t(
+                'Column containing numeric values for feed entries',
+              ),
               mapStateToProps: state => ({
-                choices: state.datasource?.columns
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+                choices:
+                  state.datasource?.columns.map(c => [
+                    c.column_name,
+                    c.column_name,
+                  ]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -143,7 +167,9 @@ const config: ControlPanelConfig = {
             config: {
               type: 'TextControl',
               label: t('Default Value Label'),
-              description: t('Default label to display instead of "Value" in feed entries'),
+              description: t(
+                'Default label to display instead of "Value" in feed entries',
+              ),
               default: 'Value',
               renderTrigger: true,
             },
@@ -155,7 +181,9 @@ const config: ControlPanelConfig = {
             config: {
               type: 'TextControl',
               label: t('Parameter Mappings'),
-              description: t('Define custom labels and units for parameters. Format: "Parameter1:Label1:Unit1;Parameter2:Label2:Unit2" (e.g., "Heat Index:Temperature:°C;Rainfall:Precipitation:mm")'),
+              description: t(
+                'Define custom labels and units for parameters. Format: "Parameter1:Label1:Unit1;Parameter2:Label2:Unit2" (e.g., "Heat Index:Temperature:°C;Rainfall:Precipitation:mm")',
+              ),
               default: '',
               renderTrigger: true,
             },
@@ -168,10 +196,11 @@ const config: ControlPanelConfig = {
               type: 'SelectControl',
               label: t('Temporal Column'),
               description: t('Column containing timestamps for feed entries'),
-              mapStateToProps: state => ({
-                choices: (state.datasource?.columns || [])
-                  .filter(c => c.type_generic === GenericDataType.Temporal)
-                  .map(c => [c.column_name, c.column_name]) ?? [],
+              mapStateToProps: (state: any) => ({
+                choices:
+                  (state.datasource?.columns || [])
+                    .filter((c: any) => c.type_generic === GenericDataType.Temporal)
+                    .map((c: any) => [c.column_name, c.column_name]) ?? [],
               }),
               default: null,
               validators: [validateNonEmpty],
@@ -191,8 +220,11 @@ const config: ControlPanelConfig = {
                 ['P1M', t('Month')],
                 ['P1Y', t('Year')],
               ],
-              description: t('The granularity to apply to the temporal column for filtering and display'),
-              visibility: ({ controls }) => Boolean(controls?.temporal_column?.value),
+              description: t(
+                'The granularity to apply to the temporal column for filtering and display',
+              ),
+              visibility: ({ controls }) =>
+                Boolean(controls?.temporal_column?.value),
               renderTrigger: true,
             },
           },
@@ -224,7 +256,9 @@ const config: ControlPanelConfig = {
                 ['.2%', '.2% (12.34%)'],
                 [',.2r', ',.2r (12,300)'],
               ],
-              description: t('D3 format syntax: https://github.com/d3/d3-format'),
+              description: t(
+                'D3 format syntax: https://github.com/d3/d3-format',
+              ),
             },
           },
         ],
@@ -258,10 +292,7 @@ const config: ControlPanelConfig = {
     {
       label: t('Map'),
       expanded: true,
-      controlSetRows: [
-        [osmStyle, viewport],
-        [autozoom],
-      ],
+      controlSetRows: [[osmStyle, viewport], [autozoom]],
     },
     {
       label: t('Map Settings'),
@@ -320,4 +351,4 @@ const config: ControlPanelConfig = {
   }),
 };
 
-export default config; 
+export default config;

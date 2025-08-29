@@ -1,4 +1,3 @@
-import React from 'react';
 import { styled, t } from '@superset-ui/core';
 import { Card, Row, Col, Typography, Space } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
@@ -30,7 +29,9 @@ const StyledCard = styled(Card)`
   }
 
   &:hover {
-    box-shadow: ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit * 4}px rgba(0, 0, 0, 0.1);
+    box-shadow: ${({ theme }) => theme.gridUnit}px
+      ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit * 4}px
+      rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
 `;
@@ -62,7 +63,7 @@ const CardContent = styled.div`
     flex: 1;
     overflow-y: auto;
     margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
-    
+
     /* Hide scrollbar by default */
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -75,16 +76,16 @@ const CardContent = styled.div`
     &:hover {
       scrollbar-width: thin;
       -ms-overflow-style: auto;
-      
+
       &::-webkit-scrollbar {
         width: 6px;
       }
-      
+
       &::-webkit-scrollbar-thumb {
         background: ${({ theme }) => theme.colors.grayscale.light2};
         border-radius: 3px;
       }
-      
+
       &::-webkit-scrollbar-track {
         background: ${({ theme }) => theme.colors.grayscale.light4};
         border-radius: 3px;
@@ -111,7 +112,7 @@ const PreviewContainer = styled.div`
   gap: ${({ theme }) => theme.gridUnit * 2}px;
   overflow-x: auto;
   padding-bottom: ${({ theme }) => theme.gridUnit * 2}px;
-  
+
   /* Hide scrollbar by default */
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -124,16 +125,16 @@ const PreviewContainer = styled.div`
   &:hover {
     scrollbar-width: thin;
     -ms-overflow-style: auto;
-    
+
     &::-webkit-scrollbar {
       height: 6px;
     }
-    
+
     &::-webkit-scrollbar-thumb {
       background: ${({ theme }) => theme.colors.grayscale.light2};
       border-radius: 3px;
     }
-    
+
     &::-webkit-scrollbar-track {
       background: ${({ theme }) => theme.colors.grayscale.light4};
       border-radius: 3px;
@@ -218,7 +219,7 @@ const CardFooter = styled.div`
   }
 `;
 
-const PublicEducationCard: React.FC<PublicEducationCardProps> = ({ 
+const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
   post,
   hasPerm,
   bulkSelectEnabled,
@@ -226,7 +227,10 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
 }) => {
   const handleAttachmentClick = (e: React.MouseEvent, attachmentId: number) => {
     e.stopPropagation();
-    window.open(`/api/v1/public_education/attachment/${attachmentId}/download`, '_blank');
+    window.open(
+      `/api/v1/public_education/attachment/${attachmentId}/download`,
+      '_blank',
+    );
   };
 
   const handleCardClick = () => {
@@ -252,7 +256,7 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
   const thumbnailUrl = getYouTubeThumbnail(post.youtube_embed_url);
 
   return (
-    <StyledCard 
+    <StyledCard
       onClick={handleCardClick}
       style={{ cursor: bulkSelectEnabled ? 'default' : 'pointer' }}
     >
@@ -268,30 +272,31 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
           {post.youtube_embed_url && thumbnailUrl && (
             <PreviewItem className="video-preview">
               <PlayCircleOutlined className="preview-icon" />
-              <img 
+              <img
                 src={thumbnailUrl}
                 alt={t('Video thumbnail')}
-                onError={(e) => {
+                onError={e => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                 }}
               />
             </PreviewItem>
           )}
-          
+
           {post.attachments?.map(attachment => (
-            <PreviewItem 
+            <PreviewItem
               key={attachment.id}
-              onClick={(e) => handleAttachmentClick(e, attachment.id)}
+              onClick={e => handleAttachmentClick(e, attachment.id)}
               title={attachment.file_name}
             >
               {attachment.file_type === 'image' ? (
-                <img 
+                <img
                   src={`/api/v1/public_education/attachment/${attachment.id}`}
                   alt={attachment.file_name}
-                  onError={(e) => {
+                  onError={e => {
                     const target = e.target as HTMLImageElement;
-                    target.src = '/static/assets/images/chart-card-fallback.svg';
+                    target.src =
+                      '/static/assets/images/chart-card-fallback.svg';
                   }}
                 />
               ) : (
@@ -310,7 +315,8 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
         <Row justify="space-between">
           <Col>
             <Text type="secondary">
-              {t('By')} {post.created_by?.first_name} {post.created_by?.last_name}
+              {t('By')} {post.created_by?.first_name}{' '}
+              {post.created_by?.last_name}
             </Text>
           </Col>
           <Col>
@@ -324,4 +330,4 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
   );
 };
 
-export default PublicEducationCard; 
+export default PublicEducationCard;

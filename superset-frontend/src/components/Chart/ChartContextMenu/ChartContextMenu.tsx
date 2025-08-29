@@ -107,7 +107,7 @@ const ChartContextMenu = (
 
   const [drillModalIsOpen, setDrillModalIsOpen] = useState(false);
 
-  const menuItems = [];
+  const menuItems: React.ReactNode[] = [];
 
   const showDrillToDetail =
     isFeatureEnabled(FeatureFlag.DrillToDetail) &&

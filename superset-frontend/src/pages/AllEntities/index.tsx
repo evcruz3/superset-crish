@@ -121,7 +121,7 @@ function AllEntities() {
     label: t('dataset name'),
   };
 
-  const items = [];
+  const items: (Description | Owner | LastModified)[] = [];
   if (tag?.description) {
     const description: Description = {
       type: MetadataType.Description,

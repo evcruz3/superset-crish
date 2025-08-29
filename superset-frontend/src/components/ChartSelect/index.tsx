@@ -1,9 +1,8 @@
-import React from 'react';
 import { Select } from 'antd';
 import { t } from '@superset-ui/core';
 import { useSelector } from 'react-redux';
 import { RootState } from 'src/dashboard/types';
-import { ChartsState } from 'src/dashboard/reducers/types';
+import { ChartsState } from 'src/dashboard/types';
 
 interface ChartSelectProps {
   value?: number;
@@ -12,9 +11,9 @@ interface ChartSelectProps {
 
 export default function ChartSelect({ value, onChange }: ChartSelectProps) {
   const charts = useSelector<RootState, ChartsState>(state => state.charts);
-  
+
   const chartOptions = Object.values(charts).map(chart => ({
-    label: chart.name,
+    label: chart.form_data?.viz_type || `Chart ${chart.id}`,
     value: chart.id,
   }));
 
@@ -26,8 +25,8 @@ export default function ChartSelect({ value, onChange }: ChartSelectProps) {
       onChange={onChange}
       options={chartOptions}
       filterOption={(input, option) =>
-        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+        String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
       }
     />
   );
-} 
+}

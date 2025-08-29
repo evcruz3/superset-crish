@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
-import { CompositeLayer, Layer } from '@deck.gl/core';
+import { CompositeLayer, Layer, LinearInterpolator } from '@deck.gl/core';
 import {
   Datasource,
   HandlerFunction,
@@ -36,7 +36,6 @@ import { scaleLinear } from 'd3-scale';
 import geojsonExtent from '@mapbox/geojson-extent';
 import { isEqual } from 'lodash';
 import DeckGL from '@deck.gl/react';
-import { LinearInterpolator } from '@deck.gl/core';
 import {
   formatDistanceToNow,
   format,
@@ -54,10 +53,14 @@ import {
   addYears,
 } from 'date-fns';
 import { DatePicker } from 'antd';
-import moment from 'moment';
-import { Moment } from 'moment';
+import moment, { Moment } from 'moment';
 import locale from 'antd/es/date-picker/locale/en_US';
-import { Feature, FeatureCollection, Geometry, GeoJsonProperties } from 'geojson';
+import {
+  Feature,
+  FeatureCollection,
+  Geometry,
+  GeoJsonProperties,
+} from 'geojson';
 
 import {
   DeckGLContainerHandle,
@@ -78,16 +81,21 @@ import {
   ProcessedFeedData,
   FeedFormData,
   FeedLayerReturn,
-  FeedLayerProps
+  FeedLayerProps,
 } from '../../types/feed';
 
 // Cache for loaded GeoJSON data
 const geoJsonCache: { [key: string]: JsonObject } = {};
 
 // Helper function to check if two dates match based on granularity (moved outside getLayer)
-const datesMatch = (date1: Date, date2: Date, gran: TimeGranularity | null | undefined): boolean => {
+const datesMatch = (
+  date1: Date,
+  date2: Date,
+  gran: TimeGranularity | null | undefined,
+): boolean => {
   if (!date1 || !date2 || !gran) return false;
-  if (gran === TimeGranularity.WEEK) return isSameWeek(date1, date2, { weekStartsOn: 1 });
+  if (gran === TimeGranularity.WEEK)
+    return isSameWeek(date1, date2, { weekStartsOn: 1 });
   if (gran === TimeGranularity.MONTH) return isSameMonth(date1, date2);
   if (gran === TimeGranularity.YEAR) return isSameYear(date1, date2);
   return isSameDay(date1, date2); // Default to Day
@@ -143,19 +151,23 @@ const ParameterPanel = styled.div`
   overflow-y: auto;
 `;
 
-const ParameterCard = styled.div<{isSelected: boolean}>`
-  background: ${({isSelected}) => isSelected ? '#e0e0e0' : '#f9f9f9' }; // Darker if selected
-  border: 1px solid ${({isSelected}) => isSelected ? '#cccccc' : '#f0f0f0' };
+const ParameterCard = styled.div<{ isSelected: boolean }>`
+  background: ${({ isSelected }) =>
+    isSelected ? '#e0e0e0' : '#f9f9f9'}; // Darker if selected
+  border: 1px solid ${({ isSelected }) => (isSelected ? '#cccccc' : '#f0f0f0')};
   border-radius: 6px;
   padding: 10px 15px;
   font-size: 14px;
   color: ${({ theme }) => theme.colors.grayscale.dark1};
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   cursor: pointer; // Make it clear it's clickable
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 
   &:hover {
-    background-color: ${({isSelected}) => isSelected ? '#d5d5d5' : '#efefef' };
+    background-color: ${({ isSelected }) =>
+      isSelected ? '#d5d5d5' : '#efefef'};
   }
 `;
 
@@ -177,7 +189,8 @@ const FeedPanel = styled.div<{ isExiting?: boolean }>`
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1;
-  animation: ${({ isExiting }) => isExiting ? slideOut : slideIn} 0.3s ease-in-out;
+  animation: ${({ isExiting }) => (isExiting ? slideOut : slideIn)} 0.3s
+    ease-in-out;
   display: flex;
   flex-direction: column;
 `;
@@ -206,7 +219,7 @@ const CloseButton = styled.button`
   cursor: pointer;
   color: ${({ theme }) => theme.colors.grayscale.base};
   padding: 4px;
-  
+
   &:hover {
     color: ${({ theme }) => theme.colors.grayscale.dark1};
   }
@@ -232,7 +245,7 @@ const FeedItemDate = styled.div`
 const FeedItem = styled.div`
   margin-bottom: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   opacity: 0;
   animation: ${fadeIn} 0.3s ease-out forwards;
@@ -306,7 +319,7 @@ const StyledTimelineSlider = styled.div`
   background: white;
   padding: 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 10;
   width: 500px;
 
@@ -342,15 +355,15 @@ const StyledTimelineSlider = styled.div`
   .timeline-container {
     display: flex;
     align-items: center;
-    overflow-x: auto;  // Allow horizontal scrolling if many dates
+    overflow-x: auto; // Allow horizontal scrolling if many dates
     gap: 4px;
     padding-bottom: 4px; // Space for the scrollbar
-    
+
     /* Hide scrollbar for Chrome, Safari and Opera */
     &::-webkit-scrollbar {
       display: none;
     }
-    
+
     /* Hide scrollbar for IE, Edge and Firefox */
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -384,7 +397,7 @@ interface FeedEntry {
   title: string;
   message: string;
   country_id: string;
-  metric: number;
+  metric?: number;
   parameter?: string;
   status?: string;
   value?: number;
@@ -422,7 +435,12 @@ interface ParameterDisplayProps {
   onToggleParameter: (parameter: string) => void;
 }
 
-const ParameterDisplay: React.FC<ParameterDisplayProps> = ({ parameters, title, selectedParameters, onToggleParameter }) => {
+const ParameterDisplay: React.FC<ParameterDisplayProps> = ({
+  parameters,
+  title,
+  selectedParameters,
+  onToggleParameter,
+}) => {
   if (!parameters || parameters.length === 0) {
     return null;
   }
@@ -431,8 +449,8 @@ const ParameterDisplay: React.FC<ParameterDisplayProps> = ({ parameters, title, 
     <ParameterPanel>
       <ParameterPanelTitle>{title}</ParameterPanelTitle>
       {parameters.map((param, index) => (
-        <ParameterCard 
-          key={index} 
+        <ParameterCard
+          key={index}
           isSelected={selectedParameters.includes(param)}
           onClick={() => onToggleParameter(param)}
         >
@@ -452,24 +470,23 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   granularity,
   formData: propsFormData,
 }) => {
-
-  console.log("entries", entries);
+  console.log('entries', entries);
   // Group entries by date, considering granularity
   const entriesByDate = useMemo(() => {
     const grouped: Record<string, FeedEntry[]> = {};
-    
+
     [...entries].forEach(entry => {
       if (entry[temporal_column]) {
         try {
           const date = new Date(entry[temporal_column]);
           let groupDate: Date;
           let dateFormat: string;
-          
+
           // Determine the grouping date and format based on granularity
           switch (granularity) {
             case TimeGranularity.WEEK:
               groupDate = startOfWeek(date, { weekStartsOn: 1 }); // Start week on Monday
-              dateFormat = 'yyyy-\'W\'II'; // ISO week format
+              dateFormat = "yyyy-'W'II"; // ISO week format
               break;
             case TimeGranularity.MONTH:
               groupDate = startOfMonth(date);
@@ -485,9 +502,9 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
               dateFormat = 'd MMM yyyy';
               break;
           }
-          
+
           const dateKey = format(groupDate, dateFormat);
-          
+
           if (!grouped[dateKey]) {
             grouped[dateKey] = [];
           }
@@ -501,37 +518,51 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
         }
       }
     });
-    
+
     return grouped;
   }, [entries, temporal_column, granularity]);
-  
+
   // Sort dates (newest first based on actual date, not string key)
-  const sortedDates = useMemo(() => {
-    return Object.keys(entriesByDate).sort((a, b) => {
-      try {
-        // Get the actual date from the first entry of each group for sorting
-        const firstEntryA = entriesByDate[a]?.[0];
-        const firstEntryB = entriesByDate[b]?.[0];
+  const sortedDates = useMemo(
+    () =>
+      Object.keys(entriesByDate).sort((a, b) => {
+        try {
+          // Get the actual date from the first entry of each group for sorting
+          const firstEntryA = entriesByDate[a]?.[0];
+          const firstEntryB = entriesByDate[b]?.[0];
 
-        const timeA = firstEntryA?.[temporal_column] ? new Date(firstEntryA[temporal_column]).getTime() : 0;
-        const timeB = firstEntryB?.[temporal_column] ? new Date(firstEntryB[temporal_column]).getTime() : 0;
+          const timeA = firstEntryA?.[temporal_column]
+            ? new Date(firstEntryA[temporal_column]).getTime()
+            : 0;
+          const timeB = firstEntryB?.[temporal_column]
+            ? new Date(firstEntryB[temporal_column]).getTime()
+            : 0;
 
-        return timeB - timeA;
-      } catch (e) {
-        console.error('Error sorting dates in FeedSidePanel:', e);
-        return 0;
-      }
-    });
-  }, [entriesByDate, temporal_column]);
+          return timeB - timeA;
+        } catch (e) {
+          console.error('Error sorting dates in FeedSidePanel:', e);
+          return 0;
+        }
+      }),
+    [entriesByDate, temporal_column],
+  );
 
   // Helper to determine status color based on status value
   const getStatusColor = useCallback((status: string) => {
     let statusColor = '#888888';
     if (status.includes('Extreme Danger') || status === 'Severe') {
       statusColor = '#F44336'; // Red for extreme/severe
-    } else if (status === 'Danger' || status === 'Heavy' || status === 'Strong') {
+    } else if (
+      status === 'Danger' ||
+      status === 'Heavy' ||
+      status === 'Strong'
+    ) {
       statusColor = '#FF9800'; // Orange for danger
-    } else if (status.includes('Extreme Caution') || status === 'Moderate' || status === 'Caution') {
+    } else if (
+      status.includes('Extreme Caution') ||
+      status === 'Moderate' ||
+      status === 'Caution'
+    ) {
       statusColor = '#FFEB3B'; // Yellow for caution
     } else if (status === 'Light' || status === 'Normal') {
       statusColor = '#4CAF50'; // Green for light/normal
@@ -550,24 +581,33 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   // Get form data from the payload (if available)
   const formData = useMemo(() => {
     // Parse parameter mappings from simple string format
-    const parameterMappings: Array<{parameter: string, label: string, unit: string}> = [];
-    
-    if (propsFormData?.parameter_mappings && typeof propsFormData.parameter_mappings === 'string') {
+    const parameterMappings: Array<{
+      parameter: string;
+      label: string;
+      unit: string;
+    }> = [];
+
+    if (
+      propsFormData?.parameter_mappings &&
+      typeof propsFormData.parameter_mappings === 'string'
+    ) {
       // Format: "Parameter1:Label1:Unit1;Parameter2:Label2:Unit2"
-      const mappingPairs = propsFormData.parameter_mappings.split(';').filter((pair: string) => pair.trim());
-      
+      const mappingPairs = propsFormData.parameter_mappings
+        .split(';')
+        .filter((pair: string) => pair.trim());
+
       mappingPairs.forEach((pair: string) => {
         const parts = pair.split(':').map((p: string) => p.trim());
         if (parts.length >= 2) {
           parameterMappings.push({
             parameter: parts[0],
             label: parts[1] || parts[0],
-            unit: parts[2] || ''
+            unit: parts[2] || '',
           });
         }
       });
     }
-    
+
     // Return default column names if not defined in form data
     return {
       title_column: propsFormData?.title_column || 'title',
@@ -582,19 +622,22 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   }, [propsFormData]);
 
   // Helper function to get parameter-specific label and unit
-  const getParameterConfig = useCallback((parameterValue: string) => {
-    const mapping = formData.parameter_mappings.find(
-      (m: any) => m.parameter === parameterValue
-    );
-    return {
-      label: mapping?.label || formData.value_label,
-      unit: mapping?.unit || formData.metric_unit,
-    };
-  }, [formData.parameter_mappings, formData.value_label, formData.metric_unit]);
+  const getParameterConfig = useCallback(
+    (parameterValue: string) => {
+      const mapping = formData.parameter_mappings.find(
+        (m: any) => m.parameter === parameterValue,
+      );
+      return {
+        label: mapping?.label || formData.value_label,
+        unit: mapping?.unit || formData.metric_unit,
+      };
+    },
+    [formData.parameter_mappings, formData.value_label, formData.metric_unit],
+  );
 
-  console.log("sortedDates", sortedDates);
-  console.log("formData in FeedSidePanel:", formData);
-  console.log("Sample entry:", entries[0]);
+  console.log('sortedDates', sortedDates);
+  console.log('formData in FeedSidePanel:', formData);
+  console.log('Sample entry:', entries[0]);
 
   return (
     <FeedPanel isExiting={isExiting}>
@@ -605,28 +648,30 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
       <FeedList>
         {sortedDates.map(dateKey => {
           // Sort entries alphabetically by title
-          const sortedEntries = [...entriesByDate[dateKey]].sort((a, b) => 
-            ((a.title || '') as string).localeCompare((b.title || '') as string)
+          const sortedEntries = [...entriesByDate[dateKey]].sort((a, b) =>
+            ((a.title || '') as string).localeCompare(
+              (b.title || '') as string,
+            ),
           );
-          
-          console.log("sortedEntries", sortedEntries);
+
+          console.log('sortedEntries', sortedEntries);
           return (
             <div key={dateKey}>
-              <FeedItemDate>
-                {dateKey}
-              </FeedItemDate>
-              
+              <FeedItemDate>{dateKey}</FeedItemDate>
+
               {sortedEntries.map((entry, index) => (
                 <FeedItem key={`${dateKey}-${index}`} index={index}>
                   <FeedItemHeader>
                     <FeedItemTitle>{entry.title}</FeedItemTitle>
                     {entry.status && (
-                      <StatusBadge statusColor={getStatusColor(entry.status as string)}>
+                      <StatusBadge
+                        statusColor={getStatusColor(entry.status as string)}
+                      >
                         {entry.status}
                       </StatusBadge>
                     )}
                   </FeedItemHeader>
-                  
+
                   <FeedItemBody>
                     <FeedItemGrid>
                       {entry.parameter && (
@@ -635,18 +680,22 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
                           <FeedItemValue>{entry.parameter}</FeedItemValue>
                         </FeedItemGridCell>
                       )}
-                      
+
                       {entry.value !== undefined && (
                         <FeedItemGridCell>
-                          <FeedItemLabel>{getParameterConfig(entry.parameter || '').label}</FeedItemLabel>
+                          <FeedItemLabel>
+                            {getParameterConfig(entry.parameter || '').label}
+                          </FeedItemLabel>
                           <FeedItemValue>
                             {formatValue(entry.value)}
-                            {getParameterConfig(entry.parameter || '').unit ? ` ${getParameterConfig(entry.parameter || '').unit}` : ''}
+                            {getParameterConfig(entry.parameter || '').unit
+                              ? ` ${getParameterConfig(entry.parameter || '').unit}`
+                              : ''}
                           </FeedItemValue>
                         </FeedItemGridCell>
                       )}
                     </FeedItemGrid>
-                    
+
                     {entry.message && (
                       <FeedItemMessage>
                         <FeedItemLabel>Advisory Message</FeedItemLabel>
@@ -661,7 +710,7 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
             </div>
           );
         })}
-        
+
         {sortedDates.length === 0 && (
           <div>No entries available for this region.</div>
         )}
@@ -670,22 +719,25 @@ export const FeedSidePanel: React.FC<FeedPanelProps> = ({
   );
 };
 
-
-export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>))[] {
-  const { 
-    formData, 
-    payload, 
+export function getLayer(
+  options: FeedLayerProps,
+): (Layer<{}> | (() => Layer<{}>))[] {
+  const {
+    formData,
+    payload,
     setTooltip,
     geoJson,
     selectionOptions,
     opacity = 1,
     currentTime,
-    selectedParameters
+    selectedParameters,
   } = options;
 
   // Type guard to ensure selectionOptions is present and has required properties
   if (!selectionOptions || !geoJson) {
-    console.warn('Feed layer requires selectionOptions and geoJson to be provided');
+    console.warn(
+      'Feed layer requires selectionOptions and geoJson to be provided',
+    );
     return [];
   }
 
@@ -700,12 +752,16 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
   const sc = fd.stroke_color_picker;
   const strokeColor = sc ? [sc.r, sc.g, sc.b, 255 * sc.a] : [0, 0, 0, 255];
   const data = payload.data as ProcessedData;
-  const temporalColumn = data.temporal_column || formData.temporal_column;
-  const granularity = fd.time_granularity as TimeGranularity | undefined ?? TimeGranularity.DAY;
+  const temporalColumn = data.temporal_column || ('temporal_column' in formData ? formData.temporal_column : undefined);
+  const granularity =
+    (fd.time_granularity as TimeGranularity | undefined) ?? TimeGranularity.DAY;
 
   // Calculate extent and color scale
   const allMetricValues = Object.values(data.regionMetrics);
-  const extent: [number, number] = [Math.min(...allMetricValues), Math.max(...allMetricValues)];
+  const extent: [number, number] = [
+    Math.min(...allMetricValues),
+    Math.max(...allMetricValues),
+  ];
   const colorScale = scaleLinear<string>()
     .domain(extent)
     .range(['#ccc', '#343434']);
@@ -718,61 +774,73 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     }
     entriesByRegion[entry.country_id].push(entry);
   });
-  
-  const features = (geoJson as FeedGeoJSON).features.map((feature: FeedGeoJSONFeature) => {
-    const regionId = feature.properties.ISO;
-    const entries = entriesByRegion[regionId] || [];
-    
-    // Filter entries by date and granularity
-    const filteredEntries = currentTime && temporalColumn
-      ? entries.filter(entry => {
-          if (!entry[temporalColumn]) return false; // Don't include entries without dates
-          try {
-            const entryDate = new Date(entry[temporalColumn]);
-            console.log("entry: ", entry)
-            if(entry.parameter && !selectedParameters?.includes(entry.parameter)) return false;
-            return datesMatch(entryDate, currentTime, granularity);
-          } catch (e) {
-            console.warn('Invalid date encountered during filtering:', entry[temporalColumn]);
-            return false;
-          }
-        })
-      : entries;
 
-    // Calculate metrics based on filtered entries
-    const value = filteredEntries.length;
-    const metricValue = value;
+  const features = (geoJson as FeedGeoJSON).features.map(
+    (feature: FeedGeoJSONFeature) => {
+      const regionId = feature.properties.ISO;
+      const entries = entriesByRegion[regionId] || [];
 
-    const isSelected = selectedRegion?.id === regionId || 
-                      selectedRegion?.name === feature.properties.ADM1 ||
-                      selectedRegion?.name === feature.properties.name ||
-                      selectedRegion?.name === feature.properties.NAME;
+      // Filter entries by date and granularity
+      const filteredEntries =
+        currentTime && temporalColumn
+          ? entries.filter(entry => {
+              if (!entry[temporalColumn]) return false; // Don't include entries without dates
+              try {
+                const entryDate = new Date(entry[temporalColumn]);
+                console.log('entry: ', entry);
+                if (
+                  entry.parameter &&
+                  !selectedParameters?.includes(entry.parameter)
+                )
+                  return false;
+                return datesMatch(entryDate, currentTime, granularity);
+              } catch (e) {
+                console.warn(
+                  'Invalid date encountered during filtering:',
+                  entry[temporalColumn],
+                );
+                return false;
+              }
+            })
+          : entries;
 
-    const fillColorArray = value !== undefined 
-      ? isSelected 
-        ? [255, 165, 0, 180 * opacity] 
-        : [...hexToRGB(colorScale(value)), 255 * opacity]
-      : [0, 0, 0, 0];
+      // Calculate metrics based on filtered entries
+      const value = filteredEntries.length;
+      const metricValue = value;
 
-    const strokeColorArray = isSelected 
-      ? [255, 165, 0, 255 * opacity] 
-      : strokeColor.map((v, i) => i === 3 ? v * opacity : v);
+      const isSelected =
+        selectedRegion?.id === regionId ||
+        selectedRegion?.name === feature.properties.ADM1 ||
+        selectedRegion?.name === feature.properties.name ||
+        selectedRegion?.name === feature.properties.NAME;
 
-    return {
-      ...feature,
-      properties: {
-        ...feature.properties,
-        metric: value,
-        metricValue,
-        fillColor: fillColorArray as [number, number, number, number],
-        strokeColor: strokeColorArray as [number, number, number, number],
-        entries: filteredEntries,
-      },
-    } as FeedGeoJSONFeature;
-  });
+      const fillColorArray =
+        value !== undefined
+          ? isSelected
+            ? [255, 165, 0, 180 * opacity]
+            : [...hexToRGB(colorScale(value)), 255 * opacity]
+          : [0, 0, 0, 0];
 
-  let processedFeatures: FeedGeoJSONFeature[] = features.filter((feature: FeedGeoJSONFeature) => 
-    feature.properties.metric !== undefined
+      const strokeColorArray = isSelected
+        ? [255, 165, 0, 255 * opacity]
+        : strokeColor.map((v, i) => (i === 3 ? v * opacity : v));
+
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          metric: value,
+          metricValue,
+          fillColor: fillColorArray as [number, number, number, number],
+          strokeColor: strokeColorArray as [number, number, number, number],
+          entries: filteredEntries,
+        },
+      } as FeedGeoJSONFeature;
+    },
+  );
+
+  const processedFeatures: FeedGeoJSONFeature[] = features.filter(
+    (feature: FeedGeoJSONFeature) => feature.properties.metric !== undefined,
   );
 
   // Create centroids for circle overlays - filter out regions with 0 alerts
@@ -786,7 +854,8 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       let center: [number, number] = [0, 0];
       const bounds = geojsonExtent(feature.geometry as any);
 
-      if (bounds && bounds.length === 4) { // Check for valid BBox
+      if (bounds && bounds.length === 4) {
+        // Check for valid BBox
         center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
       } else {
         console.warn(
@@ -816,9 +885,10 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
   function handleClick(info: { object?: FeedGeoJSONFeature }) {
     if (!info.object || !setSelectedRegion) return;
 
-    const regionName = info.object.properties?.ADM1 || 
-                      info.object.properties?.name || 
-                      info.object.properties?.NAME;
+    const regionName =
+      info.object.properties?.ADM1 ||
+      info.object.properties?.name ||
+      info.object.properties?.NAME;
 
     if (!regionName || !info.object.properties?.entries) return;
 
@@ -877,7 +947,11 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       return strokeColor as [number, number, number, number];
     },
     getLineWidth: 1,
-    lineWidthUnits: fd.line_width_unit as "meters" | "common" | "pixels" | undefined,
+    lineWidthUnits: fd.line_width_unit as
+      | 'meters'
+      | 'common'
+      | 'pixels'
+      | undefined,
     opacity,
     pickable: true,
     autoHighlight: true,
@@ -888,7 +962,7 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       getFillColor: [selectedRegion?.id, options.colorSettings],
       getLineColor: [selectedRegion?.id, options.colorSettings],
       getLineWidth: [selectedRegion?.id],
-    }
+    },
   });
 
   // Create the circle layer
@@ -910,11 +984,15 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     },
     getFillColor: d => {
       const isSelected = selectedRegion?.id === d.ISO;
-      return isSelected ? [255, 69, 0, 180 * opacity] : [255, 140, 0, 180 * opacity];
+      return isSelected
+        ? [255, 69, 0, 180 * opacity]
+        : [255, 140, 0, 180 * opacity];
     },
     getLineColor: d => {
       const isSelected = selectedRegion?.id === d.ISO;
-      return isSelected ? [255, 69, 0, 255 * opacity] : [255, 140, 0, 255 * opacity];
+      return isSelected
+        ? [255, 69, 0, 255 * opacity]
+        : [255, 140, 0, 255 * opacity];
     },
     pickable: true,
     autoHighlight: true,
@@ -927,7 +1005,6 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
       getLineColor: [selectedRegion?.id],
     },
   });
-
 
   const textLayer = new TextLayer({
     id: `text-layer-${fd.slice_id}`,
@@ -944,7 +1021,11 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     getColor: [255, 255, 255, 255 * opacity],
   });
 
-  function setTooltipContent(o: { object?: FeedGeoJSONFeature; x?: number; y?: number }) {
+  function setTooltipContent(o: {
+    object?: FeedGeoJSONFeature;
+    x?: number;
+    y?: number;
+  }) {
     if (!o.object || !setTooltip) {
       setTooltip?.(null);
       return;
@@ -953,10 +1034,11 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
     const x = o.x ?? 0;
     const y = o.y ?? 0;
 
-    const areaName = o.object.properties?.ADM1 || 
-                    o.object.properties?.name || 
-                    o.object.properties?.NAME || 
-                    o.object.properties?.ISO;
+    const areaName =
+      o.object.properties?.ADM1 ||
+      o.object.properties?.name ||
+      o.object.properties?.NAME ||
+      o.object.properties?.ISO;
 
     setTooltip({
       x,
@@ -966,16 +1048,22 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
           <TooltipRow
             key="area"
             label={`${areaName} `}
-            value={o.object.properties?.metric !== undefined 
-              ? `${prefix}${formatter(o.object.properties.metric)}${unit} entries` 
-              : 'No entries'}
+            value={
+              o.object.properties?.metric !== undefined
+                ? `${prefix}${formatter(o.object.properties.metric)}${unit} entries`
+                : 'No entries'
+            }
           />
         </div>
       ),
     });
   }
 
-  function handleCircleHover(o: { object?: FeedCentroid; x?: number; y?: number }) {
+  function handleCircleHover(o: {
+    object?: FeedCentroid;
+    x?: number;
+    y?: number;
+  }) {
     if (!o.object || !setTooltip) {
       setTooltip?.(null);
       return;
@@ -1003,7 +1091,7 @@ export function getLayer(options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>
   if (centroids.length > 0) {
     return [geoJsonLayer, circleLayer, textLayer];
   }
-  
+
   // Return just the geoJsonLayer if there are no centroids with alerts
   return [geoJsonLayer];
 }
@@ -1028,7 +1116,9 @@ interface DeckGLContainerHandleExtended extends DeckGLContainerHandle {
 export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   const [geoJson, setGeoJson] = useState<JsonObject | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<SelectedRegion | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<SelectedRegion | null>(
+    null,
+  );
   const [isExiting, setIsExiting] = useState(false);
   const [currentViewport, setCurrentViewport] = useState(props.viewport);
   const [currentTime, setCurrentTime] = useState<Date | undefined>(undefined);
@@ -1037,8 +1127,16 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const activeDateRef = useRef<HTMLDivElement>(null);
-  
-  const { formData, payload, setControlValue, viewport: initialViewport, height, width, onAddFilter } = props;
+
+  const {
+    formData,
+    payload,
+    setControlValue,
+    viewport: initialViewport,
+    height,
+    width,
+    onAddFilter,
+  } = props;
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef;
@@ -1047,52 +1145,63 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     }
   }, []);
 
-  const panToFeature = useCallback((feature: any) => {
-    if (!feature) return;
+  const panToFeature = useCallback(
+    (feature: any) => {
+      if (!feature) return;
 
-    const bounds = geojsonExtent(feature);
-    if (!bounds) return;
+      const bounds = geojsonExtent(feature);
+      if (!bounds) return;
 
-    const [minLng, minLat, maxLng, maxLat] = bounds;
-    const centerLng = (minLng + maxLng) / 2;
-    const centerLat = (minLat + maxLat) / 2;
+      const [minLng, minLat, maxLng, maxLat] = bounds;
+      const centerLng = (minLng + maxLng) / 2;
+      const centerLat = (minLat + maxLat) / 2;
 
-    const latDiff = Math.abs(maxLat - minLat);
-    const lngDiff = Math.abs(maxLng - minLng);
-    const maxDiff = Math.max(latDiff, lngDiff);
-    const zoom = Math.floor(8 - Math.log2(maxDiff));
+      const latDiff = Math.abs(maxLat - minLat);
+      const lngDiff = Math.abs(maxLng - minLng);
+      const maxDiff = Math.max(latDiff, lngDiff);
+      const zoom = Math.floor(8 - Math.log2(maxDiff));
 
-    const lngOffset = (lngDiff * 0.5);
+      const lngOffset = lngDiff * 0.5;
 
-    const newViewport = {
-      ...currentViewport,
-      longitude: centerLng + lngOffset, 
-      latitude: centerLat,
-      zoom: Math.min(Math.max(zoom, 4), 12), 
-      bearing: 0,
-      pitch: 0,
-      transitionDuration: 1000,
-      transitionInterpolator: new LinearInterpolator(),
-    };
+      const newViewport = {
+        ...currentViewport,
+        longitude: centerLng + lngOffset,
+        latitude: centerLat,
+        zoom: Math.min(Math.max(zoom, 4), 12),
+        bearing: 0,
+        pitch: 0,
+        transitionDuration: 1000,
+        transitionInterpolator: new LinearInterpolator(),
+      };
 
-    setCurrentViewport(newViewport);
-    setControlValue('viewport', newViewport);
-  }, [currentViewport, setControlValue]);
+      setCurrentViewport(newViewport);
+      setControlValue('viewport', newViewport);
+    },
+    [currentViewport, setControlValue],
+  );
 
-  const parameterColumn = useMemo(() => {
-    return formData.parameter_column as string || 'parameter';
-  }, [formData.parameter_column]);
+  const parameterColumn = useMemo(
+    () => (formData.parameter_column as string) || 'parameter',
+    [formData.parameter_column],
+  );
 
   const uniqueParameters = useMemo(() => {
-    const colNameForUniqueDiscovery = parameterColumn; 
+    const colNameForUniqueDiscovery = parameterColumn;
     if (payload.data?.data && colNameForUniqueDiscovery) {
-      const allParameters = payload.data.data.reduce((acc: string[], entry: FeedEntry) => {
-        const paramValue = entry.parameter; 
-        if (paramValue && typeof paramValue === 'string' && !acc.includes(paramValue)) {
-          acc.push(paramValue);
-        }
-        return acc;
-      }, []);
+      const allParameters = payload.data.data.reduce(
+        (acc: string[], entry: FeedEntry) => {
+          const paramValue = entry.parameter;
+          if (
+            paramValue &&
+            typeof paramValue === 'string' &&
+            !acc.includes(paramValue)
+          ) {
+            acc.push(paramValue);
+          }
+          return acc;
+        },
+        [],
+      );
       return allParameters.sort();
     }
     return [];
@@ -1106,53 +1215,65 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   }, [uniqueParameters]);
 
   const onToggleParameter = useCallback((parameter: string) => {
-    setSelectedParameters(prevSelected => 
-      prevSelected.includes(parameter) 
-        ? prevSelected.filter(p => p !== parameter) 
-        : [...prevSelected, parameter]
+    setSelectedParameters(prevSelected =>
+      prevSelected.includes(parameter)
+        ? prevSelected.filter(p => p !== parameter)
+        : [...prevSelected, parameter],
     );
   }, []);
 
-  const layers = useMemo(
-    () => {
-      const currentParameterColumn = formData.parameter_column as string || 'parameter'; 
-      const currentOpacity = typeof formData.opacity === 'number' ? formData.opacity / 100 : 1; // Default to 1 if undefined
+  const layers = useMemo(() => {
+    const currentParameterColumn =
+      (formData.parameter_column as string) || 'parameter';
+    const currentOpacity =
+      typeof formData.opacity === 'number' ? formData.opacity / 100 : 1; // Default to 1 if undefined
 
-      const handleRegionSelection = (region: SelectedRegion | null) => {
-        if (region) {
-          const feature = (geoJson as FeedGeoJSON)?.features.find(
-            (f: any) => f.properties.ISO === region.id || 
-                       f.properties.ADM1 === region.name ||
-                       f.properties.name === region.name ||
-                       f.properties.NAME === region.name
-          );
-          if (feature && panToFeature) {
-            panToFeature(feature);
-          }
+    const handleRegionSelection = (region: SelectedRegion | null) => {
+      if (region) {
+        const feature = (geoJson as FeedGeoJSON)?.features.find(
+          (f: any) =>
+            f.properties.ISO === region.id ||
+            f.properties.ADM1 === region.name ||
+            f.properties.name === region.name ||
+            f.properties.NAME === region.name,
+        );
+        if (feature && panToFeature) {
+          panToFeature(feature);
         }
-        if (setSelectedRegion) {
-          setSelectedRegion(region);
-        }
-      };
+      }
+      if (setSelectedRegion) {
+        setSelectedRegion(region);
+      }
+    };
 
-      return getLayer({
-        formData,
-        payload,
-        onAddFilter: props.onAddFilter,
-        setTooltip,
-        geoJson: geoJson as FeedGeoJSON,
-        selectionOptions: {
-          setSelectedRegion: handleRegionSelection,
-          selectedRegion,
-        },
-        opacity: currentOpacity,
-        currentTime,
-        selectedParameters,
-        parameterColumn: currentParameterColumn,
-      });
-    },
-    [formData, payload, props.onAddFilter, setTooltip, geoJson, selectedRegion, panToFeature, currentTime, setSelectedRegion, selectedParameters, parameterColumn]
-  );
+    return getLayer({
+      formData,
+      payload,
+      onAddFilter: props.onAddFilter,
+      setTooltip,
+      geoJson: geoJson as FeedGeoJSON,
+      selectionOptions: {
+        setSelectedRegion: handleRegionSelection,
+        selectedRegion,
+      },
+      opacity: currentOpacity,
+      currentTime,
+      selectedParameters,
+      parameterColumn: currentParameterColumn,
+    });
+  }, [
+    formData,
+    payload,
+    props.onAddFilter,
+    setTooltip,
+    geoJson,
+    selectedRegion,
+    panToFeature,
+    currentTime,
+    setSelectedRegion,
+    selectedParameters,
+    parameterColumn,
+  ]);
 
   // Load GeoJSON data
   useEffect(() => {
@@ -1187,10 +1308,13 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   }, [formData.select_country]);
 
   // Handle viewport changes
-  const onViewportChange = useCallback((nextViewport: Viewport) => {
-    setCurrentViewport(nextViewport);
-    setControlValue('viewport', nextViewport);
-  }, [setControlValue]);
+  const onViewportChange = useCallback(
+    (nextViewport: Viewport) => {
+      setCurrentViewport(nextViewport);
+      setControlValue('viewport', nextViewport);
+    },
+    [setControlValue],
+  );
 
   // Update viewport when props.viewport changes
   useEffect(() => {
@@ -1213,7 +1337,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     if (formData.temporal_column && payload.data?.data) {
       const allDates: Date[] = [];
       const date_key = formData.temporal_column;
-      
+
       // Collect all dates from all region entries
       payload.data.data.forEach((entry: FeedEntry) => {
         if (entry[date_key]) {
@@ -1223,7 +1347,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
           }
         }
       });
-      
+
       if (allDates.length > 0) {
         const minTime = new Date(Math.min(...allDates.map(d => d.getTime())));
         const maxTime = new Date(Math.max(...allDates.map(d => d.getTime())));
@@ -1231,18 +1355,19 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
 
         // Find the nearest date to current system time
         const currentSystemTime = new Date().getTime();
-        const nearestDate = allDates.reduce((prev: Date, curr: Date) => {
-          return Math.abs(curr.getTime() - currentSystemTime) < Math.abs(prev.getTime() - currentSystemTime) 
-            ? curr 
-            : prev;
-        });
+        const nearestDate = allDates.reduce((prev: Date, curr: Date) =>
+          Math.abs(curr.getTime() - currentSystemTime) <
+          Math.abs(prev.getTime() - currentSystemTime)
+            ? curr
+            : prev,
+        );
 
         // Set the nearest date as current time, but ensure it's within the time range
         const boundedTime = new Date(
           Math.min(
             Math.max(nearestDate.getTime(), minTime.getTime()),
-            maxTime.getTime()
-          )
+            maxTime.getTime(),
+          ),
         );
         setCurrentTime(boundedTime);
       }
@@ -1254,108 +1379,165 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     if (currentTime && timelineContainerRef.current && activeDateRef.current) {
       const container = timelineContainerRef.current;
       const activeElement = activeDateRef.current;
-      
+
       // Calculate if the active element is outside the visible area
       const containerRect = container.getBoundingClientRect();
       const activeRect = activeElement.getBoundingClientRect();
-      
-      if (activeRect.left < containerRect.left || activeRect.right > containerRect.right) {
+
+      if (
+        activeRect.left < containerRect.left ||
+        activeRect.right > containerRect.right
+      ) {
         // Scroll the active element into view with smooth behavior
         activeElement.scrollIntoView({
           behavior: 'smooth',
           block: 'nearest',
-          inline: 'center'
+          inline: 'center',
         });
       }
     }
   }, [currentTime]);
 
-    // Update selected region entries when current time changes
+  // Update selected region entries when current time changes
   useEffect(() => {
     // Added more detailed initial log
-    console.log('[useEffect selectedRegion.entries] Triggered. selectedParameters:', JSON.stringify(selectedParameters), 'uniqueParameters.length:', uniqueParameters.length, 'currentTime:', currentTime, 'has geoJson:', !!geoJson, 'has payload.data:', !!payload.data?.data, 'selectedRegion ID:', selectedRegion?.id);
+    console.log(
+      '[useEffect selectedRegion.entries] Triggered. selectedParameters:',
+      JSON.stringify(selectedParameters),
+      'uniqueParameters.length:',
+      uniqueParameters.length,
+      'currentTime:',
+      currentTime,
+      'has geoJson:',
+      !!geoJson,
+      'has payload.data:',
+      !!payload.data?.data,
+      'selectedRegion ID:',
+      selectedRegion?.id,
+    );
 
     if (selectedRegion && currentTime && geoJson && payload.data?.data) {
       const feature = (geoJson as FeedGeoJSON).features.find(
-        f => f.properties.ISO === selectedRegion.id || 
-             f.properties.ADM1 === selectedRegion.name ||
-             f.properties.name === selectedRegion.name ||
-             f.properties.NAME === selectedRegion.name
+        f =>
+          f.properties.ISO === selectedRegion.id ||
+          f.properties.ADM1 === selectedRegion.name ||
+          f.properties.name === selectedRegion.name ||
+          f.properties.NAME === selectedRegion.name,
       );
 
       if (feature) {
-        console.log('[useEffect selectedRegion.entries] Found feature for region:', selectedRegion.name);
+        console.log(
+          '[useEffect selectedRegion.entries] Found feature for region:',
+          selectedRegion.name,
+        );
         const regionId = feature.properties.ISO;
         const date_key = formData.temporal_column;
-        const currentParameterColumn = formData.parameter_column as string || 'parameter';
+        const currentParameterColumn =
+          (formData.parameter_column as string) || 'parameter';
 
-        const dateAndParamFilteredEntries = payload.data.data.filter((entry: FeedEntry) => {
-          // Date filtering
-          if (!entry[date_key]) return false;
-          try {
-            const entryDate = new Date(entry[date_key]);
-            const granularity = formData.time_granularity as TimeGranularity | undefined ?? TimeGranularity.DAY;
-            const dateMatches = datesMatch(entryDate, currentTime, granularity);
-            if (!dateMatches) return false;
-          } catch (e) {
-            console.warn('[useEffect] Error processing date for entry:', entry, e);
-            return false;
-          }
-          
-          // Parameter matching
-          if (selectedParameters.length > 0 && selectedParameters.length !== uniqueParameters.length) {
-            const paramValue = entry.parameter;
-            const isIncluded = paramValue && selectedParameters.includes(paramValue as string);
-            console.log(`[useEffect] paramValue from entry.parameter:`, paramValue, `Included in [${selectedParameters.join(',')}]?:`, isIncluded);
-            if (!isIncluded) {
+        const dateAndParamFilteredEntries = payload.data.data.filter(
+          (entry: FeedEntry) => {
+            // Date filtering
+            if (!entry[date_key]) return false;
+            try {
+              const entryDate = new Date(entry[date_key]);
+              const granularity =
+                (formData.time_granularity as TimeGranularity | undefined) ??
+                TimeGranularity.DAY;
+              const dateMatches = datesMatch(
+                entryDate,
+                currentTime,
+                granularity,
+              );
+              if (!dateMatches) return false;
+            } catch (e) {
+              console.warn(
+                '[useEffect] Error processing date for entry:',
+                entry,
+                e,
+              );
               return false;
             }
-          }
-          return true;
-        });
-        
-        console.log('[useEffect selectedRegion.entries] Entries after date & param filter (before region filter):', JSON.parse(JSON.stringify(dateAndParamFilteredEntries)));
 
-        const finalEntriesForRegion = dateAndParamFilteredEntries.filter((e: FeedEntry) => e.country_id === regionId);
-        console.log('[useEffect selectedRegion.entries] Final entries for region after region filter:', JSON.parse(JSON.stringify(finalEntriesForRegion)));
+            // Parameter matching
+            if (
+              selectedParameters.length > 0 &&
+              selectedParameters.length !== uniqueParameters.length
+            ) {
+              const paramValue = entry.parameter;
+              const isIncluded =
+                paramValue && selectedParameters.includes(paramValue as string);
+              console.log(
+                `[useEffect] paramValue from entry.parameter:`,
+                paramValue,
+                `Included in [${selectedParameters.join(',')}]?:`,
+                isIncluded,
+              );
+              if (!isIncluded) {
+                return false;
+              }
+            }
+            return true;
+          },
+        );
 
-        setSelectedRegion((prevRegion) => {
-          if (prevRegion && prevRegion.id === selectedRegion.id) { // Ensure we're updating the correct region
+        console.log(
+          '[useEffect selectedRegion.entries] Entries after date & param filter (before region filter):',
+          JSON.parse(JSON.stringify(dateAndParamFilteredEntries)),
+        );
+
+        const finalEntriesForRegion = dateAndParamFilteredEntries.filter(
+          (e: FeedEntry) => e.country_id === regionId,
+        );
+        console.log(
+          '[useEffect selectedRegion.entries] Final entries for region after region filter:',
+          JSON.parse(JSON.stringify(finalEntriesForRegion)),
+        );
+
+        setSelectedRegion(prevRegion => {
+          if (prevRegion && prevRegion.id === selectedRegion.id) {
+            // Ensure we're updating the correct region
             // console.log('[useEffect selectedRegion.entries] Updating selectedRegion with new entries.');
             return {
               // Keep name and id from prevRegion to ensure we're not using a stale selectedRegion from the outer scope
-              name: prevRegion.name, 
-              id: prevRegion.id,     
-              entries: finalEntriesForRegion, 
+              name: prevRegion.name,
+              id: prevRegion.id,
+              entries: finalEntriesForRegion,
             };
           }
           // If prevRegion is null or ID doesn't match, it means selectedRegion might have changed
           // This case should ideally be handled by other effects or logic that sets selectedRegion initially.
           // For now, if it doesn't match, we don't update to avoid potential inconsistencies.
-          return prevRegion; 
+          return prevRegion;
         });
       } else {
-        console.log('[useEffect selectedRegion.entries] No feature found for region based on current selectedRegion:', selectedRegion.name, selectedRegion.id);
+        console.log(
+          '[useEffect selectedRegion.entries] No feature found for region based on current selectedRegion:',
+          selectedRegion.name,
+          selectedRegion.id,
+        );
         // If no feature, it implies the selected region is no longer valid in the geoJson,
         // or the selectedRegion state itself is out of sync.
         // Clear its entries.
-        setSelectedRegion(prev => prev ? {...prev, entries: []} : null);
+        setSelectedRegion(prev => (prev ? { ...prev, entries: [] } : null));
       }
     } else {
-      console.log('[useEffect selectedRegion.entries] Skipped due to missing selectedRegion, currentTime, geoJson, or payload.data.');
+      console.log(
+        '[useEffect selectedRegion.entries] Skipped due to missing selectedRegion, currentTime, geoJson, or payload.data.',
+      );
     }
   }, [
-    currentTime, 
-    selectedRegion?.id, 
-    selectedRegion?.name, 
-    geoJson, 
-    payload.data, 
-    formData.temporal_column, 
-    formData.time_granularity, 
-    selectedParameters, 
-    uniqueParameters, 
+    currentTime,
+    selectedRegion?.id,
+    selectedRegion?.name,
+    geoJson,
+    payload.data,
+    formData.temporal_column,
+    formData.time_granularity,
+    selectedParameters,
+    uniqueParameters,
     formData.parameter_column,
-    setSelectedRegion 
+    setSelectedRegion,
   ]);
   // Filter entries based on current time AND selected parameters for the side panel
   // const getFilteredEntries = useCallback((entries: FeedEntry[]) => {
@@ -1368,7 +1550,7 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   //   }
   //   else if (selectedParameters.length === uniqueParameters.length) {
   //     console.log('[getFilteredEntries] Bypassing parameter filter (all/none selected).');
-  //     return entries; 
+  //     return entries;
   //   }
 
   //   const filteredByParam = entries.filter((entry: FeedEntry) => {
@@ -1389,18 +1571,25 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
     return <div>Loading...</div>;
   }
 
-  const getDatesInRange = (startDate: Date, endDate: Date, granularity?: TimeGranularity | null) => {
+  const getDatesInRange = (
+    startDate: Date,
+    endDate: Date,
+    granularity?: TimeGranularity | null,
+  ) => {
     const dates: Date[] = [];
     if (!granularity) return dates;
 
     const currentDate = new Date(startDate);
-    if (granularity === TimeGranularity.WEEK) currentDate.setDate(currentDate.getDate() - (currentDate.getDay() + 6) % 7);
+    if (granularity === TimeGranularity.WEEK)
+      currentDate.setDate(
+        currentDate.getDate() - ((currentDate.getDay() + 6) % 7),
+      );
     if (granularity === TimeGranularity.MONTH) currentDate.setDate(1);
     if (granularity === TimeGranularity.YEAR) currentDate.setMonth(0, 1);
 
     while (currentDate <= endDate) {
       dates.push(new Date(currentDate));
-      
+
       switch (granularity) {
         case TimeGranularity.YEAR:
           currentDate.setFullYear(currentDate.getFullYear() + 1);
@@ -1418,7 +1607,10 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
           currentDate.setHours(currentDate.getHours() + 1);
           break;
         default:
-          if (granularity === null || String(granularity) === String(TimeGranularity.DAY)) {
+          if (
+            granularity === null ||
+            String(granularity) === String(TimeGranularity.DAY)
+          ) {
             currentDate.setDate(currentDate.getDate() + 1);
           } else {
             break;
@@ -1442,11 +1634,13 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
         setControlValue={setControlValue}
       >
         {uniqueParameters.length > 0 && (
-          <ParameterDisplay 
-            parameters={uniqueParameters} 
-            title={parameterColumn.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} 
-            selectedParameters={selectedParameters} 
-            onToggleParameter={onToggleParameter} 
+          <ParameterDisplay
+            parameters={uniqueParameters}
+            title={parameterColumn
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, l => l.toUpperCase())}
+            selectedParameters={selectedParameters}
+            onToggleParameter={onToggleParameter}
           />
         )}
         {timeRange && formData.temporal_column && (
@@ -1460,9 +1654,12 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                     const selectedTime = date.toDate();
                     const boundedTime = new Date(
                       Math.min(
-                        Math.max(selectedTime.getTime(), timeRange[0].getTime()),
-                        timeRange[1].getTime()
-                      )
+                        Math.max(
+                          selectedTime.getTime(),
+                          timeRange[0].getTime(),
+                        ),
+                        timeRange[1].getTime(),
+                      ),
                     );
                     setCurrentTime(boundedTime);
                   }
@@ -1471,27 +1668,27 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                   formData.time_granularity === TimeGranularity.YEAR
                     ? 'year'
                     : formData.time_granularity === TimeGranularity.MONTH
-                    ? 'month'
-                    : formData.time_granularity === TimeGranularity.WEEK
-                    ? 'week'
-                    : undefined
+                      ? 'month'
+                      : formData.time_granularity === TimeGranularity.WEEK
+                        ? 'week'
+                        : undefined
                 }
                 format={
                   formData.time_granularity === TimeGranularity.YEAR
                     ? 'YYYY'
                     : formData.time_granularity === TimeGranularity.MONTH
-                    ? 'MMM YYYY'
-                    : formData.time_granularity === TimeGranularity.WEEK
-                    ? 'MMM YYYY [Week] w'
-                    : 'DD MMM YYYY'
+                      ? 'MMM YYYY'
+                      : formData.time_granularity === TimeGranularity.WEEK
+                        ? 'MMM YYYY [Week] w'
+                        : 'DD MMM YYYY'
                 }
                 allowClear={false}
                 disabledDate={current => {
                   if (!timeRange) return false;
                   const currentDate = current?.toDate();
-                  return currentDate ? (
-                    currentDate < timeRange[0] || currentDate > timeRange[1]
-                  ) : false;
+                  return currentDate
+                    ? currentDate < timeRange[0] || currentDate > timeRange[1]
+                    : false;
                 }}
                 style={{ border: 'none', width: 'auto' }}
                 locale={locale}
@@ -1507,16 +1704,24 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
               />
             </div>
             <div className="progress-bar">
-              <div 
+              <div
                 className="progress-indicator"
-                style={{ 
-                  width: `${((currentTime?.getTime() ?? timeRange[0].getTime()) - timeRange[0].getTime()) / 
-                    (timeRange[1].getTime() - timeRange[0].getTime()) * 100}%`
+                style={{
+                  width: `${
+                    (((currentTime?.getTime() ?? timeRange[0].getTime()) -
+                      timeRange[0].getTime()) /
+                      (timeRange[1].getTime() - timeRange[0].getTime())) *
+                    100
+                  }%`,
                 }}
               />
             </div>
             <div className="timeline-container" ref={timelineContainerRef}>
-              {getDatesInRange(timeRange[0], timeRange[1], formData.time_granularity as TimeGranularity | null).map((date, index) => {
+              {getDatesInRange(
+                timeRange[0],
+                timeRange[1],
+                formData.time_granularity as TimeGranularity | null,
+              ).map((date, index) => {
                 // Format date based on time grain
                 let dateFormat: Intl.DateTimeFormatOptions = {};
                 switch (formData.time_granularity) {
@@ -1532,11 +1737,17 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
                   default:
                     dateFormat = { weekday: 'short' };
                 }
-                
-                const isActive = currentTime && datesMatch(date, currentTime, formData.time_granularity as TimeGranularity);
+
+                const isActive =
+                  currentTime &&
+                  datesMatch(
+                    date,
+                    currentTime,
+                    formData.time_granularity as TimeGranularity,
+                  );
                 return (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`day-label ${isActive ? 'active' : ''}`}
                     onClick={() => setCurrentTime(date)}
                     ref={isActive ? activeDateRef : null}
@@ -1564,4 +1775,4 @@ export const DeckGLFeed = memo((props: DeckGLFeedProps) => {
   );
 });
 
-export default DeckGLFeed; 
+export default DeckGLFeed;

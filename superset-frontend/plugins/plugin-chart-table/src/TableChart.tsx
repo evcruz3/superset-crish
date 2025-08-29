@@ -65,6 +65,7 @@ import {
 } from '@ant-design/icons';
 import { isEmpty, isNumber, uniq } from 'lodash';
 import moment from 'moment';
+import { DatePicker, Select, Badge, Tooltip as AntdTooltip, Tag } from 'antd';
 import {
   ColorSchemeEnum,
   DataColumnMeta,
@@ -82,14 +83,6 @@ import { formatColumnValue } from './utils/formatValue';
 import { PAGE_SIZE_OPTIONS } from './consts';
 import { updateExternalFormData } from './DataTable/utils/externalAPIs';
 import getScrollBarSize from './DataTable/utils/getScrollBarSize';
-import {
-  DatePicker,
-  Input,
-  Select,
-  Badge,
-  Tooltip as AntdTooltip,
-  Tag,
-} from 'antd';
 
 type ValueRange = [number, number];
 
@@ -286,7 +279,7 @@ function ColumnHeaderFilter({
         return null;
       }
     };
-    
+
     return (
       <div onClick={stopPropagation}>
         <DatePicker
@@ -312,9 +305,9 @@ function ColumnHeaderFilter({
               try {
                 const formattedDate = moment(dateStr).format('MMM D, YYYY');
                 return (
-                  <Tag 
-                    key={dateStr} 
-                    closable 
+                  <Tag
+                    key={dateStr}
+                    closable
                     onClose={() => onRemove && onRemove(dateStr)}
                     style={{ marginBottom: '2px' }}
                   >
@@ -330,17 +323,18 @@ function ColumnHeaderFilter({
       </div>
     );
   }
-  
+
   return (
     <div onClick={stopPropagation}>
-      <AntdTooltip 
-        title={t('You can select multiple values')}
-        placement="top"
-      >
+      <AntdTooltip title={t('You can select multiple values')} placement="top">
         <div>
           <Select
             size="small"
-            placeholder={<span><FilterOutlined /> {t('Select values...')}</span>}
+            placeholder={
+              <span>
+                <FilterOutlined /> {t('Select values...')}
+              </span>
+            }
             value={currentFilterValues || []}
             onChange={(values: string[]) => {
               if (values.length === 0) {
@@ -352,15 +346,19 @@ function ColumnHeaderFilter({
                 }
               } else if (currentFilterValues) {
                 // Find values that were removed
-                const removed = currentFilterValues.filter(v => !values.includes(v));
+                const removed = currentFilterValues.filter(
+                  v => !values.includes(v),
+                );
                 // Find values that were added
-                const added = values.filter(v => !currentFilterValues.includes(v));
-                
+                const added = values.filter(
+                  v => !currentFilterValues.includes(v),
+                );
+
                 // Remove old values
                 removed.forEach(val => {
                   if (onRemove) onRemove(val);
                 });
-                
+
                 // Add new values
                 added.forEach(val => onChange(val));
               } else {
@@ -447,7 +445,9 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   ]);
   const [hideComparisonKeys, setHideComparisonKeys] = useState<string[]>([]);
   const theme = useTheme();
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
+    {},
+  );
   const filterInfoRef = useRef<HTMLDivElement>(null);
 
   // only take relevant page size options
@@ -848,14 +848,14 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     setColumnFilters(prev => {
       const updatedValues = (prev[key] || []).filter(v => v !== value);
       const updatedFilters = { ...prev };
-      
+
       if (updatedValues.length === 0) {
         // Remove the key if no values left
         delete updatedFilters[key];
       } else {
         updatedFilters[key] = updatedValues;
       }
-      
+
       return updatedFilters;
     });
   }, []);
@@ -871,24 +871,24 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       return data;
     }
 
-    return data.filter(row => {
-      return Object.entries(columnFilters).every(([key, filterValues]) => {
+    return data.filter(row =>
+      Object.entries(columnFilters).every(([key, filterValues]) => {
         if (!filterValues.length) return true;
-        
+
         const value = row[key];
         if (value == null) return false;
-        
+
         // Get the column metadata to check its type
         const columnMeta = columnsMeta.find(col => col.key === key);
         if (!columnMeta) return false;
-        
+
         // Handle different types of columns differently
         if (columnMeta.dataType === GenericDataType.Temporal) {
           // For temporal columns, compare the dates
           try {
             // Convert values to strings before parsing with moment
             const rowDate = moment(String(value));
-            
+
             // Check if the row date matches any of the filter dates
             return filterValues.some(filterValue => {
               const filterDate = moment(String(filterValue));
@@ -907,8 +907,8 @@ export default function TableChart<D extends DataRecord = DataRecord>(
           const stringValue = String(value);
           return filterValues.includes(stringValue);
         }
-      });
-    });
+      }),
+    );
   }, [data, columnFilters, columnsMeta]);
 
   // Calculate how many rows are filtered
@@ -952,7 +952,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         isNumeric &&
         Array.isArray(columnColorFormatters) &&
         columnColorFormatters.length > 0;
-        
+
       const hasStringColumnColorFormatters =
         dataType === GenericDataType.String &&
         Array.isArray(stringColumnColorFormatters) &&
@@ -1024,12 +1024,12 @@ export default function TableChart<D extends DataRecord = DataRecord>(
                 }
               });
           }
-          
+
           if (hasStringColumnColorFormatters) {
             stringColumnColorFormatters!
               .filter(formatter => formatter.column === column.key)
               .forEach(formatter => {
-                const formatterResult = 
+                const formatterResult =
                   value !== null && value !== undefined
                     ? formatter.getColorFromValue(String(value))
                     : false;
@@ -1235,10 +1235,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             </div>
             {isFilterable && (
               <div className="dt-column-filter">
-                <ColumnHeaderFilter 
-                  column={column} 
-                  data={data} 
-                  onChange={value => handleColumnFilterChange(key, value)} 
+                <ColumnHeaderFilter
+                  column={column}
+                  data={data}
+                  onChange={value => handleColumnFilterChange(key, value)}
                   currentFilterValue={columnFilters[key]?.[0]}
                   currentFilterValues={columnFilters[key]}
                   onRemove={value => removeColumnFilterValue(key, value)}
@@ -1321,7 +1321,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   useLayoutEffect(() => {
     const scrollBarSize = getScrollBarSize();
     const { width: currentTableWidth, height: currentTableHeight } = tableSize;
-    
+
     // Calculate available height first
     let availableHeight = height;
 
@@ -1329,7 +1329,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     const filterInfoHeight = filterInfoRef.current?.offsetHeight || 0;
     if (filterInfoHeight > 0) {
       // Subtract height and add a margin (e.g., 8px or theme.gridUnit * 2)
-      availableHeight -= (filterInfoHeight + theme.gridUnit * 2); 
+      availableHeight -= filterInfoHeight + theme.gridUnit * 2;
     }
 
     // Ensure height doesn't go negative
@@ -1344,47 +1344,73 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     if (widthDifference > scrollBarSize || heightDifference > scrollBarSize) {
       // Calculate new dimensions, accounting for potential scrollbars
       // Note: This logic might need refinement based on exact scrollbar behavior
-      const newWidth = width - (availableHeight < currentTableHeight ? scrollBarSize : 0);
-      const newHeight = availableHeight - (width < currentTableWidth ? scrollBarSize : 0);
+      const newWidth =
+        width - (availableHeight < currentTableHeight ? scrollBarSize : 0);
+      const newHeight =
+        availableHeight - (width < currentTableWidth ? scrollBarSize : 0);
 
       handleSizeChange({
         width: Math.max(0, newWidth),
         height: Math.max(0, newHeight),
       });
     }
-  }, [width, height, handleSizeChange, tableSize, columnFilters, theme.gridUnit]);
+  }, [
+    width,
+    height,
+    handleSizeChange,
+    tableSize,
+    columnFilters,
+    theme.gridUnit,
+  ]);
 
   // Extract width and height from tableSize for passing to DataTable
   const { width: widthFromState, height: heightFromState } = tableSize;
 
   return (
     <Styles>
-      {/* Attach the ref to the filter info div */} 
+      {/* Attach the ref to the filter info div */}
       {Object.keys(columnFilters).length > 0 && (
-        <div ref={filterInfoRef} className="dt-filter-info" style={{ width: '100%', boxSizing: 'border-box', marginBottom: `${theme.gridUnit * 2}px` }}> 
+        <div
+          ref={filterInfoRef}
+          className="dt-filter-info"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            marginBottom: `${theme.gridUnit * 2}px`,
+          }}
+        >
           <div>
-            <Badge 
+            <Badge
               count={`${filteredRowCount} ${t('of')} ${data.length} ${t('rows')}`}
             />
             <span className="filter-info-text">
-              {t('Active filters')}: {Object.entries(columnFilters).map(([key, values], index) => {
+              {t('Active filters')}:{' '}
+              {Object.entries(columnFilters).map(([key, values], index) => {
                 const column = columnsMeta.find(col => col.key === key);
                 const columnName = column?.label || key;
-                
+
                 // Format the filter value based on column type
                 let displayValues = values;
-                if (column?.dataType === GenericDataType.Temporal && values.length) {
+                if (
+                  column?.dataType === GenericDataType.Temporal &&
+                  values.length
+                ) {
                   try {
                     // Format dates nicely
-                    displayValues = values.map(value => moment(String(value)).format('MMM D, YYYY'));
+                    displayValues = values.map(value =>
+                      moment(String(value)).format('MMM D, YYYY'),
+                    );
                   } catch (e) {
                     // Fallback to raw values if formatting fails
                     displayValues = values;
                   }
                 }
-                
+
                 return (
-                  <span key={key} style={{ display: 'inline-block', marginRight: '12px' }}>
+                  <span
+                    key={key}
+                    style={{ display: 'inline-block', marginRight: '12px' }}
+                  >
                     <strong>{columnName}</strong>: {displayValues.join(', ')}
                     {index < Object.keys(columnFilters).length - 1 ? ';' : ''}
                   </span>
@@ -1392,10 +1418,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
               })}
             </span>
           </div>
-          <button 
-            className="clear-filters-button" 
-            onClick={clearAllFilters}
-          >
+          <button className="clear-filters-button" onClick={clearAllFilters}>
             {t('Clear all filters')}
           </button>
         </div>

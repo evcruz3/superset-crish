@@ -1,9 +1,18 @@
-import React from 'react';
+import type { FC } from 'react';
 import { t, styled, useTheme } from '@superset-ui/core';
 import { Row, Col, Card, Statistic, Divider, Spin } from 'antd';
 import {
-  ResponsiveContainer, PieChart, Pie, BarChart, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, Cell
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  Cell,
 } from 'recharts';
 import { FacilityCountData, ChartDataItem } from './types'; // Import shared types
 
@@ -68,14 +77,16 @@ interface AnalyticsTabProps {
 }
 
 // Helper function to format data for charts
-const formatCountData = (data: Record<string, number> | undefined): ChartDataItem[] => {
+const formatCountData = (
+  data: Record<string, number> | undefined,
+): ChartDataItem[] => {
   if (!data) return [];
   return Object.entries(data).map(([name, value]) => ({ name, value }));
 };
 
-const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
+const AnalyticsTab: FC<AnalyticsTabProps> = ({ countData, loading }) => {
   const theme = useTheme();
-  
+
   // Chart colors from Superset's theme
   const chartColors = [
     theme.colors.primary.base,
@@ -87,7 +98,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
     theme.colors.primary.light1,
     theme.colors.success.light1,
     theme.colors.info.light1,
-    theme.colors.warning.light1
+    theme.colors.warning.light1,
   ];
 
   return (
@@ -101,26 +112,26 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
         <>
           <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col span={8}>
-              <StyledStatistic 
-                title={t('Total Health Facilities')} 
-                value={countData.total} 
+              <StyledStatistic
+                title={t('Total Health Facilities')}
+                value={countData.total}
                 valueStyle={{ color: theme.colors.success.base }}
               />
             </Col>
             <Col span={8}>
-              <StyledStatistic 
-                title={t('Facility Types')} 
-                value={Object.keys(countData.by_type || {}).length} 
+              <StyledStatistic
+                title={t('Facility Types')}
+                value={Object.keys(countData.by_type || {}).length}
               />
             </Col>
             <Col span={8}>
-              <StyledStatistic 
-                title={t('Administrative Posts with Facilities')} 
-                value={Object.keys(countData.by_location || {}).length} 
+              <StyledStatistic
+                title={t('Administrative Posts with Facilities')}
+                value={Object.keys(countData.by_location || {}).length}
               />
             </Col>
           </Row>
-          
+
           <Divider orientation="left">{t('Facilities by Type')}</Divider>
           <Row gutter={24}>
             <Col xs={24} md={12}>
@@ -132,31 +143,36 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => 
-                        percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
+                      label={({ name, percent }) =>
+                        percent > 0.05
+                          ? `${name}: ${(percent * 100).toFixed(0)}%`
+                          : ''
+                      }
                       outerRadius={100}
                       innerRadius={40} // Make it a donut chart
                       paddingAngle={2}
                       dataKey="value"
                     >
-                      {formatCountData(countData.by_type).map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={chartColors[index % chartColors.length]} 
-                          stroke={theme.colors.grayscale.light5}
-                          strokeWidth={1}
-                        />
-                      ))}
+                      {formatCountData(countData.by_type).map(
+                        (entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={chartColors[index % chartColors.length]}
+                            stroke={theme.colors.grayscale.light5}
+                            strokeWidth={1}
+                          />
+                        ),
+                      )}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number, name: string) => [
-                        `${value} (${((value / countData.total) * 100).toFixed(1)}%)`, 
-                        name
+                        `${value} (${((value / countData.total) * 100).toFixed(1)}%)`,
+                        name,
                       ]}
                     />
-                    <Legend 
-                      layout="horizontal" 
-                      verticalAlign="bottom" 
+                    <Legend
+                      layout="horizontal"
+                      verticalAlign="bottom"
                       align="center"
                       wrapperStyle={{ paddingTop: 20 }}
                     />
@@ -174,32 +190,39 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
                     barSize={20}
                     barGap={2}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                    <XAxis 
-                      type="number" 
-                      tickLine={true}
-                      axisLine={true}
-                      tickFormatter={(value) => value.toLocaleString()}
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      horizontal
+                      vertical={false}
                     />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      width={150} 
+                    <XAxis
+                      type="number"
+                      tickLine
+                      axisLine
+                      tickFormatter={value => value.toLocaleString()}
+                    />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={150}
                       tick={{ fill: theme.colors.grayscale.dark1 }}
                       tickLine={false}
                       axisLine={false}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: number) => [
-                        `${value} (${((value / countData.total) * 100).toFixed(1)}%)`, 
-                        t('Facilities')
+                        `${value} (${((value / countData.total) * 100).toFixed(1)}%)`,
+                        t('Facilities'),
                       ]}
-                      cursor={{ fill: theme.colors.grayscale.light3, opacity: 0.3 }}
+                      cursor={{
+                        fill: theme.colors.grayscale.light3,
+                        opacity: 0.3,
+                      }}
                     />
                     <Legend wrapperStyle={{ paddingTop: 10 }} />
-                    <Bar 
-                      dataKey="value" 
-                      fill={theme.colors.primary.base} 
+                    <Bar
+                      dataKey="value"
+                      fill={theme.colors.primary.base}
                       name={t('Facilities')}
                       radius={[0, 4, 4, 0]}
                     />
@@ -208,8 +231,10 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
               </ChartContainer>
             </Col>
           </Row>
-          
-          <Divider orientation="left">{t('Facilities by Administrative Post')}</Divider>
+
+          <Divider orientation="left">
+            {t('Facilities by Administrative Post')}
+          </Divider>
           <ChartContainer>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
@@ -220,31 +245,31 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
                 maxBarSize={40}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
                   height={70}
                   tick={{ fill: theme.colors.grayscale.dark1 }}
-                  tickLine={true}
-                  axisLine={true}
+                  tickLine
+                  axisLine
                 />
-                <YAxis 
-                  tickFormatter={(value) => value.toLocaleString()}
+                <YAxis
+                  tickFormatter={value => value.toLocaleString()}
                   tick={{ fill: theme.colors.grayscale.dark1 }}
                   tickLine={false}
-                  axisLine={true}
+                  axisLine
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => [
-                    `${value} (${((value / countData.total) * 100).toFixed(1)}%)`, 
-                    t('Facilities')
+                    `${value} (${((value / countData.total) * 100).toFixed(1)}%)`,
+                    t('Facilities'),
                   ]}
                   cursor={{ fill: theme.colors.grayscale.light3, opacity: 0.3 }}
                 />
                 <Legend wrapperStyle={{ paddingTop: 20 }} />
-                <Bar 
-                  dataKey="value" 
+                <Bar
+                  dataKey="value"
                   fill={theme.colors.success.base}
                   name={t('Facilities')}
                   radius={[4, 4, 0, 0]}
@@ -258,4 +283,4 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ countData, loading }) => {
   );
 };
 
-export default AnalyticsTab; 
+export default AnalyticsTab;

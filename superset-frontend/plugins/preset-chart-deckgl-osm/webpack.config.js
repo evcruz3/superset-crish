@@ -12,12 +12,14 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'], // Extensions for module resolution
     fallback: {
-        fs: false,
-        vm: require.resolve('vm-browserify'),
-        path: false,
-        ...(process.env.NODE_ENV === 'development' ? { buffer: require.resolve('buffer/') } : {}), // Fix legacy-plugin-chart-paired-t-test broken Story
+      fs: false,
+      vm: require.resolve('vm-browserify'),
+      path: false,
+      ...(process.env.NODE_ENV === 'development'
+        ? { buffer: require.resolve('buffer/') }
+        : {}), // Fix legacy-plugin-chart-paired-t-test broken Story
     },
-},
+  },
   module: {
     rules: [
       {

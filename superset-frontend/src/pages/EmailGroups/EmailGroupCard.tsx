@@ -1,9 +1,8 @@
-import React from 'react';
-import { EmailGroup } from './types';
-import { Card, Tag, Tooltip } from 'antd'; 
+import { Card, Tag, Tooltip } from 'antd';
 import { styled, t } from '@superset-ui/core';
 import Icons from 'src/components/Icons';
 import moment from 'moment';
+import { EmailGroup } from './types';
 
 interface EmailGroupCardProps {
   emailGroup: EmailGroup;
@@ -71,50 +70,74 @@ const CardActions = styled.div`
   }
 `;
 
-const EmailGroupCard: React.FC<EmailGroupCardProps> = ({ emailGroup, hasPerm, onEdit, onDelete }) => {
+const EmailGroupCard: React.FC<EmailGroupCardProps> = ({
+  emailGroup,
+  hasPerm,
+  onEdit,
+  onDelete,
+}) => {
   // Provide a fallback for emails to ensure it's always a string before splitting
-  const emailsString = emailGroup.emails || ''; 
-  const emailList = emailsString.split(',').map(e => e.trim()).filter(e => e);
-  const emailsPreview = emailList.length > 2 
-    ? `${emailList.slice(0, 2).join(', ')} and ${emailList.length - 2} more...`
-    : emailList.join(', ');
+  const emailsString = emailGroup.emails || '';
+  const emailList = emailsString
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e);
+  const emailsPreview =
+    emailList.length > 2
+      ? `${emailList.slice(0, 2).join(', ')} and ${emailList.length - 2} more...`
+      : emailList.join(', ');
 
   return (
-    <StyledCard 
-      title={emailGroup.name}
-      hoverable
-    >
+    <StyledCard title={emailGroup.name} hoverable>
       <div className="description">
         {emailGroup.description || t('No description')}
       </div>
       <Tooltip title={emailList.join(', \n')}>
         <div className="emails-preview">
-          <strong>{t('Emails:')}</strong> {emailsPreview || t('No emails listed')}
+          <strong>{t('Emails:')}</strong>{' '}
+          {emailsPreview || t('No emails listed')}
         </div>
       </Tooltip>
-      
+
       <div className="meta-data">
         <div>
-          {t('Created by:')} {emailGroup.created_by ? `${emailGroup.created_by.first_name || ''} ${emailGroup.created_by.last_name || ''}`.trim() : t('N/A')}
+          {t('Created by:')}{' '}
+          {emailGroup.created_by
+            ? `${emailGroup.created_by.first_name || ''} ${emailGroup.created_by.last_name || ''}`.trim()
+            : t('N/A')}
         </div>
         <div>
-          {t('Created on:')} {emailGroup.created_on ? moment(emailGroup.created_on).format('MMM D, YYYY') : t('N/A')}
+          {t('Created on:')}{' '}
+          {emailGroup.created_on
+            ? moment(emailGroup.created_on).format('MMM D, YYYY')
+            : t('N/A')}
         </div>
-        {emailGroup.changed_on && emailGroup.changed_on !== emailGroup.created_on && (
-          <div>
-            {t('Modified:')} {moment(emailGroup.changed_on).fromNow()}
-          </div>
-        )}
+        {emailGroup.changed_on &&
+          emailGroup.changed_on !== emailGroup.created_on && (
+            <div>
+              {t('Modified:')} {moment(emailGroup.changed_on).fromNow()}
+            </div>
+          )}
       </div>
       <CardActions>
         {hasPerm('can_write') && (
           <Tooltip title={t('Edit email group')}>
-            <Icons.EditAlt onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit(); }} />
+            <Icons.EditAlt
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            />
           </Tooltip>
         )}
         {hasPerm('can_write') && (
           <Tooltip title={t('Delete email group')}>
-            <Icons.Trash onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }} />
+            <Icons.Trash
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
           </Tooltip>
         )}
       </CardActions>
@@ -122,4 +145,4 @@ const EmailGroupCard: React.FC<EmailGroupCardProps> = ({ emailGroup, hasPerm, on
   );
 };
 
-export default EmailGroupCard; 
+export default EmailGroupCard;

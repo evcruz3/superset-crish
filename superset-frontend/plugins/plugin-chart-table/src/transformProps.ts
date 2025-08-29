@@ -50,7 +50,6 @@ import {
   BasicColorFormatterType,
   ColorSchemeEnum,
   DataColumnMeta,
-  StringColorFormatters,
   TableChartProps,
   TableChartTransformedProps,
   TableColumnConfig,
@@ -439,7 +438,6 @@ const getPageSize = (
   return numRecords * numColumns > 5000 ? 200 : 0;
 };
 
-const defaultServerPaginationData = {};
 const defaultColorFormatters = [] as ColorFormatters;
 const transformProps = (
   chartProps: TableChartProps,
@@ -664,10 +662,9 @@ const transformProps = (
 
   const basicColorFormatters =
     comparisonColorEnabled && getBasicColorFormatter(baseQuery?.data, columns);
-  const columnColorFormatters =
-    conditionalFormatting?.length
-      ? getColorFormatters(conditionalFormatting, passedData)
-      : defaultColorFormatters;
+  const columnColorFormatters = conditionalFormatting?.length
+    ? getColorFormatters(conditionalFormatting, passedData)
+    : defaultColorFormatters;
 
   const basicColorColumnFormatters = getBasicColorFormatterForColumn(
     baseQuery?.data,
@@ -688,9 +685,9 @@ const transformProps = (
     percentMetrics,
     serverPaginationData: {
       pageSize: serverPagination
-        ? (typeof serverPageLength === 'number' && serverPageLength > 0
+        ? typeof serverPageLength === 'number' && serverPageLength > 0
           ? Math.min(serverPageLength, 100) // limit page size to 100
-          : getPageSize(serverPageLength, data.length, columns.length))
+          : getPageSize(serverPageLength, data.length, columns.length)
         : getPageSize(pageLength, data.length, columns.length),
       currentPage: serverPaginationData?.currentPage,
     },

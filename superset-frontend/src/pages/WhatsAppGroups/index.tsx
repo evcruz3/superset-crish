@@ -1,20 +1,19 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { styled, t } from '@superset-ui/core';
+import { useState, useMemo, useCallback } from 'react';
+import { styled, t, SupersetClient } from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import ListView, { Filter, FilterOperator } from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { WhatsAppGroup } from './types'; // Updated import
-import WhatsAppGroupCard from './WhatsAppGroupCard'; // Uncommented
-import CreateWhatsAppGroupModal from './CreateWhatsAppGroupModal'; // Placeholder - to be created
-import EditWhatsAppGroupModal from './EditWhatsAppGroupModal'; // Placeholder - to be created
 import DeleteModal from 'src/components/DeleteModal';
 import Icons from 'src/components/Icons';
-import { SupersetClient } from '@superset-ui/core';
 import rison from 'rison';
 import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
 import moment from 'moment';
+import EditWhatsAppGroupModal from './EditWhatsAppGroupModal'; // Placeholder - to be created
+import CreateWhatsAppGroupModal from './CreateWhatsAppGroupModal'; // Placeholder - to be created
+import WhatsAppGroupCard from './WhatsAppGroupCard'; // Uncommented
+import { WhatsAppGroup } from './types'; // Updated import
 
 const PAGE_SIZE = 25;
 
@@ -28,25 +27,25 @@ interface WhatsAppGroupsProps {
 
 // Define columns to fetch from the API, matching WhatsAppGroupsRestApi.list_columns
 const WHATSAPP_GROUP_COLUMNS_TO_FETCH = [
-  "id",
-  "name",
-  "description",
-  "phone_numbers", // Changed from emails
-  "created_by.id",
-  "created_by.first_name",
-  "created_by.last_name",
-  "created_on",
-  "changed_by.id",
-  "changed_by.first_name",
-  "changed_by.last_name",
-  "changed_on",
+  'id',
+  'name',
+  'description',
+  'phone_numbers', // Changed from emails
+  'created_by.id',
+  'created_by.first_name',
+  'created_by.last_name',
+  'created_on',
+  'changed_by.id',
+  'changed_by.first_name',
+  'changed_by.last_name',
+  'changed_on',
 ];
 
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
   display: flex;
   justify-content: flex-start;
-  
+
   .action-button {
     display: inline-block;
     padding: ${({ theme }) => theme.gridUnit * 2}px;
@@ -72,19 +71,21 @@ const StyledListView = styled(ListView<WhatsAppGroup>)`
     visibility: visible;
   }
   .actions {
-     visibility: hidden;
+    visibility: hidden;
   }
 `;
 
-function WhatsAppGroups({ 
-  addDangerToast, 
+function WhatsAppGroups({
+  addDangerToast,
   addSuccessToast,
-  user 
+  user,
 }: WhatsAppGroupsProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [groupToEdit, setGroupToEdit] = useState<WhatsAppGroup | null>(null);
-  const [groupToDelete, setGroupToDelete] = useState<WhatsAppGroup | null>(null);
+  const [groupToDelete, setGroupToDelete] = useState<WhatsAppGroup | null>(
+    null,
+  );
 
   const {
     state: {
@@ -101,10 +102,10 @@ function WhatsAppGroups({
     'whatsapp_groups', // Matches resource_name in WhatsAppGroupsRestApi
     t('WhatsApp group'),
     addDangerToast,
-    true, 
+    true,
     [],
-    undefined, 
-    true, 
+    undefined,
+    true,
     WHATSAPP_GROUP_COLUMNS_TO_FETCH,
   );
 
@@ -118,11 +119,15 @@ function WhatsAppGroups({
       setGroupToDelete(null);
     } catch (err) {
       const error = await (err as any).response?.json();
-      addDangerToast(error?.message || t('There was an issue deleting this WhatsApp group'));
+      addDangerToast(
+        error?.message || t('There was an issue deleting this WhatsApp group'),
+      );
     }
   };
 
-  const handleBulkWhatsAppGroupDelete = async (groupsToDelete: WhatsAppGroup[]) => {
+  const handleBulkWhatsAppGroupDelete = async (
+    groupsToDelete: WhatsAppGroup[],
+  ) => {
     const ids = groupsToDelete.map(({ id }) => id);
     try {
       await SupersetClient.delete({
@@ -131,8 +136,11 @@ function WhatsAppGroups({
       refreshData();
       addSuccessToast(t('Deleted %s WhatsApp groups', String(ids.length)));
     } catch (err) {
-      const error = await (err as any).response?.json(); 
-      addDangerToast(error?.message || t('There was an issue deleting the selected WhatsApp groups'));
+      const error = await (err as any).response?.json();
+      addDangerToast(
+        error?.message ||
+          t('There was an issue deleting the selected WhatsApp groups'),
+      );
     }
   };
 
@@ -147,13 +155,14 @@ function WhatsAppGroups({
       {
         Header: t('Description'),
         accessor: 'description',
-        Cell: ({ value }: { value?: string | null }) => value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
+        Cell: ({ value }: { value?: string | null }) =>
+          value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
       },
-    //   {
-    //     Header: t('Phone Numbers'), // Changed from Emails
-    //     accessor: 'phone_numbers',
-    //     Cell: ({ value }: { value?: string | null }) => value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
-    //   },
+      //   {
+      //     Header: t('Phone Numbers'), // Changed from Emails
+      //     accessor: 'phone_numbers',
+      //     Cell: ({ value }: { value?: string | null }) => value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
+      //   },
       {
         Header: t('Created By'),
         accessor: 'created_by',
@@ -164,12 +173,14 @@ function WhatsAppGroups({
       {
         Header: t('Created On'),
         accessor: 'created_on',
-        Cell: ({ value }: { value: string }) => moment(value).format('DD MMMM, YYYY hh:mm A'),
+        Cell: ({ value }: { value: string }) =>
+          moment(value).format('DD MMMM, YYYY hh:mm A'),
       },
       {
         Header: t('Last Modified'),
         accessor: 'changed_on',
-        Cell: ({ value }: { value?: string | null }) => value ? moment(value).format('DD MMMM, YYYY hh:mm A') : '-',
+        Cell: ({ value }: { value?: string | null }) =>
+          value ? moment(value).format('DD MMMM, YYYY hh:mm A') : '-',
       },
       {
         Header: t('Actions'),
@@ -178,19 +189,32 @@ function WhatsAppGroups({
         disableSortBy: true,
         Cell: ({ row: { original } }: { row: { original: WhatsAppGroup } }) => {
           const handleDeleteClick = () => setGroupToDelete(original);
-          const handleEditClick = () => { setGroupToEdit(original); setEditModalVisible(true); };
+          const handleEditClick = () => {
+            setGroupToEdit(original);
+            setEditModalVisible(true);
+          };
           return (
             <Actions className="actions">
               {hasPerm('can_write') && (
                 <Tooltip title={t('Edit WhatsApp group')} placement="bottom">
-                  <span role="button" tabIndex={0} className="action-button" onClick={handleEditClick}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleEditClick}
+                  >
                     <Icons.EditAlt />
                   </span>
                 </Tooltip>
               )}
               {hasPerm('can_write') && (
                 <Tooltip title={t('Delete WhatsApp group')} placement="bottom">
-                  <span role="button" tabIndex={0} className="action-button" onClick={handleDeleteClick}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleDeleteClick}
+                  >
                     <Icons.Trash />
                   </span>
                 </Tooltip>
@@ -200,7 +224,7 @@ function WhatsAppGroups({
         },
       },
     ],
-    [hasPerm, refreshData, addDangerToast], 
+    [hasPerm, refreshData, addDangerToast],
   );
 
   const filters: Filter[] = useMemo(
@@ -219,13 +243,13 @@ function WhatsAppGroups({
         input: 'search',
         operator: FilterOperator.Contains,
       },
-    //   {
-    //     Header: t('Phone Numbers'), // Changed from Emails
-    //     id: 'phone_numbers',
-    //     key: 'phone_numbers',
-    //     input: 'search',
-    //     operator: FilterOperator.Contains,
-    //   },
+      //   {
+      //     Header: t('Phone Numbers'), // Changed from Emails
+      //     id: 'phone_numbers',
+      //     key: 'phone_numbers',
+      //     input: 'search',
+      //     operator: FilterOperator.Contains,
+      //   },
     ],
     [],
   );
@@ -241,9 +265,9 @@ function WhatsAppGroups({
 
   const renderCard = useCallback(
     (item: WhatsAppGroup) => (
-      <WhatsAppGroupCard 
-        whatsAppGroup={item} 
-        hasPerm={hasPerm} 
+      <WhatsAppGroupCard
+        whatsAppGroup={item}
+        hasPerm={hasPerm}
         onEdit={() => handleEditModal(item)}
         onDelete={() => handleDeleteModal(item)}
       />
@@ -271,12 +295,22 @@ function WhatsAppGroups({
       onClick: toggleBulkSelect,
     });
   }
-  
+
   const cardSortSelectOptions = [
     { id: 'name', label: t('Name (A-Z)'), value: 'name_asc', desc: false },
-    { id: 'name', label: t('Name (Z-A)'), value: 'name_desc', desc: true },    
-    { id: 'changed_on', label: t('Recently modified'), value: 'changed_on_desc', desc: true },
-    { id: 'changed_on', label: t('Least recently modified'), value: 'changed_on_asc', desc: false },
+    { id: 'name', label: t('Name (Z-A)'), value: 'name_desc', desc: true },
+    {
+      id: 'changed_on',
+      label: t('Recently modified'),
+      value: 'changed_on_desc',
+      desc: true,
+    },
+    {
+      id: 'changed_on',
+      label: t('Least recently modified'),
+      value: 'changed_on_asc',
+      desc: false,
+    },
   ];
 
   return (
@@ -287,19 +321,29 @@ function WhatsAppGroups({
         <CreateWhatsAppGroupModal
           visible={createModalVisible}
           onClose={() => setCreateModalVisible(false)}
-          onSuccess={() => { refreshData(); setCreateModalVisible(false); }}
+          onSuccess={() => {
+            refreshData();
+            setCreateModalVisible(false);
+          }}
           addSuccessToast={addSuccessToast} // Pass if modal shows its own toasts
         />
       )}
       {/* Placeholder for EditWhatsAppGroupModal */}
       {editModalVisible && groupToEdit && (
-         <EditWhatsAppGroupModal
-           whatsAppGroup={groupToEdit}
-           visible={editModalVisible}
-           onClose={() => { setEditModalVisible(false); setGroupToEdit(null); }}
-           onSuccess={() => { refreshData(); setEditModalVisible(false); setGroupToEdit(null); }}
-           addSuccessToast={addSuccessToast} // Pass if modal shows its own toasts
-         />
+        <EditWhatsAppGroupModal
+          whatsAppGroup={groupToEdit}
+          visible={editModalVisible}
+          onClose={() => {
+            setEditModalVisible(false);
+            setGroupToEdit(null);
+          }}
+          onSuccess={() => {
+            refreshData();
+            setEditModalVisible(false);
+            setGroupToEdit(null);
+          }}
+          addSuccessToast={addSuccessToast} // Pass if modal shows its own toasts
+        />
       )}
 
       {groupToDelete && (
@@ -328,14 +372,18 @@ function WhatsAppGroups({
         loading={loading}
         initialSort={initialSort}
         filters={filters}
-        bulkActions={hasPerm('can_write') ? [
-          {
-            key: 'delete',
-            name: t('Delete'),
-            type: 'danger',
-            onSelect: handleBulkWhatsAppGroupDelete,
-          }
-        ] : []}
+        bulkActions={
+          hasPerm('can_write')
+            ? [
+                {
+                  key: 'delete',
+                  name: t('Delete'),
+                  type: 'danger',
+                  onSelect: handleBulkWhatsAppGroupDelete,
+                },
+              ]
+            : []
+        }
         bulkSelectEnabled={bulkSelectEnabled}
         disableBulkSelect={toggleBulkSelect}
         renderCard={renderCard}
@@ -350,4 +398,4 @@ function WhatsAppGroups({
   );
 }
 
-export default withToasts(WhatsAppGroups); 
+export default withToasts(WhatsAppGroups);

@@ -44,11 +44,7 @@ const DEFAULT_QUERIES_DATA = [
   { data: ['foo2', 'bar2'] },
 ];
 
-function expectDimension(
-  renderedWrapper: any,
-  width: number,
-  height: number,
-) {
+function expectDimension(renderedWrapper: any, width: number, height: number) {
   expect(renderedWrapper.find('.dimension').text()).toEqual(
     [width, height].join('x'),
   );

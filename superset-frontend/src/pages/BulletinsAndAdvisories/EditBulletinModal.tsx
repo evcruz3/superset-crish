@@ -1,13 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, Form, Input, Button, Upload, Alert, Spin, Select as AntdSelect, Card } from 'antd';
-import { UploadOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Modal,
+  Form,
+  Input,
+  Button,
+  Upload,
+  Alert,
+  Spin,
+  Select as AntdSelect,
+  Card,
+} from 'antd';
+import {
+  UploadOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import { SupersetClient, t, JsonObject } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { AsyncSelect } from 'src/components';
-import { Bulletin, ImageAttachment } from './types';
 import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface';
 import rison from 'rison';
 import { LabeledValue } from 'antd/lib/select';
+import { Bulletin, ImageAttachment } from './types';
 
 interface EditBulletinModalProps {
   isOpen: boolean;
@@ -51,26 +65,38 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [imageAttachments, setImageAttachments] = useState<EditableAttachmentState[]>([]);
-  const [isChartSelectorModalOpen, setIsChartSelectorModalOpen] = useState(false);
-  const [selectedChartForThumbnail, setSelectedChartForThumbnail] = useState<LabeledValue | null>(null);
-  const [chartThumbnailPreviewUrl, setChartThumbnailPreviewUrl] = useState<string | null>(null);
+  const [imageAttachments, setImageAttachments] = useState<
+    EditableAttachmentState[]
+  >([]);
+  const [isChartSelectorModalOpen, setIsChartSelectorModalOpen] =
+    useState(false);
+  const [selectedChartForThumbnail, setSelectedChartForThumbnail] =
+    useState<LabeledValue | null>(null);
+  const [chartThumbnailPreviewUrl, setChartThumbnailPreviewUrl] = useState<
+    string | null
+  >(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
-  const mapImageAttachmentToState = (attachment: ImageAttachment): EditableAttachmentState => ({
+  const mapImageAttachmentToState = (
+    attachment: ImageAttachment,
+  ): EditableAttachmentState => ({
     uid: String(attachment.id), // Use DB ID as UID for existing attachments
     id: attachment.id,
     s3_key: attachment.s3_key,
     caption: attachment.caption || '',
     previewUrl: attachment.url, // This is the presigned URL from backend
-    fileList: attachment.url ? [{
-      uid: String(attachment.id),
-      name: attachment.s3_key?.split('/').pop() || 'image',
-      status: 'done',
-      url: attachment.url,
-      size: 0, // Add dummy size
-      type: 'image/jpeg', // Add dummy type
-    }] : [],
+    fileList: attachment.url
+      ? [
+          {
+            uid: String(attachment.id),
+            name: attachment.s3_key?.split('/').pop() || 'image',
+            status: 'done',
+            url: attachment.url,
+            size: 0, // Add dummy size
+            type: 'image/jpeg', // Add dummy type
+          },
+        ]
+      : [],
     isNew: false,
   });
 
@@ -91,7 +117,9 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
             hashtags: detailedBulletin.hashtags || '',
           });
 
-          const existingAttachments = (detailedBulletin.image_attachments || []).map(mapImageAttachmentToState);
+          const existingAttachments = (
+            detailedBulletin.image_attachments || []
+          ).map(mapImageAttachmentToState);
           setImageAttachments(existingAttachments);
         })
         .catch(err => {
@@ -122,31 +150,45 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
 
   const handleAddAttachmentField = () => {
     const newUid = `new_${Date.now()}`;
-    setImageAttachments([...imageAttachments, { 
-      uid: newUid, 
-      caption: '', 
-      fileList: [], 
-      isNew: true 
-    }]);
+    setImageAttachments([
+      ...imageAttachments,
+      {
+        uid: newUid,
+        caption: '',
+        fileList: [],
+        isNew: true,
+      },
+    ]);
   };
 
   const handleRemoveAttachment = (index: number) => {
     const attachmentToRemove = imageAttachments[index];
     // If it's a new file preview, revoke its ObjectURL
-    if (attachmentToRemove.isNew && attachmentToRemove.previewUrl && attachmentToRemove.fileList.length > 0) {
+    if (
+      attachmentToRemove.isNew &&
+      attachmentToRemove.previewUrl &&
+      attachmentToRemove.fileList.length > 0
+    ) {
       URL.revokeObjectURL(attachmentToRemove.previewUrl);
     }
     const newAttachments = imageAttachments.filter((_, i) => i !== index);
     setImageAttachments(newAttachments);
   };
 
-  const handleFileChange = (index: number, info: UploadChangeParam<UploadFile>) => {
+  const handleFileChange = (
+    index: number,
+    info: UploadChangeParam<UploadFile>,
+  ) => {
     const newAttachments = [...imageAttachments];
     const currentAttachment = newAttachments[index];
 
     // If there was an old preview URL for a *new* file, revoke it
-    if (currentAttachment.isNew && currentAttachment.previewUrl && currentAttachment.fileList.length > 0) {
-       URL.revokeObjectURL(currentAttachment.previewUrl);
+    if (
+      currentAttachment.isNew &&
+      currentAttachment.previewUrl &&
+      currentAttachment.fileList.length > 0
+    ) {
+      URL.revokeObjectURL(currentAttachment.previewUrl);
     }
 
     currentAttachment.fileList = [...info.fileList];
@@ -154,27 +196,36 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
 
     if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
       currentAttachment.file = info.fileList[0].originFileObj as File;
-      currentAttachment.previewUrl = URL.createObjectURL(info.fileList[0].originFileObj as File);
+      currentAttachment.previewUrl = URL.createObjectURL(
+        info.fileList[0].originFileObj as File,
+      );
       currentAttachment.isNew = true; // Explicitly mark as new if a new file is selected
     } else {
       // File removed from upload list
       currentAttachment.file = undefined;
       // If it was marked new and had a preview, clear it
       if (currentAttachment.isNew) {
-          currentAttachment.previewUrl = undefined; 
+        currentAttachment.previewUrl = undefined;
       }
       // if it was an existing file, the original previewUrl (from s3) should remain unless explicitly cleared or replaced
     }
     setImageAttachments(newAttachments);
   };
 
-  const handleCaptionChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCaptionChange = (
+    index: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const newAttachments = [...imageAttachments];
     newAttachments[index].caption = event.target.value;
     setImageAttachments(newAttachments);
   };
 
-  const loadChartOptions = async (search: string, page: number, pageSize: number): Promise<{data: LabeledValue[], totalCount: number}> => {
+  const loadChartOptions = async (
+    search: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ data: LabeledValue[]; totalCount: number }> => {
     const query = rison.encode_uri({
       filters: search ? [{ col: 'slice_name', opr: 'ct', value: search }] : [],
       page,
@@ -214,35 +265,47 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
       formData.append('risks', values.risks);
       formData.append('safety_tips', values.safety_tips);
       formData.append('hashtags', values.hashtags || '');
-      
+
       let newFileIndex = 0;
       let existingFileIndex = 0;
       imageAttachments.forEach(attachment => {
         if (attachment.isNew && attachment.file) {
-          formData.append(`image_attachment_file_${newFileIndex}`, attachment.file);
+          formData.append(
+            `image_attachment_file_${newFileIndex}`,
+            attachment.file,
+          );
           formData.append(`image_caption_${newFileIndex}`, attachment.caption);
           newFileIndex++;
         } else if (!attachment.isNew && attachment.id) {
           // This is an existing attachment that we are keeping (or just updating its caption)
-          formData.append(`existing_attachment_id_${existingFileIndex}`, String(attachment.id));
-          formData.append(`existing_attachment_caption_${existingFileIndex}`, attachment.caption);
+          formData.append(
+            `existing_attachment_id_${existingFileIndex}`,
+            String(attachment.id),
+          );
+          formData.append(
+            `existing_attachment_caption_${existingFileIndex}`,
+            attachment.caption,
+          );
           existingFileIndex++;
         }
       });
 
       const response = await SupersetClient.put({
         endpoint: `/api/v1/bulletins_and_advisories/${bulletin.id}`,
-        body: formData, 
+        body: formData,
         headers: {},
       });
-      
+
       const updatedBulletin = response.json.result as Bulletin;
       addSuccessToast(t('Bulletin updated successfully!'));
       onBulletinUpdated(updatedBulletin);
       toggle();
     } catch (error: any) {
       console.error('Error updating bulletin:', error);
-      const detailedMessage = error.response?.data?.message || error.message || t('Failed to update bulletin.');
+      const detailedMessage =
+        error.response?.data?.message ||
+        error.message ||
+        t('Failed to update bulletin.');
       setError(detailedMessage);
       addDangerToast(detailedMessage);
     } finally {
@@ -255,18 +318,23 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
     toggle();
   };
 
-  const handleChartSelectedAsAttachment = async (option: LabeledValue | undefined) => {
+  const handleChartSelectedAsAttachment = async (
+    option: LabeledValue | undefined,
+  ) => {
     if (option && option.value) {
       const chartId = option.value as number;
       const chartName = option.label as string;
       try {
-        addSuccessToast(t('Fetching chart thumbnail... This may take a moment.'), { duration: 2000 }); // Temporary toast for user feedback
+        addSuccessToast(
+          t('Fetching chart thumbnail... This may take a moment.'),
+          { duration: 2000 },
+        ); // Temporary toast for user feedback
         // Fetch chart details to get the digest for the thumbnail URL
         const chartDetailsResponse = await SupersetClient.get({
           endpoint: `/api/v1/chart/${chartId}`,
         });
         const chartResult = chartDetailsResponse.json.result;
-        const digest = chartResult.digest; 
+        const { digest } = chartResult;
 
         if (!digest) {
           addDangerToast(t('Could not retrieve chart digest for thumbnail.'));
@@ -278,41 +346,58 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
         // Fetch the thumbnail image
         const response = await fetch(thumbnailUrl);
         if (!response.ok) {
-           // Try to trigger async generation if it was 202
-           if(response.status === 202) {
-             addSuccessToast(t('Thumbnail is generating. Please try adding it again in a few moments.'), { duration: 5000 });
-             return;
-           }
-          throw new Error(t('Failed to fetch chart thumbnail image. Status: ') + response.status);
+          // Try to trigger async generation if it was 202
+          if (response.status === 202) {
+            addSuccessToast(
+              t(
+                'Thumbnail is generating. Please try adding it again in a few moments.',
+              ),
+              { duration: 5000 },
+            );
+            return;
+          }
+          throw new Error(
+            t('Failed to fetch chart thumbnail image. Status: ') +
+              response.status,
+          );
         }
         const imageBlob = await response.blob();
         const fileName = `${chartName.replace(/[^a-zA-Z0-9]/g, '_')}_thumbnail.png`;
-        const imageFile = new File([imageBlob], fileName, { type: imageBlob.type || 'image/png' });
+        const imageFile = new File([imageBlob], fileName, {
+          type: imageBlob.type || 'image/png',
+        });
 
         const newUid = `chart_thumb_${chartId}_${Date.now()}`;
         const newAttachment: EditableAttachmentState = {
           uid: newUid,
           file: imageFile,
-          caption: chartName, 
-          fileList: [{
-            uid: `chart_thumb_file_${chartId}_${Date.now()}`,
-            name: fileName,
-            status: 'done',
-            originFileObj: imageFile,
-            url: URL.createObjectURL(imageFile), 
-            size: imageFile.size,
-            type: imageFile.type,
-          }],
+          caption: chartName,
+          fileList: [
+            {
+              uid: `chart_thumb_file_${chartId}_${Date.now()}`,
+              name: fileName,
+              status: 'done',
+              originFileObj: imageFile,
+              url: URL.createObjectURL(imageFile),
+              size: imageFile.size,
+              type: imageFile.type,
+            },
+          ],
           isNew: true,
           previewUrl: URL.createObjectURL(imageFile), // Set previewUrl for the new attachment
         };
 
-        setImageAttachments(prevAttachments => [...prevAttachments, newAttachment]);
+        setImageAttachments(prevAttachments => [
+          ...prevAttachments,
+          newAttachment,
+        ]);
         addSuccessToast(t('Chart thumbnail added as an image attachment.'));
-
       } catch (err) {
         console.error('Error fetching chart thumbnail for edit modal:', err);
-        addDangerToast(t('Failed to add chart thumbnail as attachment. ') + (err instanceof Error ? err.message : ''));
+        addDangerToast(
+          t('Failed to add chart thumbnail as attachment. ') +
+            (err instanceof Error ? err.message : ''),
+        );
       }
     }
   };
@@ -332,10 +417,20 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
         destroyOnClose // This handles resetting form state and antd component states like Upload
         width={800}
         footer={[
-          <Button key="back" onClick={handleModalClose} disabled={isFetchingDetails}>
+          <Button
+            key="back"
+            onClick={handleModalClose}
+            disabled={isFetchingDetails}
+          >
             {t('Cancel')}
           </Button>,
-          <Button key="submit" type="primary" loading={isLoading || isFetchingDetails} onClick={handleSubmit} disabled={isFetchingDetails}>
+          <Button
+            key="submit"
+            type="primary"
+            loading={isLoading || isFetchingDetails}
+            onClick={handleSubmit}
+            disabled={isFetchingDetails}
+          >
             {t('Save Changes')}
           </Button>,
         ]}
@@ -347,7 +442,16 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
           </div>
         ) : (
           <>
-            {error && <Alert message={error} type="error" showIcon closable onClose={() => setError(null)} className="mb-3" />}
+            {error && (
+              <Alert
+                message={error}
+                type="error"
+                showIcon
+                closable
+                onClose={() => setError(null)}
+                className="mb-3"
+              />
+            )}
             <Form form={form} layout="vertical" name="edit_bulletin_form">
               <Form.Item
                 name="title"
@@ -373,11 +477,16 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
               <Form.Item
                 name="safety_tips"
                 label={t('Safety Tips')}
-                rules={[{ required: true, message: t('Safety Tips are required') }]}
+                rules={[
+                  { required: true, message: t('Safety Tips are required') },
+                ]}
               >
                 <Input.TextArea rows={4} />
               </Form.Item>
-              <Form.Item name="hashtags" label={t('Hashtags (comma-separated)')}>
+              <Form.Item
+                name="hashtags"
+                label={t('Hashtags (comma-separated)')}
+              >
                 <Input maxLength={500} />
               </Form.Item>
 
@@ -397,37 +506,55 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
                       </Button>
                     }
                   >
-                    <Form.Item label={attachment.isNew ? t('Select Image File') : t('Current Image File')}>
+                    <Form.Item
+                      label={
+                        attachment.isNew
+                          ? t('Select Image File')
+                          : t('Current Image File')
+                      }
+                    >
                       {attachment.previewUrl && (
-                          <div className="mb-2">
-                              <img
-                                  src={attachment.previewUrl}
-                                  alt={attachment.caption || 'Preview'}
-                                  style={{ maxHeight: '250px', width: 'auto', display: 'block', marginBottom: '10px', border: '1px solid #f0f0f0' }}
-                              />
-                          </div>
+                        <div className="mb-2">
+                          <img
+                            src={attachment.previewUrl}
+                            alt={attachment.caption || 'Preview'}
+                            style={{
+                              maxHeight: '250px',
+                              width: 'auto',
+                              display: 'block',
+                              marginBottom: '10px',
+                              border: '1px solid #f0f0f0',
+                            }}
+                          />
+                        </div>
                       )}
                       <Upload
                         name={`image_file_${index}`}
                         listType="picture"
                         fileList={attachment.fileList} // Controlled by state
                         beforeUpload={() => false} // We handle upload via FormData
-                        onChange={(info) => handleFileChange(index, info)}
+                        onChange={info => handleFileChange(index, info)}
                         showUploadList={{ showRemoveIcon: false }} // Explicitly hide the remove icon
                         maxCount={1}
                       >
                         <Button icon={<UploadOutlined />}>
-                          {attachment.isNew || !attachment.s3_key ? t('Select Image') : t('Replace Image')}
+                          {attachment.isNew || !attachment.s3_key
+                            ? t('Select Image')
+                            : t('Replace Image')}
                         </Button>
                       </Upload>
                       {!attachment.isNew && attachment.s3_key && (
-                          <small className="text-muted"> {t('Current filename:')} {attachment.s3_key.split('/').pop()}</small>
+                        <small className="text-muted">
+                          {' '}
+                          {t('Current filename:')}{' '}
+                          {attachment.s3_key.split('/').pop()}
+                        </small>
                       )}
                     </Form.Item>
                     <Form.Item label={`${t('Image Caption')} ${index + 1}`}>
                       <Input
                         value={attachment.caption}
-                        onChange={(e) => handleCaptionChange(index, e)}
+                        onChange={e => handleCaptionChange(index, e)}
                         placeholder={t('Enter caption for the image')}
                       />
                     </Form.Item>
@@ -445,13 +572,15 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
                   type="dashed"
                   onClick={() => setIsChartSelectorModalOpen(true)}
                   icon={<PlusOutlined />}
-                  style={{ marginTop: '10px'}}
+                  style={{ marginTop: '10px' }}
                 >
                   {t('Add Chart Thumbnail')}
                 </Button>
               </Form.Item>
-              <div style={{ fontSize: '0.8em', color: 'gray', marginTop: '20px' }}>
-                  {t('Fields marked with an asterisk (*) are required.')}
+              <div
+                style={{ fontSize: '0.8em', color: 'gray', marginTop: '20px' }}
+              >
+                {t('Fields marked with an asterisk (*) are required.')}
               </div>
             </Form>
           </>
@@ -477,7 +606,10 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
           setIsPreviewLoading(false);
         }}
         confirmLoading={isLoading || isFetchingDetails}
-        okButtonProps={{ disabled: !selectedChartForThumbnail || isLoading || isFetchingDetails }}
+        okButtonProps={{
+          disabled:
+            !selectedChartForThumbnail || isLoading || isFetchingDetails,
+        }}
         destroyOnClose
       >
         <div style={{ width: '100%' }}>
@@ -496,15 +628,24 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
                     endpoint: `/api/v1/chart/${chartId}`,
                   });
                   const chartResult = chartDetailsResponse.json.result;
-                  const digest = chartResult.digest;
+                  const { digest } = chartResult;
                   if (digest) {
-                    setChartThumbnailPreviewUrl(`/api/v1/chart/${chartId}/thumbnail/${digest}/?force=true`);
+                    setChartThumbnailPreviewUrl(
+                      `/api/v1/chart/${chartId}/thumbnail/${digest}/?force=true`,
+                    );
                   } else {
-                    addDangerToast(t('Could not retrieve chart digest for thumbnail preview.'));
+                    addDangerToast(
+                      t(
+                        'Could not retrieve chart digest for thumbnail preview.',
+                      ),
+                    );
                     setChartThumbnailPreviewUrl(null);
                   }
                 } catch (err) {
-                  console.error('Error fetching chart details for preview (Edit Modal):', err);
+                  console.error(
+                    'Error fetching chart details for preview (Edit Modal):',
+                    err,
+                  );
                   addDangerToast(t('Failed to load chart thumbnail preview.'));
                   setChartThumbnailPreviewUrl(null);
                 } finally {
@@ -519,28 +660,44 @@ const EditBulletinModal: React.FC<EditBulletinModalProps> = ({
             placeholder={t('Search for a chart')}
           />
         </div>
-        {isPreviewLoading && <div style={{ textAlign: 'center', margin: '10px' }}><Spin /> <p>{t('Loading preview...')}</p></div>}
+        {isPreviewLoading && (
+          <div style={{ textAlign: 'center', margin: '10px' }}>
+            <Spin /> <p>{t('Loading preview...')}</p>
+          </div>
+        )}
         {chartThumbnailPreviewUrl && !isPreviewLoading && (
           <div style={{ marginTop: '15px', textAlign: 'center' }}>
-            <img 
-              src={chartThumbnailPreviewUrl} 
-              alt={t('Chart thumbnail preview')} 
-              style={{ maxWidth: '100%', maxHeight: '200px', border: '1px solid #f0f0f0' }} 
+            <img
+              src={chartThumbnailPreviewUrl}
+              alt={t('Chart thumbnail preview')}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '200px',
+                border: '1px solid #f0f0f0',
+              }}
               onError={() => {
-                addDangerToast(t('Thumbnail image not available or still generating. Try adding the chart to see if it becomes available.'));
+                addDangerToast(
+                  t(
+                    'Thumbnail image not available or still generating. Try adding the chart to see if it becomes available.',
+                  ),
+                );
                 setChartThumbnailPreviewUrl(null);
               }}
             />
           </div>
         )}
-        {!isPreviewLoading && !chartThumbnailPreviewUrl && selectedChartForThumbnail && (
-          <div style={{ marginTop: '15px', textAlign: 'center', color: 'grey' }}>
-            {t('No preview available or chart has no thumbnail.')}
-          </div>
-        )}
+        {!isPreviewLoading &&
+          !chartThumbnailPreviewUrl &&
+          selectedChartForThumbnail && (
+            <div
+              style={{ marginTop: '15px', textAlign: 'center', color: 'grey' }}
+            >
+              {t('No preview available or chart has no thumbnail.')}
+            </div>
+          )}
       </Modal>
     </>
   );
 };
 
-export default EditBulletinModal; 
+export default EditBulletinModal;

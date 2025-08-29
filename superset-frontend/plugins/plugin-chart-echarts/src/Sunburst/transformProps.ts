@@ -51,7 +51,7 @@ export function getLinearDomain(
 ) {
   let min = 0;
   let max = 0;
-  let temp = null;
+  let temp: number | null = null;
   function traverse(tree: TreeNode[]) {
     tree.forEach(treeNode => {
       if (treeNode.children?.length) {

@@ -18,7 +18,7 @@
  */
 import { useMemo } from 'react';
 import { t, tn } from '@superset-ui/core';
-import MetadataBar, { MetadataType } from 'src/components/MetadataBar';
+import MetadataBar, { MetadataType, ContentType } from 'src/components/MetadataBar';
 import { ExplorePageInitialData } from 'src/explore/types';
 
 export const useExploreMetadataBar = (
@@ -29,7 +29,7 @@ export const useExploreMetadataBar = (
     if (!metadata) {
       return null;
     }
-    const items = [];
+    const items: ContentType[] = [];
     if (metadata.dashboards) {
       items.push({
         type: MetadataType.Dashboards as const,

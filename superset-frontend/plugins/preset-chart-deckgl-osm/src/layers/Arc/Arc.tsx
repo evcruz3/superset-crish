@@ -17,6 +17,7 @@
  * under the License.
  */
 import { ArcLayer } from '@deck.gl/layers';
+import { Layer } from '@deck.gl/core';
 import {
   HandlerFunction,
   JsonObject,
@@ -24,7 +25,7 @@ import {
   t,
 } from '@superset-ui/core';
 import { commonLayerProps } from '../common';
-import { createCategoricalDeckGLComponent } from '../../factory';
+import { createCategoricalDeckGLComponent, getLayerType } from '../../factory';
 import TooltipRow from '../../TooltipRow';
 import { TooltipProps } from '../../components/Tooltip';
 import { Point } from '../../types';
@@ -60,12 +61,10 @@ function setTooltipContent(formData: QueryFormData) {
   );
 }
 
-export function getLayer(
-  fd: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: HandlerFunction,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
+export const getLayer: getLayerType<Layer<{}>> = function (
+  options: any
 ) {
+  const { formData: fd, payload, onAddFilter, setTooltip } = options;
   const data = payload.data.features;
   const sc = fd.color_picker;
   const tc = fd.target_color_picker;

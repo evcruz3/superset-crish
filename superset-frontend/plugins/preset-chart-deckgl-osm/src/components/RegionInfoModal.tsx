@@ -1,4 +1,3 @@
-import React from 'react';
 import { Modal } from 'antd';
 import { styled } from '@superset-ui/core';
 
@@ -13,13 +12,13 @@ const StyledTable = styled.table`
 
   td {
     padding: 8px;
-    
+
     &:first-child {
       font-weight: 500;
       color: #666;
       width: 40%;
     }
-    
+
     &:last-child {
       color: #333;
     }
@@ -68,7 +67,11 @@ const formatValue = (value: any): string => {
   return String(value);
 };
 
-const RegionInfoModal: React.FC<RegionInfoModalProps> = ({ visible, onClose, properties }) => {
+const RegionInfoModal: React.FC<RegionInfoModalProps> = ({
+  visible,
+  onClose,
+  properties,
+}) => {
   // Define display names for properties
   const propertyDisplayNames: { [key: string]: string } = {
     ADM1: 'Region Name',
@@ -91,7 +94,7 @@ const RegionInfoModal: React.FC<RegionInfoModalProps> = ({ visible, onClose, pro
     PubHealPos: 'Public Health Posts',
     SISca: 'SISCa',
     PrivClinic: 'Private Clinics',
-    Notes: 'Notes'
+    Notes: 'Notes',
   };
 
   console.log('RegionInfoModal properties:', properties);
@@ -109,7 +112,12 @@ const RegionInfoModal: React.FC<RegionInfoModalProps> = ({ visible, onClose, pro
       <StyledTable>
         <tbody>
           {Object.entries(properties)
-            .filter(([key, value]) => value !== undefined && value !== null && key in propertyDisplayNames)
+            .filter(
+              ([key, value]) =>
+                value !== undefined &&
+                value !== null &&
+                key in propertyDisplayNames,
+            )
             .map(([key, value]) => (
               <tr key={key}>
                 <td>{propertyDisplayNames[key] || key}</td>
@@ -122,4 +130,4 @@ const RegionInfoModal: React.FC<RegionInfoModalProps> = ({ visible, onClose, pro
   );
 };
 
-export default RegionInfoModal; 
+export default RegionInfoModal;

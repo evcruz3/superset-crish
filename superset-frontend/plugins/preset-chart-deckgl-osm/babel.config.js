@@ -1,10 +1,13 @@
 module.exports = {
   presets: [
-    ['@babel/preset-env', {
-      targets: {
-        node: 'current',
+    [
+      '@babel/preset-env',
+      {
+        targets: {
+          node: 'current',
+        },
       },
-    }],
+    ],
     '@babel/preset-typescript',
     '@babel/preset-react',
   ],
@@ -14,9 +17,12 @@ module.exports = {
     '@babel/plugin-proposal-optional-chaining',
     '@babel/plugin-proposal-private-methods',
     '@babel/plugin-syntax-dynamic-import',
-    ['@babel/plugin-transform-runtime', {
-      corejs: 3,
-    }],
+    [
+      '@babel/plugin-transform-runtime',
+      {
+        corejs: 3,
+      },
+    ],
     'babel-plugin-typescript-to-proptypes',
     'babel-plugin-dynamic-import-node',
     'babel-plugin-lodash',
@@ -30,4 +36,4 @@ module.exports = {
       plugins: ['babel-plugin-jsx-remove-data-test-id'],
     },
   },
-}; 
+};

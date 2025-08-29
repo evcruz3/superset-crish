@@ -21,5 +21,5 @@ export interface EmailGroupApiResponse {
   ids: number[];
   result: EmailGroup[];
   // Add other fields from the API response if necessary, like permissions
-  permissions?: string[]; 
-} 
+  permissions?: string[];
+}

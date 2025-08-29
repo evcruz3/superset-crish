@@ -1,16 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  styled,
-  t,
-  SupersetClient,
-} from '@superset-ui/core';
-import Echart from '../../../plugins/plugin-chart-echarts/src/components/Echart';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { styled, t, SupersetClient } from '@superset-ui/core';
 import { Row, Col, Select, Radio, Switch } from 'antd';
 import { DatePicker } from 'src/components/DatePicker';
 import moment, { Moment } from 'moment';
 import Loading from 'src/components/Loading';
 import { useResizeDetector } from 'react-resize-detector';
 import AutoSizer from 'react-virtualized-auto-sizer';
+import Echart from '../../../plugins/plugin-chart-echarts/src/components/Echart';
 
 const THRESHOLDS: Record<
   string,
@@ -22,9 +18,9 @@ const THRESHOLDS: Record<
     { value: 27, label: t('Extreme Caution'), color: '#fdd835' },
   ],
   rainfall: [
-    { value: 100, label: t('Extreme Danger'), color: '#d32f2f' },
-    { value: 50, label: t('Danger'), color: '#ef6c00' },
-    { value: 20, label: t('Extreme Caution'), color: '#fdd835' },
+    { value: 60, label: t('Extreme Danger'), color: '#d32f2f' },
+    { value: 25, label: t('Danger'), color: '#ef6c00' },
+    { value: 15, label: t('Extreme Caution'), color: '#fdd835' },
   ],
   wind_speed: [
     { value: 25, label: t('Extreme Danger'), color: '#d32f2f' },
@@ -268,7 +264,9 @@ const WeatherTrendChart = ({
     [data],
   );
 
-  const parameterThresholds = showThresholds ? THRESHOLDS[parameter] : undefined;
+  const parameterThresholds = showThresholds
+    ? THRESHOLDS[parameter]
+    : undefined;
 
   const FALLBACK_PALETTE = [
     '#5470c6',
@@ -510,7 +508,9 @@ const PageContainer = styled.div`
 const Trendlines = () => {
   const [municipalities, setMunicipalities] = useState(['Dili']);
   const [startDate, setStartDate] = useState<Moment | null>(moment());
-  const [endDate, setEndDate] = useState<Moment | null>(moment().add(10, 'days'));
+  const [endDate, setEndDate] = useState<Moment | null>(
+    moment().add(10, 'days'),
+  );
   const [level, setLevel] = useState<Level>('national');
   const [showThresholds, setShowThresholds] = useState(true);
 
@@ -632,4 +632,4 @@ const Trendlines = () => {
   );
 };
 
-export default Trendlines; 
+export default Trendlines;

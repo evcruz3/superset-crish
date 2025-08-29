@@ -57,11 +57,9 @@ function setTooltipContent(o: JsonObject) {
 }
 
 export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: () => void,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
+  options: any
 ) {
+  const { formData, payload, onAddFilter, setTooltip } = options;
   const fd = formData;
   const c = fd.color_picker;
   let data = payload.data.features.map((d: JsonObject) => ({
@@ -135,7 +133,7 @@ const DeckGLScreenGrid = (props: DeckGLScreenGridProps) => {
   }, []);
 
   const getLayers = useCallback(() => {
-    const layer = getLayer(props.formData, props.payload, noop, setTooltip);
+    const layer = getLayer({ formData: props.formData, payload: props.payload, onAddFilter: noop, setTooltip });
 
     return [layer];
   }, [props.formData, props.payload, setTooltip]);

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Modal, Tag } from 'antd';
 import { styled, t } from '@superset-ui/core';
 import { PublicEducationPost } from './types';
@@ -9,13 +8,13 @@ const StyledModal = styled(Modal)`
     font-weight: ${({ theme }) => theme.typography.weights.bold};
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   }
-  
+
   .post-meta {
     color: ${({ theme }) => theme.colors.grayscale.base};
     font-size: ${({ theme }) => theme.typography.sizes.s}px;
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   }
-  
+
   .post-content {
     font-size: ${({ theme }) => theme.typography.sizes.m}px;
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
@@ -38,10 +37,10 @@ const StyledModal = styled(Modal)`
       border: none;
     }
   }
-  
+
   .post-attachments {
     margin: ${({ theme }) => theme.gridUnit * 4}px 0;
-    
+
     .attachment-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -54,7 +53,7 @@ const StyledModal = styled(Modal)`
       border-radius: ${({ theme }) => theme.borderRadius}px;
       padding: ${({ theme }) => theme.gridUnit * 2}px;
       transition: all 0.2s;
-      
+
       &:hover {
         border-color: ${({ theme }) => theme.colors.primary.base};
         transform: scale(1.02);
@@ -67,7 +66,7 @@ const StyledModal = styled(Modal)`
         flex-direction: column;
         align-items: center;
         gap: ${({ theme }) => theme.gridUnit * 2}px;
-        
+
         &:hover {
           text-decoration: none;
         }
@@ -91,10 +90,10 @@ const StyledModal = styled(Modal)`
       }
     }
   }
-  
+
   .post-hashtags {
     margin-top: ${({ theme }) => theme.gridUnit * 4}px;
-    
+
     .ant-tag {
       margin-right: ${({ theme }) => theme.gridUnit * 1}px;
       margin-bottom: ${({ theme }) => theme.gridUnit * 1}px;
@@ -107,7 +106,10 @@ interface PublicEducationDetailModalProps {
   onClose: () => void;
 }
 
-export default function PublicEducationDetailModal({ post, onClose }: PublicEducationDetailModalProps) {
+export default function PublicEducationDetailModal({
+  post,
+  onClose,
+}: PublicEducationDetailModalProps) {
   if (!post) return null;
 
   const hashtags = post.hashtags?.split(',').map(tag => tag.trim()) || [];
@@ -124,17 +126,16 @@ export default function PublicEducationDetailModal({ post, onClose }: PublicEduc
       <div className="post-meta">
         {post.created_by && (
           <>
-            {t('Posted by')} {`${post.created_by.first_name} ${post.created_by.last_name}`}{' '}
+            {t('Posted by')}{' '}
+            {`${post.created_by.first_name} ${post.created_by.last_name}`}{' '}
           </>
         )}
         {post.created_on && (
-          <>
-            {new Date(post.created_on).toLocaleDateString()}
-          </>
+          <>{new Date(post.created_on).toLocaleDateString()}</>
         )}
       </div>
       <div className="post-content">{post.message}</div>
-      
+
       {post.youtube_embed_url && (
         <div className="video-container">
           <iframe
@@ -152,18 +153,19 @@ export default function PublicEducationDetailModal({ post, onClose }: PublicEduc
           <div className="attachment-grid">
             {post.attachments.map(attachment => (
               <div key={attachment.id} className="attachment-item">
-                <a 
+                <a
                   href={`/api/v1/public_education/attachment/${attachment.id}/download`}
-                  target="_blank" 
+                  target="_blank"
                   rel="noopener noreferrer"
                 >
                   {attachment.file_type === 'image' ? (
-                    <img 
+                    <img
                       src={`/api/v1/public_education/attachment/${attachment.id}`}
                       alt={attachment.file_name}
-                      onError={(e) => {
+                      onError={e => {
                         const target = e.target as HTMLImageElement;
-                        target.src = '/static/assets/images/chart-card-fallback.svg';
+                        target.src =
+                          '/static/assets/images/chart-card-fallback.svg';
                       }}
                     />
                   ) : (
@@ -185,4 +187,4 @@ export default function PublicEducationDetailModal({ post, onClose }: PublicEduc
       )}
     </StyledModal>
   );
-} 
+}

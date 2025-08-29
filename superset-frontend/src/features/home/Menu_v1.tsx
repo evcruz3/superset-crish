@@ -35,8 +35,8 @@ import {
   NavBarProps,
   BrandProps,
 } from 'src/types/bootstrapTypes';
-import LanguagePicker from './LanguagePicker';
 import Label from 'src/components/Label';
+import LanguagePicker from './LanguagePicker';
 
 interface MenuProps {
   data: MenuData;
@@ -44,12 +44,12 @@ interface MenuProps {
 }
 
 interface MenuDataForSidebar {
-  mainNavItems: MenuObjectProps[];      // For Charts, Dashboards etc.
-  createMenuItems: MenuObjectProps[];   // For the "Create" submenu items
+  mainNavItems: MenuObjectProps[]; // For Charts, Dashboards etc.
+  createMenuItems: MenuObjectProps[]; // For the "Create" submenu items
   settingsPageGroups: MenuObjectProps[]; // For Data, Manage, Security page groups
   brand: BrandProps;
   navbar_right: NavBarProps;
-  environment_tag: { text: string; color: string; };
+  environment_tag: { text: string; color: string };
 }
 
 interface ExtendedMenuProps {
@@ -225,7 +225,8 @@ const globalStyles = (theme: SupersetTheme) => css`
     }
   }
   .ant-menu-inline > .ant-menu-item:has(> .is-active) {
-    // background-color: ${theme.colors.primary.light5}; // Already handled by .ant-menu-item-selected in StyledSidebar
+    // background-color: ${theme.colors.primary
+      .light5}; // Already handled by .ant-menu-item-selected in StyledSidebar
     & > a {
       color: ${theme.colors.primary.base};
     }
@@ -240,7 +241,9 @@ const globalStyles = (theme: SupersetTheme) => css`
   // specific to new sidebar for better pop-up menu alignment and styling
   .ant-menu-submenu-popup.ant-menu-light.ant-menu-vertical {
     border-radius: ${theme.borderRadius}px;
-    box-shadow: 0px 3px 6px -4px rgba(0, 0, 0, 0.12), 0px 9px 28px 8px rgba(0, 0, 0, 0.05); // Inspired by ActionCell SHADOW constant
+    box-shadow:
+      0px 3px 6px -4px rgba(0, 0, 0, 0.12),
+      0px 9px 28px 8px rgba(0, 0, 0, 0.05); // Inspired by ActionCell SHADOW constant
     background-color: ${theme.colors.grayscale.light5}; // Match sidebar bg
   }
 
@@ -255,10 +258,10 @@ const globalStyles = (theme: SupersetTheme) => css`
   }
 
   .ant-menu-submenu-popup .ant-menu-item-selected {
-     background-color: ${theme.colors.primary.light4} !important;
-      a {
-        color: ${theme.colors.primary.dark1} !important;
-      }
+    background-color: ${theme.colors.primary.light4} !important;
+    a {
+      color: ${theme.colors.primary.dark1} !important;
+    }
   }
 `;
 
@@ -266,7 +269,8 @@ const { SubMenu } = DropdownMenu;
 
 const EnvironmentTagWrapper = styled.div`
   text-align: center;
-  margin-bottom: ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit * 4}px;
+  margin-bottom: ${({ theme }: { theme: SupersetTheme }) =>
+    theme.gridUnit * 4}px;
   padding: 0 ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit * 2}px;
 `;
 
@@ -298,20 +302,23 @@ const FooterAnchor = styled.a`
 `;
 
 const VersionInfoContainer = styled.div`
-  font-size: ${({ theme }: { theme: SupersetTheme }) => theme.typography.sizes.xs}px;
-  color: ${({ theme }: { theme: SupersetTheme }) => theme.colors.grayscale.base};
-  padding: ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit}px ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit * 2}px;
-  
+  font-size: ${({ theme }: { theme: SupersetTheme }) =>
+    theme.typography.sizes.xs}px;
+  color: ${({ theme }: { theme: SupersetTheme }) =>
+    theme.colors.grayscale.base};
+  padding: ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit}px
+    ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit * 2}px;
+
   div {
-    margin-bottom: ${({ theme }: { theme: SupersetTheme }) => theme.gridUnit / 2}px;
+    margin-bottom: ${({ theme }: { theme: SupersetTheme }) =>
+      theme.gridUnit / 2}px;
   }
 `;
-
 
 export function Menu({
   data: {
     mainNavItems,
-    createMenuItems,   // Now available from props
+    createMenuItems, // Now available from props
     settingsPageGroups,
     brand,
     navbar_right: navbarRight,
@@ -337,7 +344,8 @@ export function Menu({
     let foundActive = false;
     // Try to set active tab based on mainNavItems first
     mainNavItems.forEach(item => {
-      if (path.startsWith(item.url || 'a\b\c\d')) { // a\b\c\d is unlikely to match
+      if (path.startsWith(item.url || 'a\bcd')) {
+        // a\b\c\d is unlikely to match
         setActiveTabs([item.name || item.label]);
         foundActive = true;
       }
@@ -346,17 +354,21 @@ export function Menu({
 
     // Then check settingsPageGroups if no match in mainNav
     settingsPageGroups.forEach(group => {
-        if (group.childs && Array.isArray(group.childs)) {
-            group.childs.forEach(child => {
-                if (typeof child !== 'string' && child.url && path.startsWith(child.url)) {
-                    setActiveTabs([child.name || child.label]);
-                    foundActive = true;
-                }
-            });
-        }
+      if (group.childs && Array.isArray(group.childs)) {
+        group.childs.forEach(child => {
+          if (
+            typeof child !== 'string' &&
+            child.url &&
+            path.startsWith(child.url)
+          ) {
+            setActiveTabs([child.name || child.label]);
+            foundActive = true;
+          }
+        });
+      }
     });
     if (foundActive) return;
-    
+
     // Fallback to original logic if still no match
     switch (true) {
       case path.startsWith(Paths.Dashboard):
@@ -376,22 +388,27 @@ export function Menu({
   const standalone = getUrlParam(URL_PARAMS.standalone);
   if (standalone || uiConfig.hideNav) return <></>;
 
-  const renderSubMenu = ({
-    label,
-    childs,
-    url,
-    name,
-    icon,
-    isFrontendRoute: itemIsFrontendRoute,
-    onClick,
-  }: MenuObjectProps, isTopLevelCall: boolean = true) => {
+  const renderSubMenu = (
+    {
+      label,
+      childs,
+      url,
+      name,
+      icon,
+      isFrontendRoute: itemIsFrontendRoute,
+      onClick,
+    }: MenuObjectProps,
+    isTopLevelCall = true,
+  ) => {
     const key = name || label;
 
     if (url && itemIsFrontendRoute) {
       return (
-        <DropdownMenu.Item key={key} role="presentation" 
-        // icon={isTopLevelCall && icon && <i className={`fa ${icon}`} />}
-         >
+        <DropdownMenu.Item
+          key={key}
+          role="presentation"
+          // icon={isTopLevelCall && icon && <i className={`fa ${icon}`} />}
+        >
           <NavLink role="button" to={url} activeClassName="is-active">
             {label}
           </NavLink>
@@ -400,7 +417,10 @@ export function Menu({
     }
     if (url) {
       return (
-        <DropdownMenu.Item key={key} icon={isTopLevelCall && icon && <i className={`fa ${icon}`} />} >
+        <DropdownMenu.Item
+          key={key}
+          icon={isTopLevelCall && icon && <i className={`fa ${icon}`} />}
+        >
           <a href={url}>{label}</a>
         </DropdownMenu.Item>
       );
@@ -409,16 +429,17 @@ export function Menu({
       <SubMenu
         key={key}
         title={label}
-        icon={icon && <i className={`fa ${icon}`} 
-        />
-      }
+        icon={icon && <i className={`fa ${icon}`} />}
       >
         {childs?.map((child: MenuObjectChildProps | string) => {
           if (typeof child === 'string' && child === '-') {
             return <DropdownMenu.Divider key={`divider-${key}-${child}`} />;
           }
           if (typeof child !== 'string') {
-            return renderSubMenu(prepareItemForRender(child as MenuObjectProps, false), false);
+            return renderSubMenu(
+              prepareItemForRender(child as MenuObjectProps, false),
+              false,
+            );
           }
           return null;
         })}
@@ -426,36 +447,56 @@ export function Menu({
     );
   };
 
-  const prepareItemForRender = (item: MenuObjectProps, isTopLevel: boolean = true): MenuObjectProps => ({
+  const prepareItemForRender = (
+    item: MenuObjectProps,
+    isTopLevel = true,
+  ): MenuObjectProps => ({
     ...item,
     isFrontendRoute: item.url ? isFrontendRoute(item.url) : false,
-    childs: item.childs?.map(c => 
-        typeof c === 'string' ? c : prepareItemForRender(c as MenuObjectProps, false) 
-    )
+    childs: item.childs?.map(c =>
+      typeof c === 'string'
+        ? c
+        : prepareItemForRender(c as MenuObjectProps, false),
+    ),
   });
 
   return (
     <StyledSidebar className="main-sidebar" id="main-menu" role="navigation">
       <Global styles={globalStyles(theme)} />
       {/* Brand and Environment Tag */}
-      <Tooltip id="brand-tooltip" placement="right" title={brand.tooltip} arrowPointAtCenter>
-            {isFrontendRoute(window.location.pathname) ? (
-              <GenericLink className="navbar-brand" to={brand.path}>
-                <img src={brand.icon} alt={brand.alt} />
-              </GenericLink>
-            ) : (
-              <a className="navbar-brand" href={brand.path} tabIndex={-1}>
-                <img src={brand.icon} alt={brand.alt} />
-              </a>
-            )}
-          </Tooltip>
-          {brand.text && (
-        <div className="navbar-brand-text"><span>{brand.text}</span></div>
+      <Tooltip
+        id="brand-tooltip"
+        placement="right"
+        title={brand.tooltip}
+        arrowPointAtCenter
+      >
+        {isFrontendRoute(window.location.pathname) ? (
+          <GenericLink className="navbar-brand" to={brand.path}>
+            <img src={brand.icon} alt={brand.alt} />
+          </GenericLink>
+        ) : (
+          <a className="navbar-brand" href={brand.path} tabIndex={-1}>
+            <img src={brand.icon} alt={brand.alt} />
+          </a>
+        )}
+      </Tooltip>
+      {brand.text && (
+        <div className="navbar-brand-text">
+          <span>{brand.text}</span>
+        </div>
       )}
       {environmentTag?.text && (
         <EnvironmentTagWrapper>
-          <Label css={{ borderRadius: `${theme.gridUnit * 125}px` }}
-            color={ /^#(?:[0-9a-f]{3}){1,2}$/i.test(environmentTag.color) ? environmentTag.color : environmentTag.color.split('.').reduce((o: any, i: string) => o?.[i], theme.colors as any)}>
+          <Label
+            css={{ borderRadius: `${theme.gridUnit * 125}px` }}
+            color={
+              /^#(?:[0-9a-f]{3}){1,2}$/i.test(environmentTag.color)
+                ? environmentTag.color
+                : environmentTag.color
+                    .split('.')
+                    .reduce((o: any, i: string) => o?.[i], theme.colors as any)
+            }
+          >
             {environmentTag.text}
           </Label>
         </EnvironmentTagWrapper>
@@ -463,78 +504,220 @@ export function Menu({
 
       {/* Scrollable Menu Container */}
       <div className="menu-container">
-        <DropdownMenu mode="inline" data-test="sidebar-nav" className="main-nav" selectedKeys={activeTabs}>
+        <DropdownMenu
+          mode="inline"
+          data-test="sidebar-nav"
+          className="main-nav"
+          selectedKeys={activeTabs}
+        >
           {/* == Main Application Navigation (TOP PART) == */}
-          {mainNavItems.map((item: MenuObjectProps) => renderSubMenu(prepareItemForRender(item, true), true))}
+          {mainNavItems.map((item: MenuObjectProps) =>
+            renderSubMenu(prepareItemForRender(item, true), true),
+          )}
 
           {/* == Visually Separated Bottom Part (formerly RightMenu items) == */}
-          {(mainNavItems.length > 0 || createMenuItems.length > 0 || settingsPageGroups.length > 0 || navbarRight.show_language_picker) && 
-            <DropdownMenu.Divider 
-              key="top-bottom-separator" 
-              style={{ 
+          {(mainNavItems.length > 0 ||
+            createMenuItems.length > 0 ||
+            settingsPageGroups.length > 0 ||
+            navbarRight.show_language_picker) && (
+            <DropdownMenu.Divider
+              key="top-bottom-separator"
+              style={{
                 margin: `${theme.gridUnit * 3}px 0 ${theme.gridUnit * 1.5}px 0`,
-                borderTop: `1.5px solid ${theme.colors.grayscale.light1}` 
+                borderTop: `1.5px solid ${theme.colors.grayscale.light1}`,
               }}
             />
-          }
+          )}
 
           {/* "Create" SubMenu */}
           {createMenuItems && createMenuItems.length > 0 && (
-             <SubMenu key="create_new_section" title={t('Create')} 
-             icon={<i className="fa fa-plus" />}
-             >
-                {createMenuItems.map(item => renderSubMenu(prepareItemForRender(item, false), false))}
-             </SubMenu>
+            <SubMenu
+              key="create_new_section"
+              title={t('Create')}
+              icon={<i className="fa fa-plus" />}
+            >
+              {createMenuItems.map(item =>
+                renderSubMenu(prepareItemForRender(item, false), false),
+              )}
+            </SubMenu>
           )}
 
           {/* "Settings" SubMenu (containing Data, Manage, Security groups) */}
           {settingsPageGroups && settingsPageGroups.length > 0 && (
-            <SubMenu key="settings_group_section" title={t('Settings')} icon={<i className="fa fa-cog" />}>
-              {settingsPageGroups.map((groupItem: MenuObjectProps) => renderSubMenu(prepareItemForRender(groupItem, false), false))}
+            <SubMenu
+              key="settings_group_section"
+              title={t('Settings')}
+              icon={<i className="fa fa-cog" />}
+            >
+              {settingsPageGroups.map((groupItem: MenuObjectProps) =>
+                renderSubMenu(prepareItemForRender(groupItem, false), false),
+              )}
             </SubMenu>
           )}
-          
+
           {/* Language Picker SubMenu */}
           {navbarRight.show_language_picker && (
-            <LanguagePicker 
-              locale={navbarRight.locale} 
-              languages={navbarRight.languages} 
+            <LanguagePicker
+              locale={navbarRight.locale}
+              languages={navbarRight.languages}
               key="language_picker_key" // Added key
             />
           )}
 
           {/* Help SubMenu */}
           {(navbarRight.documentation_url || navbarRight.bug_report_url) && (
-              <SubMenu key="help_section" title={t('Help')} icon={<i className="fa fa-question-circle" />}>
-                {navbarRight.documentation_url && 
-                    renderSubMenu(prepareItemForRender({ label: navbarRight.documentation_text || t('Documentation'), name: 'doc_link', url: navbarRight.documentation_url, icon:'fa-book'}, false), false)}
-                {navbarRight.bug_report_url && 
-                    renderSubMenu(prepareItemForRender({ label: navbarRight.bug_report_text || t('Report a Bug'), name: 'bug_link', url: navbarRight.bug_report_url, icon:'fa-bug'}, false), false)}
-              </SubMenu>
-          )}
-          
-          {/* User Actions / Login Link */}
-          {!navbarRight.user_is_anonymous && (
-              <SubMenu key="user_section" title={t('User')} icon={<i className="fa fa-user" />}>
-                 {navbarRight.user_info_url && 
-                    renderSubMenu(prepareItemForRender({ label: t('Info'), name: 'user_info', url: navbarRight.user_info_url }, false), false)}
-                 {renderSubMenu(prepareItemForRender({ label: t('Logout'), name: 'logout', url: navbarRight.user_logout_url, onClick: () => { window.location.href = navbarRight.user_logout_url; } }, false), false)}
-              </SubMenu>
-          )}
-           {navbarRight.user_is_anonymous && (
-               renderSubMenu(prepareItemForRender({ label: t('Login'), name: 'login', url: navbarRight.user_login_url, icon: 'fa-sign-in' }, true), true)
-           )}
-
-          {/* About Section SubMenu */}
-          {(navbarRight.version_string || navbarRight.version_sha || navbarRight.build_number) && (
-            <SubMenu key="about_section" title={t('About')} icon={<i className="fa fa-info-circle" />}>
-                {navbarRight.show_watermark && <DropdownMenu.Item key="watermark" disabled style={{cursor: 'default', color: theme.colors.grayscale.base, paddingLeft: theme.gridUnit * 4, fontSize: theme.typography.sizes.s}}>{t('Powered by Apache Superset')}</DropdownMenu.Item>}
-                {navbarRight.version_string && <DropdownMenu.Item key="version" disabled style={{cursor: 'default', color: theme.colors.grayscale.base, paddingLeft: theme.gridUnit * 4, fontSize: theme.typography.sizes.s}}>{t('Version')}: {navbarRight.version_string}</DropdownMenu.Item>}
-                {navbarRight.version_sha && <DropdownMenu.Item key="sha" disabled style={{cursor: 'default', color: theme.colors.grayscale.base, paddingLeft: theme.gridUnit * 4, fontSize: theme.typography.sizes.s}}>{t('SHA')}: {navbarRight.version_sha}</DropdownMenu.Item>}
-                {navbarRight.build_number && <DropdownMenu.Item key="build" disabled style={{cursor: 'default', color: theme.colors.grayscale.base, paddingLeft: theme.gridUnit * 4, fontSize: theme.typography.sizes.s}}>{t('Build')}: {navbarRight.build_number}</DropdownMenu.Item>}
+            <SubMenu
+              key="help_section"
+              title={t('Help')}
+              icon={<i className="fa fa-question-circle" />}
+            >
+              {navbarRight.documentation_url &&
+                renderSubMenu(
+                  prepareItemForRender(
+                    {
+                      label:
+                        navbarRight.documentation_text || t('Documentation'),
+                      name: 'doc_link',
+                      url: navbarRight.documentation_url,
+                      icon: 'fa-book',
+                    },
+                    false,
+                  ),
+                  false,
+                )}
+              {navbarRight.bug_report_url &&
+                renderSubMenu(
+                  prepareItemForRender(
+                    {
+                      label: navbarRight.bug_report_text || t('Report a Bug'),
+                      name: 'bug_link',
+                      url: navbarRight.bug_report_url,
+                      icon: 'fa-bug',
+                    },
+                    false,
+                  ),
+                  false,
+                )}
             </SubMenu>
           )}
-          </DropdownMenu>
+
+          {/* User Actions / Login Link */}
+          {!navbarRight.user_is_anonymous && (
+            <SubMenu
+              key="user_section"
+              title={t('User')}
+              icon={<i className="fa fa-user" />}
+            >
+              {navbarRight.user_info_url &&
+                renderSubMenu(
+                  prepareItemForRender(
+                    {
+                      label: t('Info'),
+                      name: 'user_info',
+                      url: navbarRight.user_info_url,
+                    },
+                    false,
+                  ),
+                  false,
+                )}
+              {renderSubMenu(
+                prepareItemForRender(
+                  {
+                    label: t('Logout'),
+                    name: 'logout',
+                    url: navbarRight.user_logout_url,
+                    onClick: () => {
+                      window.location.href = navbarRight.user_logout_url;
+                    },
+                  },
+                  false,
+                ),
+                false,
+              )}
+            </SubMenu>
+          )}
+          {navbarRight.user_is_anonymous &&
+            renderSubMenu(
+              prepareItemForRender(
+                {
+                  label: t('Login'),
+                  name: 'login',
+                  url: navbarRight.user_login_url,
+                  icon: 'fa-sign-in',
+                },
+                true,
+              ),
+              true,
+            )}
+
+          {/* About Section SubMenu */}
+          {(navbarRight.version_string ||
+            navbarRight.version_sha ||
+            navbarRight.build_number) && (
+            <SubMenu
+              key="about_section"
+              title={t('About')}
+              icon={<i className="fa fa-info-circle" />}
+            >
+              {navbarRight.show_watermark && (
+                <DropdownMenu.Item
+                  key="watermark"
+                  disabled
+                  style={{
+                    cursor: 'default',
+                    color: theme.colors.grayscale.base,
+                    paddingLeft: theme.gridUnit * 4,
+                    fontSize: theme.typography.sizes.s,
+                  }}
+                >
+                  {t('Powered by Apache Superset')}
+                </DropdownMenu.Item>
+              )}
+              {navbarRight.version_string && (
+                <DropdownMenu.Item
+                  key="version"
+                  disabled
+                  style={{
+                    cursor: 'default',
+                    color: theme.colors.grayscale.base,
+                    paddingLeft: theme.gridUnit * 4,
+                    fontSize: theme.typography.sizes.s,
+                  }}
+                >
+                  {t('Version')}: {navbarRight.version_string}
+                </DropdownMenu.Item>
+              )}
+              {navbarRight.version_sha && (
+                <DropdownMenu.Item
+                  key="sha"
+                  disabled
+                  style={{
+                    cursor: 'default',
+                    color: theme.colors.grayscale.base,
+                    paddingLeft: theme.gridUnit * 4,
+                    fontSize: theme.typography.sizes.s,
+                  }}
+                >
+                  {t('SHA')}: {navbarRight.version_sha}
+                </DropdownMenu.Item>
+              )}
+              {navbarRight.build_number && (
+                <DropdownMenu.Item
+                  key="build"
+                  disabled
+                  style={{
+                    cursor: 'default',
+                    color: theme.colors.grayscale.base,
+                    paddingLeft: theme.gridUnit * 4,
+                    fontSize: theme.typography.sizes.s,
+                  }}
+                >
+                  {t('Build')}: {navbarRight.build_number}
+                </DropdownMenu.Item>
+              )}
+            </SubMenu>
+          )}
+        </DropdownMenu>
       </div>
       {/* <SidebarFooter>
         {navbarRight.show_language_picker && (
@@ -649,8 +832,13 @@ export function Menu({
   );
 }
 
-export default function MenuWrapper({ data: originalData, isFrontendRoute }: { data: MenuData, isFrontendRoute?: (path?: string) => boolean }) {
-  
+export default function MenuWrapper({
+  data: originalData,
+  isFrontendRoute,
+}: {
+  data: MenuData;
+  isFrontendRoute?: (path?: string) => boolean;
+}) {
   const mainNavItems: MenuObjectProps[] = [];
   const settingsPageGroups: MenuObjectProps[] = [];
 
@@ -667,13 +855,15 @@ export default function MenuWrapper({ data: originalData, isFrontendRoute }: { d
       item.childs.forEach((child: MenuObjectChildProps | string) => {
         if (typeof child === 'string') children.push(child);
         else if (child.label) {
-          if (child.url && isFrontendRoute) child.isFrontendRoute = isFrontendRoute(child.url);
+          if (child.url && isFrontendRoute)
+            child.isFrontendRoute = isFrontendRoute(child.url);
           children.push(child);
         }
       });
       item.childs = children;
     }
-    if (item.url && isFrontendRoute) item.isFrontendRoute = isFrontendRoute(item.url);
+    if (item.url && isFrontendRoute)
+      item.isFrontendRoute = isFrontendRoute(item.url);
 
     if (item.name && settingsGroupNames[item.name]) {
       settingsPageGroups.push(item);
@@ -681,24 +871,28 @@ export default function MenuWrapper({ data: originalData, isFrontendRoute }: { d
       mainNavItems.push(item);
     }
   });
-  
+
   if (originalData.settings && originalData.settings.length > 0) {
     originalData.settings.forEach(settingSection => {
       if (!settingSection) return;
       const settingChildren: (MenuObjectChildProps | string)[] = [];
       if (settingSection.childs) {
-        settingSection.childs.forEach((child: MenuObjectChildProps | string) => {
-          if (typeof child === 'string') settingChildren.push(child);
-          else if (child.label) {
-            if (child.url && isFrontendRoute) child.isFrontendRoute = isFrontendRoute(child.url);
-            settingChildren.push(child);
-          }
-        });
+        settingSection.childs.forEach(
+          (child: MenuObjectChildProps | string) => {
+            if (typeof child === 'string') settingChildren.push(child);
+            else if (child.label) {
+              if (child.url && isFrontendRoute)
+                child.isFrontendRoute = isFrontendRoute(child.url);
+              settingChildren.push(child);
+            }
+          },
+        );
         settingSection.childs = settingChildren;
       }
-      if (settingSection.url && isFrontendRoute) settingSection.isFrontendRoute = isFrontendRoute(settingSection.url);
+      if (settingSection.url && isFrontendRoute)
+        settingSection.isFrontendRoute = isFrontendRoute(settingSection.url);
       if (!settingsPageGroups.find(sgp => sgp.name === settingSection.name)) {
-          settingsPageGroups.push(settingSection);
+        settingsPageGroups.push(settingSection);
       }
     });
   }
@@ -711,7 +905,9 @@ export default function MenuWrapper({ data: originalData, isFrontendRoute }: { d
       name: 'sql_query_action',
       icon: 'fa-fw fa-search',
       url: '/sqllab?new=true',
-      isFrontendRoute: isFrontendRoute ? isFrontendRoute('/sqllab?new=true') : false,
+      isFrontendRoute: isFrontendRoute
+        ? isFrontendRoute('/sqllab?new=true')
+        : false,
     },
     {
       label: t('Chart'),
@@ -725,36 +921,40 @@ export default function MenuWrapper({ data: originalData, isFrontendRoute }: { d
       name: 'dashboard_action',
       icon: 'fa-fw fa-dashboard',
       url: '/dashboard/new',
-      isFrontendRoute: isFrontendRoute ? isFrontendRoute('/dashboard/new') : false,
+      isFrontendRoute: isFrontendRoute
+        ? isFrontendRoute('/dashboard/new')
+        : false,
     },
     {
-        label: t('Data'), // This is the "Data" submenu under "Create"
-        name: 'data_create_submenu_action',
-        icon: 'fa-database',
-        childs: [
-            {
-                label: t('Connect database'),
-                name: 'connect_database_action_item',
-                url: '#!', 
-                icon: 'fa-plus',
-            },
-            {
-                label: t('Create dataset'),
-                name: 'create_dataset_action_item',
-                url: '/dataset/add/',
-                icon: 'fa-table',
-                isFrontendRoute: isFrontendRoute ? isFrontendRoute('/dataset/add/') : false,
-            },
-            {
-                label: t('Upload file'),
-                name: 'upload_file_action_item',
-                url: '#!', 
-                icon: 'fa-upload',
-            },
-        ],
+      label: t('Data'), // This is the "Data" submenu under "Create"
+      name: 'data_create_submenu_action',
+      icon: 'fa-database',
+      childs: [
+        {
+          label: t('Connect database'),
+          name: 'connect_database_action_item',
+          url: '#!',
+          icon: 'fa-plus',
+        },
+        {
+          label: t('Create dataset'),
+          name: 'create_dataset_action_item',
+          url: '/dataset/add/',
+          icon: 'fa-table',
+          isFrontendRoute: isFrontendRoute
+            ? isFrontendRoute('/dataset/add/')
+            : false,
+        },
+        {
+          label: t('Upload file'),
+          name: 'upload_file_action_item',
+          url: '#!',
+          icon: 'fa-upload',
+        },
+      ],
     },
   ];
-  
+
   const finalSidebarData: MenuDataForSidebar = {
     mainNavItems,
     createMenuItems, // Add createMenuItems here
@@ -766,4 +966,3 @@ export default function MenuWrapper({ data: originalData, isFrontendRoute }: { d
 
   return <Menu data={finalSidebarData} isFrontendRoute={isFrontendRoute} />;
 }
-

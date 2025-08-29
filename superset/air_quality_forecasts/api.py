@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 import json
 
 from flask import request, Response, current_app
-from flask_appbuilder.api import expose, protect, safe
+from flask_appbuilder.api import expose, protect, safe, permission_name
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import lazy_gettext as _
 
@@ -258,8 +258,9 @@ class AirQualityForecastRestApi(BaseSupersetModelRestApi):
     openapi_spec_component_schemas = (AirQualityForecastSchema,)
 
     @expose("/current", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
+    @permission_name("get")
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_current",
@@ -300,8 +301,9 @@ class AirQualityForecastRestApi(BaseSupersetModelRestApi):
             return self.response_500(message=str(e))
 
     @expose("/daily", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
+    @permission_name("get")
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_daily",
@@ -351,8 +353,9 @@ class AirQualityForecastRestApi(BaseSupersetModelRestApi):
             return self.response_500(message=str(e))
 
     @expose("/forecast", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
+    @permission_name("get")
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.get_forecast",
@@ -410,22 +413,25 @@ class AirQualityForecastRestApi(BaseSupersetModelRestApi):
 
     # Legacy endpoints for backward compatibility
     @expose("/map", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
+    @permission_name("get")
     def get_map_data(self) -> Response:
         """Legacy endpoint - redirects to /current"""
         return self.get_current()
 
     @expose("/trends", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
+    @permission_name("get")
     def get_trend_data(self) -> Response:
         """Legacy endpoint - redirects to /daily"""
         return self.get_daily()
 
     @expose("/forecasts", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
+    @permission_name("get")
     def get_forecast_cards(self) -> Response:
         """Legacy endpoint - redirects to /forecast"""
         return self.get_forecast()

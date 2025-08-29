@@ -16,7 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from 'react';
 import { styled, t, SupersetClient } from '@superset-ui/core';
 import { useDispatch, useSelector } from 'react-redux';
 import { exploreJSON } from 'src/components/Chart/chartAction';
@@ -53,8 +59,8 @@ export function ResponsiveChartSlug({
   const [localFormData, setLocalFormData] = useState<any | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  const chartState = useSelector((state: RootState) => 
-    chartId ? state.charts?.[chartId] : null
+  const chartState = useSelector((state: RootState) =>
+    chartId ? state.charts?.[chartId] : null,
   );
 
   const {
@@ -63,10 +69,17 @@ export function ResponsiveChartSlug({
     chartAlert = null,
     lastRendered = 0,
   } = chartState || {};
-  
-  const isLoading = initialLoading || !localFormData || !chartState || chartStatus === 'loading';
 
-  const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 0 });
+  const isLoading =
+    initialLoading ||
+    !localFormData ||
+    !chartState ||
+    chartStatus === 'loading';
+
+  const [chartDimensions, setChartDimensions] = useState({
+    width: 0,
+    height: 0,
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const prevDimensionsRef = useRef({ width: 0, height: 0 });
   const dimensionUpdateCount = useRef(0);
@@ -82,19 +95,28 @@ export function ResponsiveChartSlug({
       const containerRect = containerRef.current.getBoundingClientRect();
       const navBarHeight = containerRect.top;
       const viewportHeight = window.innerHeight;
-      
-      const availableHeight = fillHeight ? viewportHeight - navBarHeight : containerRect.height;
+
+      const availableHeight = fillHeight
+        ? viewportHeight - navBarHeight
+        : containerRect.height;
       const availableWidth = containerRect.width;
-      
-      const widthDiff = Math.abs(availableWidth - prevDimensionsRef.current.width);
-      const heightDiff = Math.abs(availableHeight - prevDimensionsRef.current.height);
-      
+
+      const widthDiff = Math.abs(
+        availableWidth - prevDimensionsRef.current.width,
+      );
+      const heightDiff = Math.abs(
+        availableHeight - prevDimensionsRef.current.height,
+      );
+
       if (widthDiff >= 1 || heightDiff >= 1) {
-        prevDimensionsRef.current = { width: availableWidth, height: availableHeight };
+        prevDimensionsRef.current = {
+          width: availableWidth,
+          height: availableHeight,
+        };
         setChartDimensions({ width: availableWidth, height: availableHeight });
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error calculating dimensions:', error);
@@ -107,19 +129,19 @@ export function ResponsiveChartSlug({
     if (!containerRef.current) return;
 
     calculateDimensions();
-    
+
     const resizeObserver = new ResizeObserver(() => {
       calculateDimensions();
     });
-    
+
     resizeObserver.observe(containerRef.current);
-    
+
     const handleResize = () => {
       calculateDimensions();
     };
-    
+
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       const currentRef = containerRef.current;
       if (currentRef) {
@@ -138,21 +160,30 @@ export function ResponsiveChartSlug({
     try {
       if (!slug || typeof slug !== 'string' || slug.trim() === '') {
         console.error(`Attempted to fetch chart with invalid slug: '${slug}'`);
-        onError?.(new Error(`Invalid or missing slug provided: '${slug}'. Cannot fetch chart.`));
+        onError?.(
+          new Error(
+            `Invalid or missing slug provided: '${slug}'. Cannot fetch chart.`,
+          ),
+        );
         setInitialLoading(false);
         return;
       }
-      
+
       const query = rison.encode({
         filters: [{ col: 'slug', opr: 'eq', value: slug }],
       });
-      console.log(`Fetching chart metadata for slug: '${slug}', RISON query: ${query}`);
+      console.log(
+        `Fetching chart metadata for slug: '${slug}', RISON query: ${query}`,
+      );
 
       const chartResponse = await SupersetClient.get({
         endpoint: `/api/v1/chart/?q=${query}`,
       });
 
-      if (!chartResponse.json.result || chartResponse.json.result.length === 0) {
+      if (
+        !chartResponse.json.result ||
+        chartResponse.json.result.length === 0
+      ) {
         throw new Error(t('Chart with this slug was not found'));
       }
       const chartMetadata = chartResponse.json.result[0];
@@ -160,29 +191,31 @@ export function ResponsiveChartSlug({
       setChartId(fetchedChartId);
 
       const formDataResponse = await SupersetClient.get({
-         endpoint: `/api/v1/form_data/?slice_id=${fetchedChartId}`,
+        endpoint: `/api/v1/form_data/?slice_id=${fetchedChartId}`,
       });
 
       const fetchedFormData = formDataResponse.json;
       setLocalFormData(fetchedFormData);
 
       if (fetchedChartId && fetchedFormData) {
-         dispatch(
-           exploreJSON(
-             fetchedFormData,
-             false,
-             undefined,
-             fetchedChartId,
-             undefined,
-             undefined
-           ),
-         );
+        dispatch(
+          exploreJSON(
+            fetchedFormData,
+            false,
+            undefined,
+            fetchedChartId,
+            undefined,
+            undefined,
+          ),
+        );
       } else {
-         throw new Error(t('Could not retrieve chart ID or form data.'));
+        throw new Error(t('Could not retrieve chart ID or form data.'));
       }
-
     } catch (error) {
-      console.error('Error fetching chart by slug or dispatching exploreJSON:', error);
+      console.error(
+        'Error fetching chart by slug or dispatching exploreJSON:',
+        error,
+      );
       onError?.(error as Error);
       setChartId(null);
     } finally {
@@ -196,13 +229,13 @@ export function ResponsiveChartSlug({
 
   useEffect(() => {
     if (chartStatus === 'rendered' || chartStatus === 'success') {
-       if (!hasSignaledLoad.current) {
-          onChartLoad?.();
-          hasSignaledLoad.current = true;
-          setTimeout(calculateDimensions, 100); 
-       }
+      if (!hasSignaledLoad.current) {
+        onChartLoad?.();
+        hasSignaledLoad.current = true;
+        setTimeout(calculateDimensions, 100);
+      }
     } else if (chartStatus === 'failed') {
-       console.error('Chart rendering failed (via Redux state):', chartAlert);
+      console.error('Chart rendering failed (via Redux state):', chartAlert);
     }
   }, [chartStatus, chartAlert, onChartLoad, calculateDimensions]);
 
@@ -219,7 +252,9 @@ export function ResponsiveChartSlug({
       {isLoading ? (
         <div>Loading...</div>
       ) : !localFormData || !queriesResponse ? (
-        <div>{chartAlert || t('Chart form data or query data not available.')}</div>
+        <div>
+          {chartAlert || t('Chart form data or query data not available.')}
+        </div>
       ) : (
         <ChartSlugContainer
           key={`chart-${chartId}-${chartDimensions.width}-${chartDimensions.height}-${lastRendered}`}
@@ -237,4 +272,4 @@ export function ResponsiveChartSlug({
   );
 }
 
-export default ResponsiveChartSlug; 
+export default ResponsiveChartSlug;

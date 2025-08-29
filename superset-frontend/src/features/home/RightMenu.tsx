@@ -510,48 +510,48 @@ const RightMenu = ({
               ),
             ])}
 
-          {!navbarRight.user_is_anonymous && [
-            <Menu.Divider key="user-divider" />,
-            <Menu.ItemGroup key="user-section" title={t('User')}>
-              {navbarRight.user_info_url && (
-                <Menu.Item key="info">
-                  <a href={navbarRight.user_info_url}>{t('Info')}</a>
+            {!navbarRight.user_is_anonymous && [
+              <Menu.Divider key="user-divider" />,
+              <Menu.ItemGroup key="user-section" title={t('User')}>
+                {navbarRight.user_info_url && (
+                  <Menu.Item key="info">
+                    <a href={navbarRight.user_info_url}>{t('Info')}</a>
+                  </Menu.Item>
+                )}
+                <Menu.Item key="logout" onClick={handleLogout}>
+                  <a href={navbarRight.user_logout_url}>{t('Logout')}</a>
                 </Menu.Item>
-              )}
-              <Menu.Item key="logout" onClick={handleLogout}>
-                <a href={navbarRight.user_logout_url}>{t('Logout')}</a>
-              </Menu.Item>
-            </Menu.ItemGroup>,
-          ]}
-          {(navbarRight.version_string || navbarRight.version_sha) && [
-            <Menu.Divider key="version-info-divider" />,
-            <Menu.ItemGroup key="about-section" title={t('About')}>
-              <div className="about-section">
-                {navbarRight.show_watermark && (
-                  <div css={versionInfoStyles}>
-                    {t('Powered by Apache Superset')}
-                  </div>
-                )}
-                {navbarRight.version_string && (
-                  <div css={versionInfoStyles}>
-                    {t('Version')}: {navbarRight.version_string}
-                  </div>
-                )}
-                {navbarRight.version_sha && (
-                  <div css={versionInfoStyles}>
-                    {t('SHA')}: {navbarRight.version_sha}
-                  </div>
-                )}
-                {navbarRight.build_number && (
-                  <div css={versionInfoStyles}>
-                    {t('Build')}: {navbarRight.build_number}
-                  </div>
-                )}
-              </div>
-            </Menu.ItemGroup>,
-          ]}
-        </SubMenu>
-       )}
+              </Menu.ItemGroup>,
+            ]}
+            {(navbarRight.version_string || navbarRight.version_sha) && [
+              <Menu.Divider key="version-info-divider" />,
+              <Menu.ItemGroup key="about-section" title={t('About')}>
+                <div className="about-section">
+                  {navbarRight.show_watermark && (
+                    <div css={versionInfoStyles}>
+                      {t('Powered by Apache Superset')}
+                    </div>
+                  )}
+                  {navbarRight.version_string && (
+                    <div css={versionInfoStyles}>
+                      {t('Version')}: {navbarRight.version_string}
+                    </div>
+                  )}
+                  {navbarRight.version_sha && (
+                    <div css={versionInfoStyles}>
+                      {t('SHA')}: {navbarRight.version_sha}
+                    </div>
+                  )}
+                  {navbarRight.build_number && (
+                    <div css={versionInfoStyles}>
+                      {t('Build')}: {navbarRight.build_number}
+                    </div>
+                  )}
+                </div>
+              </Menu.ItemGroup>,
+            ]}
+          </SubMenu>
+        )}
         {navbarRight.show_language_picker && (
           <LanguagePicker
             locale={navbarRight.locale}

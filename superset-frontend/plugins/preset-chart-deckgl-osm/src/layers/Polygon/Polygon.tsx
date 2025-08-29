@@ -93,12 +93,12 @@ function setTooltipContent(formData: PolygonFormData) {
 }
 
 export function getLayer(options: LayerOptions): Layer<{}> {
-  const { 
-    formData: formDataRaw, 
-    payload, 
-    onAddFilter, 
+  const {
+    formData: formDataRaw,
+    payload,
+    onAddFilter,
     setTooltip,
-    selectionOptions = {}
+    selectionOptions = {},
   } = options;
 
   // Cast formData to the correct type

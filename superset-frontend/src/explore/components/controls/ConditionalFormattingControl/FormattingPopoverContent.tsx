@@ -28,7 +28,11 @@ import Select from 'src/components/Select/Select';
 import { Col, Row } from 'src/components';
 import { InputNumber, Input } from 'src/components/Input';
 import Button from 'src/components/Button';
-import { ConditionalFormattingConfig, StringComparator, StringConditionalFormattingConfig } from './types';
+import {
+  ConditionalFormattingConfig,
+  StringComparator,
+  StringConditionalFormattingConfig,
+} from './types';
 
 const FullWidthInputNumber = styled(InputNumber)`
   width: 100%;
@@ -134,40 +138,60 @@ const targetValueRightDeps = ['targetValueLeft'];
 
 const shouldFormItemUpdate = (
   prevValues: ConditionalFormattingConfig | StringConditionalFormattingConfig,
-  currentValues: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+  currentValues:
+    | ConditionalFormattingConfig
+    | StringConditionalFormattingConfig,
 ) => {
   if ('isString' in prevValues || 'isString' in currentValues) {
     // Handle string conditional formatting
-    return isStringOperatorNone(prevValues.operator as StringComparator) !==
-      isStringOperatorNone(currentValues.operator as StringComparator);
+    return (
+      isStringOperatorNone(prevValues.operator as StringComparator) !==
+      isStringOperatorNone(currentValues.operator as StringComparator)
+    );
   }
-  
+
   // Handle numeric conditional formatting
-  return isOperatorNone(prevValues.operator as Comparator) !==
-    isOperatorNone(currentValues.operator as Comparator) ||
-  isOperatorMultiValue(prevValues.operator as Comparator) !==
-    isOperatorMultiValue(currentValues.operator as Comparator);
+  return (
+    isOperatorNone(prevValues.operator as Comparator) !==
+      isOperatorNone(currentValues.operator as Comparator) ||
+    isOperatorMultiValue(prevValues.operator as Comparator) !==
+      isOperatorMultiValue(currentValues.operator as Comparator)
+  );
 };
 
-const renderOperator = ({ showOnlyNone, isStringFormatting }: { showOnlyNone?: boolean, isStringFormatting?: boolean } = {}) => (
+const renderOperator = ({
+  showOnlyNone,
+  isStringFormatting,
+}: { showOnlyNone?: boolean; isStringFormatting?: boolean } = {}) => (
   <FormItem
     name="operator"
     label={t('Operator')}
     rules={rulesRequired}
-    initialValue={isStringFormatting ? stringOperatorOptions[0].value : operatorOptions[0].value}
+    initialValue={
+      isStringFormatting
+        ? stringOperatorOptions[0].value
+        : operatorOptions[0].value
+    }
   >
     <Select
       ariaLabel={t('Operator')}
       options={
         isStringFormatting
-          ? (showOnlyNone ? [stringOperatorOptions[0]] : stringOperatorOptions)
-          : (showOnlyNone ? [operatorOptions[0]] : operatorOptions)
+          ? showOnlyNone
+            ? [stringOperatorOptions[0]]
+            : stringOperatorOptions
+          : showOnlyNone
+            ? [operatorOptions[0]]
+            : operatorOptions
       }
     />
   </FormItem>
 );
 
-const renderOperatorFields = ({ getFieldValue, isStringFormatting }: GetFieldValue & { isStringFormatting?: boolean }) => {
+const renderOperatorFields = ({
+  getFieldValue,
+  isStringFormatting,
+}: GetFieldValue & { isStringFormatting?: boolean }) => {
   if (isStringFormatting) {
     return isStringOperatorNone(getFieldValue('operator')) ? (
       <Row gutter={12}>
@@ -246,7 +270,9 @@ export const FormattingPopoverContent = ({
   isStringFormatting = false,
 }: {
   config?: ConditionalFormattingConfig | StringConditionalFormattingConfig;
-  onChange: (config: ConditionalFormattingConfig | StringConditionalFormattingConfig) => void;
+  onChange: (
+    config: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+  ) => void;
   columns: { label: string; value: string }[];
   extraColorChoices?: { label: string; value: string }[];
   isStringFormatting?: boolean;
@@ -310,10 +336,13 @@ export const FormattingPopoverContent = ({
       </Row>
       <FormItem noStyle shouldUpdate={shouldFormItemUpdate}>
         {showOperatorFields ? (
-          ({ getFieldValue }) => renderOperatorFields({ getFieldValue, isStringFormatting })
+          ({ getFieldValue }) =>
+            renderOperatorFields({ getFieldValue, isStringFormatting })
         ) : (
           <Row gutter={12}>
-            <Col span={6}>{renderOperator({ showOnlyNone: true, isStringFormatting })}</Col>
+            <Col span={6}>
+              {renderOperator({ showOnlyNone: true, isStringFormatting })}
+            </Col>
           </Row>
         )}
       </FormItem>

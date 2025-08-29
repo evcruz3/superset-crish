@@ -176,8 +176,8 @@ export default function ActivityTable({
   }
   const renderActivity = () =>
     (activeChild === TableTab.Edited
-      ? editedCards
-      : activityData[activeChild]
+      ? editedCards || []
+      : activityData?.[activeChild] || []
     ).map((entity: ActivityObject) => {
       const url = getEntityUrl(entity);
       const lastActionOn = getEntityLastActionOn(entity);

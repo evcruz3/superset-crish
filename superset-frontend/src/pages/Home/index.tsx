@@ -16,17 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useState, useCallback, useEffect } from 'react';
-import { styled, t, tn } from '@superset-ui/core';
+import { useState, useCallback, useEffect } from 'react';
+import { styled, t, tn, SupersetClient } from '@superset-ui/core';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import ResponsiveChartSlug from 'src/components/Chart/ResponsiveChartSlug';
-import DashboardTabs from '../WeatherForecasts/DashboardTabs';
 import Modal from 'src/components/Modal';
-import { SupersetClient } from '@superset-ui/core';
 
 // Import the SVG as a React Component
 import StomachIcon from 'src/assets/images/icons/stomach.svg';
 import MosquitoIcon from 'src/assets/images/icons/mosquito.svg'; // Import mosquito SVG
+import DashboardTabs from '../WeatherForecasts/DashboardTabs';
+
+export { LoadingCards } from './LoadingCards';
+
+export interface ActivityData {
+  [key: string]: any[];
+}
 
 export const ChartContainer = styled.div`
   width: 100%;
@@ -56,7 +61,7 @@ const AlertCard = styled.div`
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s;
-  
+
   &:hover {
     transform: translateY(-2px);
   }
@@ -136,12 +141,19 @@ const RainAnimation = () => (
         <filter id="splashBlur" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="0.3" />
         </filter>
-        <radialGradient id="puddleGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+        <radialGradient
+          id="puddleGradient"
+          cx="50%"
+          cy="50%"
+          r="50%"
+          fx="50%"
+          fy="50%"
+        >
           <stop offset="0%" stopColor="#C1E3FF" stopOpacity="0.4" />
           <stop offset="100%" stopColor="#A5D8FF" stopOpacity="0.1" />
         </radialGradient>
       </defs>
-      
+
       {/* Fluffy cloud with multiple layers */}
       <g className="cloud-group">
         {/* Background cloud shadow */}
@@ -154,9 +166,9 @@ const RainAnimation = () => (
           opacity="0.3"
           filter="url(#cloudShadow)"
         />
-        
+
         {/* Cloud base layer */}
-        <path 
+        <path
           d="M7,16 
              Q5,14 8,12
              Q10,9 14,10
@@ -169,8 +181,8 @@ const RainAnimation = () => (
              Q27,19 22,18
              Q18,19 14,17.5
              Q10,19 7,16
-             Z" 
-          fill="url(#cloudGradient)" 
+             Z"
+          fill="url(#cloudGradient)"
           opacity="0.9"
           filter="url(#cloudShadow)"
         >
@@ -181,18 +193,11 @@ const RainAnimation = () => (
             repeatCount="indefinite"
           />
         </path>
-        
+
         {/* Cloud details - fluffy parts with independent animations */}
         <g>
           {/* Top left fluffy bump */}
-          <ellipse
-            cx="12"
-            cy="10"
-            rx="4"
-            ry="3.2"
-            fill="#FFFFFF"
-            opacity="0.8"
-          >
+          <ellipse cx="12" cy="10" rx="4" ry="3.2" fill="#FFFFFF" opacity="0.8">
             <animate
               attributeName="ry"
               values="3.2;3.4;3.2"
@@ -201,16 +206,9 @@ const RainAnimation = () => (
               repeatCount="indefinite"
             />
           </ellipse>
-          
+
           {/* Top middle fluffy bump */}
-          <ellipse
-            cx="20"
-            cy="9"
-            rx="4.5"
-            ry="3"
-            fill="#FFFFFF"
-            opacity="0.85"
-          >
+          <ellipse cx="20" cy="9" rx="4.5" ry="3" fill="#FFFFFF" opacity="0.85">
             <animate
               attributeName="ry"
               values="3;3.3;3"
@@ -219,16 +217,9 @@ const RainAnimation = () => (
               repeatCount="indefinite"
             />
           </ellipse>
-          
+
           {/* Top right fluffy bump */}
-          <ellipse
-            cx="28"
-            cy="10"
-            rx="4"
-            ry="3.2"
-            fill="#FFFFFF"
-            opacity="0.8"
-          >
+          <ellipse cx="28" cy="10" rx="4" ry="3.2" fill="#FFFFFF" opacity="0.8">
             <animate
               attributeName="ry"
               values="3.2;3.5;3.2"
@@ -237,7 +228,7 @@ const RainAnimation = () => (
               repeatCount="indefinite"
             />
           </ellipse>
-          
+
           {/* Right side fluffy bump */}
           <ellipse
             cx="34"
@@ -255,15 +246,9 @@ const RainAnimation = () => (
               repeatCount="indefinite"
             />
           </ellipse>
-          
+
           {/* Bottom right fluffy bump */}
-          <circle
-            cx="30"
-            cy="17"
-            r="3"
-            fill="#FFFFFF"
-            opacity="0.7"
-          >
+          <circle cx="30" cy="17" r="3" fill="#FFFFFF" opacity="0.7">
             <animate
               attributeName="r"
               values="3;3.2;3"
@@ -272,15 +257,9 @@ const RainAnimation = () => (
               repeatCount="indefinite"
             />
           </circle>
-          
+
           {/* Bottom middle fluffy bump */}
-          <circle
-            cx="20"
-            cy="17.5"
-            r="3.5"
-            fill="#FFFFFF"
-            opacity="0.8"
-          >
+          <circle cx="20" cy="17.5" r="3.5" fill="#FFFFFF" opacity="0.8">
             <animate
               attributeName="r"
               values="3.5;3.7;3.5"
@@ -289,15 +268,9 @@ const RainAnimation = () => (
               repeatCount="indefinite"
             />
           </circle>
-          
+
           {/* Bottom left fluffy bump */}
-          <circle
-            cx="11"
-            cy="17"
-            r="3"
-            fill="#FFFFFF"
-            opacity="0.7"
-          >
+          <circle cx="11" cy="17" r="3" fill="#FFFFFF" opacity="0.7">
             <animate
               attributeName="r"
               values="3;3.2;3"
@@ -307,7 +280,7 @@ const RainAnimation = () => (
             />
           </circle>
         </g>
-        
+
         {/* Cloud highlights for dimension */}
         <path
           d="M12,10 Q17,8 22,9 Q27,7 31,9 Q34,10 35,13"
@@ -325,7 +298,7 @@ const RainAnimation = () => (
           />
         </path>
       </g>
-      
+
       {/* Puddle at the bottom */}
       <ellipse
         cx="20"
@@ -348,7 +321,7 @@ const RainAnimation = () => (
           repeatCount="indefinite"
         />
       </ellipse>
-      
+
       {/* Enhanced raindrops with more variation and better physics */}
       {[...Array(10)].map((_, i) => {
         const xPos = 8 + (i % 5) * 6;
@@ -356,7 +329,7 @@ const RainAnimation = () => (
         const delay = (i % 5) * 0.2;
         const duration = 0.9 + Math.random() * 0.4;
         const size = 0.9 + Math.random() * 0.3;
-        
+
         return (
           <g key={`drop-${i}`}>
             {/* Main raindrop with teardrop shape */}
@@ -369,7 +342,7 @@ const RainAnimation = () => (
             >
               <animate
                 attributeName="transform"
-                values={`scale(${size}) translate(0,0); scale(${size * 0.95}) translate(0,${15/size})`}
+                values={`scale(${size}) translate(0,0); scale(${size * 0.95}) translate(0,${15 / size})`}
                 dur={`${duration}s`}
                 begin={`${delay}s`}
                 repeatCount="indefinite"
@@ -391,7 +364,7 @@ const RainAnimation = () => (
                 repeatCount="indefinite"
               />
             </path>
-            
+
             {/* Splash effect when drop hits the puddle */}
             <g opacity="0" transform={`translate(${xPos}, 34)`}>
               <animate
@@ -401,9 +374,15 @@ const RainAnimation = () => (
                 begin={`${delay + duration * 0.7}s`}
                 repeatCount="indefinite"
               />
-              
+
               {/* Left splash particle */}
-              <circle cx="-1.5" cy="0.2" r="0.3" fill="#BEE8FF" filter="url(#splashBlur)">
+              <circle
+                cx="-1.5"
+                cy="0.2"
+                r="0.3"
+                fill="#BEE8FF"
+                filter="url(#splashBlur)"
+              >
                 <animate
                   attributeName="cx"
                   values="-0.2;-1.5"
@@ -419,9 +398,15 @@ const RainAnimation = () => (
                   repeatCount="indefinite"
                 />
               </circle>
-              
+
               {/* Right splash particle */}
-              <circle cx="1.5" cy="0.2" r="0.3" fill="#BEE8FF" filter="url(#splashBlur)">
+              <circle
+                cx="1.5"
+                cy="0.2"
+                r="0.3"
+                fill="#BEE8FF"
+                filter="url(#splashBlur)"
+              >
                 <animate
                   attributeName="cx"
                   values="0.2;1.5"
@@ -437,9 +422,15 @@ const RainAnimation = () => (
                   repeatCount="indefinite"
                 />
               </circle>
-              
+
               {/* Center splash particles */}
-              <circle cx="0" cy="-0.5" r="0.4" fill="#BEE8FF" filter="url(#splashBlur)">
+              <circle
+                cx="0"
+                cy="-0.5"
+                r="0.4"
+                fill="#BEE8FF"
+                filter="url(#splashBlur)"
+              >
                 <animate
                   attributeName="cy"
                   values="0;-0.5"
@@ -455,9 +446,17 @@ const RainAnimation = () => (
                   repeatCount="indefinite"
                 />
               </circle>
-              
+
               {/* Ripple effect */}
-              <circle cx="0" cy="0" r="0.8" fill="none" stroke="#BEE8FF" strokeWidth="0.2" opacity="0.5">
+              <circle
+                cx="0"
+                cy="0"
+                r="0.8"
+                fill="none"
+                stroke="#BEE8FF"
+                strokeWidth="0.2"
+                opacity="0.5"
+              >
                 <animate
                   attributeName="r"
                   values="0.2;2"
@@ -477,14 +476,14 @@ const RainAnimation = () => (
           </g>
         );
       })}
-      
+
       {/* Light rain particles in the background for depth */}
       {[...Array(15)].map((_, i) => {
         const xPos = 2 + Math.random() * 36;
         const yStart = 10 + Math.random() * 10;
         const delay = Math.random() * 1.5;
         const duration = 0.7 + Math.random() * 0.5;
-        
+
         return (
           <line
             key={`light-drop-${i}`}
@@ -530,7 +529,7 @@ const WindAnimation = () => (
           <feGaussianBlur in="SourceGraphic" stdDeviation="1" />
         </filter>
       </defs>
-      
+
       {/* Leaf that moves with the wind */}
       <path
         d="M15,15 q2,-3 4,-2 q3,1 2,4 q-1,3 -4,2 q-3,-1 -2,-4 z"
@@ -553,16 +552,16 @@ const WindAnimation = () => (
           repeatCount="indefinite"
         />
       </path>
-      
+
       {/* Multiple curved wind paths with different animations */}
       {[...Array(3)].map((_, i) => {
         const yPos = 14 + i * 7;
         const delay = i * 0.2;
-        
+
         return (
           <g key={i}>
             <path
-              d={`M0,${yPos} C10,${yPos-3} 20,${yPos+3} 40,${yPos}`}
+              d={`M0,${yPos} C10,${yPos - 3} 20,${yPos + 3} 40,${yPos}`}
               stroke="url(#windGradient)"
               strokeWidth={2 - i * 0.3}
               fill="none"
@@ -595,12 +594,12 @@ const WindAnimation = () => (
           </g>
         );
       })}
-      
+
       {/* Small particles being blown by the wind */}
       {[...Array(5)].map((_, i) => {
         const yPos = 12 + i * 4;
         const delay = i * 0.3;
-        
+
         return (
           <circle
             key={`particle-${i}`}
@@ -642,7 +641,14 @@ const HeatAnimation = () => (
   <SvgContainer>
     <svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <radialGradient id="sunGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+        <radialGradient
+          id="sunGradient"
+          cx="50%"
+          cy="50%"
+          r="50%"
+          fx="50%"
+          fy="50%"
+        >
           <stop offset="0%" stopColor="#FFEB3B" />
           <stop offset="70%" stopColor="#FF9800" />
           <stop offset="100%" stopColor="#FF5722" />
@@ -655,7 +661,7 @@ const HeatAnimation = () => (
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
-      
+
       {/* Sun with pulsating effect */}
       <circle
         cx="20"
@@ -677,15 +683,15 @@ const HeatAnimation = () => (
           repeatCount="indefinite"
         />
       </circle>
-      
+
       {/* Sun rays */}
       {[...Array(8)].map((_, i) => {
-        const angle = (i * 45) * Math.PI / 180;
+        const angle = (i * 45 * Math.PI) / 180;
         const x1 = 20 + Math.cos(angle) * 10;
         const y1 = 17 + Math.sin(angle) * 10;
         const x2 = 20 + Math.cos(angle) * 14;
         const y2 = 17 + Math.sin(angle) * 14;
-        
+
         return (
           <line
             key={`ray-${i}`}
@@ -722,15 +728,15 @@ const HeatAnimation = () => (
           </line>
         );
       })}
-      
+
       {/* Heat waves */}
       {[...Array(3)].map((_, i) => {
         const yPos = 26 + i * 3;
-        
+
         return (
           <path
             key={`wave-${i}`}
-            d={`M5,${yPos} Q12,${yPos-4} 20,${yPos} Q28,${yPos+4} 35,${yPos}`}
+            d={`M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos}`}
             stroke="rgba(255, 87, 34, 0.6)"
             strokeWidth="1.5"
             fill="none"
@@ -738,9 +744,9 @@ const HeatAnimation = () => (
           >
             <animate
               attributeName="d"
-              values={`M5,${yPos} Q12,${yPos-4} 20,${yPos} Q28,${yPos+4} 35,${yPos};
-                      M5,${yPos} Q12,${yPos+4} 20,${yPos} Q28,${yPos-4} 35,${yPos};
-                      M5,${yPos} Q12,${yPos-4} 20,${yPos} Q28,${yPos+4} 35,${yPos}`}
+              values={`M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos};
+                      M5,${yPos} Q12,${yPos + 4} 20,${yPos} Q28,${yPos - 4} 35,${yPos};
+                      M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos}`}
               dur={`${3 + i}s`}
               repeatCount="indefinite"
             />
@@ -767,7 +773,7 @@ const DataSourceAttribution = styled.div`
   font-size: 12px;
   color: #666;
   z-index: 900;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
 `;
@@ -847,48 +853,59 @@ interface PipelineRunHistoryType {
   bulletins_created_count?: number;
 }
 
-function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-map' }: WelcomeProps) {
+function Welcome({
+  user,
+  addDangerToast,
+  addSuccessToast,
+  chartSlug = 'overview-map',
+}: WelcomeProps) {
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
   const [weatherAlerts, setWeatherAlerts] = useState<GroupedAlertType[]>([]);
-  const [lastPullInfo, setLastPullInfo] = useState<PullHistoryType | null>(null);
+  const [lastPullInfo, setLastPullInfo] = useState<PullHistoryType | null>(
+    null,
+  );
   const [lastPullLoading, setLastPullLoading] = useState(false);
 
   // State for Disease Alerts
   const [isDiseaseLoading, setIsDiseaseLoading] = useState(false);
   const [diseaseAlerts, setDiseaseAlerts] = useState<GroupedAlertType[]>([]);
-  const [lastDiseaseRunInfo, setLastDiseaseRunInfo] = useState<PipelineRunHistoryType | null>(null);
+  const [lastDiseaseRunInfo, setLastDiseaseRunInfo] =
+    useState<PipelineRunHistoryType | null>(null);
   const [lastDiseaseRunLoading, setLastDiseaseRunLoading] = useState(false);
 
   // Fetch weather alerts from the API
   const fetchWeatherAlerts = useCallback(async () => {
     setIsWeatherLoading(true);
     try {
-      console.log("[Weather Forecast Alerts] fetching alerts");
+      console.log('[Weather Forecast Alerts] fetching alerts');
       const response = await SupersetClient.get({
-        endpoint: `/api/v1/weather_forecast_alert/?q=${encodeURIComponent(JSON.stringify({
-          page_size: 100, // Get more results per page
-          page: 0,
-          order_column: 'forecast_date',
-          order_direction: 'desc'
-        }))}`,
+        endpoint: `/api/v1/weather_forecast_alert/?q=${encodeURIComponent(
+          JSON.stringify({
+            page_size: 100, // Get more results per page
+            page: 0,
+            order_column: 'forecast_date',
+            order_direction: 'desc',
+          }),
+        )}`,
         headers: { Accept: 'application/json' },
       });
-      
-      console.log("[Weather Forecast Alerts] response.json", response.json);
-      
+
+      console.log('[Weather Forecast Alerts] response.json', response.json);
+
       if (response.json?.result) {
         // Count alerts by type before processing
         const counts: Record<string, number> = {};
         response.json.result.forEach((alert: AlertType) => {
           if ('weather_parameter' in alert) {
-            counts[alert.weather_parameter] = (counts[alert.weather_parameter] || 0) + 1;
+            counts[alert.weather_parameter] =
+              (counts[alert.weather_parameter] || 0) + 1;
           }
         });
-        console.log("[Weather Forecast Alerts] Counts by parameter:", counts);
-        
+        console.log('[Weather Forecast Alerts] Counts by parameter:', counts);
+
         // Process and group alerts by weather parameter
         processWeatherAlerts(response.json.result);
         // addSuccessToast(t('Weather alerts loaded successfully')); // Maybe too noisy
@@ -899,25 +916,32 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
       }
     } catch (error) {
       console.error('Error fetching weather alerts:', error);
-      addDangerToast(t('Failed to load weather alerts: %s', error.message || String(error)));
+      addDangerToast(
+        t('Failed to load weather alerts: %s', error.message || String(error)),
+      );
       // Set empty alerts with a fallback UI state
-      setWeatherAlerts([{
-        type: 'error',
-        title: 'API Error',
-        color: '#dc3545',
-        details: [{ label: 'Status', count: 0 }],
-        alertData: [{
-          id: '0_0_Error',
-          weather_parameter: 'Error',
-          alert_level: 'Error',
-          alert_title: 'Could not load alerts',
-          alert_message: 'There was an error connecting to the alerts API. Please try again later.',
-          municipality_name: '-',
-          parameter_value: 0,
-          forecast_date: new Date().toISOString(),
-          municipality_code: '0'
-        }]
-      }]);
+      setWeatherAlerts([
+        {
+          type: 'error',
+          title: 'API Error',
+          color: '#dc3545',
+          details: [{ label: 'Status', count: 0 }],
+          alertData: [
+            {
+              id: '0_0_Error',
+              weather_parameter: 'Error',
+              alert_level: 'Error',
+              alert_title: 'Could not load alerts',
+              alert_message:
+                'There was an error connecting to the alerts API. Please try again later.',
+              municipality_name: '-',
+              parameter_value: 0,
+              forecast_date: new Date().toISOString(),
+              municipality_code: '0',
+            },
+          ],
+        },
+      ]);
     } finally {
       setIsWeatherLoading(false);
     }
@@ -927,19 +951,21 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   const fetchDiseaseAlerts = useCallback(async () => {
     setIsDiseaseLoading(true);
     try {
-      console.log("[Disease Forecast Alerts] fetching alerts");
+      console.log('[Disease Forecast Alerts] fetching alerts');
       const response = await SupersetClient.get({
-        endpoint: `/api/v1/disease_forecast_alert/?q=${encodeURIComponent(JSON.stringify({
-          page_size: 100, // Get many results
-          page: 0,
-          order_column: 'forecast_date', // Sort by week start date
-          order_direction: 'desc'
-        }))}`,
+        endpoint: `/api/v1/disease_forecast_alert/?q=${encodeURIComponent(
+          JSON.stringify({
+            page_size: 100, // Get many results
+            page: 0,
+            order_column: 'forecast_date', // Sort by week start date
+            order_direction: 'desc',
+          }),
+        )}`,
         headers: { Accept: 'application/json' },
       });
-      
-      console.log("[Disease Forecast Alerts] response.json", response.json);
-      
+
+      console.log('[Disease Forecast Alerts] response.json', response.json);
+
       if (response.json?.result) {
         processDiseaseAlerts(response.json.result);
         // addSuccessToast(t('Disease alerts loaded successfully'));
@@ -949,7 +975,9 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
       }
     } catch (error) {
       console.error('Error fetching disease alerts:', error);
-      addDangerToast(t('Failed to load disease alerts: %s', error.message || String(error)));
+      addDangerToast(
+        t('Failed to load disease alerts: %s', error.message || String(error)),
+      );
       setDiseaseAlerts([]);
     } finally {
       setIsDiseaseLoading(false);
@@ -960,25 +988,28 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   const fetchLastPull = useCallback(async () => {
     setLastPullLoading(true);
     try {
-      console.log("[Weather Data Pull] Fetching last successful pull info");
+      console.log('[Weather Data Pull] Fetching last successful pull info');
       const response = await SupersetClient.get({
         endpoint: '/api/v1/weather_data_pull/last_pull',
         headers: { Accept: 'application/json' },
       });
-      
-      console.log("[Weather Data Pull] Response:", response.json);
-      
+
+      console.log('[Weather Data Pull] Response:', response.json);
+
       if (response.json?.result) {
         setLastPullInfo(response.json.result);
-        console.log("[Weather Data Pull] Last successful pull:", response.json.result.pulled_at);
+        console.log(
+          '[Weather Data Pull] Last successful pull:',
+          response.json.result.pulled_at,
+        );
       } else {
-        console.log("[Weather Data Pull] No successful pull info available");
+        console.log('[Weather Data Pull] No successful pull info available');
         setLastPullInfo(null);
       }
     } catch (error) {
       // Handle 404 errors gracefully (no successful pulls yet)
       if (error.status === 404) {
-        console.log("[Weather Data Pull] No successful pull history found");
+        console.log('[Weather Data Pull] No successful pull history found');
       } else {
         console.error('Error fetching last pull info:', error);
       }
@@ -992,26 +1023,29 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   const fetchLastDiseaseRun = useCallback(async () => {
     setLastDiseaseRunLoading(true);
     try {
-      console.log("[Disease Pipeline Run] Fetching last successful run info");
+      console.log('[Disease Pipeline Run] Fetching last successful run info');
       // We might want to fetch for specific pipelines if needed
       // e.g., ?pipeline_name=Dengue%20Predictor%20Pipeline
       const response = await SupersetClient.get({
         endpoint: '/api/v1/disease_pipeline_run_history/last_successful_run',
         headers: { Accept: 'application/json' },
       });
-      
-      console.log("[Disease Pipeline Run] Response:", response.json);
-      
+
+      console.log('[Disease Pipeline Run] Response:', response.json);
+
       if (response.json?.result) {
         setLastDiseaseRunInfo(response.json.result);
-        console.log("[Disease Pipeline Run] Last successful run:", response.json.result.ran_at);
+        console.log(
+          '[Disease Pipeline Run] Last successful run:',
+          response.json.result.ran_at,
+        );
       } else {
-        console.log("[Disease Pipeline Run] No successful run info available");
+        console.log('[Disease Pipeline Run] No successful run info available');
         setLastDiseaseRunInfo(null);
       }
     } catch (error) {
       if (error.status === 404) {
-        console.log("[Disease Pipeline Run] No successful run history found");
+        console.log('[Disease Pipeline Run] No successful run history found');
       } else {
         console.error('Error fetching last disease run info:', error);
       }
@@ -1024,59 +1058,85 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   // Process weather alerts and group them
   const processWeatherAlerts = useCallback((alerts: WeatherAlertType[]) => {
     const groupedByParameter: Record<string, WeatherAlertType[]> = {};
-    
+
     alerts.forEach(alert => {
       // Make sure id exists, or create it from composite fields
-      if (!alert.id && alert.municipality_code && alert.forecast_date && alert.weather_parameter) {
+      if (
+        !alert.id &&
+        alert.municipality_code &&
+        alert.forecast_date &&
+        alert.weather_parameter
+      ) {
         alert.id = `${alert.municipality_code}_${alert.forecast_date}_${alert.weather_parameter}`;
       }
-      
+
       // Log each alert for debugging
-      console.log(`[Debug Alert] ${alert.weather_parameter} - ${alert.alert_level} - ${alert.municipality_name}`);
-      
+      console.log(
+        `[Debug Alert] ${alert.weather_parameter} - ${alert.alert_level} - ${alert.municipality_name}`,
+      );
+
       if (!groupedByParameter[alert.weather_parameter]) {
         groupedByParameter[alert.weather_parameter] = [];
       }
       groupedByParameter[alert.weather_parameter].push(alert);
     });
-    
+
     const alertGroups: GroupedAlertType[] = [];
-    const parameterMapping: Record<string, { type: string; color: string; title: string }> = {
-      'Rainfall': { type: 'rain', color: '#3a5998', title: t('Rainfall Alert') },
+    const parameterMapping: Record<
+      string,
+      { type: string; color: string; title: string }
+    > = {
+      Rainfall: { type: 'rain', color: '#3a5998', title: t('Rainfall Alert') },
       'Wind Speed': { type: 'wind', color: '#4c9c6d', title: t('Wind Alert') },
-      'Heat Index': { type: 'heat', color: '#a67533', title: t('Heat Alert') }
+      'Heat Index': { type: 'heat', color: '#a67533', title: t('Heat Alert') },
     };
 
-    Object.entries(groupedByParameter).forEach(([parameter, parameterAlerts]) => {
-      const mapping = parameterMapping[parameter] || { 
-        type: parameter.toLowerCase().replace(/\s+/g, '_'), 
-        color: '#888888',
-        title: tn(
-          '%(parameter)s Alert',
-          '%(parameter)s Alerts',
-          parameterAlerts.length,
-          { parameter: parameter }
-        )
-      };
-      const extremeDanger = parameterAlerts.filter(a => a.alert_level === 'Extreme Danger' || a.alert_level === 'Severe').length;
-      const danger = parameterAlerts.filter(a => a.alert_level === 'Danger' || a.alert_level === 'Heavy' || a.alert_level === 'Strong').length;
-      const extremeCaution = parameterAlerts.filter(a => a.alert_level === 'Extreme Caution' || a.alert_level === 'Moderate' || a.alert_level === 'Caution').length;
-      const light = parameterAlerts.filter(a => a.alert_level === 'Light' || a.alert_level === 'Normal').length;
-      
-      alertGroups.push({
-        type: mapping.type,
-        title: mapping.title,
-        color: mapping.color,
-        details: [
-          { label: t('Extreme Danger'), count: extremeDanger },
-          { label: t('Danger'), count: danger },
-          { label: t('Extreme Caution'), count: extremeCaution },
-          { label: t('Normal/Light'), count: light }
-        ].filter(d => d.count > 0), 
-        alertData: parameterAlerts,
-        isDisease: false // Mark as weather
-      });
-    });
+    Object.entries(groupedByParameter).forEach(
+      ([parameter, parameterAlerts]) => {
+        const mapping = parameterMapping[parameter] || {
+          type: parameter.toLowerCase().replace(/\s+/g, '_'),
+          color: '#888888',
+          title: tn(
+            '%(parameter)s Alert',
+            '%(parameter)s Alerts',
+            parameterAlerts.length,
+            { parameter },
+          ),
+        };
+        const extremeDanger = parameterAlerts.filter(
+          a => a.alert_level === 'Extreme Danger' || a.alert_level === 'Severe',
+        ).length;
+        const danger = parameterAlerts.filter(
+          a =>
+            a.alert_level === 'Danger' ||
+            a.alert_level === 'Heavy' ||
+            a.alert_level === 'Strong',
+        ).length;
+        const extremeCaution = parameterAlerts.filter(
+          a =>
+            a.alert_level === 'Extreme Caution' ||
+            a.alert_level === 'Moderate' ||
+            a.alert_level === 'Caution',
+        ).length;
+        const light = parameterAlerts.filter(
+          a => a.alert_level === 'Light' || a.alert_level === 'Normal',
+        ).length;
+
+        alertGroups.push({
+          type: mapping.type,
+          title: mapping.title,
+          color: mapping.color,
+          details: [
+            { label: t('Extreme Danger'), count: extremeDanger },
+            { label: t('Danger'), count: danger },
+            { label: t('Extreme Caution'), count: extremeCaution },
+            { label: t('Normal/Light'), count: light },
+          ].filter(d => d.count > 0),
+          alertData: parameterAlerts,
+          isDisease: false, // Mark as weather
+        });
+      },
+    );
     setWeatherAlerts(alertGroups);
   }, []);
 
@@ -1085,7 +1145,12 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     const groupedByDisease: Record<string, DiseaseAlertType[]> = {};
     alerts.forEach(alert => {
       // Ensure composite ID exists if needed for consistency (though GET should provide it)
-      if (!alert.id && alert.municipality_code && alert.forecast_date && alert.disease_type) {
+      if (
+        !alert.id &&
+        alert.municipality_code &&
+        alert.forecast_date &&
+        alert.disease_type
+      ) {
         alert.id = `${alert.municipality_code}_${alert.forecast_date}_${alert.disease_type}`;
       }
       const diseaseType = alert.disease_type || 'Unknown Disease';
@@ -1096,9 +1161,22 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     });
 
     const alertGroups: GroupedAlertType[] = [];
-    const diseaseMapping: Record<string, { type: string; color: string; title: string; icon: string }> = {
-      'Dengue': { type: 'dengue', color: '#aa3535', title: t('Dengue Alert'), icon: '🦟' }, // Red from mosquito.svg gradient
-      'Diarrhea': { type: 'diarrhea', color: '#56ACE0', title: t('Diarrhea Alert'), icon: '<0xF0><0x9F><0xA7><0xBB>' } // Light blue from stomach.svg
+    const diseaseMapping: Record<
+      string,
+      { type: string; color: string; title: string; icon: string }
+    > = {
+      Dengue: {
+        type: 'dengue',
+        color: '#aa3535',
+        title: t('Dengue Alert'),
+        icon: '🦟',
+      }, // Red from mosquito.svg gradient
+      Diarrhea: {
+        type: 'diarrhea',
+        color: '#56ACE0',
+        title: t('Diarrhea Alert'),
+        icon: '<0xF0><0x9F><0xA7><0xBB>',
+      }, // Light blue from stomach.svg
     };
 
     Object.entries(groupedByDisease).forEach(([disease, diseaseAlerts]) => {
@@ -1106,13 +1184,17 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         type: disease.toLowerCase().replace(/\s+/g, '_'),
         color: '#6c757d', // Gray for unknown
         title: t(`${disease} Alert`),
-        icon: '❓'
+        icon: '❓',
       };
 
       // Count by severity levels used in disease alerts
-      const severe = diseaseAlerts.filter(a => a.alert_level === 'Severe').length;
+      const severe = diseaseAlerts.filter(
+        a => a.alert_level === 'Severe',
+      ).length;
       const high = diseaseAlerts.filter(a => a.alert_level === 'High').length;
-      const moderate = diseaseAlerts.filter(a => a.alert_level === 'Moderate').length;
+      const moderate = diseaseAlerts.filter(
+        a => a.alert_level === 'Moderate',
+      ).length;
       const low = diseaseAlerts.filter(a => a.alert_level === 'Low').length;
 
       alertGroups.push({
@@ -1123,10 +1205,10 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
           { label: t('Severe'), count: severe },
           { label: t('High'), count: high },
           { label: t('Moderate'), count: moderate },
-          { label: t('Low'), count: low }
+          { label: t('Low'), count: low },
         ].filter(d => d.count > 0),
         alertData: diseaseAlerts,
-        isDisease: true // Mark as disease
+        isDisease: true, // Mark as disease
       });
     });
     setDiseaseAlerts(alertGroups);
@@ -1142,7 +1224,7 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
     } catch (e) {
       return dateString;
@@ -1155,16 +1237,24 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
     fetchLastPull();
     fetchDiseaseAlerts();
     fetchLastDiseaseRun();
-  }, [fetchWeatherAlerts, fetchLastPull, fetchDiseaseAlerts, fetchLastDiseaseRun]);
+  }, [
+    fetchWeatherAlerts,
+    fetchLastPull,
+    fetchDiseaseAlerts,
+    fetchLastDiseaseRun,
+  ]);
 
-  const handleError = useCallback((error: Error) => {
-    addDangerToast(t(t('Failed to load chart: %s'), error.message));
-  }, [addDangerToast]);
+  const handleError = useCallback(
+    (error: Error) => {
+      addDangerToast(t(t('Failed to load chart: %s'), error.message));
+    },
+    [addDangerToast],
+  );
 
   // Unified alert click handler
   const handleAlertClick = useCallback((alertGroup: GroupedAlertType) => {
     setModalTitle(alertGroup.title);
-    
+
     const content = (
       <div>
         {(() => {
@@ -1177,92 +1267,193 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
               const month = date.toLocaleString('en-US', { month: 'short' });
               const year = date.getFullYear();
               dateKey = `${day} ${month} ${year}`;
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+              /* ignore */
+            }
             if (!alertsByDate[dateKey]) alertsByDate[dateKey] = [];
             alertsByDate[dateKey].push(alert);
           });
 
           const sortedDates = Object.keys(alertsByDate).sort((a, b) => {
-            try { return new Date(a).getTime() - new Date(b).getTime(); } catch (e) { return 0; }
+            try {
+              return new Date(a).getTime() - new Date(b).getTime();
+            } catch (e) {
+              return 0;
+            }
           });
 
           return sortedDates.map(dateKey => {
-            const sortedAlerts = [...alertsByDate[dateKey]].sort((a, b) => 
-              a.municipality_name.localeCompare(b.municipality_name)
+            const sortedAlerts = [...alertsByDate[dateKey]].sort((a, b) =>
+              a.municipality_name.localeCompare(b.municipality_name),
             );
-            
+
             return (
               <div key={dateKey} style={{ marginBottom: '30px' }}>
-                <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '15px', padding: '10px', borderBottom: '2px solid #f0f0f0' }}>
-                  {dateKey} {alertGroup.isDisease ? '(Forecast Week Start)' : '(Forecast Day)'} 
+                <div
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    marginBottom: '15px',
+                    padding: '10px',
+                    borderBottom: '2px solid #f0f0f0',
+                  }}
+                >
+                  {dateKey}{' '}
+                  {alertGroup.isDisease
+                    ? '(Forecast Week Start)'
+                    : '(Forecast Day)'}
                 </div>
                 {sortedAlerts.map(alert => {
                   let statusColor = '#888888'; // Default
                   const level = alert.alert_level.toLowerCase();
                   // Unified color logic
-                  if (level.includes('extreme danger') || level === 'severe') statusColor = '#F44336';
-                  else if (level === 'danger' || level === 'heavy' || level === 'strong' || level === 'high') statusColor = '#FF9800';
-                  else if (level.includes('extreme caution') || level === 'moderate' || level === 'caution') statusColor = '#FFEB3B';
-                  else if (level === 'light' || level === 'normal' || level === 'low') statusColor = '#4CAF50';
-                  
+                  if (level.includes('extreme danger') || level === 'severe')
+                    statusColor = '#F44336';
+                  else if (
+                    level === 'danger' ||
+                    level === 'heavy' ||
+                    level === 'strong' ||
+                    level === 'high'
+                  )
+                    statusColor = '#FF9800';
+                  else if (
+                    level.includes('extreme caution') ||
+                    level === 'moderate' ||
+                    level === 'caution'
+                  )
+                    statusColor = '#FFEB3B';
+                  else if (
+                    level === 'light' ||
+                    level === 'normal' ||
+                    level === 'low'
+                  )
+                    statusColor = '#4CAF50';
+
                   // Define variables outside the conditional block
                   let parameterName: string;
                   let parameterValue: string | number;
                   let valueName: string;
                   let value: string | number;
-                  
+
                   // Use if/else based on group type for clearer type narrowing
                   if (alertGroup.isDisease) {
-                      const diseaseAlert = alert as DiseaseAlertType; // Cast once here
-                      parameterName = 'Disease';
-                      parameterValue = diseaseAlert.disease_type;
-                      valueName = 'Predicted Cases';
-                      value = diseaseAlert.predicted_cases;
+                    const diseaseAlert = alert as DiseaseAlertType; // Cast once here
+                    parameterName = 'Disease';
+                    parameterValue = diseaseAlert.disease_type;
+                    valueName = 'Predicted Cases';
+                    value = diseaseAlert.predicted_cases;
                   } else {
-                      // Add extra type guard check
-                      if (!('disease_type' in alert)) {
-                          const weatherAlert = alert as WeatherAlertType; // Cast once here
-                          parameterName = 'Parameter';
-                          parameterValue = weatherAlert.weather_parameter;
-                          valueName = 'Value';
-                          value = weatherAlert.parameter_value;
-                      } else {
-                           // Fallback for unexpected case
-                           parameterName = 'Unknown';
-                           parameterValue = 'N/A';
-                           valueName = 'Unknown';
-                           value = 'N/A';
-                      }
+                    // Add extra type guard check
+                    if (!('disease_type' in alert)) {
+                      const weatherAlert = alert as WeatherAlertType; // Cast once here
+                      parameterName = 'Parameter';
+                      parameterValue = weatherAlert.weather_parameter;
+                      valueName = 'Value';
+                      value = weatherAlert.parameter_value;
+                    } else {
+                      // Fallback for unexpected case
+                      parameterName = 'Unknown';
+                      parameterValue = 'N/A';
+                      valueName = 'Unknown';
+                      value = 'N/A';
+                    }
                   }
-                  
+
                   return (
-                    <div key={alert.id} style={{ marginBottom: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-                      <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 500 }}>{alert.municipality_name}</div>
-                        <div style={{ background: statusColor, color: statusColor === '#FFEB3B' ? '#333' : 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: 500 }}>
+                    <div
+                      key={alert.id}
+                      style={{
+                        marginBottom: '20px',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: '12px 20px',
+                          borderBottom: '1px solid #f0f0f0',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: '#fafafa',
+                        }}
+                      >
+                        <div style={{ fontSize: '18px', fontWeight: 500 }}>
+                          {alert.municipality_name}
+                        </div>
+                        <div
+                          style={{
+                            background: statusColor,
+                            color: statusColor === '#FFEB3B' ? '#333' : 'white',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                          }}
+                        >
                           {alert.alert_level}
                         </div>
                       </div>
                       <div style={{ padding: '15px 20px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '15px' }}>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '10px',
+                            marginBottom: '15px',
+                          }}
+                        >
                           <div>
-                            <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>{parameterName}</div>
-                            <div style={{ fontSize: '15px' }}>{parameterValue}</div>
+                            <div
+                              style={{
+                                fontSize: '13px',
+                                color: '#666',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              {parameterName}
+                            </div>
+                            <div style={{ fontSize: '15px' }}>
+                              {parameterValue}
+                            </div>
                           </div>
                           <div>
-                            <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>{valueName}</div>
+                            <div
+                              style={{
+                                fontSize: '13px',
+                                color: '#666',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              {valueName}
+                            </div>
                             <div style={{ fontSize: '15px' }}>
                               {(() => {
                                 if (typeof value === 'number') {
-                                  const formattedValue = Number.isInteger(value) ? value : value.toFixed(2);
+                                  const formattedValue = Number.isInteger(value)
+                                    ? value
+                                    : value.toFixed(2);
                                   // Add units based on parameter type
                                   if (!alertGroup.isDisease) {
-                                    const weatherAlert = alert as WeatherAlertType;
-                                    if (weatherAlert.weather_parameter === 'Rainfall') {
+                                    const weatherAlert =
+                                      alert as WeatherAlertType;
+                                    if (
+                                      weatherAlert.weather_parameter ===
+                                      'Rainfall'
+                                    ) {
                                       return `${formattedValue} mm`;
-                                    } else if (weatherAlert.weather_parameter === 'Wind Speed') {
+                                    }
+                                    if (
+                                      weatherAlert.weather_parameter ===
+                                      'Wind Speed'
+                                    ) {
                                       return `${formattedValue} km/h`;
-                                    } else if (weatherAlert.weather_parameter === 'Heat Index') {
+                                    }
+                                    if (
+                                      weatherAlert.weather_parameter ===
+                                      'Heat Index'
+                                    ) {
                                       return `${formattedValue} °C`;
                                     }
                                   } else {
@@ -1277,8 +1468,24 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
                           </div>
                         </div>
                         <div style={{ marginTop: '15px' }}>
-                          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Advisory Message</div>
-                          <div style={{ fontSize: '15px', padding: '10px', background: '#f9f9f9', borderRadius: '6px', lineHeight: '1.5' }}>
+                          <div
+                            style={{
+                              fontSize: '13px',
+                              color: '#666',
+                              marginBottom: '4px',
+                            }}
+                          >
+                            Advisory Message
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '15px',
+                              padding: '10px',
+                              background: '#f9f9f9',
+                              borderRadius: '6px',
+                              lineHeight: '1.5',
+                            }}
+                          >
                             {alert.alert_message}
                           </div>
                         </div>
@@ -1303,31 +1510,50 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
   // Combined weather/disease icons
   const getIcon = (type: string) => {
     switch (type) {
-      case 'rain': return '☔';
-      case 'wind': return '💨';
-      case 'heat': return '🌡️';
-      case 'dengue': return '🦟';
-      case 'diarrhea': return '<0xF0><0x9F><0xA7><0xBB>'; // Test tube emoji
-      default: return '⚠️';
+      case 'rain':
+        return '☔';
+      case 'wind':
+        return '💨';
+      case 'heat':
+        return '🌡️';
+      case 'dengue':
+        return '🦟';
+      case 'diarrhea':
+        return '<0xF0><0x9F><0xA7><0xBB>'; // Test tube emoji
+      default:
+        return '⚠️';
     }
   };
 
   // Use animated icons for weather, simple emojis for diseases for now
-  const AlertIcon = ({ type, isDisease }: { type: string, isDisease?: boolean }) => {
+  const AlertIcon = ({
+    type,
+    isDisease,
+  }: {
+    type: string;
+    isDisease?: boolean;
+  }) => {
     if (isDisease) {
       // Use new animated components for diseases
       switch (type) {
-        case 'dengue': return <MosquitoIcon width="40" height="40" />;
-        case 'diarrhea': return <StomachIcon width="40" height="40" />;
-        default: return <span style={{ fontSize: '28px' }}>{getIcon(type)}</span>; // Fallback emoji
+        case 'dengue':
+          return <MosquitoIcon width="40" height="40" />;
+        case 'diarrhea':
+          return <StomachIcon width="40" height="40" />;
+        default:
+          return <span style={{ fontSize: '28px' }}>{getIcon(type)}</span>; // Fallback emoji
       }
     }
     // Use animated weather icons
     switch (type) {
-      case 'rain': return <RainAnimation />;
-      case 'wind': return <WindAnimation />;
-      case 'heat': return <HeatAnimation />;
-      default: return <span style={{ fontSize: '24px' }}>{getIcon(type)}</span>;
+      case 'rain':
+        return <RainAnimation />;
+      case 'wind':
+        return <WindAnimation />;
+      case 'heat':
+        return <HeatAnimation />;
+      default:
+        return <span style={{ fontSize: '24px' }}>{getIcon(type)}</span>;
     }
   };
 
@@ -1337,23 +1563,38 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
 
   const renderWeatherAlertDetail = (alert: WeatherAlertType) => (
     <div style={{ padding: '15px 20px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '15px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '10px',
+          marginBottom: '15px',
+        }}
+      >
         <div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Parameter</div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+            Parameter
+          </div>
           <div style={{ fontSize: '15px' }}>{alert.weather_parameter}</div>
         </div>
         <div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Value</div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+            Value
+          </div>
           <div style={{ fontSize: '15px' }}>
             {(() => {
               if (typeof alert.parameter_value === 'number') {
-                const formattedValue = Number.isInteger(alert.parameter_value) ? alert.parameter_value : alert.parameter_value.toFixed(2);
+                const formattedValue = Number.isInteger(alert.parameter_value)
+                  ? alert.parameter_value
+                  : alert.parameter_value.toFixed(2);
                 // Add units based on weather parameter
                 if (alert.weather_parameter === 'Rainfall') {
                   return `${formattedValue} mm`;
-                } else if (alert.weather_parameter === 'Wind Speed') {
+                }
+                if (alert.weather_parameter === 'Wind Speed') {
                   return `${formattedValue} km/h`;
-                } else if (alert.weather_parameter === 'Heat Index') {
+                }
+                if (alert.weather_parameter === 'Heat Index') {
                   return `${formattedValue} °C`;
                 }
                 return formattedValue;
@@ -1364,8 +1605,18 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         </div>
       </div>
       <div style={{ marginTop: '15px' }}>
-        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Advisory Message</div>
-        <div style={{ fontSize: '15px', padding: '10px', background: '#f9f9f9', borderRadius: '6px', lineHeight: '1.5' }}>
+        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+          Advisory Message
+        </div>
+        <div
+          style={{
+            fontSize: '15px',
+            padding: '10px',
+            background: '#f9f9f9',
+            borderRadius: '6px',
+            lineHeight: '1.5',
+          }}
+        >
           {alert.alert_message}
         </div>
       </div>
@@ -1374,19 +1625,40 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
 
   const renderDiseaseAlertDetail = (alert: DiseaseAlertType) => (
     <div style={{ padding: '15px 20px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '15px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '10px',
+          marginBottom: '15px',
+        }}
+      >
         <div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Disease</div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+            Disease
+          </div>
           <div style={{ fontSize: '15px' }}>{alert.disease_type}</div>
         </div>
         <div>
-          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Predicted Cases</div>
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+            Predicted Cases
+          </div>
           <div style={{ fontSize: '15px' }}>{alert.predicted_cases}</div>
         </div>
       </div>
       <div style={{ marginTop: '15px' }}>
-        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Advisory Message</div>
-        <div style={{ fontSize: '15px', padding: '10px', background: '#f9f9f9', borderRadius: '6px', lineHeight: '1.5' }}>
+        <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+          Advisory Message
+        </div>
+        <div
+          style={{
+            fontSize: '15px',
+            padding: '10px',
+            background: '#f9f9f9',
+            borderRadius: '6px',
+            lineHeight: '1.5',
+          }}
+        >
           {alert.alert_message}
         </div>
       </div>
@@ -1409,20 +1681,21 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
             </AlertContent>
           </AlertCard>
         ) : (
-          allAlerts.map((alert) => (
+          allAlerts.map(alert => (
             <AlertCard key={alert.type} onClick={() => handleAlertClick(alert)}>
               <IconContainer bgColor={alert.color}>
                 <AlertIcon type={alert.type} isDisease={alert.isDisease} />
               </IconContainer>
               <AlertContent>
                 <AlertTitle>{alert.title}</AlertTitle>
-                {alert.details.map((detail) => (
+                {alert.details.map(detail => (
                   <AlertDetail key={detail.label}>
-                    {detail.label}: {tn(
-                      "%(count)s Location",
-                      "%(count)s Locations",
+                    {detail.label}:{' '}
+                    {tn(
+                      '%(count)s Location',
+                      '%(count)s Locations',
                       detail.count,
-                      { count: detail.count }
+                      { count: detail.count },
                     )}
                   </AlertDetail>
                 ))}
@@ -1431,12 +1704,8 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
           ))
         )}
       </AlertsContainer>
-      
-      <ResponsiveChartSlug
-        slug={chartSlug}
-        fillHeight
-        onError={handleError}
-      />
+
+      <ResponsiveChartSlug slug={chartSlug} fillHeight onError={handleError} />
 
       {/* Data source attribution updated */}
       <DataSourceAttribution>
@@ -1445,10 +1714,13 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
           <DataUpdateInfo>Loading last weather update time...</DataUpdateInfo>
         ) : lastPullInfo ? (
           <DataUpdateInfo>
-            {t('Last successful weather update:')} {formatDisplayDate(lastPullInfo.pulled_at)}
+            {t('Last successful weather update:')}{' '}
+            {formatDisplayDate(lastPullInfo.pulled_at)}
           </DataUpdateInfo>
         ) : (
-          <DataUpdateInfo>{t('Weather update history unavailable')}</DataUpdateInfo>
+          <DataUpdateInfo>
+            {t('Weather update history unavailable')}
+          </DataUpdateInfo>
         )}
         {/* <span style={{marginTop: '5px'}}>Disease forecast data generated internally</span>
         {lastDiseaseRunLoading ? (
@@ -1467,12 +1739,19 @@ function Welcome({ user, addDangerToast, addSuccessToast, chartSlug = 'overview-
         show={showModal}
         onHide={closeModal}
         footer={[
-          <button key="refresh" onClick={() => { fetchWeatherAlerts(); fetchDiseaseAlerts(); }} style={{ marginRight: '10px' }}>
+          <button
+            key="refresh"
+            onClick={() => {
+              fetchWeatherAlerts();
+              fetchDiseaseAlerts();
+            }}
+            style={{ marginRight: '10px' }}
+          >
             Refresh All Alerts
           </button>,
           <button key="close" onClick={closeModal}>
             Close
-          </button>
+          </button>,
         ]}
       >
         {modalContent}

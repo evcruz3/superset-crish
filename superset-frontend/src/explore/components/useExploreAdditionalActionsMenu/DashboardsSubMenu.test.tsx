@@ -23,7 +23,7 @@ import DashboardItems from './DashboardsSubMenu';
 
 const asyncRender = (numberOfItems: number) =>
   waitFor(() => {
-    const dashboards = [];
+    const dashboards: { id: number; dashboard_title: string }[] = [];
     for (let i = 1; i <= numberOfItems; i += 1) {
       dashboards.push({ id: i, dashboard_title: `Dashboard ${i}` });
     }

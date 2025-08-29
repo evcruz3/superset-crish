@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { t, SupersetClient } from '@superset-ui/core';
 import { Link } from 'react-router-dom';
 import Loading from 'src/components/Loading';
@@ -8,7 +8,10 @@ interface BulletinChartProps {
   height?: number;
 }
 
-export default function BulletinChart({ chartId, height = 400 }: BulletinChartProps) {
+export default function BulletinChart({
+  chartId,
+  height = 400,
+}: BulletinChartProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +28,9 @@ export default function BulletinChart({ chartId, height = 400 }: BulletinChartPr
           endpoint: `/api/v1/chart/${chartId}`,
         });
         // console.log('Chart data response:', response.json.result);
-        const fullThumbnailUrl = response.json.result.thumbnail_url.startsWith('/')
+        const fullThumbnailUrl = response.json.result.thumbnail_url.startsWith(
+          '/',
+        )
           ? `${window.location.origin}${response.json.result.thumbnail_url}`
           : response.json.result.thumbnail_url;
         setThumbnailUrl(fullThumbnailUrl);
@@ -65,11 +70,13 @@ export default function BulletinChart({ chartId, height = 400 }: BulletinChartPr
         // console.log('Checking thumbnail URL:', thumbnailUrl);
         const response = await fetch(thumbnailUrl);
         // console.log('Thumbnail response status:', response.status);
-        
+
         if (response.status === 202) {
           // Keep loading state true while retrying
           setIsLoading(true);
-          setErrorMessage(`Generation in progress (${retryCount + 1}/${MAX_RETRIES})`);
+          setErrorMessage(
+            `Generation in progress (${retryCount + 1}/${MAX_RETRIES})`,
+          );
           timeoutId = setTimeout(() => {
             setRetryCount(prev => prev + 1);
           }, RETRY_DELAY);
@@ -81,7 +88,7 @@ export default function BulletinChart({ chartId, height = 400 }: BulletinChartPr
           try {
             const blob = await response.blob();
             // console.log('Image blob size:', blob.size);
-            
+
             if (blob.size > 0 && contentType?.startsWith('image/')) {
               const imageUrl = URL.createObjectURL(blob);
               const img = new Image();
@@ -144,16 +151,25 @@ export default function BulletinChart({ chartId, height = 400 }: BulletinChartPr
 
   return (
     <Link to={`/explore/?slice_id=${chartId}`}>
-      <div style={{ height, border: '1px solid #E0E0E0', borderRadius: '4px', position: 'relative' }}>
+      <div
+        style={{
+          height,
+          border: '1px solid #E0E0E0',
+          borderRadius: '4px',
+          position: 'relative',
+        }}
+      >
         {isLoading ? (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            gap: '8px'
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              gap: '8px',
+            }}
+          >
             <Loading position="inline-centered" />
             {errorMessage && (
               <div style={{ color: '#666666', fontSize: '12px' }}>
@@ -171,23 +187,25 @@ export default function BulletinChart({ chartId, height = 400 }: BulletinChartPr
               objectFit: 'contain',
               padding: '8px',
             }}
-            onError={(e) => {
+            onError={e => {
               console.error('Image failed to load:', e);
               setMaxRetriesReached(true);
               setErrorMessage('Failed to display image');
             }}
           />
         ) : maxRetriesReached ? (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            color: '#666666',
-            padding: '8px',
-            textAlign: 'center'
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: '#666666',
+              padding: '8px',
+              textAlign: 'center',
+            }}
+          >
             {t('Thumbnail is unavailable')}
             {errorMessage && (
               <div style={{ fontSize: '12px', marginTop: '4px' }}>
@@ -199,4 +217,4 @@ export default function BulletinChart({ chartId, height = 400 }: BulletinChartPr
       </div>
     </Link>
   );
-} 
+}

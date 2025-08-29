@@ -190,7 +190,9 @@ const processComparisonColumns = (columns: any[], suffix: string) =>
 const filterableColumnsControl: ControlConfig<'SelectControl'> = {
   type: 'SelectControl',
   label: t('Filterable columns'),
-  description: t('Select columns that can be filtered directly from the table header'),
+  description: t(
+    'Select columns that can be filtered directly from the table header',
+  ),
   multi: true,
   freeForm: true,
   allowAll: true,
@@ -198,13 +200,12 @@ const filterableColumnsControl: ControlConfig<'SelectControl'> = {
   optionRenderer: (c: any) => <ColumnOption showType column={c} />,
   valueRenderer: (c: any) => <ColumnOption column={c} />,
   valueKey: 'column_name',
-  mapStateToProps: ({ datasource, controls }) => {
+  mapStateToProps: ({ datasource, controls }) =>
     // Use the same logic as other column selectors
-    return {
+    ({
       options: datasource?.columns || [],
       queryMode: getQueryMode(controls),
-    };
-  },
+    }),
 };
 
 const config: ControlPanelConfig = {

@@ -52,7 +52,7 @@ const BackgroundIconDiv = styled.div<{ color: string }>`
   height: 150px;
   opacity: ${props => {
     const opacity = parseFloat(props.color.split(',')[3].replace(')', ''));
-    return Math.min(opacity * 0.5, 0.10);
+    return Math.min(opacity * 0.5, 0.1);
   }};
   color: rgba(${props => props.color.split('(')[1].split(')')[0]});
   z-index: 0;
@@ -335,7 +335,10 @@ class BigNumberVis extends PureComponent<BigNumberVizProps> {
     }
 
     const icon = background_icon?.replace('fa-', '') as IconKey | undefined;
-    const IconComponent = icon && Icons[ICON_NAMES[icon]?.componentName] ? Icons[ICON_NAMES[icon].componentName] : undefined;
+    const IconComponent =
+      icon && Icons[ICON_NAMES[icon]?.componentName]
+        ? Icons[ICON_NAMES[icon].componentName]
+        : undefined;
 
     if (showTrendLine) {
       const chartHeight = Math.floor(PROPORTION.TRENDLINE * height);

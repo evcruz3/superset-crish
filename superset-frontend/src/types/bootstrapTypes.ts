@@ -39,7 +39,7 @@ export type User = {
   lastName: string;
   userId?: number; // optional because guest user doesn't have a user id
   username: string;
-  roles: Object
+  roles: Object;
 };
 
 export type UserRoles = Record<string, [string, string][]>;

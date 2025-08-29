@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
@@ -64,7 +64,15 @@ export function ChartSlugComponent({
 }) {
   if (chartStatus === 'failed') {
     return (
-      <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          height,
+          width,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <ErrorBoundary>
           <div className="alert alert-warning">
             {chartAlert || t('Failed to load chart')}
@@ -109,4 +117,4 @@ function mapDispatchToProps(dispatch) {
   };
 }
 
-export default connect(null, mapDispatchToProps)(ChartSlugComponent); 
+export default connect(null, mapDispatchToProps)(ChartSlugComponent);

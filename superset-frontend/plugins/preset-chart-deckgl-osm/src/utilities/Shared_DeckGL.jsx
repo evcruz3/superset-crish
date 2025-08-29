@@ -374,11 +374,26 @@ export const osmStyle = {
     validators: [], // No need for Mapbox validation here
     choices: [
       ['https://tile.openstreetmap.org/{z}/{x}/{y}.png', t('OpenStreetMap')],
-      ['https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png', t('Smooth')],
-      ['https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}.png', t('Stamen Toner')],
-      ['https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg', t('Stamen Watercolor')],
-      ['https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png', t('CartoDB Voyager')],
-      ['https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png', t('Dark')]
+      [
+        'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png',
+        t('Smooth'),
+      ],
+      [
+        'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}.png',
+        t('Stamen Toner'),
+      ],
+      [
+        'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg',
+        t('Stamen Watercolor'),
+      ],
+      [
+        'https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/{z}/{x}/{y}.png',
+        t('CartoDB Voyager'),
+      ],
+      [
+        'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png',
+        t('Dark'),
+      ],
     ],
     default: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     description: t(

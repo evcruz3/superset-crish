@@ -140,7 +140,7 @@ export default function Button(props: ButtonProps) {
 
   const element = children as ReactElement;
 
-  let renderedChildren = [];
+  let renderedChildren: React.ReactNode[] = [];
   if (element && element.type === Fragment) {
     renderedChildren = Children.toArray(element.props.children);
   } else {

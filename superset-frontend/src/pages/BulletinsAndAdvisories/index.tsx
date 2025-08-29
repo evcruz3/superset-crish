@@ -1,27 +1,35 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { styled, t} from '@superset-ui/core';
+import { styled, t, SupersetClient } from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
-import ListView, { ListViewProps, Filter, FilterOperator } from 'src/components/ListView';
+import ListView, {
+  ListViewProps,
+  Filter,
+  FilterOperator,
+} from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { Bulletin } from './types';
-import BulletinCard from './BulletinCard';
-import CreateBulletinModal from './CreateBulletinModal';
-import EditBulletinModal from './EditBulletinModal';
-import BulletinDetailModal from './BulletinDetailModal';
 import moment from 'moment';
 import { createErrorHandler } from 'src/views/CRUD/utils';
 import DeleteModal from 'src/components/DeleteModal';
 import Icons from 'src/components/Icons';
-import { SupersetClient } from '@superset-ui/core';
 import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
 import rison from 'rison';
 import FacePile from 'src/components/FacePile';
-import { Tooltip, Dropdown, Menu, Button } from 'antd';
+import { Tooltip, Dropdown, Menu, Button, Carousel } from 'antd';
 import Tag from 'antd/es/tag';
-import { DownloadOutlined, MailOutlined, MoreOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { Carousel } from 'antd';
+import {
+  DownloadOutlined,
+  MailOutlined,
+  MoreOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import cx from 'classnames';
+import BulletinDetailModal from './BulletinDetailModal';
+import EditBulletinModal from './EditBulletinModal';
+import CreateBulletinModal from './CreateBulletinModal';
+import BulletinCard from './BulletinCard';
+import { Bulletin } from './types';
 
 const PAGE_SIZE = 25;
 
@@ -55,7 +63,7 @@ const BULLETIN_COLUMNS_TO_FETCH = [
 
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
-  
+
   .action-button {
     height: 100%;
     display: inline-block;
@@ -87,11 +95,11 @@ const StyledListView = styled(ListView<Bulletin>)`
   .ant-row.card-container {
     margin: 0;
     padding: ${({ theme }) => theme.gridUnit * 4}px;
-    
+
     .ant-col {
       padding: 0;
       margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
-      
+
       &:last-child {
         margin-bottom: 0;
       }
@@ -114,7 +122,9 @@ const FeedCardWrapper = styled.div`
   padding: ${({ theme }) => theme.gridUnit * 4}px;
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition:
+    box-shadow 0.2s ease-in-out,
+    border-color 0.2s ease-in-out;
 
   &:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -122,7 +132,9 @@ const FeedCardWrapper = styled.div`
 
   &.card-selected {
     border-color: ${({ theme }) => theme.colors.primary.base};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary.light2}, 0 6px 12px rgba(0, 0, 0, 0.15);
+    box-shadow:
+      0 0 0 3px ${({ theme }) => theme.colors.primary.light2},
+      0 6px 12px rgba(0, 0, 0, 0.15);
   }
 
   .feed-card-title {
@@ -169,7 +181,7 @@ const FeedCardWrapper = styled.div`
       margin-top: ${({ theme }) => theme.gridUnit}px;
     }
   }
-   // Custom styles for Carousel arrows
+  // Custom styles for Carousel arrows
   .ant-carousel {
     .slick-prev,
     .slick-next {
@@ -185,16 +197,19 @@ const FeedCardWrapper = styled.div`
         background-color: rgba(0, 0, 0, 0.4);
       }
     }
-    .slick-prev { left: 5px; }
-    .slick-next { right: 5px; }
+    .slick-prev {
+      left: 5px;
+    }
+    .slick-next {
+      right: 5px;
+    }
     .slick-dots li button {
-        background: ${({ theme }) => theme.colors.primary.base};
+      background: ${({ theme }) => theme.colors.primary.base};
     }
     .slick-dots li.slick-active button {
-        background: ${({ theme }) => theme.colors.primary.dark1};
+      background: ${({ theme }) => theme.colors.primary.dark1};
     }
   }
-
 
   .feed-card-hashtags {
     margin-top: ${({ theme }) => theme.gridUnit * 2}px;
@@ -224,15 +239,17 @@ const FeedActionButton = styled(Button)`
   // justify-content: center;
 `;
 
-function BulletinsAndAdvisories({ 
-  addDangerToast, 
+function BulletinsAndAdvisories({
+  addDangerToast,
   addSuccessToast,
-  user 
+  user,
 }: BulletinsAndAdvisoriesProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [bulletinToEdit, setBulletinToEdit] = useState<Bulletin | null>(null);
-  const [bulletinToDelete, setBulletinToDelete] = useState<Bulletin | null>(null);
+  const [bulletinToDelete, setBulletinToDelete] = useState<Bulletin | null>(
+    null,
+  );
   const [bulletinsToDelete, setBulletinsToDelete] = useState<Bulletin[]>([]);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [bulletinToView, setBulletinToView] = useState<Bulletin | null>(null);
@@ -259,16 +276,29 @@ function BulletinsAndAdvisories({
     BULLETIN_COLUMNS_TO_FETCH,
   );
 
-  const handleDownloadPdf = async (bulletinId: number, bulletinTitle: string) => {
-    console.log('handleDownloadPdf function entered for ID:', bulletinId, 'at', new Date().toISOString());
+  const handleDownloadPdf = async (
+    bulletinId: number,
+    bulletinTitle: string,
+  ) => {
+    console.log(
+      'handleDownloadPdf function entered for ID:',
+      bulletinId,
+      'at',
+      new Date().toISOString(),
+    );
     try {
       // Direct navigation to trigger download
       const pdfUrl = `/api/v1/bulletins_and_advisories/${bulletinId}/pdf/`;
       window.location.href = pdfUrl;
       // No need to add success toast here as the browser handles the download.
-    } catch (error) { // This catch might not even be hit if direct navigation works
+    } catch (error) {
+      // This catch might not even be hit if direct navigation works
       console.error('Error initiating PDF download:', error);
-      addDangerToast(t('Failed to initiate PDF download. Please check the console for details.'));
+      addDangerToast(
+        t(
+          'Failed to initiate PDF download. Please check the console for details.',
+        ),
+      );
     }
   };
 
@@ -310,13 +340,17 @@ function BulletinsAndAdvisories({
             setBulletinToView(original);
             setDetailModalVisible(true);
           };
-          
+
           return (
-            <div 
-              role="button" 
+            <div
+              role="button"
               tabIndex={0}
               onClick={handleClick}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              style={{
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+              }}
             >
               <Icons.File style={{ marginRight: 8, color: '#666' }} />
               {original.title}
@@ -368,10 +402,22 @@ function BulletinsAndAdvisories({
       {
         Cell: ({ row: { original } }: any) => {
           if (original.disease_forecast_alert?.forecast_date) {
-            return <>{moment(original.disease_forecast_alert.forecast_date).format('DD MMMM, YYYY')}</>;
+            return (
+              <>
+                {moment(original.disease_forecast_alert.forecast_date).format(
+                  'DD MMMM, YYYY',
+                )}
+              </>
+            );
           }
           if (original.weather_forecast_alert?.forecast_date) {
-            return <>{moment(original.weather_forecast_alert.forecast_date).format('DD MMMM, YYYY')}</>;
+            return (
+              <>
+                {moment(original.weather_forecast_alert.forecast_date).format(
+                  'DD MMMM, YYYY',
+                )}
+              </>
+            );
           }
           return null;
         },
@@ -379,15 +425,22 @@ function BulletinsAndAdvisories({
         accessor: 'forecast_date',
       },
       {
-        Cell: ({ row: { original } }: any) => <>{moment(original.created_on).format('DD MMMM, YYYY hh:mm A')}</>,
+        Cell: ({ row: { original } }: any) => (
+          <>{moment(original.created_on).format('DD MMMM, YYYY hh:mm A')}</>
+        ),
         Header: t('Created Date'),
         accessor: 'created_on',
       },
       {
         Cell: ({ row: { original } }: any) => {
           // Only show if different from created_on
-          if (original.changed_on && original.changed_on !== original.created_on) {
-            return <>{moment(original.changed_on).format('DD MMMM, YYYY hh:mm A')}</>;
+          if (
+            original.changed_on &&
+            original.changed_on !== original.created_on
+          ) {
+            return (
+              <>{moment(original.changed_on).format('DD MMMM, YYYY hh:mm A')}</>
+            );
           }
           return null;
         },
@@ -401,11 +454,11 @@ function BulletinsAndAdvisories({
             setBulletinToEdit(original);
             setEditModalVisible(true);
           };
-          
+
           const handleDisseminate = () => {
             window.location.href = `/disseminatebulletin/form/?bulletin_id=${original.id}`;
           };
-          
+
           return (
             <Actions className="actions">
               {hasPerm('can_write') && (
@@ -434,9 +487,14 @@ function BulletinsAndAdvisories({
                       role="button"
                       tabIndex={0}
                       className="action-button"
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
-                        console.log('Download button span clicked for ID:', original.id, 'at', new Date().toISOString());
+                        console.log(
+                          'Download button span clicked for ID:',
+                          original.id,
+                          'at',
+                          new Date().toISOString(),
+                        );
                         handleDownloadPdf(original.id, original.title);
                       }}
                       data-test="bulletin-download-pdf-action"
@@ -621,172 +679,234 @@ function BulletinsAndAdvisories({
     [bulkSelectEnabled, hasPerm, refreshData],
   );
 
-  const renderFeedCard = useCallback((bulletin: Bulletin & { isSelected?: boolean }) => {
-    if (!bulletin) {
-      return null;
-    }
-    const { isSelected } = bulletin;
-    // const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()).filter(tag => tag) || [];
+  const renderFeedCard = useCallback(
+    (bulletin: Bulletin & { isSelected?: boolean }) => {
+      if (!bulletin) {
+        return null;
+      }
+      const { isSelected } = bulletin;
+      // const hashtags = bulletin.hashtags?.split(',').map(tag => tag.trim()).filter(tag => tag) || [];
 
-    // console.log(`Rendering FeedCard: ${bulletin.title}, isSelected: ${isSelected}, bulkSelectEnabled: ${bulkSelectEnabled}`); // DEBUG
+      // console.log(`Rendering FeedCard: ${bulletin.title}, isSelected: ${isSelected}, bulkSelectEnabled: ${bulkSelectEnabled}`); // DEBUG
 
-    const handleEdit = () => {
-      setBulletinToEdit(bulletin);
-      setEditModalVisible(true);
-    };
+      const handleEdit = () => {
+        setBulletinToEdit(bulletin);
+        setEditModalVisible(true);
+      };
 
-    const handleDelete = () => {
-      setBulletinToDelete(bulletin);
-    };
+      const handleDelete = () => {
+        setBulletinToDelete(bulletin);
+      };
 
-    const handleDisseminate = () => {
-      window.location.href = `/disseminatebulletin/form/?bulletin_id=${bulletin.id}`;
-    };
+      const handleDisseminate = () => {
+        window.location.href = `/disseminatebulletin/form/?bulletin_id=${bulletin.id}`;
+      };
 
-    const menu = (
-      <Menu>
-        {hasPerm('can_write') && (
-          <Menu.Item key="edit" icon={<EditOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleEdit(); }}>
-            {t('Edit')}
-          </Menu.Item>
-        )}
-        {hasPerm('can_write') && (
-          <Menu.Item key="delete" icon={<DeleteOutlined />} onClick={(e) => { e.domEvent.stopPropagation(); handleDelete(); }}>
-            {t('Delete')}
-          </Menu.Item>
-        )}
-      </Menu>
-    );
+      const menu = (
+        <Menu>
+          {hasPerm('can_write') && (
+            <Menu.Item
+              key="edit"
+              icon={<EditOutlined />}
+              onClick={e => {
+                e.domEvent.stopPropagation();
+                handleEdit();
+              }}
+            >
+              {t('Edit')}
+            </Menu.Item>
+          )}
+          {hasPerm('can_write') && (
+            <Menu.Item
+              key="delete"
+              icon={<DeleteOutlined />}
+              onClick={e => {
+                e.domEvent.stopPropagation();
+                handleDelete();
+              }}
+            >
+              {t('Delete')}
+            </Menu.Item>
+          )}
+        </Menu>
+      );
 
-    return (
-      <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
-        <FeedCardWrapper 
-          style={{ flexGrow: 1, minWidth: 0 }}
-          className={cx({ 'card-selected': bulkSelectEnabled && isSelected })}
+      return (
+        <div
+          style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}
         >
-          <div className="feed-card-title" onClick={() => { setBulletinToView(bulletin); setDetailModalVisible(true); }} style={{cursor: 'pointer'}}>{bulletin.title}</div>
-          <div className="feed-card-meta">
-            {bulletin.created_by && (
-              <span>
-                {t('Posted by %s %s', bulletin.created_by.first_name, bulletin.created_by.last_name)}
-                {' • '}
-              </span>
-            )}
-            {bulletin.created_on && (
-              <span>
-                {t('Created %s', moment(bulletin.created_on).format('DD MMMM, YYYY hh:mm A'))}
-              </span>
-            )}
-            {bulletin.changed_on && bulletin.changed_on !== bulletin.created_on && (
-              <span>
-                {' • '}
-                {t('Updated %s', moment(bulletin.changed_on).format('DD MMMM, YYYY hh:mm A'))}
-              </span>
-            )}
-            {(bulletin.disease_forecast_alert?.forecast_date || bulletin.weather_forecast_alert?.forecast_date) && (
-              <span>
-                {' • '}
-                {t('Forecast Date: %s', moment(
-                  bulletin.disease_forecast_alert?.forecast_date || bulletin.weather_forecast_alert?.forecast_date
-                ).format('DD MMMM, YYYY'))}
-              </span>
-            )}
-            {(bulletin.disease_forecast_alert?.municipality_name || bulletin.weather_forecast_alert?.municipality_name) && (
-              <span>
-                {' • '}
-                {t('Municipality: %s', bulletin.disease_forecast_alert?.municipality_name || bulletin.weather_forecast_alert?.municipality_name)}
-              </span>
-            )}
-            {bulletin.disease_forecast_alert?.disease_type && (
-              <span>
-                {' • '}
-                {t('Disease: %s', bulletin.disease_forecast_alert.disease_type)}
-              </span>
-            )}
-            {bulletin.weather_forecast_alert?.weather_parameter && (
-              <span>
-                {' • '}
-                {t('Parameter: %s', bulletin.weather_forecast_alert.weather_parameter)}
-              </span>
-            )}
-          </div>
-
-          {bulletin.image_attachments && bulletin.image_attachments.length > 0 && (
-            <div className="feed-card-attachments feed-card-section">
-              <div className="section-title">{t('Attachments')}</div>
-              {bulletin.image_attachments.length === 1 ? (
-                <div>
-                  <img
-                    className="feed-card-attachment-image"
-                    src={bulletin.image_attachments[0].url}
-                    alt={bulletin.image_attachments[0].caption || 'Attachment'}
-                  />
-                  {bulletin.image_attachments[0].caption && (
-                    <p className="attachment-caption">{bulletin.image_attachments[0].caption}</p>
+          <FeedCardWrapper
+            style={{ flexGrow: 1, minWidth: 0 }}
+            className={cx({ 'card-selected': bulkSelectEnabled && isSelected })}
+          >
+            <div
+              className="feed-card-title"
+              onClick={() => {
+                setBulletinToView(bulletin);
+                setDetailModalVisible(true);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              {bulletin.title}
+            </div>
+            <div className="feed-card-meta">
+              {bulletin.created_by && (
+                <span>
+                  {t(
+                    'Posted by %s %s',
+                    bulletin.created_by.first_name,
+                    bulletin.created_by.last_name,
                   )}
-                </div>
-              ) : (
-                <Carousel autoplay dotPosition="top">
-                  {bulletin.image_attachments.map(attachment => (
-                    <div key={attachment.id}>
-                      <img
-                        className="feed-card-attachment-image"
-                        src={attachment.url}
-                        alt={attachment.caption || 'Attachment'}
-                      />
-                      {attachment.caption && (
-                        <p className="attachment-caption">{attachment.caption}</p>
-                      )}
-                    </div>
-                  ))}
-                </Carousel>
+                  {' • '}
+                </span>
+              )}
+              {bulletin.created_on && (
+                <span>
+                  {t(
+                    'Created %s',
+                    moment(bulletin.created_on).format('DD MMMM, YYYY hh:mm A'),
+                  )}
+                </span>
+              )}
+              {bulletin.changed_on &&
+                bulletin.changed_on !== bulletin.created_on && (
+                  <span>
+                    {' • '}
+                    {t(
+                      'Updated %s',
+                      moment(bulletin.changed_on).format(
+                        'DD MMMM, YYYY hh:mm A',
+                      ),
+                    )}
+                  </span>
+                )}
+              {(bulletin.disease_forecast_alert?.forecast_date ||
+                bulletin.weather_forecast_alert?.forecast_date) && (
+                <span>
+                  {' • '}
+                  {t(
+                    'Forecast Date: %s',
+                    moment(
+                      bulletin.disease_forecast_alert?.forecast_date ||
+                        bulletin.weather_forecast_alert?.forecast_date,
+                    ).format('DD MMMM, YYYY'),
+                  )}
+                </span>
+              )}
+              {(bulletin.disease_forecast_alert?.municipality_name ||
+                bulletin.weather_forecast_alert?.municipality_name) && (
+                <span>
+                  {' • '}
+                  {t(
+                    'Municipality: %s',
+                    bulletin.disease_forecast_alert?.municipality_name ||
+                      bulletin.weather_forecast_alert?.municipality_name,
+                  )}
+                </span>
+              )}
+              {bulletin.disease_forecast_alert?.disease_type && (
+                <span>
+                  {' • '}
+                  {t(
+                    'Disease: %s',
+                    bulletin.disease_forecast_alert.disease_type,
+                  )}
+                </span>
+              )}
+              {bulletin.weather_forecast_alert?.weather_parameter && (
+                <span>
+                  {' • '}
+                  {t(
+                    'Parameter: %s',
+                    bulletin.weather_forecast_alert.weather_parameter,
+                  )}
+                </span>
               )}
             </div>
-          )}
 
-          {bulletin.advisory && (
-            <div className="feed-card-section">
-              <div className="section-title">{t('Advisory')}</div>
-              <div className="section-content">
-                {bulletin.advisory.split('\\n').map((line, index, arr) => (
-                  <React.Fragment key={index}>
-                    {line}
-                    {index < arr.length - 1 && <br />}
-                  </React.Fragment>
-                ))}
+            {bulletin.image_attachments &&
+              bulletin.image_attachments.length > 0 && (
+                <div className="feed-card-attachments feed-card-section">
+                  <div className="section-title">{t('Attachments')}</div>
+                  {bulletin.image_attachments.length === 1 ? (
+                    <div>
+                      <img
+                        className="feed-card-attachment-image"
+                        src={bulletin.image_attachments[0].url}
+                        alt={
+                          bulletin.image_attachments[0].caption || 'Attachment'
+                        }
+                      />
+                      {bulletin.image_attachments[0].caption && (
+                        <p className="attachment-caption">
+                          {bulletin.image_attachments[0].caption}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <Carousel autoplay dotPosition="top">
+                      {bulletin.image_attachments.map(attachment => (
+                        <div key={attachment.id}>
+                          <img
+                            className="feed-card-attachment-image"
+                            src={attachment.url}
+                            alt={attachment.caption || 'Attachment'}
+                          />
+                          {attachment.caption && (
+                            <p className="attachment-caption">
+                              {attachment.caption}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </Carousel>
+                  )}
+                </div>
+              )}
+
+            {bulletin.advisory && (
+              <div className="feed-card-section">
+                <div className="section-title">{t('Advisory')}</div>
+                <div className="section-content">
+                  {bulletin.advisory.split('\\n').map((line, index, arr) => (
+                    <React.Fragment key={index}>
+                      {line}
+                      {index < arr.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {bulletin.risks && (
-            <div className="feed-card-section">
-              <div className="section-title">{t('Risks')}</div>
-              <div className="section-content">
-                {bulletin.risks.split('\\n').map((line, index, arr) => (
-                  <React.Fragment key={index}>
-                    {line}
-                    {index < arr.length - 1 && <br />}
-                  </React.Fragment>
-                ))}
+            {bulletin.risks && (
+              <div className="feed-card-section">
+                <div className="section-title">{t('Risks')}</div>
+                <div className="section-content">
+                  {bulletin.risks.split('\\n').map((line, index, arr) => (
+                    <React.Fragment key={index}>
+                      {line}
+                      {index < arr.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {bulletin.safety_tips && (
-            <div className="feed-card-section">
-              <div className="section-title">{t('Safety Tips')}</div>
-              <div className="section-content">
-                {bulletin.safety_tips.split('\\n').map((line, index, arr) => (
-                  <React.Fragment key={index}>
-                    {line}
-                    {index < arr.length - 1 && <br />}
-                  </React.Fragment>
-                ))}
+            {bulletin.safety_tips && (
+              <div className="feed-card-section">
+                <div className="section-title">{t('Safety Tips')}</div>
+                <div className="section-content">
+                  {bulletin.safety_tips.split('\\n').map((line, index, arr) => (
+                    <React.Fragment key={index}>
+                      {line}
+                      {index < arr.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* {hashtags.length > 0 && (
+            {/* {hashtags.length > 0 && (
             <div className="feed-card-hashtags feed-card-section">
               <div className="section-title">{t('Hashtags')}</div>
               {hashtags.map(tag => (
@@ -794,44 +914,59 @@ function BulletinsAndAdvisories({
               ))}
             </div>
           )} */}
-        </FeedCardWrapper>
-        <FeedActionsContainer>
-          {hasPerm('can_write') && <Tooltip title={t('Disseminate Bulletin')}>
-            <FeedActionButton
-              icon={<MailOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDisseminate();
-              }}
-              aria-label={t('Disseminate Bulletin')}
-            />
-          </Tooltip>}
-          <Tooltip title={t('Download PDF')}>
-            <FeedActionButton
-              icon={<DownloadOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadPdf(bulletin.id, bulletin.title);
-              }}
-              aria-label={t('Download PDF')}
-            />
-          </Tooltip>
-          {hasPerm('can_write') && (
-            <Dropdown overlay={menu} trigger={['click']}>
+          </FeedCardWrapper>
+          <FeedActionsContainer>
+            {hasPerm('can_write') && (
+              <Tooltip title={t('Disseminate Bulletin')}>
+                <FeedActionButton
+                  icon={<MailOutlined />}
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleDisseminate();
+                  }}
+                  aria-label={t('Disseminate Bulletin')}
+                />
+              </Tooltip>
+            )}
+            <Tooltip title={t('Download PDF')}>
               <FeedActionButton
-                icon={<MoreOutlined />}
-                onClick={e => e.stopPropagation()}
-                aria-label={t('More actions')}
+                icon={<DownloadOutlined />}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleDownloadPdf(bulletin.id, bulletin.title);
+                }}
+                aria-label={t('Download PDF')}
               />
-            </Dropdown>
-          )}
-        </FeedActionsContainer>
-      </div>
-    );
-  }, [hasPerm, refreshData, addDangerToast, addSuccessToast, setBulletinToEdit, setEditModalVisible, setBulletinToDelete, setBulletinToView, setDetailModalVisible, bulkSelectEnabled]);
+            </Tooltip>
+            {hasPerm('can_write') && (
+              <Dropdown overlay={menu} trigger={['click']}>
+                <FeedActionButton
+                  icon={<MoreOutlined />}
+                  onClick={e => e.stopPropagation()}
+                  aria-label={t('More actions')}
+                />
+              </Dropdown>
+            )}
+          </FeedActionsContainer>
+        </div>
+      );
+    },
+    [
+      hasPerm,
+      refreshData,
+      addDangerToast,
+      addSuccessToast,
+      setBulletinToEdit,
+      setEditModalVisible,
+      setBulletinToDelete,
+      setBulletinToView,
+      setDetailModalVisible,
+      bulkSelectEnabled,
+    ],
+  );
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
-  
+
   if (hasPerm('can_write')) {
     subMenuButtons.push({
       name: (
@@ -874,7 +1009,7 @@ function BulletinsAndAdvisories({
   ];
 
   const bulkActions: ListViewProps['bulkActions'] = [];
-  
+
   if (hasPerm('can_write')) {
     bulkActions.push({
       key: 'delete',
@@ -889,7 +1024,7 @@ function BulletinsAndAdvisories({
   return (
     <>
       <SubMenu name={t('Bulletins & Advisories')} buttons={subMenuButtons} />
-      
+
       <ConfirmStatusChange
         title={t('Delete Bulletins')}
         description={t(
@@ -973,9 +1108,7 @@ function BulletinsAndAdvisories({
       {/* Delete Modal for single bulletin delete */}
       {bulletinToDelete && (
         <DeleteModal
-          description={t(
-            'Are you sure you want to delete this bulletin?',
-          )}
+          description={t('Are you sure you want to delete this bulletin?')}
           onConfirm={() => {
             if (bulletinToDelete) {
               handleBulletinDelete(bulletinToDelete);
@@ -990,4 +1123,4 @@ function BulletinsAndAdvisories({
   );
 }
 
-export default withToasts(BulletinsAndAdvisories); 
+export default withToasts(BulletinsAndAdvisories);

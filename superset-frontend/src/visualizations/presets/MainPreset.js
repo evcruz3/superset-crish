@@ -86,23 +86,23 @@ import {
 import { PivotTableChartPlugin as PivotTableChartPluginV2 } from '@superset-ui/plugin-chart-pivot-table';
 import { HandlebarsChartPlugin } from '@superset-ui/plugin-chart-handlebars';
 import { FilterPlugins } from 'src/constants';
-import TimeTableChartPlugin from '../TimeTable';
-// import DeckGLOSMChartPreset from 'preset-chart-deckgl-osm'
-import { 
-  ScatterChartPlugin as ScatterChartOsmPlugin, 
-  ArcChartPlugin as ArcChartOsmPlugin, 
+import {
+  ScatterChartPlugin as ScatterChartOsmPlugin,
+  ArcChartPlugin as ArcChartOsmPlugin,
   CountryChartPlugin as CountryChartOsmPlugin,
-  GeoJsonChartPlugin as GeoJsonChartOsmPlugin, 
-  GridChartPlugin as GridChartOsmPlugin, 
-  HexChartPlugin as HexChartOsmPlugin, 
-  HeatmapChartPlugin as HeatmapChartOsmPlugin, 
-  MultiChartPlugin as MultiChartOsmPlugin, 
-  PathChartPlugin as PathChartOsmPlugin, 
-  PolygonChartPlugin as PolygonChartOsmPlugin, 
-  ScreengridChartPlugin as ScreengridChartOsmPlugin, 
-  ContourChartPlugin as ContourChartOsmPlugin, 
+  GeoJsonChartPlugin as GeoJsonChartOsmPlugin,
+  GridChartPlugin as GridChartOsmPlugin,
+  HexChartPlugin as HexChartOsmPlugin,
+  HeatmapChartPlugin as HeatmapChartOsmPlugin,
+  MultiChartPlugin as MultiChartOsmPlugin,
+  PathChartPlugin as PathChartOsmPlugin,
+  PolygonChartPlugin as PolygonChartOsmPlugin,
+  ScreengridChartPlugin as ScreengridChartOsmPlugin,
+  ContourChartPlugin as ContourChartOsmPlugin,
   FeedChartPlugin as FeedChartOsmPlugin,
 } from '@superset-ui/preset-chart-deckgl-osm';
+import TimeTableChartPlugin from '../TimeTable';
+// import DeckGLOSMChartPreset from 'preset-chart-deckgl-osm'
 
 export default class MainPreset extends Preset {
   constructor() {
@@ -119,7 +119,7 @@ export default class MainPreset extends Preset {
     super({
       name: 'Legacy charts',
       presets: [
-        // new DeckGLChartPreset(), 
+        // new DeckGLChartPreset(),
         // new DeckGLOSMChartPreset()
       ],
       plugins: [

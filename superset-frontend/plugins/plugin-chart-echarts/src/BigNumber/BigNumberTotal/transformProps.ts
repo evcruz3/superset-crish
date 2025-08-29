@@ -91,7 +91,7 @@ export default function transformProps(
     currencyFormats,
     columnFormats,
     yAxisFormat,
-    currencyFormat,
+    typeof currencyFormat === 'string' ? undefined : currencyFormat,
   );
 
   const headerFormatter =
@@ -114,8 +114,8 @@ export default function transformProps(
     height,
     bigNumber,
     headerFormatter,
-    headerFontSize,
-    subheaderFontSize,
+    headerFontSize: headerFontSize || 20,
+    subheaderFontSize: subheaderFontSize || 16,
     subheader: formattedSubheader,
     onContextMenu,
     refs,

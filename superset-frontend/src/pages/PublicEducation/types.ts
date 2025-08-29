@@ -26,4 +26,4 @@ export interface CreatePublicEducationPayload {
   hashtags: string;
   video_url?: string;
   attachments: File[];
-} 
+}

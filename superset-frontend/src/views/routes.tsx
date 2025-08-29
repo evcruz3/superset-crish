@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { lazy } from 'react';
+import { lazy, ComponentType, ComponentProps } from 'react';
 import { FeatureFlag, isFeatureEnabled } from '@superset-ui/core';
-import { ComponentType, ComponentProps } from 'react';
 import Diseases from 'src/pages/Diseases';
 import Dengue from 'src/pages/Diseases/Dengue';
 import Diarrhea from 'src/pages/Diseases/Diarrhea';
@@ -26,6 +25,9 @@ import AcuteRespiratoryInfection from 'src/pages/Diseases/ARI';
 
 // not lazy loaded since this is the home page.
 import Home from 'src/pages/Home';
+
+import BulletinsAndAdvisories from 'src/pages/BulletinsAndAdvisories';
+import PublicEducationList from 'src/pages/PublicEducation/PublicEducationList';
 
 const ChartCreation = lazy(
   () =>
@@ -136,10 +138,7 @@ const WeatherForecasts = lazy(
 );
 
 const Facilities = lazy(
-  () =>
-    import(
-      /* webpackChunkName: "Facilities" */ 'src/pages/Facilities'
-    ),
+  () => import(/* webpackChunkName: "Facilities" */ 'src/pages/Facilities'),
 );
 
 const UpdateFacilities = lazy(
@@ -156,23 +155,20 @@ const UpdateCaseReports = lazy(
     ),
 );
 
-import BulletinsAndAdvisories from 'src/pages/BulletinsAndAdvisories';
-import PublicEducationList from 'src/pages/PublicEducation/PublicEducationList';
+const DiseaseForecasts = lazy(() => import('src/pages/DiseaseForecasts'));
 
-const DiseaseForecasts = lazy(
-  () => import('src/pages/DiseaseForecasts'),
+const AirQualityForecasts = lazy(() => import('src/pages/AirQualityForecasts'));
+
+const EmailGroups = lazy(
+  () =>
+    import(/* webpackChunkName: "EmailGroupsPage" */ 'src/pages/EmailGroups'),
 );
 
-const AirQualityForecasts = lazy(
-  () => import('src/pages/AirQualityForecasts'),
-);
-
-const EmailGroups = lazy(() =>
-  import(/* webpackChunkName: "EmailGroupsPage" */ 'src/pages/EmailGroups'),
-);
-
-const WhatsAppGroups = lazy(() =>
-  import(/* webpackChunkName: "WhatsAppGroupsPage" */ 'src/pages/WhatsAppGroups'),
+const WhatsAppGroups = lazy(
+  () =>
+    import(
+      /* webpackChunkName: "WhatsAppGroupsPage" */ 'src/pages/WhatsAppGroups'
+    ),
 );
 
 type RoutesType = {
@@ -185,7 +181,7 @@ type RoutesType = {
 export const routes: RoutesType = [
   {
     path: '/weather/',
-    Component: WeatherForecasts
+    Component: WeatherForecasts,
   },
   {
     path: '/disease-forecasts/',
@@ -201,7 +197,7 @@ export const routes: RoutesType = [
   },
   {
     path: '/facilities/',
-    Component: Facilities
+    Component: Facilities,
   },
   {
     path: '/superset/welcome/',

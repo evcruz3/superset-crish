@@ -17,6 +17,7 @@
  * under the License.
  */
 /* eslint camelcase: 0 */
+import { Layer } from '@deck.gl/core';
 import { getLayer as deck_grid } from './Grid/Grid';
 import { getLayer as deck_screengrid } from './Screengrid/Screengrid';
 import { getLayer as deck_path } from './Path/Path';
@@ -30,7 +31,6 @@ import { getLayer as deck_heatmap } from './Heatmap/Heatmap';
 import { getLayer as deck_contour } from './Contour/Contour';
 import { getLayer as getFeedLayer } from './Feed/Feed';
 import { FeedLayerProps } from '../types/feed';
-import { Layer } from '@deck.gl/core';
 
 const layerGenerators = {
   deck_grid,
@@ -44,9 +44,8 @@ const layerGenerators = {
   deck_polygon,
   deck_heatmap,
   deck_contour,
-  deck_feed: (options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>))[] => {
-    return getFeedLayer(options);
-  },
+  deck_feed: (options: FeedLayerProps): (Layer<{}> | (() => Layer<{}>))[] =>
+    getFeedLayer(options),
 };
 
 export default layerGenerators;

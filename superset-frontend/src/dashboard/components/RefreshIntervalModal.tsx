@@ -131,7 +131,7 @@ class RefreshIntervalModal extends PureComponent<
   }
 
   createIntervalOptions(refreshIntervalOptions: [number, string][]) {
-    const refresh_options = [];
+    const refresh_options: Array<{value: number; label: string}> = [];
 
     refresh_options.push({ value: -1, label: t('Custom interval') });
     refresh_options.push(

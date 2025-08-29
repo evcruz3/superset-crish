@@ -1,20 +1,23 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { styled, t } from '@superset-ui/core';
+import { useState, useMemo, useCallback } from 'react';
+import { styled, t, SupersetClient } from '@superset-ui/core';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
-import ListView, { ListViewProps, Filter, FilterOperator } from 'src/components/ListView';
+import ListView, {
+  ListViewProps,
+  Filter,
+  FilterOperator,
+} from 'src/components/ListView';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { EmailGroup } from './types';
-import EmailGroupCard from './EmailGroupCard'; // Uncommented
-import CreateEmailGroupModal from './CreateEmailGroupModal';
-import EditEmailGroupModal from './EditEmailGroupModal';
 import DeleteModal from 'src/components/DeleteModal';
 import Icons from 'src/components/Icons';
-import { SupersetClient } from '@superset-ui/core';
 import rison from 'rison';
 import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
 import moment from 'moment';
+import EditEmailGroupModal from './EditEmailGroupModal';
+import CreateEmailGroupModal from './CreateEmailGroupModal';
+import EmailGroupCard from './EmailGroupCard'; // Uncommented
+import { EmailGroup } from './types';
 
 const PAGE_SIZE = 25;
 
@@ -28,25 +31,25 @@ interface EmailGroupsProps {
 
 // Define columns to fetch from the API, matching EmailGroupsRestApi.list_columns
 const EMAIL_GROUP_COLUMNS_TO_FETCH = [
-  "id",
-  "name",
-  "description",
-  "emails",
-  "created_by.id",
-  "created_by.first_name",
-  "created_by.last_name",
-  "created_on",
-  "changed_by.id",
-  "changed_by.first_name",
-  "changed_by.last_name",
-  "changed_on",
+  'id',
+  'name',
+  'description',
+  'emails',
+  'created_by.id',
+  'created_by.first_name',
+  'created_by.last_name',
+  'created_on',
+  'changed_by.id',
+  'changed_by.first_name',
+  'changed_by.last_name',
+  'changed_on',
 ];
 
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
   display: flex;
   justify-content: flex-start; // Align actions to the left
-  
+
   .action-button {
     display: inline-block;
     padding: ${({ theme }) => theme.gridUnit * 2}px;
@@ -66,26 +69,30 @@ const StyledListView = styled(ListView<EmailGroup>)`
   .ant-card {
     border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
     border-radius: ${({ theme }) => theme.borderRadius}px;
-    margin-bottom: ${({ theme }) => theme.gridUnit * 4}px; // Spacing for card view
+    margin-bottom: ${({ theme }) =>
+      theme.gridUnit * 4}px; // Spacing for card view
   }
   // Hide actions by default, show on row hover for table view
   tr:hover .actions {
     visibility: visible;
   }
   .actions {
-     visibility: hidden; // Default for table view
+    visibility: hidden; // Default for table view
   }
 `;
 
-function EmailGroups({ 
-  addDangerToast, 
+function EmailGroups({
+  addDangerToast,
   addSuccessToast,
-  user 
+  user,
 }: EmailGroupsProps) {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [emailGroupToEdit, setEmailGroupToEdit] = useState<EmailGroup | null>(null);
-  const [emailGroupToDelete, setEmailGroupToDelete] = useState<EmailGroup | null>(null);
+  const [emailGroupToEdit, setEmailGroupToEdit] = useState<EmailGroup | null>(
+    null,
+  );
+  const [emailGroupToDelete, setEmailGroupToDelete] =
+    useState<EmailGroup | null>(null);
 
   const {
     state: {
@@ -119,7 +126,9 @@ function EmailGroups({
       setEmailGroupToDelete(null);
     } catch (err) {
       const error = await (err as any).response?.json();
-      addDangerToast(error?.message || t('There was an issue deleting this email group'));
+      addDangerToast(
+        error?.message || t('There was an issue deleting this email group'),
+      );
     }
   };
 
@@ -132,8 +141,11 @@ function EmailGroups({
       refreshData();
       addSuccessToast(t('Deleted %s email groups', String(ids.length)));
     } catch (err) {
-      const error = await (err as any).response?.json(); 
-      addDangerToast(error?.message || t('There was an issue deleting the selected email groups'));
+      const error = await (err as any).response?.json();
+      addDangerToast(
+        error?.message ||
+          t('There was an issue deleting the selected email groups'),
+      );
     }
   };
 
@@ -148,7 +160,8 @@ function EmailGroups({
       {
         Header: t('Description'),
         accessor: 'description',
-        Cell: ({ value }: { value?: string | null }) => value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
+        Cell: ({ value }: { value?: string | null }) =>
+          value || <span style={{ color: '#999' }}>{t('N/A')}</span>,
       },
       {
         Header: t('Created By'),
@@ -160,12 +173,14 @@ function EmailGroups({
       {
         Header: t('Created On'),
         accessor: 'created_on',
-        Cell: ({ value }: { value: string }) => moment(value).format('DD MMMM, YYYY hh:mm A'),
+        Cell: ({ value }: { value: string }) =>
+          moment(value).format('DD MMMM, YYYY hh:mm A'),
       },
       {
         Header: t('Last Modified'),
         accessor: 'changed_on',
-        Cell: ({ value }: { value?: string | null }) => value ? moment(value).format('DD MMMM, YYYY hh:mm A') : '-',
+        Cell: ({ value }: { value?: string | null }) =>
+          value ? moment(value).format('DD MMMM, YYYY hh:mm A') : '-',
       },
       {
         Header: t('Actions'),
@@ -174,19 +189,32 @@ function EmailGroups({
         disableSortBy: true,
         Cell: ({ row: { original } }: { row: { original: EmailGroup } }) => {
           const handleDelete = () => setEmailGroupToDelete(original);
-          const handleEdit = () => { setEmailGroupToEdit(original); setEditModalVisible(true); };
+          const handleEdit = () => {
+            setEmailGroupToEdit(original);
+            setEditModalVisible(true);
+          };
           return (
             <Actions className="actions">
               {hasPerm('can_write') && (
                 <Tooltip title={t('Edit email group')} placement="bottom">
-                  <span role="button" tabIndex={0} className="action-button" onClick={handleEdit}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleEdit}
+                  >
                     <Icons.EditAlt />
                   </span>
                 </Tooltip>
               )}
               {hasPerm('can_write') && (
                 <Tooltip title={t('Delete email group')} placement="bottom">
-                  <span role="button" tabIndex={0} className="action-button" onClick={handleDelete}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleDelete}
+                  >
                     <Icons.Trash />
                   </span>
                 </Tooltip>
@@ -196,7 +224,7 @@ function EmailGroups({
         },
       },
     ],
-    [hasPerm, refreshData, addDangerToast], 
+    [hasPerm, refreshData, addDangerToast],
   );
 
   const filters: Filter[] = useMemo(
@@ -237,9 +265,9 @@ function EmailGroups({
 
   const renderCard = useCallback(
     (item: EmailGroup) => (
-      <EmailGroupCard 
-        emailGroup={item} 
-        hasPerm={hasPerm} 
+      <EmailGroupCard
+        emailGroup={item}
+        hasPerm={hasPerm}
         onEdit={() => handleEdit(item)}
         onDelete={() => handleDelete(item)}
       />
@@ -267,12 +295,22 @@ function EmailGroups({
       onClick: toggleBulkSelect,
     });
   }
-  
+
   const cardSortSelectOptions = [
     { id: 'name', label: t('Name (A-Z)'), value: 'name_asc', desc: false },
-    { id: 'name', label: t('Name (Z-A)'), value: 'name_desc', desc: true },    
-    { id: 'changed_on', label: t('Recently modified'), value: 'changed_on_desc', desc: true },
-    { id: 'changed_on', label: t('Least recently modified'), value: 'changed_on_asc', desc: false },
+    { id: 'name', label: t('Name (Z-A)'), value: 'name_desc', desc: true },
+    {
+      id: 'changed_on',
+      label: t('Recently modified'),
+      value: 'changed_on_desc',
+      desc: true,
+    },
+    {
+      id: 'changed_on',
+      label: t('Least recently modified'),
+      value: 'changed_on_asc',
+      desc: false,
+    },
   ];
 
   return (
@@ -281,16 +319,26 @@ function EmailGroups({
       <CreateEmailGroupModal
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        onSuccess={() => { refreshData(); setCreateModalVisible(false); /* Toast now in modal */ }}
+        onSuccess={() => {
+          refreshData();
+          setCreateModalVisible(false); /* Toast now in modal */
+        }}
         addSuccessToast={addSuccessToast}
       />
       <EditEmailGroupModal
         emailGroup={emailGroupToEdit}
         visible={editModalVisible}
-        onClose={() => { setEditModalVisible(false); setEmailGroupToEdit(null); }}
-        onSuccess={() => { refreshData(); setEditModalVisible(false); setEmailGroupToEdit(null); }}
+        onClose={() => {
+          setEditModalVisible(false);
+          setEmailGroupToEdit(null);
+        }}
+        onSuccess={() => {
+          refreshData();
+          setEditModalVisible(false);
+          setEmailGroupToEdit(null);
+        }}
         addSuccessToast={addSuccessToast}
-      /> 
+      />
 
       {emailGroupToDelete && (
         <DeleteModal
@@ -318,14 +366,18 @@ function EmailGroups({
         loading={loading}
         initialSort={initialSort}
         filters={filters}
-        bulkActions={hasPerm('can_write') ? [
-          {
-            key: 'delete',
-            name: t('Delete'),
-            type: 'danger',
-            onSelect: handleBulkEmailGroupDelete,
-          }
-        ] : []}
+        bulkActions={
+          hasPerm('can_write')
+            ? [
+                {
+                  key: 'delete',
+                  name: t('Delete'),
+                  type: 'danger',
+                  onSelect: handleBulkEmailGroupDelete,
+                },
+              ]
+            : []
+        }
         bulkSelectEnabled={bulkSelectEnabled}
         disableBulkSelect={toggleBulkSelect}
         renderCard={renderCard}
@@ -340,4 +392,4 @@ function EmailGroups({
   );
 }
 
-export default withToasts(EmailGroups); 
+export default withToasts(EmailGroups);

@@ -17,7 +17,7 @@
  * under the License.
  */
 // eslint-disable-next-line no-restricted-syntax -- whole React import is required for `ControlPopover.test.tsx` Jest test passing.
-import React, { FC, useCallback, useRef, useEffect, useState } from 'react';
+import { FC, useCallback, useRef, useEffect, useState } from 'react';
 
 import Popover, {
   PopoverProps as BasePopoverProps,
@@ -54,7 +54,7 @@ const ControlPopover: FC<PopoverProps> = ({
   const [visible, setVisible] = useState(
     visibleProp === undefined ? props.defaultVisible : visibleProp,
   );
-  const [placement, setPlacement] = React.useState<TooltipPlacement>('right');
+  const [placement, setPlacement] = useState<TooltipPlacement>('right');
 
   const calculatePlacement = useCallback(() => {
     const visibilityRatio = getVisibilityRatio(triggerElementRef.current!);

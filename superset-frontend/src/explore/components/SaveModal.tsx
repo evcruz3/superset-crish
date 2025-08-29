@@ -115,7 +115,7 @@ class SaveModal extends Component<SaveModalProps, SaveModalState> {
   async componentDidMount() {
     let { dashboardId } = this.props;
     if (!dashboardId) {
-      let lastDashboard = null;
+      let lastDashboard: string | null = null;
       try {
         lastDashboard = sessionStorage.getItem(SK_DASHBOARD_ID);
       } catch (error) {

@@ -38,12 +38,12 @@ import { Logger, LOG_ACTIONS_SPA_NAVIGATION } from 'src/logger/LogUtils';
 import setupExtensions from 'src/setup/setupExtensions';
 import { logEvent } from 'src/logger/actions';
 import { store } from 'src/views/store';
-import { RootContextProviders } from './RootContextProviders';
-import { ScrollToTop } from './ScrollToTop';
 import { styled } from '@superset-ui/core';
 import { useUiConfig } from 'src/components/UiConfigContext';
 import { getUrlParam } from 'src/utils/urlUtils';
 import { URL_PARAMS } from 'src/constants';
+import { ScrollToTop } from './ScrollToTop';
+import { RootContextProviders } from './RootContextProviders';
 
 setupApp();
 setupPlugins();
@@ -107,15 +107,17 @@ const App = () => {
           />
           <MainContent $sidebarVisible={sidebarVisible}>
             <Switch>
-              {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
-                <Route path={path} key={path}>
-                  <Suspense fallback={<Fallback />}>
-                    <ErrorBoundary>
-                      <Component user={bootstrapData.user} {...props} />
-                    </ErrorBoundary>
-                  </Suspense>
-                </Route>
-              ))}
+              {routes.map(
+                ({ path, Component, props = {}, Fallback = Loading }) => (
+                  <Route path={path} key={path}>
+                    <Suspense fallback={<Fallback />}>
+                      <ErrorBoundary>
+                        <Component user={bootstrapData.user} {...props} />
+                      </ErrorBoundary>
+                    </Suspense>
+                  </Route>
+                ),
+              )}
             </Switch>
             <ToastContainer />
           </MainContent>

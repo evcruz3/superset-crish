@@ -50,7 +50,7 @@ export type StringConditionalFormattingConfig = {
 };
 
 export type ConditionalFormattingControlProps = ControlComponentProps<
-  ConditionalFormattingConfig[]
+  (ConditionalFormattingConfig | StringConditionalFormattingConfig)[]
 > & {
   columnOptions: { label: string; value: string }[];
   removeIrrelevantConditions: boolean;
@@ -63,7 +63,9 @@ export type ConditionalFormattingControlProps = ControlComponentProps<
 
 export type FormattingPopoverProps = PopoverProps & {
   columns: { label: string; value: string }[];
-  onChange: (value: ConditionalFormattingConfig | StringConditionalFormattingConfig) => void;
+  onChange: (
+    value: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+  ) => void;
   config?: ConditionalFormattingConfig | StringConditionalFormattingConfig;
   title: string;
   children: ReactNode;

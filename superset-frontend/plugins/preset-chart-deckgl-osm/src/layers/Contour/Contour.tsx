@@ -17,6 +17,7 @@
  * under the License.
  */
 import { ContourLayer } from 'deck.gl';
+import { Layer } from '@deck.gl/core';
 import { t } from '@superset-ui/core';
 import { commonLayerProps } from '../common';
 import sandboxedEval from '../../utils/sandbox';
@@ -38,12 +39,10 @@ function setTooltipContent(o: any) {
     </div>
   );
 }
-export const getLayer: getLayerType<unknown> = function (
-  formData,
-  payload,
-  onAddFilter,
-  setTooltip,
+export const getLayer: getLayerType<Layer<{}>> = function (
+  options: any
 ) {
+  const { formData, payload, onAddFilter, setTooltip } = options;
   const fd = formData;
   const {
     aggregation = 'SUM',
@@ -92,7 +91,7 @@ export const getLayer: getLayerType<unknown> = function (
     getPosition: (d: { position: number[]; weight: number }) => d.position,
     getWeight: (d: { weight: number }) => d.weight || 0,
     ...commonLayerProps(fd, setTooltip, setTooltipContent),
-  });
+  }) as Layer<{}>;
 };
 
 function getPoints(data: any[]) {

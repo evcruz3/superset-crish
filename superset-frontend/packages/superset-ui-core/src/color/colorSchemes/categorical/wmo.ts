@@ -35,9 +35,9 @@ const schemes = [
       '#000000', // Black - No data
       '#000000', // Black - No data
       '#000000', // Black - No data
-      '#000000' // Black - No data
+      '#000000', // Black - No data
     ],
   },
 ].map(s => new CategoricalScheme(s));
 
-export default schemes; 
+export default schemes;

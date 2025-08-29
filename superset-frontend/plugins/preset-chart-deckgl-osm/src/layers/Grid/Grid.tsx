@@ -17,19 +17,19 @@
  * under the License.
  */
 import { Color } from '@deck.gl/core';
-import { GridLayer } from '@deck.gl/aggregation-layers'
-import {
-  t,
-  CategoricalColorNamespace,
-  JsonObject,
-} from '@superset-ui/core';
+import { GridLayer } from '@deck.gl/aggregation-layers';
+import { t, CategoricalColorNamespace, JsonObject } from '@superset-ui/core';
 
 import { commonLayerProps, getAggFunc } from '../common';
 import sandboxedEval from '../../utils/sandbox';
 import { hexToRGB } from '../../utils/colors';
 import { createDeckGLComponent } from '../../factory';
 import TooltipRow from '../../TooltipRow';
-import { LayerOptions, LayerReturn, LayerWithColorScale } from '../../types/layers';
+import {
+  LayerOptions,
+  LayerReturn,
+  LayerWithColorScale,
+} from '../../types/layers';
 
 function setTooltipContent(o: JsonObject) {
   return (

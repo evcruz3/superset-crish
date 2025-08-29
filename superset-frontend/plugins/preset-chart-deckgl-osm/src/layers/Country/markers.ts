@@ -1,13 +1,13 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faExclamationCircle, 
+import {
+  faExclamationCircle,
   faWarning,
   faInfoCircle,
   faCheckCircle,
   faTimesCircle,
   faQuestionCircle,
   faFlag,
-  faBell
+  faBell,
 } from '@fortawesome/free-solid-svg-icons';
 
 export const ICON_MAPPING = {
@@ -24,8 +24,8 @@ export const ICON_MAPPING = {
 export const createSVGIcon = (icon: any, color: string, size: number) => {
   // Add padding to prevent icon from being cut off
   const padding = size * 0.2; // 20% padding
-  const totalSize = size + (padding * 2);
-  
+  const totalSize = size + padding * 2;
+
   // Create SVG with padding and centered icon
   const svgString = `
     <svg 
@@ -38,11 +38,11 @@ export const createSVGIcon = (icon: any, color: string, size: number) => {
         <path 
           fill="${color}" 
           d="${icon.icon[4]}" 
-          transform="scale(${size/512})"
+          transform="scale(${size / 512})"
         />
       </g>
     </svg>`.trim();
-  
+
   const base64 = btoa(unescape(encodeURIComponent(svgString)));
   return `data:image/svg+xml;base64,${base64}`;
 };
@@ -50,4 +50,4 @@ export const createSVGIcon = (icon: any, color: string, size: number) => {
 // Remove cleanup since we're not using object URLs anymore
 export const cleanupIconUrl = (url: string) => {
   // No cleanup needed for data URLs
-}; 
+};

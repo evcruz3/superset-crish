@@ -34,7 +34,7 @@ import VizTypeGallery, {
 } from './VizTypeGallery';
 import { FastVizSwitcher } from './FastVizSwitcher';
 
-interface VizTypeControlProps {
+export interface VizTypeControlProps {
   description?: string;
   label?: string;
   name: string;

@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ChangeEvent, useMemo, useState, useCallback, useEffect } from 'react';
-import React from 'react';
+import { ChangeEvent, useMemo, useState, useCallback, useEffect, useRef } from 'react';
 
 import Modal from 'src/components/Modal';
 import { Input, TextArea } from 'src/components/Input';
@@ -75,16 +74,17 @@ function PropertiesModal({
 
   const [tags, setTags] = useState<TagType[]>([]);
   const [completeSliceData, setCompleteSliceData] = useState<any>(slice);
-  
+
   // Add a ref to track if the component is mounted
-  const isMounted = React.useRef(true);
-  
+  const isMounted = useRef(true);
+
   // Set isMounted to false when the component unmounts
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       isMounted.current = false;
-    };
-  }, []);
+    },
+    [],
+  );
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map((tag: { id: number; name: string }) => ({
@@ -104,15 +104,15 @@ function PropertiesModal({
           const response = await SupersetClient.get({
             endpoint: `/api/v1/chart/${slice.slice_id}`,
           });
-          
+
           if (!isMounted) return;
-          
+
           const chartData = response.json.result;
           setCompleteSliceData({
             ...slice,
             ...chartData,
           });
-          
+
           // Update the form with the slug value
           if (chartData.slug) {
             form.setFields([
@@ -128,11 +128,11 @@ function PropertiesModal({
         console.error('Error fetching complete chart data:', error);
       }
     };
-    
+
     if (show) {
       fetchCompleteChartData();
     }
-    
+
     return () => {
       isMounted = false;
     };
@@ -157,10 +157,10 @@ function PropertiesModal({
           endpoint: `/api/v1/chart/${slice.slice_id}`,
         });
         const chart = response.json.result;
-        
+
         // Check if component is still mounted before updating state
         if (!isMounted.current) return;
-        
+
         setSelectedOwners(
           chart?.owners?.map((owner: any) => ({
             value: owner.id,
@@ -169,7 +169,7 @@ function PropertiesModal({
         );
       } catch (response) {
         if (!isMounted.current) return;
-        
+
         const clientError = await getClientErrorObject(response);
         showError(clientError);
       }
@@ -217,7 +217,7 @@ function PropertiesModal({
       name: formName,
       slug: formSlug,
     } = values;
-    
+
     const payload: { [key: string]: any } = {
       slice_name: formName || null,
       slug: formSlug || null,
@@ -227,7 +227,7 @@ function PropertiesModal({
       certification_details:
         certifiedBy && certificationDetails ? certificationDetails : null,
     };
-    
+
     if (selectedOwners) {
       payload.owners = (
         selectedOwners as {
@@ -246,16 +246,17 @@ function PropertiesModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      
+
       // Check if component is still mounted before updating state
       if (!isMounted.current) return;
-      
+
       // update the redux state, ensuring slug is explicitly included
       const updatedChart = {
         ...payload,
         ...res.json.result,
         // Use any available slug in this priority: form value, API response, existing value
-        slug: formSlug || res.json.result.slug || completeSliceData.slug || null, 
+        slug:
+          formSlug || res.json.result.slug || completeSliceData.slug || null,
         tags,
         id: slice.slice_id,
         owners: selectedOwners,
@@ -266,7 +267,7 @@ function PropertiesModal({
     } catch (res) {
       // Check if component is still mounted before showing error
       if (!isMounted.current) return;
-      
+
       const clientError = await getClientErrorObject(res);
       showError(clientError);
     } finally {
@@ -285,9 +286,9 @@ function PropertiesModal({
     const fetchOwners = async () => {
       await fetchChartOwners();
     };
-    
+
     fetchOwners();
-    
+
     return () => {
       isMounted = false;
     };
@@ -295,7 +296,7 @@ function PropertiesModal({
 
   useEffect(() => {
     if (!isFeatureEnabled(FeatureFlag.TaggingSystem)) return;
-    
+
     let isMounted = true;
     try {
       fetchTags(
@@ -320,7 +321,7 @@ function PropertiesModal({
         showError(error);
       }
     }
-    
+
     return () => {
       isMounted = false;
     };
@@ -346,10 +347,10 @@ function PropertiesModal({
         name: sliceData.slice_name || '',
         slug: sliceData.slug || '',
         description: sliceData.description || '',
-        cache_timeout: sliceData.cache_timeout != null ? sliceData.cache_timeout : '',
+        cache_timeout:
+          sliceData.cache_timeout != null ? sliceData.cache_timeout : '',
         certified_by: sliceData.certified_by || '',
-        certification_details:
-          sliceData.certification_details || '',
+        certification_details: sliceData.certification_details || '',
         is_managed_externally: sliceData.is_managed_externally || false,
         external_url: sliceData.external_url || '',
       };
@@ -431,9 +432,7 @@ function PropertiesModal({
                 />
               </StyledFormItem>
               <StyledHelpBlock className="help-block">
-                {t(
-                  'A readable URL for your chart.',
-                )}
+                {t('A readable URL for your chart.')}
               </StyledHelpBlock>
             </FormItem>
             <FormItem>

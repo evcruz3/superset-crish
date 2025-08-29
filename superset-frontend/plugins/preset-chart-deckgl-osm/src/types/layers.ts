@@ -17,12 +17,12 @@
  * under the License.
  */
 import { Layer } from '@deck.gl/core';
-import { 
-  JsonObject, 
-  JsonValue, 
-  QueryFormData, 
+import {
+  JsonObject,
+  JsonValue,
+  QueryFormData,
   HandlerFunction,
-  Datasource 
+  Datasource,
 } from '@superset-ui/core';
 import { TooltipProps } from '../components/Tooltip';
 import { Viewport } from '../utils/fitViewport';
@@ -78,12 +78,12 @@ interface SelectionOptions {
  */
 export interface LayerOptions extends BaseLayerOptions {
   // Optional features used by specific layer types
-  datasource?: Datasource;                // For Scatter layer
-  geoJson?: JsonObject;                   // For Country and Feed layers
-  temporalOptions?: TemporalOptions;      // For Country layer
-  viewState?: Viewport;                   // For Country layer
-  selectionOptions?: SelectionOptions;    // For Polygon and Feed layers
-  opacity?: number;                       // For controlling layer opacity
+  datasource?: Datasource; // For Scatter layer
+  geoJson?: JsonObject; // For Country and Feed layers
+  temporalOptions?: TemporalOptions; // For Country layer
+  viewState?: Viewport; // For Country layer
+  selectionOptions?: SelectionOptions; // For Polygon and Feed layers
+  opacity?: number; // For controlling layer opacity
   onClick?: (info: { object?: any }) => void;
 }
 
@@ -94,7 +94,11 @@ export interface LayerOptions extends BaseLayerOptions {
  * - Function returning a layer
  * - Array of layers or functions returning layers
  */
-export type LayerReturn = Layer<{}> | Layer<{}>[] | (() => Layer<{}>) | (Layer<{}> | (() => Layer<{}>) )[];
+export type LayerReturn =
+  | Layer<{}>
+  | Layer<{}>[]
+  | (() => Layer<{}>)
+  | (Layer<{}> | (() => Layer<{}>))[];
 
 /**
  * Standard function signature for all layer generators
@@ -114,9 +118,5 @@ export interface LayerWithColorScale extends Layer<{}> {
  * Type guard function to check if a layer has color scale
  */
 export function hasColorScale(layer: Layer<{}>): layer is LayerWithColorScale {
-  return (
-    'colorScale' in layer &&
-    'extent' in layer &&
-    'metricValues' in layer
-  );
-} 
+  return 'colorScale' in layer && 'extent' in layer && 'metricValues' in layer;
+}

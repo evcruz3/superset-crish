@@ -54,62 +54,94 @@ const MAX_OPACITY_BOUNDED = 1;
 const MIN_OPACITY_UNBOUNDED = 0.1;
 const MAX_OPACITY_UNBOUNDED = 0.9;
 
-export const getOpacity = (minValue: number, maxValue: number, value: number) =>
-  maxValue - minValue === 0
-    ? 1
-    : round(
-        Math.max(Math.min((value - minValue) / (maxValue - minValue), 1), 0),
-        2,
-      );
+export const getOpacity = (
+  minValue: number,
+  maxValue: number,
+  value: number,
+  minOpacity?: number,
+  maxOpacity?: number,
+) => {
+  if (maxValue - minValue === 0) {
+    return maxOpacity !== undefined ? maxOpacity : 1;
+  }
+
+  const ratio = Math.max(
+    Math.min((value - minValue) / (maxValue - minValue), 1),
+    0,
+  );
+
+  if (minOpacity !== undefined && maxOpacity !== undefined) {
+    return round(
+      Math.max(
+        Math.min(ratio * (maxOpacity - minOpacity) + minOpacity, maxOpacity),
+        minOpacity,
+      ),
+      2,
+    );
+  }
+
+  return round(ratio, 2);
+};
 
 export const getColorFunction = (
   config: ConditionalFormattingConfig | StringConditionalFormattingConfig,
   valuesArray: number[] | string[],
   alpha?: boolean,
-) => {
+): ((value: number | string) => string | undefined) => {
   // Handle string conditional formatting
   if ('isString' in config && config.isString) {
-    const { operator, targetStringValue, colorScheme } = config as StringConditionalFormattingConfig;
-    
+    const { operator, targetStringValue, colorScheme } =
+      config as StringConditionalFormattingConfig;
+
     if (!targetStringValue && operator !== StringComparator.None) {
       return () => undefined;
     }
-    
-    return (value: string): string | undefined => {
+
+    return (value: number | string): string | undefined => {
+      const stringValue = String(value);
       let isMatch = false;
-      
+
       switch (operator) {
         case StringComparator.None:
           isMatch = true;
           break;
         case StringComparator.Equal:
-          isMatch = value === targetStringValue;
+          isMatch = stringValue === targetStringValue;
           break;
         case StringComparator.NotEqual:
-          isMatch = value !== targetStringValue;
+          isMatch = stringValue !== targetStringValue;
           break;
         case StringComparator.Contains:
-          isMatch = typeof value === 'string' && value.includes(targetStringValue!);
+          isMatch = stringValue.includes(targetStringValue!);
           break;
         case StringComparator.StartsWith:
-          isMatch = typeof value === 'string' && value.startsWith(targetStringValue!);
+          isMatch = stringValue.startsWith(targetStringValue!);
           break;
         case StringComparator.EndsWith:
-          isMatch = typeof value === 'string' && value.endsWith(targetStringValue!);
+          isMatch = stringValue.endsWith(targetStringValue!);
           break;
         default:
           isMatch = false;
       }
-      
-      return isMatch ? (alpha ? addAlpha(colorScheme!, 1) : colorScheme) : undefined;
+
+      return isMatch
+        ? alpha
+          ? addAlpha(colorScheme!, 1)
+          : colorScheme
+        : undefined;
     };
   }
-  
+
   // Original numeric conditional formatting
-  const { operator, targetValue, targetValueLeft, targetValueRight, colorScheme } =
-    config as ConditionalFormattingConfig;
+  const {
+    operator,
+    targetValue,
+    targetValueLeft,
+    targetValueRight,
+    colorScheme,
+  } = config as ConditionalFormattingConfig;
   const numericValues = valuesArray as number[];
-  
+
   if (!config?.column) {
     return () => undefined;
   }
@@ -232,8 +264,9 @@ export const getColorFunction = (
       comparatorFunction = () => false;
   }
 
-  return (value: number): string | undefined => {
-    const matched = comparatorFunction(value, numericValues);
+  return (value: number | string): string | undefined => {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    const matched = comparatorFunction(numericValue, numericValues);
     if (!matched) {
       return undefined;
     }
@@ -242,10 +275,10 @@ export const getColorFunction = (
     if (
       operator === Comparator.None ||
       operator === Comparator.NotEqual ||
-      value !== extremeValue
+      numericValue !== extremeValue
     ) {
       if (operator === Comparator.NotEqual) {
-        const distance = Math.abs(value - targetValue!);
+        const distance = Math.abs(numericValue - targetValue!);
         if (extremeValue === Infinity) {
           opacity = minOpacity;
         } else {
@@ -254,7 +287,7 @@ export const getColorFunction = (
         }
       } else {
         const range = Math.abs(extremeValue - cutoffValue);
-        const distance = Math.abs(value - cutoffValue);
+        const distance = Math.abs(numericValue - cutoffValue);
         opacity = getOpacity(
           minOpacity,
           maxOpacity,
@@ -268,41 +301,44 @@ export const getColorFunction = (
 
 export const getColorFormatters = memoizeOne(
   (
-    columnConfig: (ConditionalFormattingConfig | StringConditionalFormattingConfig)[] | undefined,
+    columnConfig:
+      | (ConditionalFormattingConfig | StringConditionalFormattingConfig)[]
+      | undefined,
     data: DataRecord[],
     alpha?: boolean,
   ) =>
     columnConfig?.reduce(
-      (acc: ColorFormatters, config: ConditionalFormattingConfig | StringConditionalFormattingConfig) => {
+      (
+        acc: ColorFormatters,
+        config: ConditionalFormattingConfig | StringConditionalFormattingConfig,
+      ) => {
         const targetColumn = config?.column;
-        
+
         if (targetColumn !== undefined) {
           if ('isString' in config && config.isString) {
             // Handle string conditional formatting
             const stringValues = data.map(row => String(row[targetColumn]));
             acc.push({
               column: targetColumn,
-              getColorFromValue: getColorFunction(
-                config,
-                stringValues,
-                alpha,
-              ) as (value: number) => string | undefined, // TS needs this cast
+              getColorFromValue: getColorFunction(config, stringValues, alpha),
             });
           } else {
             // Handle numeric conditional formatting
             const numericValues = data.map(row => row[targetColumn] as number);
-            const isValid = config?.operator === Comparator.None ||
-              (config?.operator !== undefined &&
-                (MultipleValueComparators.includes(config?.operator)
-                  ? config?.targetValueLeft !== undefined &&
-                    config?.targetValueRight !== undefined
-                  : config?.targetValue !== undefined));
-            
+            const numericConfig = config as ConditionalFormattingConfig;
+            const isValid =
+              numericConfig?.operator === Comparator.None ||
+              (numericConfig?.operator !== undefined &&
+                (MultipleValueComparators.includes(numericConfig?.operator)
+                  ? numericConfig?.targetValueLeft !== undefined &&
+                    numericConfig?.targetValueRight !== undefined
+                  : numericConfig?.targetValue !== undefined));
+
             if (isValid) {
               acc.push({
                 column: targetColumn,
                 getColorFromValue: getColorFunction(
-                  config,
+                  numericConfig,
                   numericValues,
                   alpha,
                 ),

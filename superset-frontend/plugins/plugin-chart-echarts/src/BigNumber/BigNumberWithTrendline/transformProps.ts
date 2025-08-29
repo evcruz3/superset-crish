@@ -124,8 +124,10 @@ export default function transformProps(
         const compareValue = sortedData[compareIndex][1];
         // compare values must both be non-nulls
         if (bigNumber !== null && compareValue !== null) {
-          percentChange = compareValue
-            ? (bigNumber - compareValue) / Math.abs(compareValue)
+          const numBigNumber = Number(bigNumber);
+          const numCompareValue = Number(compareValue);
+          percentChange = numCompareValue
+            ? (numBigNumber - numCompareValue) / Math.abs(numCompareValue)
             : 0;
           formattedSubheader = `${formatPercentChange(
             percentChange,
@@ -163,7 +165,7 @@ export default function transformProps(
     currencyFormats,
     columnFormats,
     yAxisFormat,
-    currencyFormat,
+    typeof currencyFormat === 'string' ? undefined : currencyFormat,
   );
 
   const headerFormatter =
@@ -265,8 +267,8 @@ export default function transformProps(
     headerFormatter,
     formatTime,
     formData,
-    headerFontSize,
-    subheaderFontSize,
+    headerFontSize: headerFontSize || 20,
+    subheaderFontSize: subheaderFontSize || 16,
     mainColor,
     showTimestamp,
     showTrendLine,

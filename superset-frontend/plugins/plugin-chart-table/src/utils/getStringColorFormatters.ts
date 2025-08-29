@@ -30,15 +30,6 @@ enum StringComparator {
   EndsWith = 'ends with',
 }
 
-// Define an interface to match StringConditionalFormattingConfig
-interface StringConditionalFormattingConfig {
-  operator?: StringComparator;
-  targetStringValue?: string;
-  column?: string;
-  colorScheme?: string;
-  isString?: boolean;
-}
-
 // Function to create string color formatters
 export const getStringColorFormatters = memoizeOne(
   (
@@ -93,4 +84,4 @@ export const getStringColorFormatters = memoizeOne(
       [],
     );
   },
-); 
+);

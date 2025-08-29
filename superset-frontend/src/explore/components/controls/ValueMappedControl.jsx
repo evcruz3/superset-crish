@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
 import PropTypes from 'prop-types';
 import { SketchPicker } from 'react-color';
 import { debounce } from 'lodash';
@@ -96,38 +95,40 @@ const Backdrop = styled.div`
 export default class ValueMappedControl extends React.PureComponent {
   constructor(props) {
     super(props);
-    
+
     this.state = {
       mappings: [],
       showColorPicker: null,
       newValue: '',
     };
-    
+
     this.debouncedOnChange = debounce(this.onChange, 300);
   }
-  
+
   componentDidMount() {
     this.updateMappingsFromProps();
   }
-  
+
   componentDidUpdate(prevProps) {
     if (prevProps.value !== this.props.value) {
       this.updateMappingsFromProps();
     }
   }
-  
+
   updateMappingsFromProps() {
     const { value } = this.props;
     if (!value) return;
-    
-    const mappings = Object.entries(value).map(([mappingValue, mappingColor]) => ({
-      value: mappingValue,
-      color: mappingColor,
-    }));
-    
+
+    const mappings = Object.entries(value).map(
+      ([mappingValue, mappingColor]) => ({
+        value: mappingValue,
+        color: mappingColor,
+      }),
+    );
+
     this.setState({ mappings });
   }
-  
+
   onChange = () => {
     const valueMap = this.state.mappings.reduce((acc, { value, color }) => {
       if (value) {
@@ -135,10 +136,10 @@ export default class ValueMappedControl extends React.PureComponent {
       }
       return acc;
     }, {});
-    
+
     this.props.onChange(valueMap);
   };
-  
+
   handleValueChange = (index, newMappingValue) => {
     const { mappings } = this.state;
     const updatedMappings = [...mappings];
@@ -146,12 +147,12 @@ export default class ValueMappedControl extends React.PureComponent {
       ...updatedMappings[index],
       value: newMappingValue,
     };
-    
+
     this.setState({ mappings: updatedMappings }, () => {
       this.debouncedOnChange();
     });
   };
-  
+
   handleColorChange = (index, color) => {
     const { mappings } = this.state;
     const updatedMappings = [...mappings];
@@ -159,58 +160,54 @@ export default class ValueMappedControl extends React.PureComponent {
       ...updatedMappings[index],
       color: color.hex,
     };
-    
+
     this.setState({ mappings: updatedMappings }, () => {
       this.debouncedOnChange();
     });
   };
-  
+
   handleRemoveMapping = index => {
     const { mappings } = this.state;
     const updatedMappings = mappings.filter((_, i) => i !== index);
-    
+
     this.setState({ mappings: updatedMappings }, this.onChange);
   };
-  
+
   handleAddMapping = () => {
     const { newValue, mappings } = this.state;
     const { scheme } = this.props;
-    
+
     if (!newValue.trim()) return;
-    
+
     // Don't add duplicate values
     if (mappings.some(m => m.value === newValue.trim())) {
       return;
     }
-    
+
     // Get next color from scheme or use default
-    const nextColor = 
-      scheme?.colors?.[mappings.length % (scheme.colors.length || 1)] || 
+    const nextColor =
+      scheme?.colors?.[mappings.length % (scheme.colors.length || 1)] ||
       `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-    
+
     const updatedMappings = [
       ...mappings,
       { value: newValue.trim(), color: nextColor },
     ];
-    
+
     this.setState(
-      { 
+      {
         mappings: updatedMappings,
         newValue: '',
-      }, 
-      this.onChange
+      },
+      this.onChange,
     );
   };
-  
+
   render() {
-    const { 
-      valueLabel, 
-      colorLabel,
-      addValuePlaceholder,
-      addValueLabel,
-    } = this.props;
+    const { valueLabel, colorLabel, addValuePlaceholder, addValueLabel } =
+      this.props;
     const { mappings, showColorPicker, newValue } = this.state;
-    
+
     return (
       <div>
         <ControlHeader {...this.props} />
@@ -237,7 +234,9 @@ export default class ValueMappedControl extends React.PureComponent {
                 />
                 {showColorPicker === index && (
                   <>
-                    <Backdrop onClick={() => this.setState({ showColorPicker: null })} />
+                    <Backdrop
+                      onClick={() => this.setState({ showColorPicker: null })}
+                    />
                     <StyledColorPickerPopover>
                       <SketchPicker
                         color={mapping.color}
@@ -249,7 +248,7 @@ export default class ValueMappedControl extends React.PureComponent {
               </StyledValueItem>
             ))}
           </div>
-          
+
           <StyledFooter>
             <Input
               value={newValue}
@@ -258,8 +257,8 @@ export default class ValueMappedControl extends React.PureComponent {
               onPressEnter={this.handleAddMapping}
               style={{ marginRight: 8 }}
             />
-            <Button 
-              icon={<PlusOutlined />} 
+            <Button
+              icon={<PlusOutlined />}
               onClick={this.handleAddMapping}
               disabled={!newValue.trim()}
             >
@@ -270,4 +269,4 @@ export default class ValueMappedControl extends React.PureComponent {
       </div>
     );
   }
-} 
+}

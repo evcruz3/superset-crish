@@ -60,7 +60,7 @@ function renderQueryLimit(
   maxRow: number,
   setQueryLimit: (limit: number) => void,
 ) {
-  const limitDropdown = [];
+  const limitDropdown: number[] = [];
 
   // Construct limit dropdown as increasing powers of ten until we reach SQL_MAX_ROW
   for (let i = 10; i < maxRow; i *= 10) {

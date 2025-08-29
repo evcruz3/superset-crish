@@ -343,7 +343,10 @@ export function Menu({
             className="main-nav"
             selectedKeys={activeTabs}
             overflowedIndicator={<Icons.MoreHoriz />}
-            style={{ flex: '1 1 auto', minWidth: 0 /* Important for flex shrink */ }}
+            style={{
+              flex: '1 1 auto',
+              minWidth: 0 /* Important for flex shrink */,
+            }}
           >
             {menu.map((item, index) => {
               const props = {
@@ -394,8 +397,7 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
   };
 
   // Cycle through menu.menu to build out cleanedMenu and settings
-  const cleanedMenu: MenuObjectProps[] = [
-  ];
+  const cleanedMenu: MenuObjectProps[] = [];
   const settings: MenuObjectProps[] = [];
   newMenuData.menu.forEach((item: any) => {
     if (!item) {

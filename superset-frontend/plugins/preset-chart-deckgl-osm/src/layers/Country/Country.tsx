@@ -35,8 +35,7 @@ import {
 } from '@superset-ui/core';
 import { scaleLinear, ScaleLinear } from 'd3-scale';
 import { Slider, DatePicker } from 'antd';
-import moment from 'moment';
-import { Moment } from 'moment';
+import moment, { Moment } from 'moment';
 import locale from 'antd/es/date-picker/locale/en_US';
 
 import {
@@ -58,8 +57,8 @@ import RegionInfoModal from '../../components/RegionInfoModal';
 moment.updateLocale('en', {
   week: {
     dow: 1, // Monday is the first day of the week
-    doy: 4  // The week that contains Jan 4th is the first week of the year
-  }
+    doy: 4, // The week that contains Jan 4th is the first week of the year
+  },
 });
 
 // Cache for loaded GeoJSON data
@@ -106,7 +105,10 @@ interface DataRecord {
 }
 
 // Helper function to process conditional icons
-function processConditionalIcons(features: JsonObject[], formData: QueryFormData): IconData[] {
+function processConditionalIcons(
+  features: JsonObject[],
+  formData: QueryFormData,
+): IconData[] {
   const {
     show_icons,
     icon_threshold,
@@ -125,7 +127,7 @@ function processConditionalIcons(features: JsonObject[], formData: QueryFormData
 
   features.forEach(feature => {
     const metricValue = feature.properties?.metric ?? undefined;
-    
+
     if (metricValue === undefined) return;
 
     let matches = false;
@@ -154,27 +156,47 @@ function processConditionalIcons(features: JsonObject[], formData: QueryFormData
       let coordinates: [number, number] | undefined;
       if (feature.geometry.type === 'Polygon') {
         const ring = feature.geometry.coordinates[0];
-        const center = ring.reduce(
-          (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
-          [0, 0]
-        ).map((sum: number) => sum / ring.length) as [number, number];
+        const center = ring
+          .reduce(
+            (acc: [number, number], point: [number, number]) => [
+              acc[0] + point[0],
+              acc[1] + point[1],
+            ],
+            [0, 0],
+          )
+          .map((sum: number) => sum / ring.length) as [number, number];
         coordinates = center;
       } else if (feature.geometry.type === 'MultiPolygon') {
-        const areas = feature.geometry.coordinates.map((poly: [number, number][][]) => {
-          const ring = poly[0];
-          return {
-            area: Math.abs(ring.reduce((area: number, point: [number, number], i: number) => {
-              const next = ring[(i + 1) % ring.length];
-              return area + (point[0] * next[1] - next[0] * point[1]);
-            }, 0)) / 2,
-            ring
-          } as PolygonRing;
-        });
-        const largestRing = areas.sort((a: PolygonRing, b: PolygonRing) => b.area - a.area)[0].ring;
-        const center = largestRing.reduce(
-          (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
-          [0, 0]
-        ).map((sum: number) => sum / largestRing.length) as [number, number];
+        const areas = feature.geometry.coordinates.map(
+          (poly: [number, number][][]) => {
+            const ring = poly[0];
+            return {
+              area:
+                Math.abs(
+                  ring.reduce(
+                    (area: number, point: [number, number], i: number) => {
+                      const next = ring[(i + 1) % ring.length];
+                      return area + (point[0] * next[1] - next[0] * point[1]);
+                    },
+                    0,
+                  ),
+                ) / 2,
+              ring,
+            } as PolygonRing;
+          },
+        );
+        const largestRing = areas.sort(
+          (a: PolygonRing, b: PolygonRing) => b.area - a.area,
+        )[0].ring;
+        const center = largestRing
+          .reduce(
+            (acc: [number, number], point: [number, number]) => [
+              acc[0] + point[0],
+              acc[1] + point[1],
+            ],
+            [0, 0],
+          )
+          .map((sum: number) => sum / largestRing.length) as [number, number];
         coordinates = center;
       }
 
@@ -182,7 +204,7 @@ function processConditionalIcons(features: JsonObject[], formData: QueryFormData
         const color = `rgba(${icon_color.r},${icon_color.g},${icon_color.b},${icon_color.a})`;
         const iconKey = icon_type as keyof typeof ICON_MAPPING;
         const url = createSVGIcon(ICON_MAPPING[iconKey], color, icon_size);
-        
+
         icons.push({
           coordinates,
           url,
@@ -253,34 +275,38 @@ interface ColorLegendProps {
   rangeMap?: Record<string, string>;
 }
 
-const ColorLegend = ({ 
-  colorScale, 
-  extent, 
-  format, 
-  metricPrefix = '', 
-  metricUnit = '', 
+const ColorLegend = ({
+  colorScale,
+  extent,
+  format,
+  metricPrefix = '',
+  metricUnit = '',
   values,
   metricName = 'Values',
   isCategorical = false,
   valueMap = {},
-  rangeMap = {}
+  rangeMap = {},
 }: ColorLegendProps) => {
   // Get unique values and sort them
   const uniqueValues = [...new Set(values)];
-  
-  // Initialize displayValues 
+
+  // Initialize displayValues
   let displayValues: Array<number | string> = [];
-  
+
   if (isCategorical) {
     // Get explicitly mapped values first
-    const mappedValues = Object.keys(valueMap)
-      .filter(value => uniqueValues.includes(value) || uniqueValues.includes(Number(value)));
-    
-    // Get remaining values that aren't explicitly mapped
-    const unmappedValues = uniqueValues.filter(value => 
-      !mappedValues.includes(String(value)) && !mappedValues.includes(String(Number(value)))
+    const mappedValues = Object.keys(valueMap).filter(
+      value =>
+        uniqueValues.includes(value) || uniqueValues.includes(Number(value)),
     );
-    
+
+    // Get remaining values that aren't explicitly mapped
+    const unmappedValues = uniqueValues.filter(
+      value =>
+        !mappedValues.includes(String(value)) &&
+        !mappedValues.includes(String(Number(value))),
+    );
+
     // Show mapped values first, then unmapped values
     displayValues = [...mappedValues, ...unmappedValues];
   } else if (Object.keys(rangeMap).length > 0) {
@@ -293,14 +319,14 @@ const ColorLegend = ({
             const [min, max] = range.split('-').map(Number);
             const formattedMin = format ? format(min) : min;
             const formattedMax = format ? format(max) : max;
-            
+
             return (
               <div key={i} className="legend-item">
-                <div 
-                  className="color-box" 
-                  style={{ 
+                <div
+                  className="color-box"
+                  style={{
                     backgroundColor: color || '#fff',
-                    border: '1px solid'
+                    border: '1px solid',
                   }}
                 />
                 <span className="label">
@@ -323,7 +349,9 @@ const ColorLegend = ({
       Math.floor(uniqueValues.length * 0.75),
     ];
     const middleValues = middleIndices.map(i => uniqueValues[i]);
-    displayValues = [min, ...middleValues, max].sort((a, b) => Number(b) - Number(a)); // Sort largest to smallest
+    displayValues = [min, ...middleValues, max].sort(
+      (a, b) => Number(b) - Number(a),
+    ); // Sort largest to smallest
   } else {
     displayValues = [...uniqueValues].sort((a, b) => Number(b) - Number(a)); // Sort largest to smallest
   }
@@ -334,22 +362,24 @@ const ColorLegend = ({
       <div className="legend-items">
         {displayValues.map((value, i) => {
           const valueStr = String(value);
-          const isExplicitlyMapped = isCategorical && valueMap && 
-            (valueMap[valueStr] !== undefined || valueMap[String(Number(valueStr))] !== undefined);
+          const isExplicitlyMapped =
+            isCategorical &&
+            valueMap &&
+            (valueMap[valueStr] !== undefined ||
+              valueMap[String(Number(valueStr))] !== undefined);
           return (
             <div key={i} className="legend-item">
-              <div 
-                className="color-box" 
-                style={{ 
+              <div
+                className="color-box"
+                style={{
                   backgroundColor: colorScale(value) || '#fff',
-                  border: '1px solid'
+                  border: '1px solid',
                 }}
               />
               <span className="label">
-                {isCategorical 
+                {isCategorical
                   ? String(value)
-                  : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`
-                }
+                  : `${metricPrefix}${format?.(value as number) || value}${metricUnit}`}
               </span>
             </div>
           );
@@ -368,13 +398,17 @@ interface ExtendedGeoJsonLayer extends GeoJsonLayer {
   valueMap?: Record<string, string | number>;
 }
 
-const getDatesInRange = (startDate: Date, endDate: Date, timeGrain?: string) => {
+const getDatesInRange = (
+  startDate: Date,
+  endDate: Date,
+  timeGrain?: string,
+) => {
   const dates: Date[] = [];
   const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
     dates.push(new Date(currentDate));
-    
+
     // Increment based on time grain
     switch (timeGrain) {
       case 'P1Y':
@@ -407,7 +441,7 @@ const StyledTimelineSlider = styled.div`
   background: white;
   padding: 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 10;
   width: 500px;
 
@@ -477,12 +511,12 @@ const StyledTimelineSlider = styled.div`
     gap: 4px;
     padding-bottom: 4px;
     flex: 1;
-    
+
     /* Hide scrollbar for Chrome, Safari and Opera */
     &::-webkit-scrollbar {
       display: none;
     }
-    
+
     /* Hide scrollbar for IE, Edge and Firefox */
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -526,11 +560,13 @@ export type DeckGLCountryProps = {
   width: number;
 };
 
-export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))[] {
-  const { 
-    formData, 
-    payload, 
-    onAddFilter, 
+export function getLayer(
+  options: LayerOptions,
+): (Layer<{}> | (() => Layer<{}>))[] {
+  const {
+    formData,
+    payload,
+    onAddFilter,
     setTooltip = () => {},
     geoJson = {},
     temporalOptions,
@@ -546,11 +582,11 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   const sc = fd.stroke_color_picker;
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
   const data = payload.data?.data || [];
-  const records = Array.isArray(data) ? data : (data?.records || []);
+  const records = Array.isArray(data) ? data : data?.records || [];
 
   // Use temporalData for color scale calculation if provided, otherwise use current records
   const dataForColorScale = temporalData.length > 0 ? temporalData : records;
-  
+
   // Handle color scale based on whether we have categorical or metric values
   let colorScale: (value: any) => string;
   let extent: [number, number] | undefined;
@@ -561,7 +597,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     // For categorical values, first create a mapping of categorical values to their metrics
     const valueToMetricMap = new Map<string, number>();
     const uniqueValues = new Set<string>();
-    
+
     dataForColorScale.forEach((d: DataRecord) => {
       if (d.categorical_value !== undefined && d.metric !== undefined) {
         // If we have multiple metrics for the same categorical value, use the highest one
@@ -575,28 +611,30 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
 
     // Check if we have a value_map configuration for absolute color mapping
     const hasValueMap = fd.value_map && Object.keys(fd.value_map).length > 0;
-    
+
     if (hasValueMap) {
       // Use the value_map for absolute color mapping
       categoricalValues = Array.from(uniqueValues); // No need to sort when using explicit mapping
-      
+
       // Get the color scheme for fallback colors for values not in the value_map
-      const scheme = getCategoricalSchemeRegistry().get(fd.categorical_color_scheme || 'supersetColors');
+      const scheme = getCategoricalSchemeRegistry().get(
+        fd.categorical_color_scheme || 'supersetColors',
+      );
       const colors = scheme?.colors || ['#ccc'];
-      
+
       // Get fallback color from categorical_fallback_color if set
-      const fallbackColor = fd.categorical_fallback_color 
+      const fallbackColor = fd.categorical_fallback_color
         ? `rgba(${fd.categorical_fallback_color.r},${fd.categorical_fallback_color.g},${fd.categorical_fallback_color.b},${fd.categorical_fallback_color.a})`
         : '#ccc';
-      
+
       colorScale = (value: any) => {
         const stringValue = String(value);
-     
+
         // If the value is explicitly mapped in value_map, use that color
         if (fd.value_map && fd.value_map[stringValue]) {
           return fd.value_map[stringValue];
         }
-        
+
         // Fallback to the categorical_fallback_color for values not in value_map
         return fallbackColor;
       };
@@ -610,7 +648,9 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       });
 
       // Get the color scheme and create the color scale
-      const scheme = getCategoricalSchemeRegistry().get(fd.categorical_color_scheme || 'supersetColors');
+      const scheme = getCategoricalSchemeRegistry().get(
+        fd.categorical_color_scheme || 'supersetColors',
+      );
       const colors = scheme?.colors || ['#ccc'];
       colorScale = (value: any) => {
         const index = categoricalValues.indexOf(String(value));
@@ -635,7 +675,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       // Use the range_map for segmented linear color mapping
       colorScale = (value: any) => {
         const numValue = Number(value);
-        
+
         // Check if this value falls within any of our defined ranges
         for (const range of Object.keys(fd.range_map)) {
           const [min, max] = range.split('-').map(Number);
@@ -643,28 +683,30 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
             return fd.range_map[range];
           }
         }
-        
+
         // Fallback to a default linear scale for values not in any range
-        const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
-        const linearScale = scheme 
-          ? scheme.createLinearScale(minMaxExtent) 
+        const scheme = getSequentialSchemeRegistry().get(
+          fd.linear_color_scheme || 'blue_white_yellow',
+        );
+        const linearScale = scheme
+          ? scheme.createLinearScale(minMaxExtent)
           : scaleLinear<string>()
               .domain(minMaxExtent)
               .range(['#ccc', '#343434']);
-              
+
         return linearScale(numValue) || '#ccc';
       };
     } else {
       // Use the standard linear color scheme
-      const scheme = getSequentialSchemeRegistry().get(fd.linear_color_scheme || 'blue_white_yellow');
-      const linearScale = scheme 
-        ? scheme.createLinearScale(minMaxExtent) 
-        : scaleLinear<string>()
-            .domain(minMaxExtent)
-            .range(['#ccc', '#343434']);
+      const scheme = getSequentialSchemeRegistry().get(
+        fd.linear_color_scheme || 'blue_white_yellow',
+      );
+      const linearScale = scheme
+        ? scheme.createLinearScale(minMaxExtent)
+        : scaleLinear<string>().domain(minMaxExtent).range(['#ccc', '#343434']);
       colorScale = (value: any) => linearScale(Number(value)) || '#ccc';
     }
-    
+
     // Still store the original extent for legend display
     extent = minMaxExtent;
   }
@@ -680,8 +722,10 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
         const recordTime = new Date(d[fd.temporal_column]);
         // const currentTime = new Date(currentTime);
         const timeGrain = fd.temporal_column_grain;
-        const recordTimeGrain = timeGrain === 'PT1H' ? recordTime.getHours() : recordTime.getDate();
-        const currentTimeGrain = timeGrain === 'PT1H' ? currentTime.getHours() : currentTime.getDate();
+        const recordTimeGrain =
+          timeGrain === 'PT1H' ? recordTime.getHours() : recordTime.getDate();
+        const currentTimeGrain =
+          timeGrain === 'PT1H' ? currentTime.getHours() : currentTime.getDate();
         if (recordTimeGrain === currentTimeGrain) {
           valueMap[d.country_id] = value;
         }
@@ -695,7 +739,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   const features = (geoJson.features || []).map((feature: JsonObject) => {
     const value = valueMap[feature.properties?.ISO];
     let fillColor: [number, number, number, number];
-    
+
     if (fd.categorical_column) {
       // For categorical values, convert hex color to RGB
       const hexColor = value !== undefined ? colorScale(value) : '#ccc';
@@ -720,32 +764,34 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     };
   });
 
-  let processedFeatures = features.filter((feature: JsonObject) => feature.properties.metric !== undefined);
+  let processedFeatures = features.filter(
+    (feature: JsonObject) => feature.properties.metric !== undefined,
+  );
   if (fd.js_data_mutator) {
     const jsFnMutator = sandboxedEval(fd.js_data_mutator);
     processedFeatures = jsFnMutator(processedFeatures);
   }
 
- 
-  
   function setTooltipContent(o: JsonObject) {
     if (!o.object?.extraProps) {
-      const areaName = o.object.properties.ADM1 || o.object.properties.name || o.object.properties.NAME || o.object.properties.ISO;
+      const areaName =
+        o.object.properties.ADM1 ||
+        o.object.properties.name ||
+        o.object.properties.NAME ||
+        o.object.properties.ISO;
       const formatter = getNumberFormatter(fd.number_format || ',d');
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
-      const value = fd.categorical_column && o.object.properties.categorical_value !== undefined
-        ? o.object.properties.categorical_value
-        : o.object.properties.metric !== undefined
-        ? `${prefix}${formatter(o.object.properties.metric)}${unit}`
-        : 'No data';
+      const value =
+        fd.categorical_column &&
+        o.object.properties.categorical_value !== undefined
+          ? o.object.properties.categorical_value
+          : o.object.properties.metric !== undefined
+            ? `${prefix}${formatter(o.object.properties.metric)}${unit}`
+            : 'No data';
 
       const tooltipRows = [
-        <TooltipRow
-          key="area"
-          label={`${areaName} `}
-          value={t(value)}
-        />
+        <TooltipRow key="area" label={`${areaName} `} value={t(value)} />,
       ];
 
       // Add temporal information if available
@@ -761,7 +807,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       // : 'DD MMM YYYY'
       const timeGrain = formData.time_grain_sqla;
       let formattedDate = '';
-      
+
       if (currentTime) {
         const momentDate = moment(currentTime);
         switch (timeGrain) {
@@ -787,17 +833,13 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
         tooltipRows.push(
           <TooltipRow
             key="date"
-            label={t('Date') + " "}
+            label={`${t('Date')} `}
             value={formattedDate}
-          />
+          />,
         );
       }
 
-      return (
-        <div className="deckgl-tooltip">
-          {tooltipRows}
-        </div>
-      );
+      return <div className="deckgl-tooltip">{tooltipRows}</div>;
     }
     return (
       o.object?.extraProps && (
@@ -819,24 +861,23 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
       const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
       const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
-      const formattedValue = fd.categorical_column && info.object.categorical_value !== undefined
-        ? info.object.categorical_value
-        : `${prefix}${formatter(info.object.metric)}${unit}`;
-      const message = (fd.icon_hover_message || 'Value: {metric}')
-        .replace('{metric}', formattedValue);
-      
+      const formattedValue =
+        fd.categorical_column && info.object.categorical_value !== undefined
+          ? info.object.categorical_value
+          : `${prefix}${formatter(info.object.metric)}${unit}`;
+      const message = (fd.icon_hover_message || 'Value: {metric}').replace(
+        '{metric}',
+        formattedValue,
+      );
+
       return (
         <div className="deckgl-tooltip">
-          <TooltipRow
-            label=""
-            value={message}
-          />
+          <TooltipRow label="" value={message} />
         </div>
       );
     }
     return null;
   }
-
 
   const geoJsonLayer = new GeoJsonLayer({
     id: `geojson-layer-${fd.slice_id}`,
@@ -844,14 +885,14 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     extruded: fd.extruded,
     filled: fd.filled,
     stroked: fd.stroked,
-    opacity: opacity,
+    opacity,
     getFillColor: (f: JsonObject) => f.properties.fillColor,
     getLineColor: (f: JsonObject) => f.properties.strokeColor,
     getLineWidth: fd.line_width || 1,
     lineWidthUnits: fd.line_width_unit,
     autoHighlight: true,
     ...commonLayerProps(fd, setTooltip, setTooltipContent),
-    onClick: onClick,
+    onClick,
   }) as ExtendedGeoJsonLayer;
 
   // Attach metadata to the layer instance
@@ -861,7 +902,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
   geoJsonLayer.categoricalValues = categoricalValues;
   geoJsonLayer.valueMap = fd.value_map || {};
 
-  let iconLayer = null;
+  let iconLayer: any = null;
 
   if (fd.show_icons && fd.icon_threshold !== '') {
     const iconData = processConditionalIcons(processedFeatures, fd);
@@ -878,7 +919,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
       sizeScale: 1,
       billboard: true,
       alphaCutoff: 0.05,
-      opacity: opacity,
+      opacity,
       parameters: {
         depthTest: false,
       },
@@ -888,7 +929,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
           setTooltip({
             x: info.x,
             y: info.y,
-            content: setIconTooltipContent(info)
+            content: setIconTooltipContent(info),
           });
         } else {
           setTooltip(null);
@@ -899,7 +940,7 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
 
   // Calculate text data for labels
   // console.log('Processing features for text labels:', processedFeatures);
-  
+
   // First, create a map of icon positions for quick lookup
   const iconPositions = new Map<string, boolean>();
   if (fd.show_icons && fd.icon_threshold !== '') {
@@ -910,76 +951,100 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     });
   }
 
-  const textData = processedFeatures.map((feature: JsonObject) => {
-    let coordinates: [number, number] | undefined;
-    
-    // Calculate center point for the text
-    if (feature.geometry.type === 'Polygon') {
-      const ring = feature.geometry.coordinates[0];
-      coordinates = ring.reduce(
-        (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
-        [0, 0]
-      ).map((sum: number) => sum / ring.length) as [number, number];
-    } else if (feature.geometry.type === 'MultiPolygon') {
-      const areas = feature.geometry.coordinates.map((poly: [number, number][][]) => {
-        const ring = poly[0];
-        return {
-          area: Math.abs(ring.reduce((area: number, point: [number, number], i: number) => {
-            const next = ring[(i + 1) % ring.length];
-            return area + (point[0] * next[1] - next[0] * point[1]);
-          }, 0)) / 2,
-          ring
-        } as PolygonRing;
-      });
-      const largestRing = areas.sort((a: PolygonRing, b: PolygonRing) => b.area - a.area)[0].ring;
-      coordinates = largestRing.reduce(
-        (acc: [number, number], point: [number, number]) => [acc[0] + point[0], acc[1] + point[1]],
-        [0, 0]
-      ).map((sum: number) => sum / largestRing.length) as [number, number];
-    }
+  const textData = processedFeatures
+    .map((feature: JsonObject) => {
+      let coordinates: [number, number] | undefined;
 
-    if (!coordinates) {
-      // console.log('No coordinates found for feature:', feature);
-      return null;
-    }
-
-    // Check if there's an icon at these coordinates
-    const key = `${coordinates[0]},${coordinates[1]}`;
-    const hasIcon = iconPositions.get(key);
-    
-    // If there's an icon, offset the text position upward with a smaller offset
-    if (hasIcon) {
-      coordinates = [coordinates[0], coordinates[1] + 0.02];
-    }
-
-    const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
-    const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
-    const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
-    const value = feature.properties.metric;
-    const text = fd.categorical_column && feature.properties.categorical_value !== undefined
-      ? feature.properties.categorical_value
-      : value !== undefined
-      ? `${prefix}${formatter(value)}${unit}`
-      : '';
-
-    // Include region properties in the text data
-    return {
-      coordinates,
-      text,
-      value,
-      hasIcon,
-      object: {
-        properties: {
-          ...feature.properties,
-          // Ensure we have all possible region identifiers
-          ADM1: feature.properties.ADM1,
-          name: feature.properties.name,
-          NAME: feature.properties.NAME,
-          ISO: feature.properties.ISO
-        }
+      // Calculate center point for the text
+      if (feature.geometry.type === 'Polygon') {
+        const ring = feature.geometry.coordinates[0];
+        coordinates = ring
+          .reduce(
+            (acc: [number, number], point: [number, number]) => [
+              acc[0] + point[0],
+              acc[1] + point[1],
+            ],
+            [0, 0],
+          )
+          .map((sum: number) => sum / ring.length) as [number, number];
+      } else if (feature.geometry.type === 'MultiPolygon') {
+        const areas = feature.geometry.coordinates.map(
+          (poly: [number, number][][]) => {
+            const ring = poly[0];
+            return {
+              area:
+                Math.abs(
+                  ring.reduce(
+                    (area: number, point: [number, number], i: number) => {
+                      const next = ring[(i + 1) % ring.length];
+                      return area + (point[0] * next[1] - next[0] * point[1]);
+                    },
+                    0,
+                  ),
+                ) / 2,
+              ring,
+            } as PolygonRing;
+          },
+        );
+        const largestRing = areas.sort(
+          (a: PolygonRing, b: PolygonRing) => b.area - a.area,
+        )[0].ring;
+        coordinates = largestRing
+          .reduce(
+            (acc: [number, number], point: [number, number]) => [
+              acc[0] + point[0],
+              acc[1] + point[1],
+            ],
+            [0, 0],
+          )
+          .map((sum: number) => sum / largestRing.length) as [number, number];
       }
-    };
-  }).filter((d: TextData | null): d is TextData => d !== null);
+
+      if (!coordinates) {
+        // console.log('No coordinates found for feature:', feature);
+        return null;
+      }
+
+      // Check if there's an icon at these coordinates
+      const key = `${coordinates[0]},${coordinates[1]}`;
+      const hasIcon = iconPositions.get(key);
+
+      // If there's an icon, offset the text position upward with a smaller offset
+      if (hasIcon) {
+        coordinates = [coordinates[0], coordinates[1] + 0.02];
+      }
+
+      const formatter = getNumberFormatter(fd.number_format || 'SMART_NUMBER');
+      const unit = fd.metric_unit ? ` ${fd.metric_unit}` : '';
+      const prefix = fd.metric_prefix ? `${fd.metric_prefix} ` : '';
+      const value = feature.properties.metric;
+      const text =
+        fd.categorical_column &&
+        feature.properties.categorical_value !== undefined
+          ? feature.properties.categorical_value
+          : value !== undefined
+            ? `${prefix}${formatter(value)}${unit}`
+            : '';
+
+      // Include region properties in the text data
+      return {
+        coordinates,
+        text,
+        value,
+        hasIcon,
+        object: {
+          properties: {
+            ...feature.properties,
+            // Ensure we have all possible region identifiers
+            ADM1: feature.properties.ADM1,
+            name: feature.properties.name,
+            NAME: feature.properties.NAME,
+            ISO: feature.properties.ISO,
+          },
+        },
+      };
+    })
+    .filter((d: TextData | null): d is TextData => d !== null);
 
   // console.log('Generated text data with region properties:', textData);
 
@@ -992,8 +1057,8 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     getSize: 14,
     getAngle: 0,
     getTextAnchor: 'middle',
-    getAlignmentBaseline: d => d.hasIcon ? 'bottom' : 'center',
-    getPixelOffset: d => d.hasIcon ? [0, -10] : [0, 0],
+    getAlignmentBaseline: d => (d.hasIcon ? 'bottom' : 'center'),
+    getPixelOffset: d => (d.hasIcon ? [0, -10] : [0, 0]),
     pickable: false,
     billboard: true,
     background: true,
@@ -1005,12 +1070,14 @@ export function getLayer(options: LayerOptions): (Layer<{}> | (() => Layer<{}>))
     sizeUnits: 'pixels',
     sizeMinPixels: 10,
     sizeMaxPixels: 24,
-    opacity: opacity,
+    opacity,
   });
 
   // console.log('Created text layer:', textLayer);
 
-  return iconLayer ? [geoJsonLayer, iconLayer, textLayer] : [geoJsonLayer, textLayer];
+  return iconLayer
+    ? [geoJsonLayer, iconLayer, textLayer]
+    : [geoJsonLayer, textLayer];
 }
 
 export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
@@ -1030,9 +1097,19 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     latitude: props.viewport.latitude,
     longitude: props.viewport.longitude,
   });
-  const [selectedRegion, setSelectedRegion] = useState<{ properties: any } | null>(null);
-  
-  const { formData, payload, setControlValue, viewport: initialViewport, onAddFilter, height, width } = props;
+  const [selectedRegion, setSelectedRegion] = useState<{
+    properties: any;
+  } | null>(null);
+
+  const {
+    formData,
+    payload,
+    setControlValue,
+    viewport: initialViewport,
+    onAddFilter,
+    height,
+    width,
+  } = props;
 
   const setTooltip = useCallback((tooltip: TooltipProps['tooltip']) => {
     const { current } = containerRef;
@@ -1079,26 +1156,31 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
       const times = payload.data.data
         .map((d: JsonObject) => new Date(d[formData.temporal_column]))
         .filter((d: Date) => !isNaN(d.getTime()));
-      
+
       if (times.length > 0) {
-        const minTime = new Date(Math.min(...times.map((d: Date) => d.getTime())));
-        const maxTime = new Date(Math.max(...times.map((d: Date) => d.getTime())));
+        const minTime = new Date(
+          Math.min(...times.map((d: Date) => d.getTime())),
+        );
+        const maxTime = new Date(
+          Math.max(...times.map((d: Date) => d.getTime())),
+        );
         setTimeRange([minTime, maxTime]);
 
         // Find the nearest date to current system time
         const currentSystemTime = new Date().getTime();
-        const nearestDate = times.reduce((prev: Date, curr: Date) => {
-          return Math.abs(curr.getTime() - currentSystemTime) < Math.abs(prev.getTime() - currentSystemTime) 
-            ? curr 
-            : prev;
-        });
+        const nearestDate = times.reduce((prev: Date, curr: Date) =>
+          Math.abs(curr.getTime() - currentSystemTime) <
+          Math.abs(prev.getTime() - currentSystemTime)
+            ? curr
+            : prev,
+        );
 
         // Set the nearest date as current time, but ensure it's within the time range
         const boundedTime = new Date(
           Math.min(
             Math.max(nearestDate.getTime(), minTime.getTime()),
-            maxTime.getTime()
-          )
+            maxTime.getTime(),
+          ),
         );
         setCurrentTime(boundedTime);
       }
@@ -1106,11 +1188,12 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   }, [formData.temporal_column, payload.data.data]);
 
   // Cleanup icon URLs
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       iconUrls.forEach(url => cleanupIconUrl(url));
-    };
-  }, [iconUrls]);
+    },
+    [iconUrls],
+  );
 
   // Update viewState when viewport changes
   useEffect(() => {
@@ -1125,63 +1208,71 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
   }, [props.viewport]);
 
   // Handle viewport changes from user interaction
-  const onViewportChange = useCallback((viewport: Viewport) => {
-    // console.log('Viewport changed:', viewport);
-    const newViewState = {
-      ...viewport,
-      zoom: viewport.zoom || viewState.zoom || 0,
-      bearing: viewport.bearing || viewState.bearing || 0,
-      pitch: viewport.pitch || viewState.pitch || 0,
-    };
-    setViewState(newViewState);
-    if (props.setControlValue) {
-      props.setControlValue('viewport', newViewState);
-    }
-  }, [props.setControlValue, viewState.zoom]);
+  const onViewportChange = useCallback(
+    (viewport: Viewport) => {
+      // console.log('Viewport changed:', viewport);
+      const newViewState = {
+        ...viewport,
+        zoom: viewport.zoom || viewState.zoom || 0,
+        bearing: viewport.bearing || viewState.bearing || 0,
+        pitch: viewport.pitch || viewState.pitch || 0,
+      };
+      setViewState(newViewState);
+      if (props.setControlValue) {
+        props.setControlValue('viewport', newViewState);
+      }
+    },
+    [props.setControlValue, viewState.zoom],
+  );
 
   // Calculate layers with viewState
-  const layers = useMemo(
-    () => {
-      // console.log('Recalculating layers with viewState:', viewState);
-      if (!geoJson) return [];
+  const layers = useMemo(() => {
+    // console.log('Recalculating layers with viewState:', viewState);
+    if (!geoJson) return [];
 
-      const handleClick = (info: { object?: any }) => {
-        console.log('GeoJsonLayer onClick fired:', info);
-        if (info.object && info.object.properties) {
-          console.log('Setting selected region:', info.object);
-          setSelectedRegion(info.object);
-        }
-      };
-
-      const baseLayers = getLayer({
-        formData,
-        payload,
-        onAddFilter,
-        setTooltip,
-        onClick: handleClick,
-        geoJson,
-        temporalOptions: {
-          currentTime,
-          allData: [],
-        },
-        viewState,
-        opacity: 1.0
-      });
-
-      // Filter out text layer if show_text_labels is false
-      if (!formData.show_text_labels) {
-        return baseLayers.filter(layer => !(layer instanceof TextLayer));
+    const handleClick = (info: { object?: any }) => {
+      console.log('GeoJsonLayer onClick fired:', info);
+      if (info.object && info.object.properties) {
+        console.log('Setting selected region:', info.object);
+        setSelectedRegion(info.object);
       }
+    };
 
-      return baseLayers;
-    },
-    [formData, payload, onAddFilter, setTooltip, geoJson, currentTime, viewState],
-  );
+    const baseLayers = getLayer({
+      formData,
+      payload,
+      onAddFilter,
+      setTooltip,
+      onClick: handleClick,
+      geoJson,
+      temporalOptions: {
+        currentTime,
+        allData: [],
+      },
+      viewState,
+      opacity: 1.0,
+    });
+
+    // Filter out text layer if show_text_labels is false
+    if (!formData.show_text_labels) {
+      return baseLayers.filter(layer => !(layer instanceof TextLayer));
+    }
+
+    return baseLayers;
+  }, [
+    formData,
+    payload,
+    onAddFilter,
+    setTooltip,
+    geoJson,
+    currentTime,
+    viewState,
+  ]);
 
   // Get formatter and layer metadata
   const formatter = useMemo(
     () => getNumberFormatter(formData.number_format || 'SMART_NUMBER'),
-    [formData.number_format]
+    [formData.number_format],
   );
 
   const geoJsonLayer = layers[0] as ExtendedGeoJsonLayer;
@@ -1195,38 +1286,49 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     if (currentTime && timelineContainerRef.current && activeDateRef.current) {
       const container = timelineContainerRef.current;
       const activeElement = activeDateRef.current;
-      
+
       // Calculate if the active element is outside the visible area
       const containerRect = container.getBoundingClientRect();
       const activeRect = activeElement.getBoundingClientRect();
-      
-      if (activeRect.left < containerRect.left || activeRect.right > containerRect.right) {
+
+      if (
+        activeRect.left < containerRect.left ||
+        activeRect.right > containerRect.right
+      ) {
         // Scroll the active element into view with smooth behavior
         activeElement.scrollIntoView({
           behavior: 'smooth',
           block: 'nearest',
-          inline: 'center'
+          inline: 'center',
         });
       }
     }
   }, [currentTime]);
 
   // Update the handleTimeNavigation to ensure smooth scrolling after state update
-  const handleTimeNavigation = useCallback((direction: 'prev' | 'next') => {
-    if (!timeRange || !currentTime) return;
+  const handleTimeNavigation = useCallback(
+    (direction: 'prev' | 'next') => {
+      if (!timeRange || !currentTime) return;
 
-    const availableDates = getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla);
-    const currentIndex = availableDates.findIndex(
-      date => date.getTime() === currentTime.getTime()
-    );
+      const availableDates = getDatesInRange(
+        timeRange[0],
+        timeRange[1],
+        formData.time_grain_sqla,
+      );
+      const currentIndex = availableDates.findIndex(
+        date => date.getTime() === currentTime.getTime(),
+      );
 
-    if (currentIndex === -1) return;
+      if (currentIndex === -1) return;
 
-    const newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex >= 0 && newIndex < availableDates.length) {
-      setCurrentTime(availableDates[newIndex]);
-    }
-  }, [timeRange, currentTime, formData.time_grain_sqla]);
+      const newIndex =
+        direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+      if (newIndex >= 0 && newIndex < availableDates.length) {
+        setCurrentTime(availableDates[newIndex]);
+      }
+    },
+    [timeRange, currentTime, formData.time_grain_sqla],
+  );
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -1267,41 +1369,44 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                     const selectedTime = date.toDate();
                     const boundedTime = new Date(
                       Math.min(
-                        Math.max(selectedTime.getTime(), timeRange[0].getTime()),
-                        timeRange[1].getTime()
-                      )
+                        Math.max(
+                          selectedTime.getTime(),
+                          timeRange[0].getTime(),
+                        ),
+                        timeRange[1].getTime(),
+                      ),
                     );
                     setCurrentTime(boundedTime);
                   }
                 }}
                 showTime={formData.time_grain_sqla === 'PT1H'}
                 picker={
-                  formData.time_grain_sqla === 'P1Y' 
+                  formData.time_grain_sqla === 'P1Y'
                     ? 'year'
                     : formData.time_grain_sqla === 'P1M'
-                    ? 'month'
-                    : formData.time_grain_sqla === 'P1W'
-                    ? 'week'
-                    : undefined
+                      ? 'month'
+                      : formData.time_grain_sqla === 'P1W'
+                        ? 'week'
+                        : undefined
                 }
                 format={
                   formData.time_grain_sqla === 'P1Y'
                     ? 'YYYY'
                     : formData.time_grain_sqla === 'P1M'
-                    ? 'MMM YYYY'
-                    : formData.time_grain_sqla === 'P1W'
-                    ? 'MMM YYYY [Week] w'
-                    : formData.time_grain_sqla === 'PT1H'
-                    ? 'DD MMM YYYY HH:mm'
-                    : 'DD MMM YYYY'
+                      ? 'MMM YYYY'
+                      : formData.time_grain_sqla === 'P1W'
+                        ? 'MMM YYYY [Week] w'
+                        : formData.time_grain_sqla === 'PT1H'
+                          ? 'DD MMM YYYY HH:mm'
+                          : 'DD MMM YYYY'
                 }
                 allowClear={false}
                 disabledDate={current => {
                   if (!timeRange) return false;
                   const currentDate = current?.toDate();
-                  return currentDate ? (
-                    currentDate < timeRange[0] || currentDate > timeRange[1]
-                  ) : false;
+                  return currentDate
+                    ? currentDate < timeRange[0] || currentDate > timeRange[1]
+                    : false;
                 }}
                 style={{ border: 'none', width: 'auto' }}
                 onPanelChange={(value, mode) => {
@@ -1316,11 +1421,15 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
               />
             </div>
             <div className="progress-bar">
-              <div 
+              <div
                 className="progress-indicator"
-                style={{ 
-                  width: `${((currentTime?.getTime() ?? timeRange[0].getTime()) - timeRange[0].getTime()) / 
-                    (timeRange[1].getTime() - timeRange[0].getTime()) * 100}%`
+                style={{
+                  width: `${
+                    (((currentTime?.getTime() ?? timeRange[0].getTime()) -
+                      timeRange[0].getTime()) /
+                      (timeRange[1].getTime() - timeRange[0].getTime())) *
+                    100
+                  }%`,
                 }}
               />
             </div>
@@ -1328,12 +1437,19 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
               <button
                 className="nav-button"
                 onClick={() => handleTimeNavigation('prev')}
-                disabled={!currentTime || currentTime.getTime() === timeRange[0].getTime()}
+                disabled={
+                  !currentTime ||
+                  currentTime.getTime() === timeRange[0].getTime()
+                }
               >
                 ←
               </button>
               <div className="timeline-container" ref={timelineContainerRef}>
-                {getDatesInRange(timeRange[0], timeRange[1], formData.time_grain_sqla).map((date, index) => {
+                {getDatesInRange(
+                  timeRange[0],
+                  timeRange[1],
+                  formData.time_grain_sqla,
+                ).map((date, index) => {
                   // Format date based on time grain
                   let dateFormat: Intl.DateTimeFormatOptions = {};
                   switch (formData.time_grain_sqla) {
@@ -1352,12 +1468,14 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
                     default:
                       dateFormat = { weekday: 'short' };
                   }
-                  
-                  const isActive = currentTime && date.toDateString() === currentTime.toDateString();
-                  
+
+                  const isActive =
+                    currentTime &&
+                    date.toDateString() === currentTime.toDateString();
+
                   return (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={`day-label ${isActive ? 'active' : ''}`}
                       onClick={() => setCurrentTime(date)}
                       ref={isActive ? activeDateRef : null}
@@ -1370,7 +1488,10 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
               <button
                 className="nav-button"
                 onClick={() => handleTimeNavigation('next')}
-                disabled={!currentTime || currentTime.getTime() === timeRange[1].getTime()}
+                disabled={
+                  !currentTime ||
+                  currentTime.getTime() === timeRange[1].getTime()
+                }
               >
                 →
               </button>
@@ -1378,19 +1499,27 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
           </StyledTimelineSlider>
         )}
         {colorScale && (
-          <ColorLegend 
-            colorScale={colorScale} 
+          <ColorLegend
+            colorScale={colorScale}
             extent={extent}
             format={formatter}
-            metricPrefix={formData.metric_prefix ? `${formData.metric_prefix} ` : ''}
+            metricPrefix={
+              formData.metric_prefix ? `${formData.metric_prefix} ` : ''
+            }
             metricUnit={formData.metric_unit ? ` ${formData.metric_unit}` : ''}
-            values={formData.categorical_column ? (geoJsonLayer?.categoricalValues || []) : metricValues}
+            values={
+              formData.categorical_column
+                ? geoJsonLayer?.categoricalValues || []
+                : metricValues
+            }
             metricName={
               formData.categorical_column
-                ? (formData.categorical_column || 'Categories')
-                : (typeof formData.metric === 'object' 
-                  ? (formData.metric.label || formData.metric_label || 'Metric Range')
-                  : (formData.metric || formData.metric_label || 'Metric Range'))
+                ? formData.categorical_column || 'Categories'
+                : typeof formData.metric === 'object'
+                  ? formData.metric.label ||
+                    formData.metric_label ||
+                    'Metric Range'
+                  : formData.metric || formData.metric_label || 'Metric Range'
             }
             isCategorical={!!formData.categorical_column}
             valueMap={formData.value_map}
@@ -1398,7 +1527,6 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
           />
         )}
       </DeckGLContainerStyledWrapper>
-      
     </div>
   );
 });

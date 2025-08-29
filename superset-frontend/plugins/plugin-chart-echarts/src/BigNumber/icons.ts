@@ -20,21 +20,30 @@
 export const ICON_NAMES = {
   // Weather Parameters
   'cloud-rain': { componentName: 'CloudRain', label: 'Rainfall' },
-  'droplet': { componentName: 'Droplet', label: 'Humidity' },
-  'temperature-high': { componentName: 'TemperatureHigh', label: 'Temperature High' },
-  'temperature-low': { componentName: 'TemperatureLow', label: 'Temperature Low' },
-  'wind': { componentName: 'Wind', label: 'Wind' },
-  'sun': { componentName: 'Sun', label: 'Sun' },
-  'cloud': { componentName: 'Cloud', label: 'Cloud' },
-  'dollar': { componentName: 'Dollar', label: 'Dollar' },
+  droplet: { componentName: 'Droplet', label: 'Humidity' },
+  'temperature-high': {
+    componentName: 'TemperatureHigh',
+    label: 'Temperature High',
+  },
+  'temperature-low': {
+    componentName: 'TemperatureLow',
+    label: 'Temperature Low',
+  },
+  wind: { componentName: 'Wind', label: 'Wind' },
+  sun: { componentName: 'Sun', label: 'Sun' },
+  cloud: { componentName: 'Cloud', label: 'Cloud' },
+  dollar: { componentName: 'Dollar', label: 'Dollar' },
   // Diseases
-  'virus': { componentName: 'Virus', label: 'Dengue' },
-  'lungs': { componentName: 'Lungs', label: 'Lungs' },
-  'intestine': { componentName: 'Intestine', label: 'Diarrhea' },
-  'hospital': { componentName: 'Hospital', label: 'Hospital' },
-  'syringe': { componentName: 'Syringe', label: 'Vaccination' },
-  'prescription-bottle-medical': { componentName: 'PrescriptionBottleMedical', label: 'Medicine' },
-  'mosquito': { componentName: 'Mosquito', label: 'Mosquito' },
+  virus: { componentName: 'Virus', label: 'Dengue' },
+  lungs: { componentName: 'Lungs', label: 'Lungs' },
+  intestine: { componentName: 'Intestine', label: 'Diarrhea' },
+  hospital: { componentName: 'Hospital', label: 'Hospital' },
+  syringe: { componentName: 'Syringe', label: 'Vaccination' },
+  'prescription-bottle-medical': {
+    componentName: 'PrescriptionBottleMedical',
+    label: 'Medicine',
+  },
+  mosquito: { componentName: 'Mosquito', label: 'Mosquito' },
 } as const;
 
-export type IconKey = keyof typeof ICON_NAMES; 
+export type IconKey = keyof typeof ICON_NAMES;

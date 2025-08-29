@@ -17,9 +17,8 @@
  * under the License.
  */
 
-import { JsonObject, QueryFormData } from '@superset-ui/core';
+import { JsonObject, QueryFormData, HandlerFunction } from '@superset-ui/core';
 import { LayerOptions } from './layers';
-import { TooltipProps } from 'antd-v5';
 
 /**
  * Feed entry representing a single data point in the feed
@@ -28,7 +27,7 @@ export interface FeedEntry {
   title: string;
   message: string;
   date?: string;
-  country_id?: string;
+  country_id: string;
   metric?: number;
   [key: string]: any; // Allow additional properties
 }
@@ -131,7 +130,8 @@ export interface FeedFormData {
 export interface FeedLayerProps {
   formData: QueryFormData | FeedGeoJSON;
   payload: JsonObject;
-  setTooltip: (tooltip: TooltipProps) => void;
+  onAddFilter: HandlerFunction;
+  setTooltip: (tooltip: any) => void;
   geoJson: FeedGeoJSON;
   selectionOptions: FeedSelectionOptions | LayerOptions['selectionOptions'];
   opacity?: number;
@@ -142,7 +142,8 @@ export interface FeedLayerProps {
       strokeColor?: [number, number, number, number];
     };
   };
-  selectedParameters?: [string]
+  selectedParameters?: string[];
+  parameterColumn?: string;
 }
 
 /**
@@ -164,4 +165,4 @@ export interface FeedLayerReturn {
   geoJsonLayer: any; // Replace with proper deck.gl layer type
   circleLayer: any; // Replace with proper deck.gl layer type
   textLayer: any; // Replace with proper deck.gl layer type
-} 
+}

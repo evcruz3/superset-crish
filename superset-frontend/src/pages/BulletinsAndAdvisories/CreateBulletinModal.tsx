@@ -1,13 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, Upload, Alert, Select as AntdSelect, Spin, Card } from 'antd';
-import { UploadOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import {
+  Modal,
+  Form,
+  Input,
+  Button,
+  Upload,
+  Alert,
+  Select as AntdSelect,
+  Spin,
+  Card,
+} from 'antd';
+import {
+  UploadOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import { SupersetClient, t, JsonObject } from '@superset-ui/core';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { AsyncSelect } from 'src/components';
-import { Bulletin } from './types';
 import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface';
 import rison from 'rison';
 import { LabeledValue } from 'antd/lib/select';
+import { Bulletin } from './types';
 
 interface CreateBulletinModalProps {
   isOpen: boolean;
@@ -44,10 +58,16 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [imageAttachments, setImageAttachments] = useState<AttachmentState[]>([]);
-  const [isChartSelectorModalOpen, setIsChartSelectorModalOpen] = useState(false);
-  const [selectedChartForThumbnail, setSelectedChartForThumbnail] = useState<LabeledValue | null>(null);
-  const [chartThumbnailPreviewUrl, setChartThumbnailPreviewUrl] = useState<string | null>(null);
+  const [imageAttachments, setImageAttachments] = useState<AttachmentState[]>(
+    [],
+  );
+  const [isChartSelectorModalOpen, setIsChartSelectorModalOpen] =
+    useState(false);
+  const [selectedChartForThumbnail, setSelectedChartForThumbnail] =
+    useState<LabeledValue | null>(null);
+  const [chartThumbnailPreviewUrl, setChartThumbnailPreviewUrl] = useState<
+    string | null
+  >(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   useEffect(() => {
@@ -64,7 +84,10 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
   }, [isOpen, form, addDangerToast]);
 
   const handleAddAttachment = () => {
-    setImageAttachments([...imageAttachments, { uid: `new_${Date.now()}`, caption: '', fileList: [] }]);
+    setImageAttachments([
+      ...imageAttachments,
+      { uid: `new_${Date.now()}`, caption: '', fileList: [] },
+    ]);
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -73,7 +96,10 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
     setImageAttachments(newAttachments);
   };
 
-  const handleFileChange = (index: number, info: UploadChangeParam<UploadFile>) => {
+  const handleFileChange = (
+    index: number,
+    info: UploadChangeParam<UploadFile>,
+  ) => {
     const newAttachments = [...imageAttachments];
     newAttachments[index].fileList = [...info.fileList];
     if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
@@ -86,13 +112,20 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
     setImageAttachments(newAttachments);
   };
 
-  const handleCaptionChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCaptionChange = (
+    index: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const newAttachments = [...imageAttachments];
     newAttachments[index].caption = event.target.value;
     setImageAttachments(newAttachments);
   };
 
-  const loadChartOptions = async (search: string, page: number, pageSize: number): Promise<{data: LabeledValue[], totalCount: number}> => {
+  const loadChartOptions = async (
+    search: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ data: LabeledValue[]; totalCount: number }> => {
     const query = rison.encode_uri({
       filters: search ? [{ col: 'slice_name', opr: 'ct', value: search }] : [],
       page,
@@ -152,7 +185,11 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
     } catch (error: any) {
       console.error('Error creating bulletin:', error);
       let detailedMessage = t('Failed to create bulletin.');
-      if (error.response && error.response.data && error.response.data.message) {
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
         detailedMessage = error.response.data.message;
       } else if (error.message) {
         detailedMessage = error.message;
@@ -168,7 +205,9 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
     toggle();
   };
 
-  const handleChartSelectedAsAttachment = async (option: LabeledValue | undefined) => {
+  const handleChartSelectedAsAttachment = async (
+    option: LabeledValue | undefined,
+  ) => {
     if (option && option.value) {
       const chartId = option.value as number;
       const chartName = option.label as string;
@@ -177,7 +216,7 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
           endpoint: `/api/v1/chart/${chartId}`,
         });
         const chartResult = chartDetailsResponse.json.result;
-        const digest = chartResult.digest;
+        const { digest } = chartResult;
 
         if (!digest) {
           addDangerToast(t('Could not retrieve chart digest for thumbnail.'));
@@ -188,40 +227,55 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
 
         const response = await fetch(thumbnailUrl);
         if (!response.ok) {
-          throw new Error(t('Failed to fetch chart thumbnail image. Status: ') + response.status);
+          throw new Error(
+            t('Failed to fetch chart thumbnail image. Status: ') +
+              response.status,
+          );
         }
         const imageBlob = await response.blob();
         const fileName = `${chartName.replace(/[^a-zA-Z0-9]/g, '_')}_thumbnail.png`;
-        const imageFile = new File([imageBlob], fileName, { type: imageBlob.type || 'image/png' });
+        const imageFile = new File([imageBlob], fileName, {
+          type: imageBlob.type || 'image/png',
+        });
 
         const newAttachment: AttachmentState = {
           uid: `chart_thumb_${chartId}_${Date.now()}`,
           file: imageFile,
           caption: chartName,
-          fileList: [{
-            uid: `chart_thumb_file_${chartId}_${Date.now()}`,
-            name: fileName,
-            status: 'done',
-            originFileObj: imageFile,
-            url: URL.createObjectURL(imageFile),
-            size: imageFile.size,
-            type: imageFile.type,
-          }],
+          fileList: [
+            {
+              uid: `chart_thumb_file_${chartId}_${Date.now()}`,
+              name: fileName,
+              status: 'done',
+              originFileObj: imageFile,
+              url: URL.createObjectURL(imageFile),
+              size: imageFile.size,
+              type: imageFile.type,
+            },
+          ],
         };
 
         setImageAttachments(prevAttachments => {
-          const firstEmptyIndex = prevAttachments.findIndex(att => !att.file && att.caption === '' && att.fileList.length === 0);
-          if (firstEmptyIndex === 0 && prevAttachments.length === 1 && !prevAttachments[0].file) {
+          const firstEmptyIndex = prevAttachments.findIndex(
+            att => !att.file && att.caption === '' && att.fileList.length === 0,
+          );
+          if (
+            firstEmptyIndex === 0 &&
+            prevAttachments.length === 1 &&
+            !prevAttachments[0].file
+          ) {
             return [newAttachment];
           }
           return [...prevAttachments, newAttachment];
         });
 
         addSuccessToast(t('Chart thumbnail added as an image attachment.'));
-
       } catch (err) {
         console.error('Error fetching chart thumbnail:', err);
-        addDangerToast(t('Failed to add chart thumbnail as attachment. ') + (err instanceof Error ? err.message : ''));
+        addDangerToast(
+          t('Failed to add chart thumbnail as attachment. ') +
+            (err instanceof Error ? err.message : ''),
+        );
       }
     }
   };
@@ -240,12 +294,26 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
           <Button key="back" onClick={handleModalClose}>
             {t('Cancel')}
           </Button>,
-          <Button key="submit" type="primary" loading={isLoading} onClick={handleSubmit}>
+          <Button
+            key="submit"
+            type="primary"
+            loading={isLoading}
+            onClick={handleSubmit}
+          >
             {t('Create Bulletin')}
           </Button>,
         ]}
       >
-        {error && <Alert message={error} type="error" showIcon closable onClose={() => setError(null)} className="mb-3" />}
+        {error && (
+          <Alert
+            message={error}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setError(null)}
+            className="mb-3"
+          />
+        )}
         <Form form={form} layout="vertical" name="create_bulletin_form">
           <Form.Item
             name="title"
@@ -302,32 +370,42 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
                     <img
                       src={attachment.fileList[0].url}
                       alt={attachment.caption || 'Preview'}
-                      style={{ maxHeight: '250px', width: 'auto', display: 'block', marginBottom: '10px', border: '1px solid #f0f0f0' }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      style={{
+                        maxHeight: '250px',
+                        width: 'auto',
+                        display: 'block',
+                        marginBottom: '10px',
+                        border: '1px solid #f0f0f0',
+                      }}
+                      onError={e => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   </div>
                 )}
-                <Form.Item
-                  label={`${t('Image File')} ${index + 1}`}
-                >
+                <Form.Item label={`${t('Image File')} ${index + 1}`}>
                   <Upload
                     name={`image_file_${index}`}
                     listType="picture"
                     fileList={attachment.fileList}
                     beforeUpload={() => false}
-                    onChange={(info: UploadChangeParam<UploadFile>) => handleFileChange(index, info)}
+                    onChange={(info: UploadChangeParam<UploadFile>) =>
+                      handleFileChange(index, info)
+                    }
                     showUploadList={{ showRemoveIcon: false }}
                     maxCount={1}
                   >
-                    <Button icon={<UploadOutlined />}>{t('Click to select image')}</Button>
+                    <Button icon={<UploadOutlined />}>
+                      {t('Click to select image')}
+                    </Button>
                   </Upload>
                 </Form.Item>
-                <Form.Item
-                  label={`${t('Image Caption')} ${index + 1}`}
-                >
+                <Form.Item label={`${t('Image Caption')} ${index + 1}`}>
                   <Input
                     value={attachment.caption}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleCaptionChange(index, e)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleCaptionChange(index, e)
+                    }
                     placeholder={t('Enter caption for the image')}
                   />
                 </Form.Item>
@@ -345,14 +423,14 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
               type="dashed"
               onClick={() => setIsChartSelectorModalOpen(true)}
               icon={<PlusOutlined />}
-              style={{ marginTop: '10px'}}
+              style={{ marginTop: '10px' }}
             >
               {t('Add Chart Thumbnail')}
             </Button>
           </Form.Item>
-           <div style={{ fontSize: '0.8em', color: 'gray', marginTop: '20px' }}>
-              {t('Fields marked with an asterisk (*) are required.')}
-            </div>
+          <div style={{ fontSize: '0.8em', color: 'gray', marginTop: '20px' }}>
+            {t('Fields marked with an asterisk (*) are required.')}
+          </div>
         </Form>
       </Modal>
 
@@ -394,15 +472,24 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
                     endpoint: `/api/v1/chart/${chartId}`,
                   });
                   const chartResult = chartDetailsResponse.json.result;
-                  const digest = chartResult.digest;
+                  const { digest } = chartResult;
                   if (digest) {
-                    setChartThumbnailPreviewUrl(`/api/v1/chart/${chartId}/thumbnail/${digest}/?force=true`);
+                    setChartThumbnailPreviewUrl(
+                      `/api/v1/chart/${chartId}/thumbnail/${digest}/?force=true`,
+                    );
                   } else {
-                    addDangerToast(t('Could not retrieve chart digest for thumbnail preview.'));
+                    addDangerToast(
+                      t(
+                        'Could not retrieve chart digest for thumbnail preview.',
+                      ),
+                    );
                     setChartThumbnailPreviewUrl(null);
                   }
                 } catch (err) {
-                  console.error('Error fetching chart details for preview:', err);
+                  console.error(
+                    'Error fetching chart details for preview:',
+                    err,
+                  );
                   addDangerToast(t('Failed to load chart thumbnail preview.'));
                   setChartThumbnailPreviewUrl(null);
                 } finally {
@@ -417,28 +504,44 @@ const CreateBulletinModal: React.FC<CreateBulletinModalProps> = ({
             placeholder={t('Search for a chart')}
           />
         </div>
-        {isPreviewLoading && <div style={{ textAlign: 'center', margin: '10px' }}><Spin /> <p>{t('Loading preview...')}</p></div>}
+        {isPreviewLoading && (
+          <div style={{ textAlign: 'center', margin: '10px' }}>
+            <Spin /> <p>{t('Loading preview...')}</p>
+          </div>
+        )}
         {chartThumbnailPreviewUrl && !isPreviewLoading && (
           <div style={{ marginTop: '15px', textAlign: 'center' }}>
-            <img 
-              src={chartThumbnailPreviewUrl} 
-              alt={t('Chart thumbnail preview')} 
-              style={{ maxWidth: '100%', maxHeight: '200px', border: '1px solid #f0f0f0' }} 
+            <img
+              src={chartThumbnailPreviewUrl}
+              alt={t('Chart thumbnail preview')}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '200px',
+                border: '1px solid #f0f0f0',
+              }}
               onError={() => {
-                addDangerToast(t('Thumbnail image not available or still generating. Try adding the chart to see if it becomes available.'));
+                addDangerToast(
+                  t(
+                    'Thumbnail image not available or still generating. Try adding the chart to see if it becomes available.',
+                  ),
+                );
                 setChartThumbnailPreviewUrl(null);
               }}
             />
           </div>
         )}
-        {!isPreviewLoading && !chartThumbnailPreviewUrl && selectedChartForThumbnail && (
-          <div style={{ marginTop: '15px', textAlign: 'center', color: 'grey' }}>
-            {t('No preview available or chart has no thumbnail.')}
-          </div>
-        )}
+        {!isPreviewLoading &&
+          !chartThumbnailPreviewUrl &&
+          selectedChartForThumbnail && (
+            <div
+              style={{ marginTop: '15px', textAlign: 'center', color: 'grey' }}
+            >
+              {t('No preview available or chart has no thumbnail.')}
+            </div>
+          )}
       </Modal>
     </>
   );
 };
 
-export default CreateBulletinModal; 
+export default CreateBulletinModal;

@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { styled, t, isFeatureEnabled, FeatureFlag, SupersetClient } from '@superset-ui/core';
+import { useState, useEffect } from 'react';
+import {
+  styled,
+  t,
+  isFeatureEnabled,
+  FeatureFlag,
+  SupersetClient,
+} from '@superset-ui/core';
 import { Card, Tag } from 'antd';
-import { Bulletin } from './types';
-import BulletinChart from './BulletinChart';
 import ImageLoader from 'src/components/ListViewCard/ImageLoader';
-import BulletinDetailModal from './BulletinDetailModal';
 import moment from 'moment';
 import rison from 'rison';
+import { Bulletin } from './types';
+import BulletinChart from './BulletinChart';
+import BulletinDetailModal from './BulletinDetailModal';
 
 const FALLBACK_THUMBNAIL_URL = '/static/assets/images/chart-card-fallback.svg';
 
@@ -24,7 +30,7 @@ const StyledCard = styled(Card)`
   height: 600px;
   display: flex;
   flex-direction: column;
-  
+
   .ant-card-body {
     padding: ${({ theme }) => theme.gridUnit * 4}px;
     height: 100%;
@@ -32,7 +38,7 @@ const StyledCard = styled(Card)`
     flex-direction: column;
     overflow: hidden;
   }
-  
+
   .bulletin-title {
     font-size: ${({ theme }) => theme.typography.sizes.xl}px;
     font-weight: ${({ theme }) => theme.typography.weights.bold};
@@ -49,7 +55,7 @@ const StyledCard = styled(Card)`
     margin-top: 0;
     flex-shrink: 0;
   }
-  
+
   .bulletin-meta {
     color: ${({ theme }) => theme.colors.grayscale.base};
     font-size: ${({ theme }) => theme.typography.sizes.s}px;
@@ -61,10 +67,10 @@ const StyledCard = styled(Card)`
     flex: 1;
     overflow-y: auto;
     margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
-    
+
     /* Hide scrollbar by default */
     scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none;  /* IE and Edge */
+    -ms-overflow-style: none; /* IE and Edge */
     &::-webkit-scrollbar {
       width: 0;
       background: transparent;
@@ -74,23 +80,23 @@ const StyledCard = styled(Card)`
   /* Show scrollbar only when hovering over the card */
   &:hover .bulletin-content {
     scrollbar-width: thin; /* Firefox */
-    -ms-overflow-style: auto;  /* IE and Edge */
-    
+    -ms-overflow-style: auto; /* IE and Edge */
+
     &::-webkit-scrollbar {
       width: 6px;
     }
-    
+
     &::-webkit-scrollbar-thumb {
       background: ${({ theme }) => theme.colors.grayscale.light2};
       border-radius: 3px;
     }
-    
+
     &::-webkit-scrollbar-track {
       background: ${({ theme }) => theme.colors.grayscale.light4};
       border-radius: 3px;
     }
   }
-  
+
   .bulletin-section {
     font-size: ${({ theme }) => theme.typography.sizes.m}px;
     margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
@@ -112,7 +118,8 @@ const StyledCard = styled(Card)`
       line-height: 1.4em;
       min-height: 4.2em;
       color: ${({ theme }) => theme.colors.grayscale.dark2};
-      padding: ${({ theme }) => theme.gridUnit * 2}px ${({ theme }) => theme.gridUnit * 2}px 0;
+      padding: ${({ theme }) => theme.gridUnit * 2}px
+        ${({ theme }) => theme.gridUnit * 2}px 0;
     }
 
     &.advisory-section .section-title {
@@ -133,7 +140,7 @@ const StyledCard = styled(Card)`
     height: 200px;
     position: relative;
     flex-shrink: 0;
-    
+
     .gradient-container {
       position: relative;
       height: 100%;
@@ -154,7 +161,7 @@ const StyledCard = styled(Card)`
     padding-top: ${({ theme }) => theme.gridUnit * 2}px;
     border-top: 1px solid ${({ theme }) => theme.colors.grayscale.light3};
     flex-shrink: 0;
-    
+
     .ant-tag {
       margin-right: ${({ theme }) => theme.gridUnit * 1}px;
       margin-bottom: ${({ theme }) => theme.gridUnit * 1}px;
@@ -167,7 +174,7 @@ const StyledCard = styled(Card)`
   }
 `;
 
-export default function BulletinCard({ 
+export default function BulletinCard({
   bulletin,
   hasPerm,
   bulkSelectEnabled,
@@ -209,34 +216,46 @@ export default function BulletinCard({
   if (!localBulletin) return null;
 
   // const hashtags = localBulletin.hashtags?.split(',').map(tag => tag.trim()) || [];
-  
+
   const handleClick = () => {
     if (!bulkSelectEnabled) {
       setShowModal(true);
     }
   };
-  
+
   const handleLocalRefresh = async () => {
     try {
       // Fetch the latest bulletin data with all needed fields
       const encodedFilters = rison.encode({
         filters: [{ col: 'id', opr: 'eq', value: bulletin.id }],
         columns: [
-          'id', 'title', 'advisory', 'risks', 'safety_tips', 'hashtags', 
-          'chart_id', 'image_attachments',
-          'created_by.first_name', 'created_by.last_name', 
-          'created_on', 'changed_on'
+          'id',
+          'title',
+          'advisory',
+          'risks',
+          'safety_tips',
+          'hashtags',
+          'chart_id',
+          'image_attachments',
+          'created_by.first_name',
+          'created_by.last_name',
+          'created_on',
+          'changed_on',
         ],
       });
-      
+
       const response = await SupersetClient.get({
         endpoint: `/api/v1/bulletins_and_advisories/?q=${encodedFilters}`,
       });
-      
-      if (response.json && response.json.result && response.json.result.length > 0) {
+
+      if (
+        response.json &&
+        response.json.result &&
+        response.json.result.length > 0
+      ) {
         setLocalBulletin(response.json.result[0]);
       }
-      
+
       // Update local state
       setRefreshKey(prev => prev + 1);
       // Also trigger parent refresh to update global data
@@ -247,7 +266,7 @@ export default function BulletinCard({
       parentRefreshData();
     }
   };
-  
+
   return (
     <>
       <StyledCard onClick={handleClick}>
@@ -255,7 +274,9 @@ export default function BulletinCard({
         <div className="bulletin-meta">
           {localBulletin.created_by ? (
             <>
-              {t('Posted by')} {`${localBulletin.created_by.first_name} ${localBulletin.created_by.last_name}`}{' • '}
+              {t('Posted by')}{' '}
+              {`${localBulletin.created_by.first_name} ${localBulletin.created_by.last_name}`}
+              {' • '}
             </>
           ) : null}
           {localBulletin.created_on && (
@@ -263,21 +284,28 @@ export default function BulletinCard({
               {t('Created')} {moment(localBulletin.created_on).fromNow()}
             </>
           )}
-          {localBulletin.changed_on && localBulletin.changed_on !== localBulletin.created_on && (
-            <>
-              {' • '}{t('Updated')} {moment(localBulletin.changed_on).fromNow()}
-            </>
-          )}
+          {localBulletin.changed_on &&
+            localBulletin.changed_on !== localBulletin.created_on && (
+              <>
+                {' • '}
+                {t('Updated')} {moment(localBulletin.changed_on).fromNow()}
+              </>
+            )}
         </div>
 
         {/* Display the first image attachment if available */}
-        {localBulletin.image_attachments && localBulletin.image_attachments.length > 0 && localBulletin.image_attachments[0].url && (
-          <img 
-            src={localBulletin.image_attachments[0].url} 
-            alt={localBulletin.image_attachments[0].caption || t('Bulletin Attachment')} 
-            className="bulletin-attachment-image" 
-          />
-        )}
+        {localBulletin.image_attachments &&
+          localBulletin.image_attachments.length > 0 &&
+          localBulletin.image_attachments[0].url && (
+            <img
+              src={localBulletin.image_attachments[0].url}
+              alt={
+                localBulletin.image_attachments[0].caption ||
+                t('Bulletin Attachment')
+              }
+              className="bulletin-attachment-image"
+            />
+          )}
 
         <div className="bulletin-content">
           <div className="bulletin-section advisory-section">
@@ -319,7 +347,7 @@ export default function BulletinCard({
           </div>
         )} */}
       </StyledCard>
-      <BulletinDetailModal 
+      <BulletinDetailModal
         bulletin={showModal ? localBulletin : null}
         // Pass the entire image_attachments array to the detail modal
         // bulletinImageUrl={localBulletin.image_attachments_url} // Old prop
@@ -329,4 +357,4 @@ export default function BulletinCard({
       />
     </>
   );
-} 
+}

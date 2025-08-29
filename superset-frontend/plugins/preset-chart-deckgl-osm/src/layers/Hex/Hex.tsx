@@ -49,11 +49,9 @@ function setTooltipContent(o: JsonObject) {
 }
 
 export function getLayer(
-  formData: QueryFormData,
-  payload: JsonObject,
-  onAddFilter: () => void,
-  setTooltip: (tooltip: TooltipProps['tooltip']) => void,
+  options: any
 ) {
+  const { formData, payload, onAddFilter, setTooltip } = options;
   const fd = formData;
   const colorScale = CategoricalColorNamespace.getScale(fd.color_scheme);
   const colorRange = colorScale

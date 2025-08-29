@@ -1336,6 +1336,102 @@ class WeatherForecastsApi(BaseSupersetModelRestApi):
         GetListRisonSchema,
     )
 
+    # --- Helper methods for DRY CRUD operations ---
+    def _handle_post_item(self, model_class: Type[BaseWeatherParameterModel], post_schema_class: Type[BaseWeatherParameterSchema], response_schema_class: Type[BaseWeatherParameterSchema]) -> Response:
+        if not request.is_json:
+            return self.response_400(message="Request is not JSON")
+        try:
+            schema = post_schema_class()
+            item_data = schema.load(request.json)
+        except ValidationError as err:
+            return self.response_400(message=str(err.messages))
+
+        # Derive day_name if not provided
+        if isinstance(item_data.get('forecast_date'), date) and not item_data.get('day_name'):
+            item_data['day_name'] = item_data['forecast_date'].strftime("%A")
+
+        if self._get_item_by_composite_key(model_class, item_data['municipality_code'], item_data['forecast_date']):
+            return self.response_409(message="Entry already exists for this municipality and date.")
+
+        new_item = model_class(**item_data)
+        try:
+            db.session.add(new_item)
+            db.session.commit()
+            return self.response(201, **response_schema_class().dump(new_item))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating {model_class.__name__}: {e}", exc_info=True)
+            return self.response_422(message=f"Could not create entry: {str(e)}")
+
+    def _handle_get_item(self, model_class: Type[BaseWeatherParameterModel], schema_class: Type[BaseWeatherParameterSchema], mun_code: str, forecast_date_str: str) -> Response:
+        forecast_dt = _parse_date_string(forecast_date_str)
+        if not forecast_dt:
+            return self.response_400(message="Invalid date format. Use YYYY-MM-DD.")
+        
+        item = self._get_item_by_composite_key(model_class, mun_code, forecast_dt)
+        if not item:
+            return self.response_404()
+        return self.response(200, **schema_class().dump(item))
+
+    def _handle_put_item(self, model_class: Type[BaseWeatherParameterModel], schema_class: Type[BaseWeatherParameterSchema], mun_code: str, forecast_date_str: str) -> Response:
+        forecast_dt = _parse_date_string(forecast_date_str)
+        if not forecast_dt:
+            return self.response_400(message="Invalid date format. Use YYYY-MM-DD.")
+
+        item = self._get_item_by_composite_key(model_class, mun_code, forecast_dt)
+        if not item:
+            return self.response_404()
+
+        if not request.is_json:
+            return self.response_400(message="Request is not JSON")
+        try:
+            schema = schema_class(partial=True) 
+            item_data = schema.load(request.json)
+        except ValidationError as err:
+            return self.response_400(message=str(err.messages))
+
+        # Cannot change primary key parts (municipality_code, forecast_date) via PUT
+        if "municipality_code" in item_data and item_data["municipality_code"] != mun_code:
+            return self.response_400(message="Cannot change municipality_code via PUT.")
+        if "forecast_date" in item_data and _parse_date_string(str(item_data["forecast_date"])) != forecast_dt:
+             return self.response_400(message="Cannot change forecast_date via PUT.")
+
+        # Update day_name if needed
+        if 'forecast_date' in item_data and isinstance(item_data.get('forecast_date'), date):
+            item_data['day_name'] = item_data['forecast_date'].strftime("%A")
+        elif item.forecast_date and not item_data.get('day_name') and 'value' in item_data:
+             item_data['day_name'] = item.forecast_date.strftime("%A")
+
+        for key, value in item_data.items():
+            setattr(item, key, value)
+        
+        try:
+            db.session.commit()
+            return self.response(200, **schema_class().dump(item))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating {model_class.__name__}: {e}", exc_info=True)
+            return self.response_422(message=f"Could not update entry: {str(e)}")
+
+    def _handle_delete_item(self, model_class: Type[BaseWeatherParameterModel], mun_code: str, forecast_date_str: str) -> Response:
+        forecast_dt = _parse_date_string(forecast_date_str)
+        if not forecast_dt:
+            return self.response_400(message="Invalid date format. Use YYYY-MM-DD.")
+        
+        item = self._get_item_by_composite_key(model_class, mun_code, forecast_dt)
+        if not item:
+            return self.response_404()
+
+        try:
+            db.session.delete(item)
+            db.session.commit()
+            return self.response(200, message=f"{model_class.__name__} deleted successfully.")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error deleting {model_class.__name__}: {e}", exc_info=True)
+            return self.response_422(message=f"Could not delete entry: {str(e)}")
+
+
 # Helper to parse date string, returning None if invalid
 def _parse_date_string(date_str: str) -> date | None:
     try:

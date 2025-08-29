@@ -391,7 +391,7 @@ export default class CRUDCollection extends PureComponent<
     /* eslint-disable no-underscore-dangle */
     const isExpanded =
       !!this.state.expandedColumns[record.id] || record.__expanded;
-    let tds = [];
+    let tds: React.ReactNode[] = [];
     if (expandFieldset) {
       tds.push(
         <td key="__expand" className="expand">

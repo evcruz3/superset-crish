@@ -24,7 +24,12 @@ import {
   Dataset,
   getStandardizedControls,
 } from '@superset-ui/chart-controls';
-import { headerFontSize, subheaderFontSize, backgroundIconControl, backgroundIconColorControl } from '../sharedControls';
+import {
+  headerFontSize,
+  subheaderFontSize,
+  backgroundIconControl,
+  backgroundIconColorControl,
+} from '../sharedControls';
 
 export default {
   controlPanelSections: [

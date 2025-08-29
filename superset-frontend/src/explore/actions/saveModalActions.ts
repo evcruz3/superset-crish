@@ -189,7 +189,7 @@ const addToasts = (
     new?: boolean;
   },
 ) => {
-  const toasts = [];
+  const toasts: any[] = [];
   if (isNewSlice) {
     toasts.push(addSuccessToast(t('Chart [%s] has been saved', sliceName)));
   } else {

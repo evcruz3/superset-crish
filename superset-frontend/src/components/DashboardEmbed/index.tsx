@@ -9,7 +9,7 @@
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  */
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { styled, SupersetClient } from '@superset-ui/core';
 import { embedDashboard } from '@superset-ui/embedded-sdk';
 
@@ -46,15 +46,14 @@ export default function SimpleDashboardEmbed({
       const csrfToken = SupersetClient.get({
         endpoint: '/api/v1/csrf_token',
       }).then(({ json }) => json.result);
-      
+
       embedDashboard({
         id: dashboardId,
         supersetDomain: window.location.origin,
         mountPoint: containerRef.current,
         // Use the existing session cookie for authentication
-        fetchGuestToken: () =>
-          Promise.resolve(csrfToken),
-        dashboardUiConfig: { 
+        fetchGuestToken: () => Promise.resolve(csrfToken),
+        dashboardUiConfig: {
           hideTitle,
           hideTab,
           filters: {
@@ -63,11 +62,18 @@ export default function SimpleDashboardEmbed({
           },
           urlParams: {
             standalone,
-          }
+          },
         },
       });
     }
-  }, [dashboardId, showFilters, hideTitle, hideTab, expandedFilters, standalone]);
+  }, [
+    dashboardId,
+    showFilters,
+    hideTitle,
+    hideTab,
+    expandedFilters,
+    standalone,
+  ]);
 
   return <EmbedContainer ref={containerRef} height={height} />;
-} 
+}

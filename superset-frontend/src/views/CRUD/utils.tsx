@@ -47,7 +47,7 @@ import { Dashboard, Filter, TableTab } from './types';
     next_id: RegExp;
   } = rison as any;
 
-  const l = [];
+  const l: string[] = [];
   for (let hi = 0; hi < 16; hi += 1) {
     for (let lo = 0; lo < 16; lo += 1) {
       if (hi + lo === 0) continue;

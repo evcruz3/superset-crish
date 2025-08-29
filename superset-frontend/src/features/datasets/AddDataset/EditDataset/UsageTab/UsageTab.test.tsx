@@ -350,7 +350,7 @@ test('show chart dashboards', async () => {
 });
 
 test('paginates', async () => {
-  const charts = [];
+  const charts: ChartListChart[] = [];
   for (let i = 0; i < 65; i += 1) {
     charts.push(
       getMockChart({

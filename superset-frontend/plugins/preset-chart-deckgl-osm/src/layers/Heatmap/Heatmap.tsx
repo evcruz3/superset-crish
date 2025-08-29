@@ -17,7 +17,7 @@
  * under the License.
  */
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { Position, Color } from '@deck.gl/core';
+import { Position, Color, Layer } from '@deck.gl/core';
 import { t, getSequentialSchemeRegistry, JsonObject } from '@superset-ui/core';
 import { commonLayerProps } from '../common';
 import sandboxedEval from '../../utils/sandbox';
@@ -35,12 +35,10 @@ function setTooltipContent(o: JsonObject) {
     </div>
   );
 }
-export const getLayer: getLayerType<unknown> = (
-  formData,
-  payload,
-  onAddFilter,
-  setTooltip,
-) => {
+export const getLayer: getLayerType<Layer<{}>> = function (
+  options: any
+) {
+  const { formData, payload, onAddFilter, setTooltip } = options;
   const fd = formData;
   const {
     intensity = 1,

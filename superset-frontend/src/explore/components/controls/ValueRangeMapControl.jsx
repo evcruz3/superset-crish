@@ -16,13 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
 import PropTypes from 'prop-types';
 import { SketchPicker } from 'react-color';
 import { debounce } from 'lodash';
 import { styled, t } from '@superset-ui/core';
 import { Button, Input, InputNumber, Row, Col, Tooltip } from 'antd';
-import { PlusOutlined, CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  CloseOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
 import ControlHeader from 'src/explore/components/ControlHeader';
 
 const propTypes = {
@@ -84,16 +87,16 @@ const StyledFooter = styled.div`
   display: flex;
   justify-content: flex-start;
   margin-top: ${({ theme }) => theme.gridUnit * 2}px;
-  
+
   .add-btn {
     margin-top: ${({ theme }) => theme.gridUnit}px;
   }
-  
+
   .input-group {
     display: flex;
     flex-direction: column;
     margin-right: ${({ theme }) => theme.gridUnit * 2}px;
-    
+
     .input-label {
       margin-bottom: ${({ theme }) => theme.gridUnit}px;
       font-size: 12px;
@@ -113,31 +116,31 @@ const Backdrop = styled.div`
 export default class ValueRangeMapControl extends React.PureComponent {
   constructor(props) {
     super(props);
-    
+
     this.state = {
       ranges: [],
       showColorPicker: null,
       newMinValue: null,
       newMaxValue: null,
     };
-    
+
     this.debouncedOnChange = debounce(this.onChange, 300);
   }
-  
+
   componentDidMount() {
     this.updateRangesFromProps();
   }
-  
+
   componentDidUpdate(prevProps) {
     if (prevProps.value !== this.props.value) {
       this.updateRangesFromProps();
     }
   }
-  
+
   updateRangesFromProps() {
     const { value } = this.props;
     if (!value) return;
-    
+
     // Convert from stored format to component state
     const ranges = Object.entries(value).map(([rangeKey, rangeColor]) => {
       const [min, max] = rangeKey.split('-').map(Number);
@@ -147,10 +150,10 @@ export default class ValueRangeMapControl extends React.PureComponent {
         color: rangeColor,
       };
     });
-    
+
     this.setState({ ranges });
   }
-  
+
   onChange = () => {
     // Convert from component state to stored format
     const { ranges } = this.state;
@@ -160,10 +163,10 @@ export default class ValueRangeMapControl extends React.PureComponent {
       }
       return acc;
     }, {});
-    
+
     this.props.onChange(valueMap);
   };
-  
+
   handleMinChange = (index, min) => {
     const { ranges } = this.state;
     const updatedRanges = [...ranges];
@@ -171,12 +174,12 @@ export default class ValueRangeMapControl extends React.PureComponent {
       ...updatedRanges[index],
       min,
     };
-    
+
     this.setState({ ranges: updatedRanges }, () => {
       this.debouncedOnChange();
     });
   };
-  
+
   handleMaxChange = (index, max) => {
     const { ranges } = this.state;
     const updatedRanges = [...ranges];
@@ -184,12 +187,12 @@ export default class ValueRangeMapControl extends React.PureComponent {
       ...updatedRanges[index],
       max,
     };
-    
+
     this.setState({ ranges: updatedRanges }, () => {
       this.debouncedOnChange();
     });
   };
-  
+
   handleColorChange = (index, color) => {
     const { ranges } = this.state;
     const updatedRanges = [...ranges];
@@ -197,60 +200,58 @@ export default class ValueRangeMapControl extends React.PureComponent {
       ...updatedRanges[index],
       color: color.hex,
     };
-    
+
     this.setState({ ranges: updatedRanges }, () => {
       this.debouncedOnChange();
     });
   };
-  
+
   handleRemoveRange = index => {
     const { ranges } = this.state;
     const updatedRanges = ranges.filter((_, i) => i !== index);
-    
+
     this.setState({ ranges: updatedRanges }, this.onChange);
   };
-  
+
   handleAddRange = () => {
     const { newMinValue, newMaxValue, ranges } = this.state;
     const { scheme } = this.props;
-    
+
     if (newMinValue === null || newMaxValue === null) return;
     if (newMinValue >= newMaxValue) return;
-    
+
     // Get next color from scheme or use default
-    const nextColor = 
-      scheme?.colors?.[ranges.length % (scheme.colors.length || 1)] || 
+    const nextColor =
+      scheme?.colors?.[ranges.length % (scheme.colors.length || 1)] ||
       `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-    
+
     const updatedRanges = [
       ...ranges,
       { min: newMinValue, max: newMaxValue, color: nextColor },
     ];
-    
+
     this.setState(
-      { 
+      {
         ranges: updatedRanges,
         newMinValue: null,
         newMaxValue: null,
-      }, 
-      this.onChange
+      },
+      this.onChange,
     );
   };
-  
-  isRangeValid = (min, max) => {
-    return min !== null && max !== null && min < max;
-  };
-  
+
+  isRangeValid = (min, max) => min !== null && max !== null && min < max;
+
   render() {
-    const { 
-      minLabel, 
+    const {
+      minLabel,
       maxLabel,
       colorLabel,
       addRangePlaceholder,
       addRangeLabel,
     } = this.props;
     const { ranges, showColorPicker, newMinValue, newMaxValue } = this.state;
-    
+
     return (
       <div>
         <ControlHeader {...this.props} />
@@ -284,7 +285,9 @@ export default class ValueRangeMapControl extends React.PureComponent {
                 />
                 {showColorPicker === index && (
                   <>
-                    <Backdrop onClick={() => this.setState({ showColorPicker: null })} />
+                    <Backdrop
+                      onClick={() => this.setState({ showColorPicker: null })}
+                    />
                     <StyledColorPickerPopover>
                       <SketchPicker
                         color={range.color}
@@ -300,22 +303,22 @@ export default class ValueRangeMapControl extends React.PureComponent {
           <StyledFooter>
             <div className="input-group">
               <div className="input-label">{minLabel}</div>
-              <InputNumber 
+              <InputNumber
                 value={newMinValue}
                 onChange={value => this.setState({ newMinValue: value })}
                 placeholder={minLabel}
               />
             </div>
-            
+
             <div className="input-group">
               <div className="input-label">{maxLabel}</div>
-              <InputNumber 
+              <InputNumber
                 value={newMaxValue}
                 onChange={value => this.setState({ newMaxValue: value })}
                 placeholder={maxLabel}
               />
             </div>
-            
+
             <Button
               className="add-btn"
               onClick={this.handleAddRange}
@@ -324,18 +327,27 @@ export default class ValueRangeMapControl extends React.PureComponent {
             >
               {addRangeLabel}
             </Button>
-            
-            <Tooltip 
+
+            <Tooltip
               title={t('Min value must be less than max value')}
-              visible={newMinValue !== null && newMaxValue !== null && newMinValue >= newMaxValue}
+              visible={
+                newMinValue !== null &&
+                newMaxValue !== null &&
+                newMinValue >= newMaxValue
+              }
             >
-              <InfoCircleOutlined 
-                style={{ 
-                  visibility: (newMinValue !== null && newMaxValue !== null && newMinValue >= newMaxValue) ? 'visible' : 'hidden',
+              <InfoCircleOutlined
+                style={{
+                  visibility:
+                    newMinValue !== null &&
+                    newMaxValue !== null &&
+                    newMinValue >= newMaxValue
+                      ? 'visible'
+                      : 'hidden',
                   marginLeft: 8,
                   marginTop: 16,
-                  color: 'red'
-                }} 
+                  color: 'red',
+                }}
               />
             </Tooltip>
           </StyledFooter>
@@ -343,4 +355,4 @@ export default class ValueRangeMapControl extends React.PureComponent {
       </div>
     );
   }
-} 
+}

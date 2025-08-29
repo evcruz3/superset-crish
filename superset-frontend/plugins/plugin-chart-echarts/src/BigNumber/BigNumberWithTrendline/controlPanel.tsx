@@ -25,7 +25,12 @@ import {
   getStandardizedControls,
   temporalColumnMixin,
 } from '@superset-ui/chart-controls';
-import { headerFontSize, subheaderFontSize, backgroundIconControl, backgroundIconColorControl } from '../sharedControls';
+import {
+  headerFontSize,
+  subheaderFontSize,
+  backgroundIconControl,
+  backgroundIconColorControl,
+} from '../sharedControls';
 
 const config: ControlPanelConfig = {
   controlPanelSections: [

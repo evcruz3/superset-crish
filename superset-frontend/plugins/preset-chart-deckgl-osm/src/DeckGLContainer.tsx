@@ -32,27 +32,36 @@ import {
   useRef,
 } from 'react';
 import { isEqual } from 'lodash';
-import { Layer } from '@deck.gl/core';
+import { Layer, LinearInterpolator } from '@deck.gl/core';
 import DeckGL from '@deck.gl/react';
 import type { ViewStateChangeParameters } from '@deck.gl/core';
-import { LinearInterpolator, WebMercatorViewport } from '@deck.gl/core';
-import { JsonObject, JsonValue, styled, usePrevious } from '@superset-ui/core';
-import Tooltip, { TooltipProps } from './components/Tooltip';
+import { JsonValue, styled, usePrevious } from '@superset-ui/core';
 // import 'mapbox-gl/dist/mapbox-gl.css';
 // import { StaticMap } from 'react-map-gl';
-import { Viewport } from './utils/fitViewport';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { BitmapLayer } from '@deck.gl/layers';
-import React from 'react';
-import { PlusOutlined, MinusOutlined, CompassOutlined, ArrowLeftOutlined, ArrowRightOutlined, ArrowUpOutlined, ArrowDownOutlined, CopyOutlined, UndoOutlined, RedoOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  MinusOutlined,
+  CompassOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  CopyOutlined,
+  UndoOutlined,
+  RedoOutlined,
+} from '@ant-design/icons';
+import { Viewport } from './utils/fitViewport';
+import Tooltip, { TooltipProps } from './components/Tooltip';
 
 const TICK = 250; // milliseconds
 const ZOOM_STEP = 0.5;
 const PITCH_RESET = 0;
 const BEARING_RESET = 0;
 const BEARING_STEP = 15; // Degrees
-const PITCH_STEP = 10;   // Degrees
-const MAX_PITCH = 45;    // Max pitch allowed
+const PITCH_STEP = 10; // Degrees
+const MAX_PITCH = 45; // Max pitch allowed
 const TRANSITION_DURATION = 200; // ms for smooth transition
 
 // Styles for the control buttons container
@@ -109,7 +118,7 @@ const ControlsContainer = styled.div`
 
     // Add horizontal separator for vertical buttons
     .control-column &:not(:last-child) {
-       border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
     }
   }
 `;
@@ -127,57 +136,63 @@ interface MapControlsProps {
   onFullReset: () => void;
 }
 
-const MapControls: React.FC<MapControlsProps> = ({ 
-  viewState, 
-  onZoomIn, 
-  onZoomOut, 
-  onRotateLeft, 
-  onRotateRight, 
-  onTiltUp, 
-  onTiltDown, 
-  onToggleMaxPitch, 
-  onFullReset
-}) => {
-  return (
-    <ControlsContainer>
-      {/* Zoom Controls */}
-      <div className="control-group control-column">
-        <button onClick={onZoomIn} title="Zoom In">
-          <PlusOutlined />
-        </button>
-        <button onClick={onZoomOut} title="Zoom Out">
-          <MinusOutlined />
-        </button>
-      </div>
+const MapControls: React.FC<MapControlsProps> = ({
+  viewState,
+  onZoomIn,
+  onZoomOut,
+  onRotateLeft,
+  onRotateRight,
+  onTiltUp,
+  onTiltDown,
+  onToggleMaxPitch,
+  onFullReset,
+}) => (
+  <ControlsContainer>
+    {/* Zoom Controls */}
+    <div className="control-group control-column">
+      <button onClick={onZoomIn} title="Zoom In">
+        <PlusOutlined />
+      </button>
+      <button onClick={onZoomOut} title="Zoom Out">
+        <MinusOutlined />
+      </button>
+    </div>
 
-      {/* Rotation Controls */}
-      <div className="control-group control-row">
-        <button onClick={onRotateLeft} title="Rotate Left (U-turn Counter-Clockwise)">
-          <UndoOutlined />
-        </button>
-        <button onClick={onFullReset} title="Reset View (Position, Zoom, Bearing, Tilt)">
-          <CompassOutlined style={{ transform: `rotate(${- (viewState.bearing || 0)}deg)` }} />
-        </button>
-        <button onClick={onRotateRight} title="Rotate Right (U-turn Clockwise)">
-          <RedoOutlined />
-        </button>
-      </div>
+    {/* Rotation Controls */}
+    <div className="control-group control-row">
+      <button
+        onClick={onRotateLeft}
+        title="Rotate Left (U-turn Counter-Clockwise)"
+      >
+        <UndoOutlined />
+      </button>
+      <button
+        onClick={onFullReset}
+        title="Reset View (Position, Zoom, Bearing, Tilt)"
+      >
+        <CompassOutlined
+          style={{ transform: `rotate(${-(viewState.bearing || 0)}deg)` }}
+        />
+      </button>
+      <button onClick={onRotateRight} title="Rotate Right (U-turn Clockwise)">
+        <RedoOutlined />
+      </button>
+    </div>
 
-      {/* Tilt & Toggle Max Pitch Controls */}
-      <div className="control-group control-row">
-        <button onClick={onTiltUp} title="Tilt Up (Decrease Pitch)">
-          <ArrowUpOutlined />
-        </button>
-        <button onClick={onToggleMaxPitch} title="Toggle Max/Zero Pitch">
-          <CopyOutlined />
-        </button>
-        <button onClick={onTiltDown} title="Tilt Down (Increase Pitch)">
-            <ArrowDownOutlined />
-        </button>
-      </div>
-    </ControlsContainer>
-  );
-};
+    {/* Tilt & Toggle Max Pitch Controls */}
+    <div className="control-group control-row">
+      <button onClick={onTiltUp} title="Tilt Up (Decrease Pitch)">
+        <ArrowUpOutlined />
+      </button>
+      <button onClick={onToggleMaxPitch} title="Toggle Max/Zero Pitch">
+        <CopyOutlined />
+      </button>
+      <button onClick={onTiltDown} title="Tilt Down (Increase Pitch)">
+        <ArrowDownOutlined />
+      </button>
+    </div>
+  </ControlsContainer>
+);
 
 export type DeckGLContainerProps = {
   viewport: Viewport;
@@ -193,8 +208,16 @@ export type DeckGLContainerProps = {
 };
 
 // Helper function to determine color based on value and range map
-export const getColorFromRangeMap = (value: number, rangeMap: Record<string, string> | undefined): string | null => {
-  if (!rangeMap || Object.keys(rangeMap).length === 0 || value === null || value === undefined) {
+export const getColorFromRangeMap = (
+  value: number,
+  rangeMap: Record<string, string> | undefined,
+): string | null => {
+  if (
+    !rangeMap ||
+    Object.keys(rangeMap).length === 0 ||
+    value === null ||
+    value === undefined
+  ) {
     return null;
   }
 
@@ -221,7 +244,7 @@ export const DeckGLContainer = memo(
       if (deckRef.current) {
         return new Promise<string>((resolve, reject) => {
           try {
-            const deck = deckRef.current.deck;
+            const { deck } = deckRef.current;
             const image = deck.canvas.toDataURL('image/jpeg');
             resolve(image);
           } catch (error) {
@@ -232,28 +255,39 @@ export const DeckGLContainer = memo(
       return Promise.reject(new Error('DeckGL ref not available'));
     }, []);
 
-    useImperativeHandle(ref, () => ({
-      setTooltip,
-      captureImage,
-      deckRef: deckRef.current,
-      containerRef: containerRef.current,
-    }), [setTooltip, captureImage]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        setTooltip,
+        captureImage,
+        deckRef: deckRef.current,
+        containerRef: containerRef.current,
+      }),
+      [setTooltip, captureImage],
+    );
 
     const handleViewStateChange = useCallback(
       ({ viewState, interactionState }: ViewStateChangeParameters) => {
         setInternalViewState(viewState as Viewport);
-        if (interactionState?.isDragging || interactionState?.isPanning || interactionState?.isRotating || interactionState?.isZooming) {
+        if (
+          interactionState?.isDragging ||
+          interactionState?.isPanning ||
+          interactionState?.isRotating ||
+          interactionState?.isZooming
+        ) {
           setLastUpdate(Date.now());
         }
         if (props.onViewportChange) {
-           props.onViewportChange(viewState as Viewport);
+          props.onViewportChange(viewState as Viewport);
         }
       },
-      [props.onViewportChange]
+      [props.onViewportChange],
     );
 
     useEffect(() => {
-      const timeSinceLastInteraction = lastUpdate ? Date.now() - lastUpdate : Infinity;
+      const timeSinceLastInteraction = lastUpdate
+        ? Date.now() - lastUpdate
+        : Infinity;
       if (
         !isEqual(props.viewport, prevViewport) &&
         !isEqual(props.viewport, internalViewState) &&
@@ -264,7 +298,11 @@ export const DeckGLContainer = memo(
     }, [props.viewport, prevViewport, internalViewState, lastUpdate]);
 
     const debouncedUpdateControlPanel = useCallback(() => {
-      if (props.setControlValue && lastUpdate && Date.now() - lastUpdate > TICK) {
+      if (
+        props.setControlValue &&
+        lastUpdate &&
+        Date.now() - lastUpdate > TICK
+      ) {
         props.setControlValue('viewport', internalViewState);
         setLastUpdate(null);
       }
@@ -357,7 +395,10 @@ export const DeckGLContainer = memo(
 
     const handleToggleMaxPitch = useCallback(() => {
       const currentPitch = internalViewState.pitch || 0;
-      const targetPitch = Math.abs(currentPitch - MAX_PITCH) < PITCH_STEP / 2 ? PITCH_RESET : MAX_PITCH;
+      const targetPitch =
+        Math.abs(currentPitch - MAX_PITCH) < PITCH_STEP / 2
+          ? PITCH_RESET
+          : MAX_PITCH;
       handleViewStateChange({
         viewId: 'default-view',
         viewState: {
@@ -381,54 +422,69 @@ export const DeckGLContainer = memo(
           bearing: BEARING_RESET,
           transitionDuration: TRANSITION_DURATION,
           transitionInterpolator: new LinearInterpolator([
-            'longitude', 'latitude', 'zoom', 'pitch', 'bearing'
+            'longitude',
+            'latitude',
+            'zoom',
+            'pitch',
+            'bearing',
           ]),
         },
         interactionState: { isPanning: true },
       });
     }, [props.viewport, handleViewStateChange]);
 
-    const osmTileLayer = useMemo(() => new TileLayer({
-      id: 'osm-tile-layer',
-      data: props.mapStyle,
-      minZoom: 0,
-      maxZoom: 19,
-      tileSize: 256,
-      renderSubLayers: props => {
-        const [[west, south], [east, north]] = props.tile.boundingBox;
-        const {data, ...otherProps} = props;
-  
-        return [
-          new BitmapLayer(otherProps, {
-            image: data,
-            bounds: [west, south, east, north],
-            desaturate: 0.5
-          })
-        ];
-      }
-    }), [props.mapStyle]);
+    const osmTileLayer = useMemo(
+      () =>
+        new TileLayer({
+          id: 'osm-tile-layer',
+          data: props.mapStyle,
+          minZoom: 0,
+          maxZoom: 19,
+          tileSize: 256,
+          renderSubLayers: props => {
+            const [[west, south], [east, north]] = props.tile.boundingBox;
+            const { data, ...otherProps } = props;
+
+            return [
+              new BitmapLayer(otherProps, {
+                image: data,
+                bounds: [west, south, east, north],
+                desaturate: 0.5,
+              }),
+            ];
+          },
+        }),
+      [props.mapStyle],
+    );
 
     const layers = useCallback(() => {
-      const enhancedLayers = props.layers.map(layer => {
-        if (typeof layer === 'function') {
-          const originalLayer = layer();
-          if (props.rangeMap && Object.keys(props.rangeMap).length > 0) {
-            return new (originalLayer.constructor as any)({
-              ...originalLayer.props,
+      const enhancedLayers = props.layers
+        .map(layer => {
+          if (typeof layer === 'function') {
+            const originalLayer = layer();
+            if (props.rangeMap && Object.keys(props.rangeMap).length > 0) {
+              return new (originalLayer.constructor as any)({
+                ...originalLayer.props,
+                rangeMap: props.rangeMap,
+                getColorFromRangeMap,
+              });
+            }
+            return originalLayer;
+          }
+          if (
+            layer &&
+            props.rangeMap &&
+            Object.keys(props.rangeMap).length > 0
+          ) {
+            return new (layer.constructor as any)({
+              ...layer.props,
               rangeMap: props.rangeMap,
               getColorFromRangeMap,
             });
           }
-          return originalLayer;
-        } else if (layer && props.rangeMap && Object.keys(props.rangeMap).length > 0) {
-           return new (layer.constructor as any)({
-             ...layer.props,
-             rangeMap: props.rangeMap,
-             getColorFromRangeMap,
-           });
-        }
-        return layer;
-      }).filter(Boolean);
+          return layer;
+        })
+        .filter(Boolean);
 
       return [osmTileLayer, ...enhancedLayers] as Layer[];
     }, [osmTileLayer, props.layers, props.rangeMap]);
@@ -437,7 +493,12 @@ export const DeckGLContainer = memo(
 
     return (
       <>
-        <div ref={containerRef} style={{ position: 'relative', width, height }} className="deck-container" data-component="DeckGLContainer">
+        <div
+          ref={containerRef}
+          style={{ position: 'relative', width, height }}
+          className="deck-container"
+          data-component="DeckGLContainer"
+        >
           <DeckGL
             ref={deckRef}
             controller
@@ -454,7 +515,7 @@ export const DeckGLContainer = memo(
               mapboxApiAccessToken={'pk.eyJ1IjoiZXJpY2tzb24tcmltZXMiLCJhIjoiY201bXExbWoxMDJpMTJwc2ljeXhlZ3Y3OCJ9.mliFT8407N_TsGRiMFnpcw'}
             /> */}
           </DeckGL>
-          <MapControls 
+          <MapControls
             viewState={internalViewState}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}

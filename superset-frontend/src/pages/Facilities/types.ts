@@ -58,4 +58,4 @@ export interface IconDefinition {
   height: number;
   anchorX: number;
   anchorY: number;
-} 
+}
