@@ -1,9 +1,8 @@
 # CRISH Platform Administrator Training Manual
 
-<!-- Updated and fact-checked August 22, 2025 - HealthOfficial role implementation -->
+<!-- Updated August 29, 2025 5:20 pm - Added FieldWorker role documentation -->
 
-## Document Version: 1.0
-## Date: August 2025
+## Document Version: 1.1
 ## Target Audience: System Administrators
 ## Languages: English | Português | Tetum
 
@@ -26,7 +25,7 @@
 
 ## Introduction
 
-Welcome to the CRISH Administrator Training Manual. This comprehensive guide provides system administrators with the knowledge and tools needed to effectively manage, maintain, and troubleshoot the Climate Resilient Infrastructure and System for Health (CRISH) - a customized Apache Superset-based platform.
+Welcome to the CRISH Administrator Training Manual. This comprehensive guide provides system administrators with the knowledge and tools needed to effectively manage, maintain, and troubleshoot the Climate Risk and Health Information System (CRISH) - a customized Apache Superset-based platform.
 
 ### Training Objectives
 Upon completion of this training, administrators will be able to:
@@ -191,11 +190,12 @@ docker-compose exec superset superset init
 | Admin | Full system access | All operations (Superset built-in role) |
 | Alpha | Advanced user access | Create and edit dashboards, access SQL Lab |
 | HealthOfficial | CRISH health data access | All Gamma + SQL Lab + health dataset access + user profile editing |
+| FieldWorker | Data collection access | All Gamma + read-only health data + upload case reports + user profile editing |
 | Gamma | Standard user access | View dashboards and charts |
 | Public | Read-only access | View public dashboards |
 | sql_lab | SQL Lab access | Execute SQL queries |
 
-**Note**: CRISH includes a custom **HealthOfficial** role that is automatically created during system initialization. This role provides health officials with appropriate access to health-related datasets and functionality while maintaining security boundaries. Other custom roles can be created through the Security menu in the web interface.
+**Note**: CRISH includes two custom roles - **HealthOfficial** and **FieldWorker** - that are automatically created during system initialization. The HealthOfficial role provides health officials with full access to health-related datasets and SQL Lab functionality. The FieldWorker role is designed for field data collection personnel with read-only dashboard access and case report upload capabilities while maintaining security boundaries. Other custom roles can be created through the Security menu in the web interface.
 
 ### Creating Users
 
@@ -212,7 +212,7 @@ docker-compose exec superset superset init
 
 #### Via Command Line
 ```bash
-# Create user
+# Create HealthOfficial user
 docker-compose exec superset superset fab create-user \
   --role HealthOfficial \
   --username john_doe \
@@ -220,6 +220,15 @@ docker-compose exec superset superset fab create-user \
   --lastname Doe \
   --email john@health.tl \
   --password TempPass123
+
+# Create FieldWorker user
+docker-compose exec superset superset fab create-user \
+  --role FieldWorker \
+  --username maria_santos \
+  --firstname Maria \
+  --lastname Santos \
+  --email maria.santos@fieldwork.tl \
+  --password TempPass456
 
 # List users
 docker-compose exec superset superset fab list-users
@@ -260,39 +269,69 @@ class CustomSecurityManager(SupersetSecurityManager):
         "air_quality_forecasts", "disease_pipeline_run_history"
     }
     
+    # FieldWorker role configuration
+    FIELD_WORKER_PERMISSIONS = {
+        "can_read", "can_this_form_get", "can_this_form_post", "menu_access"
+    }
+    
+    FIELD_WORKER_VIEW_MENUS = {
+        "health_facilities", "update_case_reports", "weather_forecasts",
+        "bulletins_and_advisories", "whatsapp_groups"
+    }
+    
     def _is_health_official_pvm(self, pvm):
         """Determines if a permission is granted to HealthOfficial role"""
         # Grants access to health datasets, SQL Lab, and user profile editing
         # See full implementation in the source code
 ```
 
-**HealthOfficial Role Implementation Details:**
+**Custom Role Implementation Details:**
+
+**HealthOfficial Role:**
 - **Automatic Creation**: The role is automatically created during `superset init`
 - **Health Dataset Access**: Uses pattern matching to grant access to health-related datasets
 - **Database Pattern Matching**: Grants access to datasets in the `[Superset].*` database
 - **Permission Inheritance**: Includes all Gamma permissions plus SQL Lab access
 - **Self-Service**: Users can edit their own profiles and reset passwords
 
-#### Permission Matrix
-| Feature | Admin | Alpha | HealthOfficial | Gamma | Public |
-|---------|-------|-------|----------------|-------|--------|
-| View Dashboards | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Create/Edit Charts | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Create/Edit Dashboards | ✓ | ✓ | ✓ | ✓ | ✗ |
-| SQL Lab Access | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Health Dataset Access | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Database Connections | ✓ | ✓ | ✓ | ✓ | ✗ |
-| User Profile Edit | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Manage Users | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Manage Datasets | ✓ | ✓ | ✗ | ✗ | ✗ |
-| System Config | ✓ | ✗ | ✗ | ✗ | ✗ |
+**FieldWorker Role:**
+- **Automatic Creation**: The role is automatically created during `superset init`
+- **Read-Only Access**: View dashboards and health datasets for context
+- **Upload Capabilities**: Can upload case reports through update_case_reports module
+- **Profile Management**: Can edit their own user profile information
+- **Limited Permissions**: No SQL Lab access, no write permissions except for uploads
 
-**Key HealthOfficial Role Features:**
+#### Permission Matrix
+| Feature | Admin | Alpha | HealthOfficial | FieldWorker | Gamma | Public |
+|---------|-------|-------|----------------|-------------|-------|--------|
+| View Dashboards | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Create/Edit Charts | ✓ | ✓ | ✓ | ✗ | ✓ | ✗ |
+| Create/Edit Dashboards | ✓ | ✓ | ✓ | ✗ | ✓ | ✗ |
+| SQL Lab Access | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Health Dataset Access | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Database Connections | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| User Profile Edit | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Upload Case Reports | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Manage Users | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Manage Datasets | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| System Config | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+
+**Key Role Features:**
+
+**HealthOfficial Role Features:**
 - **Automatic Health Dataset Access**: Grants access to all health-related datasets in the Superset database (disease forecasts, weather alerts, case reports, etc.)
 - **SQL Lab Access**: Full SQL Lab functionality for health data analysis
 - **Database Connection Access**: Can view and use database connections
 - **User Profile Editing**: Can edit their own user profile information
 - **All Gamma Permissions**: Inherits all standard user permissions (view/create charts and dashboards)
+
+**FieldWorker Role Features:**
+- **Read-Only Dashboard Access**: Can view health dashboards for situational awareness
+- **Health Dataset Viewing**: Read-only access to health-related datasets for context
+- **Case Report Upload**: Can upload disease case reports through the update_case_reports interface
+- **Basic SQL Lab**: Limited SQL Lab access for viewing health data queries
+- **Profile Self-Service**: Can edit their own user profile and reset password
+- **Field-Focused Modules**: Access to facilities, weather forecasts, and bulletin information
 
 ---
 
@@ -612,7 +651,7 @@ sudo ufw enable
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name crish.gov.tl;
+    server_name crish-demo.rimes.int;
     
     ssl_certificate /etc/ssl/certs/crish.crt;
     ssl_certificate_key /etc/ssl/private/crish.key;
@@ -690,16 +729,18 @@ docker stats
 # - Enable query result caching
 ```
 
-#### 4. HealthOfficial Role Issues
+#### 4. Custom Role Issues
 ```bash
-# Check if HealthOfficial role was created
+# Check if custom roles were created
 docker-compose exec superset python -c "
 from superset import security_manager
-roles = security_manager.find_role('HealthOfficial')
-print('HealthOfficial role exists:', roles is not None)
+health_role = security_manager.find_role('HealthOfficial')
+field_role = security_manager.find_role('FieldWorker')
+print('HealthOfficial role exists:', health_role is not None)
+print('FieldWorker role exists:', field_role is not None)
 "
 
-# Recreate HealthOfficial role
+# Recreate custom roles
 docker-compose exec superset superset init
 
 # Check user's roles
@@ -710,11 +751,13 @@ print('User roles:', [r.name for r in user.roles])
 "
 ```
 
-**Common HealthOfficial Issues:**
-- **Role not created**: Run `superset init` to create the role automatically
-- **Access denied to health datasets**: Check logs for `[HealthOfficial]` entries
+**Common Custom Role Issues:**
+- **Role not created**: Run `superset init` to create roles automatically
+- **Access denied to health datasets**: Check logs for `[HealthOfficial]` or `[FieldWorker]` entries
 - **Can't edit profile**: Verify UserInfoEditView permissions are granted
 - **Missing health data**: Ensure datasets are in the Superset database
+- **FieldWorker upload issues**: Check update_case_reports module permissions
+- **SQL Lab access problems**: FieldWorkers have limited SQL Lab access compared to HealthOfficials
 
 ### Error Reference
 
@@ -724,7 +767,7 @@ print('User roles:', [r.name for r in user.roles])
 | ERR_002 | Redis connection timeout | Verify Redis service is running |
 | ERR_003 | Insufficient memory | Increase system RAM or optimize queries |
 | ERR_004 | API rate limit exceeded | Implement caching or request throttling |
-| ERR_005 | HealthOfficial role access denied | Check role exists and user assignment |
+| ERR_005 | Custom role access denied | Check role exists and user assignment |
 
 ---
 
@@ -773,7 +816,7 @@ docker-compose pull            # Update images
 
 ## Hands-on Exercises
 
-### Exercise 1: HealthOfficial User Creation
+### Exercise 1: Custom Role User Creation
 1. Create a new health official user with the HealthOfficial role:
    ```bash
    docker-compose exec superset superset fab create-user \
@@ -784,12 +827,23 @@ docker-compose pull            # Update images
      --email maria.silva@health.tl \
      --password TempPass123
    ```
-2. Test login and verify permissions:
-   - Login to the web interface
+2. Create a new field worker user with the FieldWorker role:
+   ```bash
+   docker-compose exec superset superset fab create-user \
+     --role FieldWorker \
+     --username field_worker1 \
+     --firstname Ana \
+     --lastname Costa \
+     --email ana.costa@field.tl \
+     --password TempPass789
+   ```
+3. Test login and verify permissions for both roles:
+   - Login to the web interface with each user
    - Check access to Database Connections menu
-   - Verify SQL Lab functionality
+   - Verify SQL Lab functionality (full for HealthOfficial, limited for FieldWorker)
    - Test user profile editing
-   - Confirm access to health datasets only
+   - Confirm access to health datasets
+   - Test case report upload functionality (FieldWorker only)
 
 ### Exercise 2: Backup and Restore
 1. Create a manual backup

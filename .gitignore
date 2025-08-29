@@ -128,3 +128,5 @@ superset-frontend/.temp_cache/
 
 progress-docs
 crish-documentation
+
+*.pdf

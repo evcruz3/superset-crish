@@ -1,7 +1,8 @@
+<!-- fact-check August 29 12:36 pm -->
+
 # CRISH Platform Health Official Training Manual
 
 ## Document Version: 1.0
-## Date: August 2025
 ## Target Audience: Health Officials, Data Analysts, Decision Makers
 ## Languages: English | Português | Tetum
 
@@ -49,7 +50,7 @@ As a Health Official, you are responsible for:
 ## System Overview
 
 ### CRISH Platform Purpose
-The Climate Resilient Infrastructure and System for Health (CRISH) platform integrates:
+The Climate Risk and Health Information System (CRISH) platform integrates:
 - **Disease surveillance data** from health facilities
 - **Weather forecasting** from meteorological services
 - **Predictive modeling** using artificial intelligence
@@ -431,12 +432,23 @@ Hashtags: #DenguePrevention #CRISHHealth #TimorLesteHealth #RainySeason
 
 #### 2. Alert Priority Levels
 
-| Level | Color | Response Time | Example |
-|-------|--------|--------------|---------|
-| Critical | Red | Immediate | Disease outbreak confirmed |
-| High | Orange | Within 2 hours | Outbreak threshold approaching |
-| Medium | Yellow | Within 24 hours | Unusual pattern detected |
-| Low | Blue | Within 48 hours | Routine monitoring alert |
+##### Disease Alert Levels
+| Level | Color | Description | Action Required |
+|-------|-------|-------------|----------------|
+| Severe | 🔴 Red | Severe outbreak expected | Immediate preventive action |
+| High | 🟠 Orange | High risk of outbreak | Community-level interventions |
+| Moderate | 🟡 Yellow | Moderate risk present | Monitor and take precautions |
+| Low | 🟢 Green | Low risk present | Basic preventive measures |
+| None | 🔵 Light Blue | No significant risk | Routine monitoring |
+
+##### Weather Alert Levels  
+| Level | Color | Description | Action Required |
+|-------|-------|-------------|----------------|
+| Extreme Danger | 🔴 Red | Extreme conditions | Avoid all outdoor activities |
+| Danger | 🟠 Orange | Dangerous conditions | Take immediate precautions |
+| Extreme Caution | 🟡 Yellow | Potentially hazardous | Exercise extreme caution |
+| Normal | 🟢 Green | Safe conditions | Normal activities safe |
+
 
 ### Managing Alerts Effectively
 

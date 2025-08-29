@@ -1,25 +1,25 @@
+<!-- Fact-checked August 29 5:11 pm -->
+
 # CRISH Platform Field Worker Training Manual
 
-## Document Version: 1.1 (Corrected)
-## Date: August 2025
+## Document Version: 2.0 (Revised)
 ## Target Audience: Field Workers, Data Collectors, Community Health Workers
 ## Languages: English | Português | Tetum
 
-**Important Note**: This manual describes both the web-based CRISH system and references to a companion mobile app. The current implementation uses WhatsApp and web forms for field data collection.
+**Important Note**: This manual describes the web-based CRISH system. Field workers use paper forms for data collection, WhatsApp for communication, and web browsers to upload data when connectivity is available.
 
 ---
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Web Platform Access](#web-platform-access)
-3. [Data Collection Procedures](#data-collection-procedures)
-4. [Health Facility Reporting](#health-facility-reporting)
-5. [Disease Case Reporting](#disease-case-reporting)
-6. [WhatsApp Integration](#whatsapp-integration)
-7. [Working in Areas with Limited Internet](#working-in-areas-with-limited-internet)
-8. [Communication Tools](#communication-tools)
-9. [Troubleshooting](#troubleshooting)
-10. [Quick Reference Cards](#quick-reference-cards)
+3. [Using CRISH System](#using-crish-system)
+4. [Disease Case Data Upload](#disease-case-data-upload)
+5. [Viewing Data in CRISH](#viewing-data-in-crish)
+6. [Health Facility Information](#health-facility-information)
+7. [Communication and Alerts](#communication-and-alerts)
+8. [Troubleshooting](#troubleshooting)
+9. [Quick Reference](#quick-reference)
 
 ---
 
@@ -36,12 +36,12 @@ Welcome to the CRISH Platform Field Worker Training Manual. As a field worker, y
 
 ### Training Objectives
 After this training, you will be able to:
-- Use the CRISH mobile app effectively
-- Report disease cases accurately
-- Work offline and sync data later
-- Use GPS for location tracking
-- Communicate with health officials
-- Troubleshoot common problems
+- Use the CRISH web platform effectively
+- Collect disease case data using paper forms
+- Upload data through web interface when connected
+- Use WhatsApp for field communication
+- View facility information and maps
+- Handle limited connectivity situations
 
 ---
 
@@ -49,406 +49,252 @@ After this training, you will be able to:
 
 ### Accessing CRISH System
 
-1. **Using Mobile Browser**
-   - Open Chrome/Firefox on your phone
-   - Navigate to: https://crish.gov.tl
+1. **Using Web Browser**
+   - Open Chrome/Firefox on your computer
+   - Navigate to: crish-demo.rimes.int
    - Bookmark for easy access
    - Save login for convenience
 
 2. **Login Credentials**
    ```
-   URL: https://crish.gov.tl
-   Username: [your_email]@health.tl
-   Password: [provided by supervisor]
+   URL: crish-demo.rimes.int
+   Username: [your_email]
+   Password: [your password]
    ```
 
-### Mobile Web Interface
+### Web Interface
 
 **Main Menu Options:**
-1. 🏠 **Home** - Overview dashboard
-2. 🏥 **Facilities** - View and update facility information
-3. 🦠 **Diseases** - Disease data and reports
-4. 🌤️ **Weather** - Weather information
-5. 📋 **Bulletins** - Health advisories
-6. 💬 **WhatsApp Groups** - Communication management
+1. 🏠 **Home** - Overview dashboard and system status
+2. 🏥 **Facilities** - View facility information and locations
+3. 🦠 **Diseases** - Disease dashboards and case data upload
+   - View disease trends (Dengue, Diarrhea, ARI)
+   - Upload weekly case reports (Excel files)
+4. 🌤️ **Weather** - Weather forecasts for field planning
+5. 📋 **Bulletins** - Health advisories and alerts
+6. 💬 **WhatsApp Groups** - Communication and group management
 
-### Mobile Browser Tips
-- Use landscape mode for better viewing
-- Zoom in/out with pinch gestures
-- Save forms before navigating away
-- Enable location services for GPS features
+### Field Worker Account Permissions
 
-**Note**: A dedicated mobile app may be available separately. This manual focuses on the web-based system accessible through mobile browsers.
+**What you CAN do as a field worker:**
+- ✅ View all health dashboards and charts
+- ✅ Upload weekly case reports (Excel files)
+- ✅ View facility information and maps
+- ✅ Check weather forecasts and alerts
+- ✅ Read health bulletins and advisories
+- ✅ View WhatsApp group information
+- ✅ Edit your own profile and change password
 
----
+**What you CANNOT do:**
+- ❌ Create new dashboards or charts
+- ❌ Manage other users' accounts
+- ❌ Delete or modify system data (except uploads)
+- ❌ Access administrative settings
 
-## Data Collection Procedures
+### Browser Tips
+- Works best with stable internet connection for uploads
+- Save work frequently
+- Use Chrome or Firefox for best compatibility
+- Enable location services for map features
 
-### Before Going to Field
-
-#### 1. Daily Preparation Checklist
-- [ ] Charge phone/tablet fully
-- [ ] Download offline maps
-- [ ] Sync latest data
-- [ ] Check reporting forms
-- [ ] Prepare backup paper forms
-- [ ] Bring phone charger
-
-#### 2. Download Offline Content
-1. Open app
-2. Go to Settings ⚙️
-3. Tap "Offline Mode"
-4. Select "Download Updates"
-5. Wait for completion ✓
-
-### Field Work Best Practices
-
-#### 1. Data Quality Rules
-- **Accurate**: Double-check all entries
-- **Complete**: Fill all required fields
-- **Timely**: Submit same day if possible
-- **Verified**: Confirm with source
-
-#### 2. Working with Communities
-
-**Building Trust:**
-- Introduce yourself properly
-- Explain purpose clearly
-- Respect privacy
-- Use local language
-- Be patient and polite
-
-**Example Introduction (Tetum):**
-```
-"Bondia, ha'u naran [your name], ha'u servisu ho Ministériu Saúde. 
-Ha'u mai atu rekolla informasaun kona-ba saúde iha ita-nia komunidade. 
-Informasaun ne'e sei ajuda atu prevene moras."
-
-(Good morning, my name is [your name], I work with Ministry of Health. 
-I came to collect information about health in your community. 
-This information will help prevent diseases.)
-```
+**Note**: CRISH is a web-based system. Data collection in the field is done by downloading data from the TLHIS system, then uploaded through this web interface when connectivity is available.
 
 ---
 
-## Health Facility Reporting
+## Using CRISH System
 
-### Updating Facility Information
+### Overview
 
-#### 1. Access Facility Module
-1. Tap 🏥 "Facilities"
-2. Select facility from list or map
-3. Tap "Update Information"
+As a field worker, you primarily use CRISH to:
+- Upload weekly disease case reports
+- View health dashboards and trends
+- Check facility information
+- Monitor weather forecasts
+- Read health bulletins and advisories
 
-#### 2. Required Information
+### Important Note
 
-**Basic Details:**
-```
-Facility Name: [Official name]
-Type: □ Hospital □ Health Center □ Health Post □ Clinic
-Status: □ Active □ Temporary Closed □ Permanent Closed
-Operating Hours: [Mon-Fri times]
-Contact Number: [+670 xxxx xxxx]
-```
-
-**Services Available:**
-- [ ] Emergency services
-- [ ] Maternity care
-- [ ] Vaccination
-- [ ] Laboratory
-- [ ] Pharmacy
-- [ ] Dengue treatment
-- [ ] Malaria treatment
-
-**Resources:**
-```
-Doctors: [number]
-Nurses: [number]
-Beds: [number]
-Ambulance: □ Yes □ No
-```
-
-#### 3. GPS Location Update
-
-If facility location is incorrect:
-1. Stand at facility entrance
-2. Tap 📍 "Update Location"
-3. Wait for GPS accuracy <10m
-4. Tap "Confirm Location"
-5. Add landmark notes
-
-### Monthly Facility Check
-
-Complete monthly verification:
-1. Visit each assigned facility
-2. Verify contact information
-3. Update service availability
-4. Check medicine stock levels
-5. Note any issues
+**Data Collection vs Data Upload:**
+- Field data collection (using paper forms) is done through TLHIS system
+- CRISH is used to upload and view the collected data
+- Your supervisor may handle uploads while you focus on field collection
 
 ---
 
-## Disease Case Reporting
+## Health Facility Information
 
-### Reportable Diseases
+### Viewing Facilities in CRISH
 
-#### Priority Diseases for Immediate Reporting:
-1. **Dengue Fever**
-   - High fever
-   - Severe headache
-   - Pain behind eyes
-   - Muscle/joint pain
+Use CRISH to look up facility information for your work area:
 
-2. **Malaria**
-   - Fever with chills
-   - Headache
-   - Vomiting
-   - Confirmed by test
+#### 1. Access Facility Information
+- **Navigate to**: 🏥 Facilities
+- **Choose view**: List View or Map View
 
-3. **Diarrheal Diseases**
-   - 3+ loose stools/day
-   - With/without blood
-   - Dehydration signs
+#### 2. List View Features
+- Search facilities by name or location
+- Filter by municipality or facility type
+- View basic details in table format
+- Click facility name for full details
 
-4. **Respiratory Infections**
-   - Fever with cough
-   - Difficulty breathing
-   - Chest pain
+#### 3. Map View Features  
+- See all facilities on interactive map
+- Different icons for facility types (Hospital, Health Center, etc.)
+- Click markers to see facility information
+- Use for route planning
 
-### Step-by-Step Case Reporting
+#### 4. Facility Details Include
+- **Contact**: Phone numbers, address
+- **Services**: Available medical services
+- **Operating Hours**: Days and times open
+- **Resources**: Number of beds, staff
+- **Location**: GPS coordinates, administrative area
 
-#### 1. Start New Report
-```
-Tap: 📊 Report Cases → ➕ New Report
-```
+### Using Facility Data
 
-#### 2. Patient Information
-```
-Age: [___] Years [___] Months
-Gender: □ Male □ Female
-Municipality: [Dropdown]
-Suku: [Dropdown]
-Aldeia: [Dropdown]
-```
-
-**Privacy Note:** Never enter patient names!
-
-#### 3. Disease Details
-```
-Disease Type: [Select from list]
-Symptom Start Date: [Calendar]
-Symptoms: [Check all that apply]
-□ Fever         □ Headache
-□ Cough         □ Rash
-□ Diarrhea      □ Vomiting
-□ Body Pain     □ Other: [___]
-
-Severity: □ Mild □ Moderate □ Severe
-Lab Confirmed: □ Yes □ No □ Pending
-```
-
-#### 4. Additional Information
-```
-Referred to Facility: □ Yes □ No
-If Yes, Which: [Dropdown]
-Travel History: □ Yes □ No
-Other Cases in Family: □ Yes □ No
-Notes: [Free text - optional]
-```
-
-#### 5. Submit Report
-1. Review all information
-2. Tap "Submit Report"
-3. Note confirmation number
-4. Write in logbook
-
-### Quick Reporting for Outbreaks
-
-During outbreak situations:
-1. Use "Quick Report" feature
-2. Enter only essential data:
-   - Location
-   - Disease
-   - Number of cases
-   - Severity
-3. Submit immediately
-4. Add details later
+**For Field Workers:**
+- Find contact information when referring patients
+- Check which services are available at each facility
+- Plan field visits based on facility locations
+- Know operating hours before sending patients
 
 ---
 
-## Working in Areas with Limited Internet
+## Disease Case Data Upload
 
-### Data Collection Strategies
+### Overview
 
-#### 1. Paper-Based Backup
-```
-Always carry:
-- Printed data collection forms
-- Disease reporting sheets
-- Facility update forms
-- Pen and clipboard
-```
+The main task for field workers in CRISH is uploading weekly disease surveillance data collected from health facilities.
 
-**Paper Form Management:**
-- Use waterproof folders
-- Number forms sequentially
-- Date all entries clearly
-- Transfer to system when online
+### Accessing the Upload Feature
 
-#### 2. WhatsApp Data Collection
+1. **Login to CRISH** at crish-demo.rimes.int
+2. **Navigate to**: 🦠 Diseases → Update Case Reports
+3. **Upload page** will show instructions and upload area
 
-**Using WhatsApp for Reports:**
-- Send structured messages to supervisor
-- Include all required fields
-- Use voice messages for detailed reports
-- Send location pins for GPS data
+### Upload Process
 
-**WhatsApp Report Format:**
-```
-DISEASE REPORT
-Date: [DD/MM/YYYY]
-Location: [Municipality/Suku/Aldeia]
-Disease: [Type]
-Cases: [Number]
-Age/Gender: [Details]
-Severity: [Mild/Moderate/Severe]
-Notes: [Additional info]
-```
+#### Step 1: Prepare Your Excel File
+- Use the TLHIS/22 Excel format (download template from CRISH)
+- File must contain weekly surveillance data
+- Include municipality code in filename (e.g., "Dili_Week45_2025.xlsx")
 
-#### 3. Planning for Limited Connectivity
+#### Step 2: Select Week and Year
+- **Year**: Enter the year (e.g., 2025)
+- **Week Number**: Enter ISO week number (1-53)
+- These must match the data in your Excel file
 
-**Before Going to Field:**
-1. Load all web pages while connected
-2. Screenshot important information
-3. Download WhatsApp on phone
-4. Save supervisor's contact
-5. Prepare paper forms
+#### Step 3: Upload File
+1. Click "Choose File" or drag Excel file to upload area
+2. System will validate:
+   - File format (must be Excel)
+   - Municipality code in filename
+   - Data structure matches TLHIS format
+3. If valid, file uploads automatically
 
-**In the Field:**
-- Collect data on paper first
-- Take photos of completed forms
-- Send via WhatsApp when signal available
-- Enter into web system when back online
+#### Step 4: Verify Upload
+- Success message appears with details
+- Check "Diseases" dashboard to see your data
+- Report any errors to supervisor
 
-### Data Entry When Back Online
+### Common Upload Issues
 
-**Transferring Paper Records:**
-1. Login to CRISH web platform
-2. Navigate to appropriate section
-3. Enter collected data carefully
-4. Double-check all entries
-5. Submit and confirm
-6. File paper forms as backup
+| Problem | Solution |
+|---------|----------|
+| "Municipality not found" | Check filename includes correct municipality code |
+| "Invalid week number" | Use ISO week (1-53), not date |
+| "File format error" | Use Excel (.xlsx), not CSV or other formats |
+| "Data structure error" | Use official TLHIS template |
+
+### Data Formats Supported
+
+**TLHIS Format Evolution:**
+- **Old Format** (before 2025): 4 age groups
+- **New Format** (2025+): 7 age groups  
+- System automatically detects format
+
+**Required Data:**
+- Week number and year
+- Municipality
+- Disease type (Dengue, Diarrhea, ARI, etc.)
+- Case counts by age group and gender
+- Total cases and deaths
 
 ---
 
-## GPS and Mapping
+## Viewing Data in CRISH
 
-### Using GPS Features
+### Disease Dashboards
 
-#### 1. Location Services
-```
-Enable GPS: Settings → Location → On
-Accuracy: High Accuracy Mode
-```
+After data is uploaded, you can view disease trends and patterns:
 
-#### 2. Marking Locations
+1. **Navigate to**: 🦠 Diseases
+2. **Select disease type**:
+   - Dengue Dashboard
+   - Diarrhea Dashboard  
+   - ARI (Respiratory Infection) Dashboard
 
-**New Location:**
-1. Stand at location
-2. Tap 📍 "Mark Location"
-3. Wait for accuracy <10m
-4. Add description
-5. Take photo (optional)
-6. Save location
+3. **Dashboard Features**:
+   - Weekly case trends by municipality
+   - Age and gender distribution
+   - Comparison with previous years
+   - Alert indicators when thresholds exceeded
 
-**Location Types:**
-- Water source
-- Mosquito breeding site
-- Community gathering point
-- Traditional healer
-- Pharmacy
+### Weather Information
 
-#### 3. Navigation
+Monitor weather conditions that affect disease patterns:
 
-**Finding Facilities:**
-1. Open map view
-2. Tap 🔍 search
-3. Type facility name
-4. Tap for directions
-5. Follow blue line
+1. **Navigate to**: 🌤️ Weather
+2. **View forecasts**:
+   - 10-day weather outlook
+   - Heat index warnings
+   - Rainfall predictions
+   - Wind speed alerts
 
-**Offline Maps:**
-- Download area maps when online
-- Maps work without internet
-- Update monthly
+3. **Use for planning**:
+   - Schedule field work during safe weather
+   - Anticipate disease pattern changes
+   - Prepare for weather emergencies
 
-### Recording Field Routes
+## Communication and Alerts
 
-**Daily Route Tracking:**
-1. Start: "Begin Route"
-2. App tracks movement
-3. End: "Complete Route"
-4. Adds to daily report
+### System Alerts (Automatic)
 
----
+CRISH automatically generates alerts based on data analysis:
 
-## Communication Tools
+#### 1. Disease Forecast Alerts
+- **Purpose**: Warn of potential disease outbreaks
+- **Based on**: Weather conditions and disease patterns
+- **Where to see**: Home dashboard and Bulletins section
+- **Action**: Follow supervisor's instructions for increased surveillance
 
-### Messaging System
+#### 2. Weather Forecast Alerts  
+- **Purpose**: Warn of dangerous weather conditions
+- **Based on**: Weather forecasts (heat, rain, wind)
+- **Where to see**: Weather section and Home dashboard
+- **Action**: Adjust field work schedule for safety
 
-#### 1. Receiving Alerts
-**Alert Types:**
-- 🔴 Urgent: Immediate action
-- 🟡 Important: Within 24 hours
-- 🔵 Information: General updates
+#### 3. Health Bulletins and Advisories
+- **Purpose**: Official health communications
+- **Content**: Disease prevention, health education, emergency responses
+- **Where to see**: Bulletins and Advisories section
+- **Action**: Share information with communities during field visits
 
-**Alert Example:**
-```
-🔴 URGENT: Dengue Outbreak Alert
-Municipality: Dili
-Action: Increase surveillance
-Report all fever cases immediately
-Contact supervisor for supplies
-```
+### WhatsApp Bulletin Distribution
 
-#### 2. Sending Messages
+CRISH has WhatsApp recipient groups for distributing health bulletins:
 
-**To Supervisor:**
-1. Tap 💬 Messages
-2. Select "Supervisor"
-3. Type message
-4. Attach photo if needed
-5. Send
+**How it works:**
+- Health officials create "WhatsApp Groups" in CRISH (these are contact lists, not actual WhatsApp groups)
+- Each "group" contains phone numbers of recipients (field workers, health officials, etc.)
+- When bulletins are disseminated through CRISH, they are sent individually to each phone number
+- Recipients receive bulletins as individual WhatsApp messages (not group messages)
 
-**Message Templates:**
-```
-Daily Report:
-"Completed visits: [X] facilities
-Reported cases: [X] dengue, [X] malaria
-Issues: [None/Describe]
-Location: [Municipality]"
-
-Supply Request:
-"Need supplies:
-- Rapid test kits: [X]
-- Forms: [X]
-- Educational materials: [X]
-Location: [Facility name]"
-```
-
-### WhatsApp Integration
-
-**Joining Groups:**
-1. Health Workers - [Municipality]
-2. CRISH Updates
-3. Emergency Response
-
-**Group Rules:**
-- Work-related only
-- No personal photos
-- Respect privacy
-- Report issues promptly
+**For Field Workers:**
+- Your phone number may be in one or more WhatsApp recipient lists
+- You will receive health bulletins and advisories as individual WhatsApp messages
+- These messages come from the CRISH system, not from group chats
+- Reply to your supervisor for urgent communications, not to CRISH messages
 
 ---
 
@@ -465,15 +311,15 @@ Location: [Facility name]"
 - Ensure internet connection
 - Contact supervisor for reset
 
-#### 2. App Crashes
+#### 2. Browser Issues
 
-**Problem:** App closes unexpectedly
+**Problem:** Web browser crashes or freezes
 **Solutions:**
-1. Restart phone
-2. Clear app cache
-3. Update app
-4. Reinstall if needed
-5. Report to IT support
+1. Close and restart browser
+2. Clear browser cache and cookies
+3. Try different browser (Chrome/Firefox)
+4. Restart device
+5. Report persistent issues to IT support
 
 #### 3. GPS Problems
 
@@ -484,14 +330,15 @@ Location: [Facility name]"
 - Check GPS settings
 - Restart location services
 
-#### 4. Sync Failures
+#### 4. Upload Failures
 
-**Problem:** Data won't upload
+**Problem:** Excel files won't upload
 **Solutions:**
-- Check internet connection
-- Try WiFi instead of mobile data
-- Sync fewer items at once
-- Check available storage
+- Check internet connection strength
+- Use available WiFi connections
+- Verify file format (must be Excel)
+- Check file isn't corrupted
+- Contact supervisor for assistance
 
 ### Error Messages
 
@@ -499,8 +346,8 @@ Location: [Facility name]"
 |-------|---------|--------|
 | "No Network" | No internet | Work offline, sync later |
 | "Invalid Data" | Missing required field | Review and complete form |
-| "Sync Failed" | Upload problem | Retry with better connection |
-| "Storage Full" | Phone memory full | Delete photos/apps |
+| "Upload Failed" | Upload problem | Retry with better connection |
+| "File Too Large" | File exceeds limit | Check file size |
 
 ### Getting Help
 
@@ -513,192 +360,133 @@ Location: [Facility name]"
 **Help Desk Contacts:**
 - Phone: +670 7xxx xxxx
 - WhatsApp: +670 7xxx xxxx
-- Email: support@crish.tl
+- Email: erickson@rimes.int
 - Hours: Mon-Fri 8:00-17:00
 
 ---
 
-## Quick Reference Cards
+## Quick Reference
 
-### Daily Workflow Card
-
+### CRISH Login Steps
 ```
-MORNING
-□ Check phone battery
-□ Sync latest data
-□ Review assignments
-□ Prepare materials
-
-FIELD WORK
-□ Visit assigned locations
-□ Collect accurate data
-□ Submit reports promptly
-□ Note any issues
-
-EVENING
-□ Sync all data
-□ Charge phone
-□ Review tomorrow's plan
-□ Update logbook
+1. Open browser (Chrome/Firefox)
+2. Go to: crish-demo.rimes.int
+3. Enter username and password
+4. Click "Sign In"
 ```
 
-### Disease Identification Card
-
+### Main Functions for Field Workers
 ```
-DENGUE
-- Sudden high fever
-- Severe headache
-- Eye pain
-- Muscle aches
-- Rash (sometimes)
-Action: Report immediately
+UPLOAD DATA
+• Diseases → Update Case Reports
+• Select year and week
+• Upload Excel file
+• Verify success message
 
-MALARIA
-- Fever + chills
-- Comes and goes
-- Headache
-- Vomiting
-- Very tired
-Action: Test and report
+VIEW DASHBOARDS
+• Diseases → Select disease type
+• Check weekly trends
+• Monitor alert levels
 
-DIARRHEA
-- 3+ watery stools/day
-- Stomach pain
-- May have blood
-- Dehydration risk
-Action: Report, advise ORS
+CHECK FACILITIES
+• Facilities → List or Map view
+• Search by name/location
+• View contact info and services
+
+READ BULLETINS
+• Bulletins & Advisories
+• Check for new health alerts
+• Download PDFs if needed
 ```
 
-### Emergency Numbers Card
-
+### Common Municipality Codes
 ```
-EMERGENCY CONTACTS
-
-Ambulance: 110
-Health Hotline: 119
-Supervisor: +670 7xxx xxxx
-IT Support: +670 7xxx xxxx
-District Health: +670 7xxx xxxx
-
-My Info:
-ID: ________________
-Municipality: _______
-Supervisor: _________
+TL-AL: Aileu         TL-LA: Lautem
+TL-AN: Ainaro        TL-LI: Liquica
+TL-AT: Atauro        TL-MT: Manatuto
+TL-BA: Baucau        TL-MF: Manufahi
+TL-BO: Bobonaro      TL-OE: Oecusse
+TL-CO: Covalima      TL-VI: Viqueque
+TL-DI: Dili          TL-ER: Ermera
 ```
 
-### Offline Mode Card
-
+### Upload Checklist
 ```
-WORKING OFFLINE
+BEFORE UPLOADING:
+□ Correct Excel format (TLHIS/22)
+□ Municipality code in filename
+□ Week number (1-53)
+□ Year matches data
+□ All data complete
 
-Before Field:
-✓ Download updates
-✓ Download maps
-✓ Charge fully
-
-During Field:
-✓ All forms work
-✓ GPS works
-✓ Photos saved
-
-After Field:
-✓ Find internet
-✓ Sync data
-✓ Verify upload
-✓ Check messages
+AFTER UPLOADING:
+□ Success message received
+□ Check dashboard for data
+□ Report any errors
 ```
 
 ---
 
 ## Practical Exercises
 
-### Exercise 1: Basic Navigation
-1. Open the app
-2. Navigate to each main feature
-3. Change language settings
-4. Find your assigned facilities
+### Exercise 1: Login Practice
+1. Open Chrome or Firefox browser
+2. Navigate to crish-demo.rimes.int
+3. Enter your username and password
+4. Successfully login to system
 
-### Exercise 2: Offline Report
-1. Turn on airplane mode
-2. Create a disease report
-3. Save report offline
-4. Turn off airplane mode
-5. Sync the report
+### Exercise 2: Navigate CRISH
+1. Visit each main section (Home, Facilities, Diseases, Weather, Bulletins)
+2. Find the disease upload feature
+3. View a disease dashboard
+4. Check facility information
 
-### Exercise 3: Facility Update
-1. Find a facility on map
-2. Update basic information
-3. Mark GPS location
-4. Add a photo
-5. Submit update
+### Exercise 3: Practice Upload
+1. Download sample TLHIS template from CRISH
+2. Review required data fields
+3. Practice upload process (without submitting)
+4. Understand validation requirements
 
-### Exercise 4: Emergency Response
-1. Receive outbreak alert
-2. Create quick report
-3. Send message to supervisor
-4. Follow up with detailed report
+### Exercise 4: View Data
+1. Navigate to disease dashboards
+2. Check different time periods
+3. View facility on map
+4. Read latest bulletin
 
 ---
 
-## Tips for Success
+## Key Points to Remember
 
-### DO's ✓
-- Keep phone charged
-- Sync data daily
-- Double-check entries
-- Ask when unsure
-- Report problems quickly
-- Respect privacy
-- Be professional
+### For Successful Data Upload
+- ✅ Use correct Excel format (TLHIS/22)
+- ✅ Include municipality code in filename
+- ✅ Match week number and year with data
+- ✅ Check success message after upload
+- ✅ Verify data appears in dashboard
 
-### DON'T's ✗
-- Share login details
-- Enter false data
-- Skip required fields
-- Ignore alerts
-- Work with low battery
-- Take patient photos
-- Delay reporting
+### Common Mistakes to Avoid
+- ❌ Wrong file format (CSV instead of Excel)
+- ❌ Missing municipality code
+- ❌ Incorrect week number
+- ❌ Mismatched year
+- ❌ Incomplete data fields
 
 ---
 
-## Certificate of Completion
+## Support Contacts
 
-After successfully completing all training modules and practical exercises, you will receive your CRISH Platform Field Worker Certificate.
+**Technical Support:**
+- Email: erickson@rimes.int
+- Phone: [To be updated]
+- Hours: Monday-Friday, 8:00-17:00
 
-Requirements:
-- [ ] Complete all modules
-- [ ] Pass practical test
-- [ ] Submit 5 practice reports
-- [ ] Demonstrate offline sync
-- [ ] Show GPS marking
-
----
-
-## Additional Resources
-
-### Video Tutorials
-Available in app under "Help":
-- App Overview (10 min)
-- Reporting Cases (15 min)
-- Offline Mode (12 min)
-- GPS Features (8 min)
-
-### Printable Forms
-Available as backup:
-- Disease Report Form
-- Facility Check Form
-- Daily Activity Log
-- Supply Request Form
-
-### Language Resources
-- Medical Terms Glossary
-- Common Phrases Guide
-- Number Translation Chart
-- Symptom Description List
+**For urgent issues:**
+- Contact your supervisor immediately
+- Document the error message
+- Take screenshot if possible
 
 ---
 
-*Stay connected, stay accurate, protect communities!*
+*Collect accurately, communicate clearly, protect communities!*
 
-*Version 1.0 - August 2025*
+*Version 2.0 - August 2025*

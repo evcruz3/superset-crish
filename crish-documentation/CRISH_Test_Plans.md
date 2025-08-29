@@ -1,8 +1,9 @@
+<!-- Fact-checked August 29, 2025 2:13 pm -->
+
 # CRISH Platform Test Plans
 
 ## Document Version: 1.0
-## Date: August 2025
-## Project: Climate Resilient Infrastructure and System for Health (CRISH) - Timor-Leste
+## Project: Climate Risk and Health Information System (CRISH) - Timor-Leste
 
 ## Table of Contents
 1. [Executive Summary](#executive-summary)
@@ -28,7 +29,7 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 - Validate multi-language support (English, Portuguese, Tetum)
 
 ### Testing Approach
-- **Test-Driven Development**: Unit tests for all new features
+- **Test-Driven Development**: Unit tests for all new features using joblib-based machine learning models
 - **Continuous Integration**: Automated testing on code commits
 - **Progressive Testing**: From unit to integration to system testing
 - **Performance Validation**: Regular stress and load testing
@@ -40,7 +41,7 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 #### Test Scenarios
 1. **Disease Prediction Accuracy**
    - Input: Historical disease data, weather parameters
-   - Expected: LSTM model generates predictions within 85% accuracy threshold
+   - Expected: Joblib machine learning models generate predictions for disease forecasting
    - Test Data: 5 years of historical data from Dili, Baucau, Bobonaro
 
 2. **Alert Generation**
@@ -60,7 +61,7 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 
 #### Test Scenarios
 1. **Weather Data Integration**
-   - Input: BMKGdata API responses
+   - Input: DATAEX API responses for operational forecasts, Visual Crossing API for historical data
    - Expected: Successful parsing and storage of weather data
    - Test frequency: Every 6 hours (matching API update cycle)
 
@@ -161,7 +162,8 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 - API versioning compatibility
 
 #### External API Integration
-- BMKGdata weather API reliability
+- DATAEX weather API reliability for operational forecasts
+- Visual Crossing API reliability for historical weather data
 - Facebook Graph API posting
 - WhatsApp Business API messaging
 - Email service (SMTP) delivery
@@ -188,39 +190,45 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 - Dashboard access patterns
 - Basic CRUD operations
 - Report generation
-- Expected: <1 second response time
+- **Expected Results**: < 1 second response time target
+- **Performance Criteria**: 100% success rate under light load
 
-#### Medium Load (10-20 concurrent users)
+#### Medium Load (10 concurrent users)
 - Mixed workload simulation
 - Concurrent data updates
 - Multiple dashboard access
-- Expected: <2 second response time
+- **Expected Results**: < 2 second response time target
+- **Performance Criteria**: 100% success rate under medium load
 
-#### Heavy Load (50+ concurrent users)
+#### Heavy Load (20 concurrent users)
 - Peak usage simulation
 - Bulk data operations
 - Complex query execution
-- Expected: <5 second response time, 95% success rate
+- **Expected Results**: < 3 second response time target
+- **Performance Criteria**: >90% endpoints functional under heavy load
 
 ### 2. Performance Metrics
 
 #### API Performance
-- Requests per second capacity
-- Average response time by endpoint
-- Error rate under load
-- Resource utilization (CPU, memory)
+- **Requests per second capacity**: Target capacity for 20 concurrent users
+- **Average response time by endpoint**: Sub-second to 3-second response time range
+- **Error rate under load**: <10% acceptable error rate threshold
+- **Resource utilization**: Memory and CPU monitoring capabilities
+- **Performance Criteria**: >90% operational endpoints under load
 
 #### Database Performance
-- Query execution time
-- Connection pool efficiency
-- Lock contention analysis
-- Transaction throughput
+- **Query execution time**: Target microsecond-level performance
+- **Connection pool efficiency**: Asyncpg and psycopg2 connection handling
+- **Lock contention analysis**: Concurrent access optimization
+- **Transaction throughput**: Sub-millisecond response time targets
+- **Performance Criteria**: Consistent database response under concurrent load
 
 #### Frontend Performance
-- Page load times
-- JavaScript execution efficiency
-- Memory usage patterns
-- Network request optimization
+- **Page load times**: <1 second target across all dashboards
+- **JavaScript execution efficiency**: React SPA optimization standards
+- **Memory usage patterns**: <10% performance degradation threshold
+- **Network request optimization**: API integration efficiency
+- **Performance Criteria**: 100% dashboard accessibility under normal load
 
 ### 3. Scalability Testing
 
@@ -287,10 +295,22 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 - **API Testing**: Postman/Newman
 
 ### 2. Performance Tools
-- **Load Testing**: Custom Python scripts (implemented)
-- **Monitoring**: Application performance metrics
-- **Profiling**: Database query analyzers
-- **Visualization**: Test result dashboards
+- **Load Testing**: Comprehensive suite with multiple test scripts
+  - API stress testing with authentication (`test_stress_api_authenticated.py`)
+  - Frontend dashboard testing (`test_frontend_dashboards_comprehensive.py`)
+  - Database performance testing (`test_load_database.py`) 
+  - Air Quality API testing (`test_air_quality_api.py`)
+  - Weather frontend testing (`test_weather_frontend_dashboard.py`)
+- **Monitoring**: Performance analysis infrastructure
+  - Analysis script (`analyze_performance_metrics.py`)
+  - Historical performance data archival capabilities
+  - Statistical analysis with percentile calculations
+- **Profiling**: Database query analysis capabilities
+  - AsyncPG and psycopg2 connection support
+  - Microsecond-level query performance tracking
+- **Visualization**: Test result reporting system
+  - JSON result file generation with detailed metrics
+  - Performance degradation analysis capabilities
 
 ### 3. CI/CD Integration
 - GitHub Actions for automated testing
@@ -327,16 +347,16 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 - User acceptance sign-off obtained
 
 ### Performance Testing
-- Response times meet defined SLAs
-- System handles projected user load
-- Resource utilization within limits
-- Graceful degradation under stress
+- Response times meet defined SLA targets
+- System handles projected concurrent user load
+- Resource utilization remains within acceptable limits
+- Graceful degradation behavior under stress conditions
 
 ### Integration Testing
-- All module interfaces functional
-- Data consistency maintained
-- External API reliability >99%
-- Error handling comprehensive
+- All module interfaces maintain functionality
+- Data consistency preservation across operations
+- External API reliability targets
+- Comprehensive error handling validation
 
 ## Risk Mitigation
 
@@ -355,3 +375,39 @@ This document outlines comprehensive test plans for the CRISH platform covering 
 ## Conclusion
 
 This comprehensive test plan ensures the CRISH platform meets all functional requirements while maintaining high performance and reliability standards. Regular execution of these test plans, combined with continuous monitoring and improvement, will ensure the system effectively serves Timor-Leste's health and climate monitoring needs.
+
+---
+
+## Test Infrastructure Components
+
+### Available Testing Tools
+
+#### Performance Testing Scripts
+- `test_stress_api_authenticated.py` - API load testing with session authentication
+- `test_frontend_dashboards_comprehensive.py` - React SPA performance testing
+- `test_load_database.py` - Database concurrent performance testing
+- `test_weather_frontend_dashboard.py` - Weather-specific frontend testing
+- `test_all_fixed_endpoints.py` - Comprehensive endpoint verification
+- `analyze_performance_metrics.py` - Performance analysis and reporting
+
+#### System Coverage Areas
+- **API Testing**: Comprehensive endpoint testing with performance benchmarks
+- **Frontend Testing**: Dashboard coverage including React SPAs
+- **Database Testing**: Concurrent access and performance validation
+- **Integration Testing**: Cross-module system validation (Weather, Disease, Health Facilities, Bulletins, Air Quality)
+- **Performance Monitoring**: Metrics collection and statistical analysis capabilities
+
+#### Performance Targets
+- **API Functionality**: >90% endpoint operational rate under load
+- **Frontend Dashboards**: <1 second page load times
+- **Database**: Microsecond-level query performance
+- **Authentication**: Cross-system authentication validation
+- **System Integration**: End-to-end workflow validation
+
+### Optimization Areas
+- **Concurrent Load Handling**: Optimization for high-concurrency scenarios
+- **Real-time Monitoring**: Performance dashboard capabilities
+- **Automated Alerting**: Performance regression detection
+- **Scalability Testing**: Load testing expansion capabilities
+
+This comprehensive test infrastructure supports continuous validation of the CRISH platform's functional requirements, performance standards, and reliability targets.

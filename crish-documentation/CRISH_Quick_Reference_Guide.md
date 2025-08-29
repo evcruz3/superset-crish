@@ -1,36 +1,38 @@
+<!-- Updated August 29, 2025 5:13 pm - Added FieldWorker role -->
+
 # CRISH Platform Quick Reference Guide
 
-## Document Version: 1.0
-## Date: August 2025
+## Document Version: 1.1
 ## For: All CRISH Platform Users
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Login Credentials
 ```
 URL: https://crish-demo.rimes.int
 Username: [your_email]
 Password: [your_password]
-Support: +670 7xxx xxxx
+Support: +63 908 607 1011
 ```
 
 ---
 
 ## 👥 User Roles & Access
 
-| Role | Dashboard | Reports | Bulletins | Admin |
-|------|-----------|---------|-----------|--------|
-| Administrator | ✓ | ✓ | ✓ | ✓ |
-| Health Official | ✓ | ✓ | ✓ | ✗ |
-| Alpha | ✓ | ✓ | Limited | ✗ |
-| Gamma | ✓ | View | View | ✗ |
-| Public | Limited | ✗ | View | ✗ |
+| Role | Dashboard | Reports | Bulletins | Upload Data | Admin |
+|------|-----------|---------|-----------|-------------|--------|
+| Administrator | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Health Official | ✓ | ✓ | ✓ | ✓ | ✗ |
+| FieldWorker | ✓ | View | View | ✓ | ✗ |
+| Alpha | ✓ | ✓ | Limited | ✓ | ✗ |
+| Gamma | ✓ | View | View | ✗ | ✗ |
+| Public | Limited | ✗ | View | ✗ | ✗ |
 
 ---
 
-## 📊 Dashboard Navigation
+## Dashboard Navigation
 
 ### Main Dashboards
 1. **Disease Overview** - Current disease situation
@@ -48,34 +50,39 @@ Support: +670 7xxx xxxx
 
 ---
 
-## 🚨 Alert Levels
+## Alert Levels
 
-| Level | Color | Response Time | Example |
-|-------|--------|--------------|---------|
-| Critical | 🔴 Red | Immediate | Outbreak confirmed |
-| High | 🟠 Orange | 2 hours | Threshold approaching |
-| Medium | 🟡 Yellow | 24 hours | Unusual pattern |
-| Low | 🔵 Blue | 48 hours | Routine monitoring |
+### Disease Alert Levels
+| Level | Color | Description | Action Required |
+|-------|-------|-------------|----------------|
+| Severe | 🔴 Red | Severe outbreak expected | Immediate preventive action |
+| High | 🟠 Orange | High risk of outbreak | Community-level interventions |
+| Moderate | 🟡 Yellow | Moderate risk present | Monitor and take precautions |
+| Low | 🟢 Green | Low risk present | Basic preventive measures |
+| None | 🔵 Light Blue | No significant risk | Routine monitoring |
+
+### Weather Alert Levels  
+| Level | Color | Description | Action Required |
+|-------|-------|-------------|----------------|
+| Extreme Danger | 🔴 Red | Extreme conditions | Avoid all outdoor activities |
+| Danger | 🟠 Orange | Dangerous conditions | Take immediate precautions |
+| Extreme Caution | 🟡 Yellow | Potentially hazardous | Exercise extreme caution |
+| Normal | 🟢 Green | Safe conditions | Normal activities safe |
 
 ---
 
-## 📈 Disease Thresholds
+## Disease Thresholds
 
 ### Disease Alert Thresholds
 | Disease | Moderate | High | Severe |
 |---------|----------|------|--------|
 | Dengue | ≥1 case | ≥2 cases | ≥6 cases |
 | Diarrhea | ≥25 cases | ≥50 cases | ≥100 cases |
-| ISPA | ≥100 cases | ≥250 cases | ≥500 cases |
-
-### Incidence Rates (per 10,000 population)
-- **Endemic**: <10
-- **Alert**: 10-50
-- **Epidemic**: >50
+| ISPA | ≥25 cases | ≥50 cases | ≥100 cases |
 
 ---
 
-## 🌤️ Weather Alert Thresholds
+## Weather Alert Thresholds
 
 | Parameter | Extreme Caution | Danger | Extreme Danger |
 |-----------|-----------------|--------|----------------|
@@ -85,15 +92,16 @@ Support: +670 7xxx xxxx
 
 ---
 
-## 📱 Mobile Web Access
+## Web Browser Access
 
-### Mobile Browser Access
+### Supported Browsers
 ```
 URL: https://crish-demo.rimes.int
-Available on smartphones via:
-- Chrome mobile browser
-- Firefox mobile browser
-- Safari mobile browser
+Compatible with:
+- Chrome (recommended)
+- Firefox
+- Safari
+- Edge
 ```
 
 ### WhatsApp Integration
@@ -104,7 +112,7 @@ Available on smartphones via:
 
 ---
 
-## 📝 Reporting Templates
+## Reporting Templates
 
 ### Disease Report (Minimum Fields)
 ```
@@ -117,67 +125,101 @@ Gender: [M/F]
 Severity: [Mild/Moderate/Severe]
 ```
 
-### Quick Outbreak Report
-```
-URGENT REPORT
-Location: [Municipality]
-Disease: [Type]
-New Cases: [Number]
-Total Active: [Number]
-Deaths: [Number if any]
-Response: [Actions taken]
-```
-
 ---
 
-## 📨 Bulletin Creation
+## Bulletin Creation
 
-### Template Structure
+### Bulletin Types
+- **Auto-generated**: Created automatically from disease forecasts and weather alerts
+- **Manual creation**: Created through the bulletin interface when needed
+
+### Bulletin Content
 ```
-Title: [Clear, concise]
-Priority: [High/Medium/Low]
-Target: [Audience]
-Languages: [EN/PT/TET]
-Channels: [WA/FB/Email/SMS]
-Content: [Message]
-Actions: [What to do]
-Contact: [Info]
+Title: Brief, descriptive headline
+Advisory: Main message content
+Risks: Potential dangers or impacts
+Safety Tips: Recommended actions to take
+Hashtags: Optional tags for categorization
+Attachments: Images or charts (optional)
 ```
 
 ### Distribution Channels
-- 📱 WhatsApp - Instant messaging
-- 📘 Facebook - Social media
-- 📧 Email - Formal communications
-- 💬 SMS - Emergency alerts only
+- 📧 **Email Groups**: Distributed to configured email lists
+- 📱 **WhatsApp Groups**: Sent to registered WhatsApp groups
+- 📄 **PDF Export**: Generate PDF versions for printing/sharing
 
 ---
 
-## 🔧 Common Tasks
+## Common Tasks
 
-### Export Data
-1. Click on chart/table
-2. Select "Download" ⬇️
-3. Choose format:
-   - CSV (data)
-   - PNG (image)
-   - PDF (report)
+### Disseminate Bulletins
+1. **Navigate to Bulletins & Advisories**
+2. **Select bulletin** → Click disseminate icon 📧
+3. **Choose channels:**
+   - 📧 Email Groups: Select groups, customize subject/message
+   - 📱 WhatsApp Groups: Select contact lists, individual messages sent to each number
+   - 📘 Facebook: Auto-post with images
+4. **Review content** and click "Send"
+5. **Check dissemination logs** for delivery status
 
-### Filter Data
-1. Date range selector 📅
-2. Municipality dropdown 📍
-3. Disease type selector 🦠
-4. Apply filters ✓
+### Manage Contact Lists
+1. **Email Groups**: Create lists of email addresses for bulk emailing
+2. **WhatsApp Groups**: Create lists of phone numbers (+country code format)
+   - Each "group" stores individual phone numbers as comma-separated list
+   - During dissemination, individual messages sent to each number
+   - Uses WhatsApp Business API with approved message templates
 
-### Generate Report
-1. Reports → New Report
-2. Select template
-3. Set parameters
-4. Preview
-5. Export/Schedule
+### View Disease Forecasts
+1. **Navigate to Disease Forecasts**
+2. **Select tab:**
+   - **Forecasts**: Multi-disease predictions
+   - **Alerts**: Current disease alerts
+   - **Trendlines**: Interactive trend analysis
+   - **Table**: Detailed forecast data
+3. **Use trendline filters:**
+   - Level: National or Municipality
+   - Municipality: Select specific areas
+   - Date Range: Custom time periods
+   - Show Thresholds: Toggle alert lines
+
+### View Weather Forecasts  
+1. **Navigate to Weather Forecasts**
+2. **Select tab:**
+   - **Forecasts**: 10-day weather outlook
+   - **Alerts**: Current weather alerts
+   - **Trendlines**: Interactive parameter analysis
+   - **Table**: Detailed weather data
+3. **Analyze parameters:**
+   - Heat Index, Temperature, Humidity
+   - Rainfall, Wind Speed
+   - Color-coded threshold violations
+
+### Download Bulletins
+1. **Access bulletin** (list or detail view)
+2. **Click PDF download** 📄
+3. **PDF opens** with formatted content and images
+
+### Upload Disease Case Reports (FieldWorker/Health Official)
+1. **Navigate to Diseases** → **Update Case Reports**
+2. **Set reporting period:**
+   - Year: Select reporting year
+   - Week: Select week number (1-53)
+3. **Download template** (optional): Get TLHIS/22 Weekly surveillance Excel format
+4. **Prepare files:**
+   - Use Excel format (.xlsx or .xls)
+   - Include municipality name or code in filename (e.g., "Dili_cases.xlsx" or "TL-DI_cases.xlsx")
+   - One file per municipality
+5. **Upload files:**
+   - Drag and drop or click to select multiple files
+   - System auto-detects municipality from filename
+   - Review selected files and missing municipalities
+6. **Start bulk upload** and monitor status for each file
+
+**Note for FieldWorkers**: This is your primary data entry function. You have full upload access but read-only dashboard access.
 
 ---
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 | Problem | Quick Fix |
 |---------|-----------|
@@ -186,25 +228,27 @@ Contact: [Info]
 | Missing data | Check date range, refresh page |
 | Export fails | Try smaller date range |
 | Sync error | Check internet, retry |
+| Can't create bulletin | FieldWorkers have read-only access - contact Health Official |
+| Upload fails | Check file format (.xlsx/.xls), municipality in filename |
+| Dashboard edit blocked | FieldWorkers have read-only dashboard access |
 
 ---
 
-## 📞 Emergency Contacts
+## Emergency Contacts
 
 ### System Support
-- **IT Helpdesk**: +670 7xxx xxxx
-- **WhatsApp**: +670 7xxx xxxx
-- **Email**: support@crish.tl
+- **WhatsApp**: +63 908 607 1011
+- **Email**: erickson@rimes.int
 - **Hours**: Mon-Fri 8:00-17:00
 
 ### Health Emergency
-- **Ambulance**: 110
-- **Health Hotline**: 119
-- **MOH Surveillance**: +670 7xxx xxxx
+- **Ambulance**: [To be filled out by MOH]
+- **Health Hotline**: [To be filled out by MOH]
+- **MOH Surveillance**: [To be filled out by MOH]
 
 ---
 
-## 🔑 Browser Functions
+## Browser Functions
 
 | Action | How To |
 |--------|---------|
@@ -216,7 +260,7 @@ Contact: [Info]
 
 ---
 
-## 📊 Key Performance Indicators
+## Key Performance Indicators
 
 ### System Performance
 - Dashboard Load: <3 seconds ✓
@@ -231,7 +275,7 @@ Contact: [Info]
 
 ---
 
-## 🌐 Multi-Language Support
+## Multi-Language Support
 
 ### Available Languages
 - **English** (EN)
@@ -247,67 +291,105 @@ Contact: [Info]
 
 ---
 
-## 📋 Daily Checklist
+## Weekly Workflow
 
-### Morning (8:00-9:00)
-- [ ] Check overnight alerts
-- [ ] Review dashboard summary
-- [ ] Verify data completeness
-- [ ] Plan field activities
+### Monday Morning (Before 9:00 AM)
+**FieldWorkers & Health Officials:**
+- [ ] **Upload weekly disease case reports** for previous week
+- [ ] Verify all 14 municipalities have submitted data
+- [ ] Check for data completeness and accuracy
 
-### Afternoon (14:00-15:00)
-- [ ] Submit morning reports
-- [ ] Sync field data
-- [ ] Review forecasts
-- [ ] Update facilities
+**Health Officials Only:**
+- [ ] Review any disease forecast alerts generated
 
-### Evening (16:00-17:00)
-- [ ] Final data sync
-- [ ] Generate daily report
-- [ ] Check tomorrow's schedule
-- [ ] Charge devices
+### Monday (After Disease Pipeline - ~10:00 AM)
+**Health Officials Only:**
+- [ ] Review new **disease forecasts and alerts** generated by pipeline
+- [ ] Check **weather forecasts and alerts** for the week
+- [ ] Create or review **bulletins** for dissemination
+- [ ] Plan field activities based on alerts
+
+**FieldWorkers:**
+- [ ] Review dashboards for situational awareness
+- [ ] Plan data collection activities based on alerts
+
+### Tuesday-Thursday
+**Health Officials Only:**
+- [ ] **Monitor dashboard updates** and alerts
+- [ ] **Disseminate bulletins** to relevant groups
+- [ ] Review **dissemination logs** for delivery status
+- [ ] Update **contact lists** (Email/WhatsApp groups) as needed
+
+**FieldWorkers:**
+- [ ] Continue data collection activities
+- [ ] Report any urgent cases immediately
+- [ ] View bulletins and weather alerts for field planning
+
+### Friday
+**Health Officials Only:**
+- [ ] **Weekly review** of forecast accuracy
+- [ ] Update **health facility information** if needed
+- [ ] Plan weekend coverage for urgent alerts
+
+**FieldWorkers & Health Officials:**
+- [ ] Prepare for next week's data collection
+- [ ] Review data quality and completeness
 
 ---
 
-## 🎯 Best Practices
+## FieldWorker Role Guide
+
+### What FieldWorkers Can Do
+- ✓ **Upload case reports** - Primary data entry responsibility
+- ✓ **View dashboards** - Read-only access for situational awareness  
+- ✓ **View bulletins** - Stay informed about health advisories
+- ✓ **View weather alerts** - Plan field activities safely
+- ✓ **Edit own profile** - Manage personal account information
+- ✓ **Access health facilities** - View facility locations and contact info
+
+### What FieldWorkers Cannot Do
+- ✗ **Create bulletins** - Only Health Officials can create/edit
+- ✗ **Disseminate messages** - No access to email/WhatsApp dissemination
+- ✗ **Edit dashboards** - Read-only access to all charts and reports
+- ✗ **Manage users** - No administrative functions
+- ✗ **Full SQL Lab** - Limited database query access
+
+### FieldWorker Daily Tasks
+1. **Morning**: Check weather alerts before field activities
+2. **Data Collection**: Upload case reports as they become available
+3. **Safety**: Monitor bulletins for health risks in your area
+4. **Reporting**: Contact Health Officials for urgent cases requiring immediate action
+
+### FieldWorker Tools
+- **Update Case Reports** page - Your primary work interface
+- **Weather Forecasts** - Plan safe field activities
+- **Health Facilities** - Find nearby facilities and contact information
+- **Bulletins** - Stay informed about current health situations
+
+---
+
+## Best Practices
 
 ### Data Entry
-✓ Double-check numbers
-✓ Use correct date format
-✓ Select from dropdowns
-✓ Complete all required fields
-✗ Don't guess data
-✗ Don't duplicate entries
+- ✓ Double-check numbers
+- ✓ Use correct date format
+- ✓ Select from dropdowns
+- ✓ Complete all required fields
+- ✗ Don't guess data
+- ✗ Don't duplicate entries
 
 ### Communication
-✓ Use templates
-✓ Be clear and concise
-✓ Include contact info
-✓ Follow up important messages
-✗ Don't share passwords
-✗ Don't send sensitive data
+- ✓ Use templates
+- ✓ Be clear and concise
+- ✓ Include contact info
+- ✓ Follow up important messages
+- ✗ Don't share passwords
+- ✗ Don't send sensitive data
 
 ---
 
-## 📱 Mobile Tips
 
-### Battery Saving
-- Lower screen brightness
-- Close unused apps
-- Use offline mode
-- Disable location when not needed
-- Carry power bank
-
-### Data Saving
-- Use WiFi when available
-- Sync in batches
-- Compress photos
-- Delete old data
-- Clear cache regularly
-
----
-
-## 🔒 Security Reminders
+## Security Reminders
 
 ### Password Policy
 - Minimum 8 characters
@@ -325,13 +407,7 @@ Contact: [Info]
 
 ---
 
-## 📚 Additional Resources
-
-### Training Materials
-- Video tutorials in app
-- User manuals (PDF)
-- Online help center
-- WhatsApp support group
+## Additional Resources
 
 ### Updates & News
 - Check bulletin board
@@ -341,16 +417,6 @@ Contact: [Info]
 
 ---
 
-## ✅ Quick Success Tips
-
-1. **Start Simple** - Master basics first
-2. **Ask Questions** - Support team helps
-3. **Practice Daily** - Build confidence
-4. **Stay Updated** - Read announcements
-5. **Share Knowledge** - Help colleagues
-
----
-
 *Keep this guide handy for quick reference!*
 
-*Version 1.0 - August 2025*
+*Version 1.1 - August 2025*
