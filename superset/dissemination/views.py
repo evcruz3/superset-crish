@@ -143,8 +143,8 @@ class DisseminatedBulletinLogModelView(SupersetModelView):
     list_template = 'dissemination/dissemination_logs_list.html'
     show_template = 'dissemination/dissemination_logs_show.html'
 
+    base_order = ("sent_at", "desc")
     order_columns = ['sent_at']
-    order_direction = 'desc'
     page_size = 25
 
     list_columns = ["bulletin", "channel", "associated_email_group_names", "associated_whatsapp_group_names", "sent_at", "status", "disseminated_by"]
