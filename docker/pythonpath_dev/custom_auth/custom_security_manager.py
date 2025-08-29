@@ -391,6 +391,29 @@ class CustomSecurityManager(SupersetSecurityManager):
         "Dissemination"
     }
 
+    # Field Worker specific permissions - focused on read access and uploads
+    FIELD_WORKER_PERMISSIONS = {
+        "can_read",  # Basic read-only access
+        "can_this_form_get",  # For form viewing (uploads, profile)
+        "can_this_form_post",  # For form submission (uploads, profile)
+        "menu_access",  # Menu access to relevant sections
+    }
+
+    # Field Worker modules - read access to data and upload capabilities
+    FIELD_WORKER_VIEW_MENUS = {
+        "health_facilities",  # View facility information
+        "update_case_reports",  # Upload disease case data
+        "weather_forecasts",  # View weather context for field work
+        "bulletins_and_advisories",  # View health bulletins
+        "whatsapp_groups",  # Read WhatsApp group information
+        # API variations
+        "UpdateCaseReportsRestApi",
+        "HealthFacilitiesRestApi", 
+        "WeatherForecastsApi",
+        "BulletinsRestApi",
+        "WhatsAppGroupsRestApi",
+    }
+
     def __init__(self, appbuilder):
         super().__init__(appbuilder)
         # Initialize the serializer for password reset tokens
@@ -734,6 +757,100 @@ class CustomSecurityManager(SupersetSecurityManager):
             
         return False
 
+    def _is_field_worker_pvm(self, pvm):
+        """
+        Return True if the FAB permission/view is FieldWorker user related, False otherwise.
+        
+        FieldWorker role logic:
+        - Start with Gamma permissions (basic read access)
+        - Add specific upload permissions for case reports
+        - Add self-service profile management permissions
+        - Add access to health datasets for dashboard viewing
+        - Focus on data collection workflow needs
+        - No write/edit permissions except for uploads and profile
+        
+        :param pvm: The FAB permission/view
+        :returns: Whether the FAB object is FieldWorker related
+        """
+        # Log specific permissions we're interested in
+        if pvm.permission.name == "datasource_access":
+            logger.debug(f"[FieldWorker] Evaluating permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+        elif pvm.view_menu.name in {"UserInfoEditView", "UserDBModelView", "ResetMyPasswordView"} or "form" in pvm.permission.name.lower():
+            logger.info(f"[FieldWorker] 🔍 Evaluating user-related permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+        
+        # PRIORITY CHECK: UserInfoEditView permissions FIRST for profile self-editing
+        if pvm.view_menu.name == "UserInfoEditView":
+            logger.info(f"[FieldWorker] 🔍 EXPLICIT CHECK - UserInfoEditView permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            if pvm.permission.name in {"can_this_form_get", "can_this_form_post"}:
+                logger.info(f"[FieldWorker] ✅ EXPLICITLY GRANTED user profile edit: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+                return True
+            else:
+                logger.info(f"[FieldWorker] ❌ EXPLICITLY DENIED unknown UserInfoEditView permission: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+                # Don't return False here - let it fall through to other checks
+        
+        # First check if this is accessible to all users
+        if self._is_accessible_to_all(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[FieldWorker] ✅ GRANTED via _is_accessible_to_all: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Exclude admin-only permissions
+        if self._is_admin_only(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[FieldWorker] ❌ DENIED - admin only: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return False
+            
+        # Check for health-related datasets for dashboard viewing
+        if self._is_health_chart_access(pvm):
+            logger.debug(f"[FieldWorker] ✅ GRANTED via health chart access: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Exclude user-defined permissions (handled separately)
+        if self._is_user_defined_permission(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[FieldWorker] ❌ DENIED - user defined: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return False
+        
+        # Include SQL Lab permissions for basic data queries (read-only)
+        if self._is_sql_lab_pvm(pvm):
+            logger.debug(f"[FieldWorker] ✅ GRANTED via SQL Lab: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Allow access to Database Connections (needed for dashboard viewing)
+        if (pvm.view_menu.name == "Database" and pvm.permission.name in {"can_read", "menu_access"}):
+            logger.debug(f"[FieldWorker] ✅ GRANTED database connection access: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Allow users to view their own info and reset password
+        if (pvm.view_menu.name == "UserDBModelView" and pvm.permission.name in {"can_userinfo", "resetmypassword"}):
+            logger.debug(f"[FieldWorker] ✅ GRANTED user info access: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Allow password reset functionality
+        if (pvm.view_menu.name == "ResetMyPasswordView" and pvm.permission.name in {"can_this_form_get", "can_this_form_post"}):
+            logger.debug(f"[FieldWorker] ✅ GRANTED password reset: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # For field worker specific modules, allow the defined permissions
+        if (pvm.view_menu.name in self.FIELD_WORKER_VIEW_MENUS and 
+            pvm.permission.name in self.FIELD_WORKER_PERMISSIONS):
+            logger.debug(f"[FieldWorker] ✅ GRANTED via field worker module access: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Include all Gamma permissions (basic read access)
+        if self._is_gamma_pvm(pvm):
+            if pvm.permission.name == "datasource_access":
+                logger.debug(f"[FieldWorker] ✅ GRANTED via Gamma permissions: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            elif pvm.view_menu.name == "UserInfoEditView":
+                logger.info(f"[FieldWorker] ✅ GRANTED via Gamma permissions (UserInfoEditView): '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            return True
+        
+        # Final denial
+        if pvm.permission.name == "datasource_access":
+            logger.debug(f"[FieldWorker] ❌ FINAL DENIAL: '{pvm.permission.name}' on '{pvm.view_menu.name}'")
+            
+        return False
+
     def _is_health_chart_access(self, pvm):
         """
         Check if this permission is for a health-related dataset that HealthOfficial should access
@@ -797,16 +914,21 @@ class CustomSecurityManager(SupersetSecurityManager):
 
     def sync_role_definitions(self):
         """
-        Initialize roles including custom HealthOfficial role
+        Initialize roles including custom HealthOfficial and FieldWorker roles
         """
-        logger.info("🏥 [CRISH] Syncing role definition with HealthOfficial")
+        logger.info("🏥 [CRISH] Syncing role definitions with HealthOfficial and FieldWorker")
         
         # Call parent method to create all standard roles
         super().sync_role_definitions()
         
-        # Add HealthOfficial role using the same pattern as built-in roles
+        # Get all permission view menus once
         pvms = self._get_all_pvms()
+        
+        # Add HealthOfficial role using the same pattern as built-in roles
         self.set_role("HealthOfficial", self._is_health_official_pvm, pvms)
+        
+        # Add FieldWorker role for field data collection
+        self.set_role("FieldWorker", self._is_field_worker_pvm, pvms)
         
         # Log the health datasets we're looking for
         health_datasets = {
@@ -820,7 +942,21 @@ class CustomSecurityManager(SupersetSecurityManager):
             "health_facilities",
         }
         
+        # Log the field worker modules
+        field_worker_modules = {
+            "health_facilities",
+            "update_case_reports", 
+            "weather_forecasts",
+            "bulletins_and_advisories",
+            "whatsapp_groups",
+        }
+        
         logger.info(f"🏥 [CRISH] HealthOfficial role created successfully with access to {len(health_datasets)} health datasets:")
         for dataset in sorted(health_datasets):
             logger.info(f"  📊 {dataset}")
-        logger.info("🏥 [CRISH] To troubleshoot permissions, check logs for '[HealthOfficial]' entries") 
+        
+        logger.info(f"👷 [CRISH] FieldWorker role created successfully with access to {len(field_worker_modules)} field modules:")
+        for module in sorted(field_worker_modules):
+            logger.info(f"  📱 {module}")
+            
+        logger.info("🏥 [CRISH] To troubleshoot permissions, check logs for '[HealthOfficial]' or '[FieldWorker]' entries") 
