@@ -35,6 +35,8 @@ x-common-build: &common-build
   target: dev
   cache_from:
     - apache/superset-cache:3.10-slim-bookworm
+  args:
+    BUILD_TRANSLATIONS: "true"
 
 services:
   redis:

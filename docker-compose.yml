@@ -41,6 +41,7 @@ x-common-build: &common-build
     - apache/superset-cache:3.10-slim-bookworm
   args:
     DEV_MODE: "true"
+    BUILD_TRANSLATIONS: "true"
 
 services:
   nginx:
