@@ -22,7 +22,7 @@ load_dotenv()
 
 class DenguePredictor:
     def __init__(self):
-        self.models_dir = os.getenv('NEW_MODELS_DIR', 'new_models/Dengue')
+        self.models_dir = os.getenv('DENGUE_MODELS_DIR', 'new_models/Dengue')
         self.predictions_dir = os.getenv('PREDICTIONS_DIR', 'predictions')
         self.weather_data_dir = os.getenv('WEATHER_DATA_DIR', 'weather_data')
         self.default_prev_cases = int(os.getenv('DEFAULT_PREV_CASES', '1'))

@@ -24,3 +24,4 @@
 !custom_auth/custom_security_manager.py
 !custom_auth/custom_user_models.py
 !custom_auth
+!CONFIG_COMPARISON.md

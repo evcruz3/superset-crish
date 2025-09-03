@@ -6,10 +6,10 @@ This document outlines the thresholds used for different weather parameters in t
 
 | Value (°C) | Alert Level | Alert Title | Alert Message |
 |------------|-------------|-------------|---------------|
-| > 42 | Extreme Danger | Extreme Heat Index Alert | Heat stroke imminent. Avoid any outdoor activities. |
-| > 40 | Danger | Dangerous Heat Index Alert | Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure. |
-| ≥ 36 | Extreme Caution | High Heat Index Warning | Heat cramps and heat exhaustion possible; continuing activity could result in heat stroke. |
-| < 36 | Normal | Normal Conditions | No heat index alerts at this time. |
+| > 33 | Extreme Danger | Extreme Heat Index Alert | Heat stroke imminent. Avoid any outdoor activities. |
+| ≥ 30 | Danger | Dangerous Heat Index Alert | Heat cramps and heat exhaustion likely; heat stroke probable with continued exposure. |
+| ≥ 27 | Extreme Caution | High Heat Index Warning | Heat cramps and heat exhaustion possible; continuing activity could result in heat stroke. |
+| < 27 | Normal | Normal Conditions | No heat index alerts at this time. |
 
 ### Safety Tips (Heat Index)
 - Stay hydrated by drinking plenty of water
@@ -28,10 +28,10 @@ This document outlines the thresholds used for different weather parameters in t
 
 | Value (mm) | Alert Level | Alert Title | Alert Message |
 |------------|-------------|-------------|---------------|
-| > 100 | Extreme Danger | Severe Rainfall Alert | Severe rainfall expected. High risk of flooding and landslides. |
-| ≥ 50 | Danger | Special Rainfall Attention | Significant rainfall expected. Be vigilant of local alerts. |
-| ≥ 20 | Extreme Caution | Rainfall Advisory | Moderate rainfall expected. Exercise caution. |
-| < 20 | Normal | Normal Rainfall Conditions | No significant rainfall expected. |
+| > 60 | Extreme Danger | Severe Rainfall Alert | Severe rainfall expected. High risk of flooding and landslides. |
+| ≥ 25 | Danger | Special Rainfall Attention | Significant rainfall expected. Be vigilant of local alerts. |
+| ≥ 15 | Extreme Caution | Rainfall Advisory | Moderate rainfall expected. Exercise caution. |
+| < 15 | Normal | Normal Rainfall Conditions | No significant rainfall expected. |
 
 ### Safety Tips (Rainfall)
 - Avoid flood-prone areas and crossing flooded roads

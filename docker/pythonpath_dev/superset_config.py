@@ -22,6 +22,7 @@
 #
 import logging
 import os
+from datetime import timedelta
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
@@ -138,9 +139,15 @@ FEATURE_FLAGS = {
 # CORS Configuration
 ENABLE_CORS = True
 CORS_OPTIONS = {
-    'allow_headers': ['Content-Type', 'Authorization', 'X-CSRFToken'],
+    'supports_credentials': True,  # Enable credentials support
+    'allow_headers': ['Content-Type', 'Authorization', 'X-CSRFToken', 'Accept'],
     'resources': [r'/*'],  # Allow CORS for all routes
-    'origins': ['*']  # Allow all origins
+    'origins': ['*'],  # Allow all origins
+    'methods': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    'expose_headers': ['Content-Type', 'X-CSRFToken'],
+    'max_age': 3600,  # Cache preflight requests for 1 hour
+    'send_wildcard': False,  # Don't send wildcard in Access-Control-Allow-Origin
+    'vary_header': True,  # Add Vary: Origin header
 }
 
 # Ensure dry run mode for any reports that might be configured
@@ -167,7 +174,90 @@ CUSTOM_SECURITY_MANAGER = CustomSecurityManager
 
 # Enable user self-registration (required for custom security manager)
 AUTH_USER_REGISTRATION = True
-AUTH_USER_REGISTRATION_ROLE = 'Alpha'
+# The default user self registration role
+AUTH_USER_REGISTRATION_ROLE = 'FieldWorker' # Default role for new users
+
+# Application branding
+APP_NAME = "CRISH Health DSS"
+APP_ICON = "/static/assets/images/crish/Logos.png"
+
+# Security settings
+TALISMAN_ENABLED = False
+ENABLE_PROXY_FIX = True
+
+# Language configuration
+LANGUAGES = {
+    "en": {"flag": "us", "name": "English"},
+    "pt_TL": {"flag": "pt", "name": "Timorese Portuguese"},
+    "id": {"flag": "tl", "name": "Tetum"},
+}
+
+# WebDriver configuration for screenshots/thumbnails
+WEBDRIVER_TYPE = "chrome"
+WEBDRIVER_OPTION_ARGS = [
+    "--headless",
+    "--disable-gpu",  # Required for headless mode
+    "--no-sandbox",
+    "--disable-dev-shm-usage",  # Overcome limited resource problems
+    "--window-size=1600,2000",  # Ensure consistent window size
+    "--force-device-scale-factor=1",  # Consistent scaling
+    "--ignore-certificate-errors",
+    "--disable-web-security",  # Allow cross-origin requests
+    "--enable-webgl",  # Explicitly enable WebGL
+    "--use-gl=swiftshader",  # Use software rendering
+]
+
+# WebDriver window configuration
+WEBDRIVER_WINDOW = {
+    "dashboard": (1600, 2000),
+    "slice": (3000, 1200),
+    "pixel_density": 1
+}
+
+# WebDriver additional configuration
+WEBDRIVER_CONFIGURATION = {
+    "service_log_path": "/dev/null",
+}
+
+# Screenshot and thumbnail timing configurations
+SCREENSHOT_LOCATE_WAIT = int(timedelta(minutes=5).total_seconds())  # 5 minutes to locate elements
+SCREENSHOT_LOAD_WAIT = int(timedelta(minutes=10).total_seconds())   # 10 minutes to load
+SCREENSHOT_SELENIUM_HEADSTART = 30  # Give more time for browser to start
+SCREENSHOT_SELENIUM_RETRIES = 10    # Increase retry attempts
+SCREENSHOT_SELENIUM_ANIMATION_WAIT = 30  # More time for animations to complete
+EMAIL_PAGE_RENDER_WAIT = 60  # seconds
+
+# Thumbnail user configuration
+THUMBNAIL_SELENIUM_USER = None  # Disable thumbnail user
+
+# FAB security views configuration
+FAB_ADD_SECURITY_VIEWS = True
+FAB_ADD_SECURITY_PERMISSION_VIEW = False
+FAB_ADD_SECURITY_VIEW_MENU_VIEW = False
+FAB_ADD_SECURITY_PERMISSION_VIEWS_VIEW = False
+
+# Disable Celery and async features
+CELERY_CONFIG = None
+RESULTS_BACKEND = None
+
+# Environment tag configuration
+ENVIRONMENT_TAG_CONFIG = {
+    "variable": "SUPERSET_ENV",
+    "values": {
+        "debug": {
+            "color": "",
+            "text": "",
+        },
+        "development": {
+            "color": "",
+            "text": "",
+        },
+        "production": {
+            "color": "",
+            "text": "",
+        },
+    },
+}
 
 #
 # Optionally import superset_config_docker.py (which will have been included on
