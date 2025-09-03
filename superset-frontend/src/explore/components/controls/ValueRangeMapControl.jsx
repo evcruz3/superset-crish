@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import React from 'react';
 import PropTypes from 'prop-types';
 import { SketchPicker } from 'react-color';
 import { debounce } from 'lodash';
