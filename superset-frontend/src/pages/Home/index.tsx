@@ -25,6 +25,7 @@ import Modal from 'src/components/Modal';
 // Import the SVG as a React Component
 import StomachIcon from 'src/assets/images/icons/stomach.svg';
 import MosquitoIcon from 'src/assets/images/icons/mosquito.svg'; // Import mosquito SVG
+import LungsIcon from 'src/assets/images/icons/lungs.svg'; // Import lungs SVG for ISPA alerts
 import DashboardTabs from '../WeatherForecasts/DashboardTabs';
 
 export { LoadingCards } from './LoadingCards';
@@ -1167,16 +1168,22 @@ function Welcome({
     > = {
       Dengue: {
         type: 'dengue',
-        color: '#aa3535',
+        color: '#E04355',
         title: t('Dengue Alert'),
         icon: '🦟',
-      }, // Red from mosquito.svg gradient
+      }, // Superset error/danger red
       Diarrhea: {
         type: 'diarrhea',
-        color: '#56ACE0',
+        color: '#20A7C9',
         title: t('Diarrhea Alert'),
         icon: '<0xF0><0x9F><0xA7><0xBB>',
-      }, // Light blue from stomach.svg
+      }, // Superset primary blue
+      ISPA: {
+        type: 'ispa',
+        color: '#5AC189',
+        title: t('ISPA Alert'),
+        icon: '🫁',
+      }, // Superset success green
     };
 
     Object.entries(groupedByDisease).forEach(([disease, diseaseAlerts]) => {
@@ -1520,6 +1527,8 @@ function Welcome({
         return '🦟';
       case 'diarrhea':
         return '<0xF0><0x9F><0xA7><0xBB>'; // Test tube emoji
+      case 'ispa':
+        return '🫁'; // Lungs emoji
       default:
         return '⚠️';
     }
@@ -1540,6 +1549,18 @@ function Welcome({
           return <MosquitoIcon width="40" height="40" />;
         case 'diarrhea':
           return <StomachIcon width="40" height="40" />;
+        case 'ispa':
+          return (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px'
+            }}>
+              <LungsIcon width="36" height="36" />
+            </div>
+          );
         default:
           return <span style={{ fontSize: '28px' }}>{getIcon(type)}</span>; // Fallback emoji
       }
