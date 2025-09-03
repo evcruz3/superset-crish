@@ -93,6 +93,28 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         """
         Called after any other init tasks
         """
+        # Instead of replacing LocaleView, let's fix the redirect issue
+        self.setup_locale_redirect_fix()
+
+    def setup_locale_redirect_fix(self) -> None:
+        """
+        Setup a before_request handler to fix locale redirect issues
+        """
+        try:
+            # Setup the before_request handler to fix problematic redirects
+            from superset.views.locale import fix_locale_redirect
+            from flask import request
+            
+            @self.superset_app.before_request
+            def fix_locale_redirect_before_request():
+                # Only apply fix when accessing locale switching endpoints
+                if request.path.startswith('/lang/'):
+                    fix_locale_redirect()
+            
+            logger.info("Successfully setup locale redirect fix")
+        except Exception as e:
+            logger.error(f"Error setting up locale redirect fix: {e}", exc_info=True)
+
 
     def configure_celery(self) -> None:
         celery_app.config_from_object(self.config["CELERY_CONFIG"])
@@ -597,6 +619,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             menu_cond=lambda: feature_flag_manager.is_feature_enabled("ALERT_REPORTS"),
         )
 
+
     def init_app_in_ctx(self) -> None:
         """
         Runs init logic in the context of the app
@@ -647,6 +670,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             log_default_secret_key_warning()
             logger.error("Refusing to start due to insecure SECRET_KEY")
             sys.exit(1)
+
 
     def configure_session(self) -> None:
         if self.config["SESSION_SERVER_SIDE"]:
@@ -782,6 +806,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
                 )
         except Exception as e:
             logger.error(f"Error registering custom security views in configure_fab: {e}", exc_info=True)
+
+
 
     def configure_url_map_converters(self) -> None:
         #
