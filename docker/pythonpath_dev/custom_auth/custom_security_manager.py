@@ -101,7 +101,7 @@ class CustomRegisterUserDBForm(DynamicForm):
         widget=Select2Widget()
     )
     disability_type = SelectMultipleField(
-        lazy_gettext('If yes, please specify your disability type (you can select multiple)'),
+        lazy_gettext('Select the types of disabilities:'),
         choices=[
             ('Seeing', 'Seeing'),
             ('Listening', 'Listening'),
