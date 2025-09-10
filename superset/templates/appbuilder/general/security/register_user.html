@@ -26,14 +26,14 @@
     align-items: center;
     width: 100%;
     min-height: 90vh; /* Take most of viewport height, adjust if footer overlaps */
-    padding: 20px;
+    padding: 5px;
     box-sizing: border-box;
   }
 
   .login-container {
     /* Keep container styling */
-    background-color: white;
-    padding: 40px;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 10px;
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     max-width: 600px;
@@ -44,16 +44,15 @@
   }
 
   .top-logos, .bottom-logos {
-    /* Keep logo layout */
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
     align-items: center;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
    .top-logos img, .top-logos span {
-    height: 60px;
+    height: 50px;
     margin: 5px 10px;
    }
 
@@ -65,11 +64,11 @@
   }
    .top-logos .crish-logo img { /* Updated name */
      margin-right: 8px;
-     height: 60px;
+     height: 50px;
    }
 
   .bottom-logos img {
-    height: 60px;
+    height: 50px;
     margin: 10px 10px;
     opacity: 0.8;
   }
@@ -111,7 +110,7 @@
 
   .form-control { /* Style inputs like target */
     width: 100%;
-    padding: 12px 15px;
+    /* padding: 12px 15px; */
     border: 1px solid #ddd;
     border-radius: 6px;
     box-sizing: border-box;
@@ -139,7 +138,7 @@
 
   /* Style submit button */
   .btn-primary {
-    background-color: #007bff;
+    background: linear-gradient(to right, rgb(79, 70, 229), rgb(168, 85, 247));
     border: none;
     color: white;
     padding: 12px 20px;
@@ -186,8 +185,7 @@
    /* Style for the CRISH heading */
    .crish-heading {
        text-align: center;
-       margin-bottom: 25px; /* Add space below the heading */
-       font-size: 2em; /* Make it a bit larger */
+       font-size: 20px; /* Make it a bit larger */
        color: #333; /* Dark grey color */
        font-weight: bold;
    }
@@ -212,6 +210,39 @@
      color: #999;       /* Customize placeholder color if desired */
      font-style: italic; /* Make it italic for emphasis */
    }
+   #disability_type {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none; 
+    padding: 0;
+    margin: 0;
+    gap: 1rem; 
+    align-items: center; 
+}
+
+#disability_type li {
+    display: flex; /* Make each list item a flex container */
+    align-items: center; /* Vertically centers the checkbox with its label text */
+    /* You might want to remove default list item padding if present */
+    padding: 0;
+    margin: 0;
+}
+
+#disability_type li input[type="checkbox"] {
+    /* Resetting default vertical alignment and adding consistent spacing */
+    vertical-align: middle; /* Ensures consistent vertical placement */
+    margin-right: 0.5rem; /* Space between checkbox and text */
+    flex-shrink: 0; /* Prevents checkbox from shrinking on smaller screens */
+    /* Adjust size if necessary */
+    width: 1.2em; /* Example: make checkbox slightly larger */
+    height: 1.2em; /* Example: make checkbox slightly larger */
+}
+
+/* Optional: Improve label styling if needed */
+#disability_type li label {
+    line-height: 1.2em; /* Match line-height to checkbox height for perfect alignment */
+    margin-bottom: 0; /* Remove default margin-bottom from labels in some frameworks */
+}
 
 </style>
 
@@ -227,7 +258,7 @@
         {# END: Add Back button #}
 
          {% set add_top_logos_margin_top = true %}
-         {% include "appbuilder/general/security/_top_logos.html" %}
+         <!-- {% include "appbuilder/general/security/_top_logos.html" %} -->
 
         <h3 class="crish-heading">{{ _("Register for an Account") }}</h3>
 
@@ -253,7 +284,7 @@
             </div>
         </div>
 
-        {% include "appbuilder/general/security/_bottom_logos.html" %}
+        <!-- {% include "appbuilder/general/security/_bottom_logos.html" %} -->
 
     </div> {# End .login-container #}
 </div> {# End .login-body-container #}
