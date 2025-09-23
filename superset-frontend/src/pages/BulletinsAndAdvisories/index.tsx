@@ -1063,8 +1063,8 @@ function BulletinsAndAdvisories({
             initialSort={initialSort}
             loading={loading}
             pageSize={PAGE_SIZE}
-            renderCard={renderCard}
-            renderFeedCard={renderFeedCard}
+            // renderCard={renderCard}
+            // renderFeedCard={renderFeedCard}
             defaultViewMode="table"
           />
         )}
