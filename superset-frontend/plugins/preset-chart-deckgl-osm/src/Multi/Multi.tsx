@@ -1728,70 +1728,149 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   console.log('[DEBUG] visibleLayers: ', visibleLayers);
 
-  const toggleLayerVisibility = (layerId: number) => {
-    console.log('Toggling Layer Visibility:', {
+  // const toggleLayerVisibility = (layerId: number) => {
+  //   console.log('Toggling Layer Visibility:', {
+  //     layerId,
+  //     currentVisibility: visibleLayers[layerId],
+  //     layerType: props.payload.data.slices.find(
+  //       (s: any) => s.slice_id === layerId,
+  //     )?.form_data.viz_type,
+  //     isFeedLayer:
+  //       props.payload.data.slices.find((s: any) => s.slice_id === layerId)
+  //         ?.form_data.viz_type === 'deck_feed',
+  //   });
+
+  //   setVisibleLayers(prev => {
+  //     const newState = {
+  //       ...prev,
+  //       [layerId]: !prev[layerId],
+  //     };
+  //     console.log('New Visibility State:', newState);
+  //     return newState;
+  //   });
+
+  //   // If it's a Feed layer being hidden, clear its selection
+  //   const subslice = props.payload.data.slices.find(
+  //     (slice: { slice_id: number }) => slice.slice_id === layerId,
+  //   );
+  //   if (
+  //     subslice?.form_data.viz_type === 'deck_feed' &&
+  //     visibleLayers[layerId]
+  //   ) {
+  //     console.log('Clearing Feed Layer Selection:', {
+  //       layerId,
+  //       currentSelection: feedLayerState.selectedRegions[layerId],
+  //     });
+  //     setFeedLayerState(prev => ({
+  //       ...prev,
+  //       selectedRegions: {
+  //         ...prev.selectedRegions,
+  //         [layerId]: null,
+  //       },
+  //     }));
+  //   }
+
+  //   // If layer is being toggled back to visible, reinitialize it
+  //   if (!visibleLayers[layerId] && subslice) {
+  //     console.log('Reinitializing Layer:', {
+  //       layerId,
+  //       vizType: subslice.form_data.viz_type,
+  //       hasGeoJson:
+  //         subslice.form_data.viz_type === 'deck_feed'
+  //           ? !!feedLayerState.geoJson[layerId]
+  //           : 'N/A',
+  //     });
+
+  //     // Collect all filters
+  //     const filters = [
+  //       ...(subslice.form_data.filters || []),
+  //       ...(props.formData.filters || []),
+  //       ...(props.formData.extra_filters || []),
+  //     ];
+
+  //     // Use loadLayer to reinitialize the layer
+  //     loadLayer(subslice, filters);
+  //   }
+  // };
+
+  // Inside DeckMulti function component
+
+const toggleLayerVisibility = useCallback((layerId: number) => {
+  // A flag to check if the layer is currently visible
+  const isCurrentlyVisible = visibleLayers[layerId];
+
+  console.log('Toggling Layer Visibility:', {
       layerId,
-      currentVisibility: visibleLayers[layerId],
-      layerType: props.payload.data.slices.find(
-        (s: any) => s.slice_id === layerId,
-      )?.form_data.viz_type,
-      isFeedLayer:
-        props.payload.data.slices.find((s: any) => s.slice_id === layerId)
-          ?.form_data.viz_type === 'deck_feed',
-    });
+      currentVisibility: isCurrentlyVisible,
+  });
 
-    setVisibleLayers(prev => {
-      const newState = {
-        ...prev,
-        [layerId]: !prev[layerId],
-      };
-      console.log('New Visibility State:', newState);
+  setVisibleLayers(prev => {
+      // If the clicked layer is already visible, the new state is all false (hides it)
+      if (isCurrentlyVisible) {
+          const newState: { [key: number]: boolean } = {};
+          Object.keys(prev).forEach(id => {
+              newState[Number(id)] = false;
+          });
+          console.log('New Visibility State: All layers hidden (toggled off)');
+          return newState;
+      }
+
+      // If the clicked layer is hidden, the new state has ONLY this layer visible
+      const newState: { [key: number]: boolean } = {};
+      Object.keys(prev).forEach(id => {
+          newState[Number(id)] = Number(id) === layerId;
+      });
+      newState[layerId] = true; // Ensure the target layer is true
+
+      console.log('New Visibility State: Single layer visible');
       return newState;
-    });
+  });
 
-    // If it's a Feed layer being hidden, clear its selection
-    const subslice = props.payload.data.slices.find(
+  // --- Feed Layer Selection Clearing Logic (Remains the same) ---
+  // If it's a Feed layer being hidden, clear its selection
+  const subslice = props.payload.data.slices.find(
       (slice: { slice_id: number }) => slice.slice_id === layerId,
-    );
-    if (
+  );
+  if (
       subslice?.form_data.viz_type === 'deck_feed' &&
-      visibleLayers[layerId]
-    ) {
-      console.log('Clearing Feed Layer Selection:', {
-        layerId,
-        currentSelection: feedLayerState.selectedRegions[layerId],
+      isCurrentlyVisible // Check if it *was* visible before the toggle
+  ) {
+      console.log('Clearing Feed Layer Selection due to layer hide:', {
+          layerId,
       });
       setFeedLayerState(prev => ({
-        ...prev,
-        selectedRegions: {
-          ...prev.selectedRegions,
-          [layerId]: null,
-        },
+          ...prev,
+          selectedRegions: {
+              ...prev.selectedRegions,
+              [layerId]: null,
+          },
       }));
-    }
+  }
 
-    // If layer is being toggled back to visible, reinitialize it
-    if (!visibleLayers[layerId] && subslice) {
-      console.log('Reinitializing Layer:', {
-        layerId,
-        vizType: subslice.form_data.viz_type,
-        hasGeoJson:
-          subslice.form_data.viz_type === 'deck_feed'
-            ? !!feedLayerState.geoJson[layerId]
-            : 'N/A',
+  // --- Layer Reinitialization Logic (Remains the same, but now runs on any visibility change) ---
+  // If the layer is now visible, reinitialize it to ensure proper data/deck.gl state
+  if (!isCurrentlyVisible && subslice) {
+      console.log('Reinitializing Layer on visibility turn on:', {
+          layerId,
       });
 
-      // Collect all filters
       const filters = [
-        ...(subslice.form_data.filters || []),
-        ...(props.formData.filters || []),
-        ...(props.formData.extra_filters || []),
+          ...(subslice.form_data.filters || []),
+          ...(props.formData.filters || []),
+          ...(props.formData.extra_filters || []),
       ];
 
       // Use loadLayer to reinitialize the layer
       loadLayer(subslice, filters);
-    }
-  };
+  }
+}, [
+  visibleLayers,
+  feedLayerState.selectedRegions,
+  props.payload.data.slices,
+  props.formData.filters,
+  props.formData.extra_filters,
+  loadLayer,
+]);
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
