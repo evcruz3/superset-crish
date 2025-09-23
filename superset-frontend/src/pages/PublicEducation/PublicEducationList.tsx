@@ -357,7 +357,7 @@ function PublicEducationList({
             initialSort={initialSort}
             loading={loading}
             pageSize={PAGE_SIZE}
-            renderCard={renderCard}
+            // renderCard={renderCard}
             defaultViewMode="card"
             refreshData={refreshData}
             addSuccessToast={addSuccessToast}
