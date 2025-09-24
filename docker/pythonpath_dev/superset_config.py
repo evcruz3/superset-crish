@@ -262,7 +262,13 @@ ENVIRONMENT_TAG_CONFIG = {
         },
     },
 }
-
+EXTRA_SEQUENTIAL_COLOR_SCHEMES = [
+    {
+        "id": "risk_alert_colors",
+        "label": "Risk Alert Colors",
+        "colors": ["#94cb55", "#f3eb12", "#f39b3a", "#e62d3a"],
+    }
+]
 #
 # Optionally import superset_config_docker.py (which will have been included on
 # the PYTHONPATH) in order to allow for local settings to be overridden
