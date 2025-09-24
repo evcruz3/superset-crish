@@ -900,7 +900,8 @@ function Welcome({
 }: WelcomeProps) {
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
-  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  // MODIFIED: Replaced modalContent with modalAlertGroup
+  const [modalAlertGroup, setModalAlertGroup] = useState<GroupedAlertType | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
   const [weatherAlerts, setWeatherAlerts] = useState<GroupedAlertType[]>([]);
   const [lastPullInfo, setLastPullInfo] = useState<PullHistoryType | null>(
@@ -914,6 +915,10 @@ function Welcome({
   const [lastDiseaseRunInfo, setLastDiseaseRunInfo] =
     useState<PipelineRunHistoryType | null>(null);
   const [lastDiseaseRunLoading, setLastDiseaseRunLoading] = useState(false);
+  
+  // New state variable for the dropdown filter
+  const [selectedDate, setSelectedDate] = useState<string>('');
+
 
   // Fetch weather alerts from the API
   const fetchWeatherAlerts = useCallback(async () => {
@@ -1296,260 +1301,19 @@ function Welcome({
     [addDangerToast],
   );
 
-  // Unified alert click handler
+  // MODIFIED: This function now just sets the modal data and opens the modal.
   const handleAlertClick = useCallback((alertGroup: GroupedAlertType) => {
     setModalTitle(alertGroup.title);
-
-    const content = (
-      <div>
-        {(() => {
-          const alertsByDate: Record<string, AlertType[]> = {};
-          alertGroup.alertData.forEach(alert => {
-            let dateKey = alert.forecast_date;
-            try {
-              const date = new Date(alert.forecast_date);
-              const day = date.getDate();
-              const month = date.toLocaleString('en-US', { month: 'short' });
-              const year = date.getFullYear();
-              dateKey = `${day} ${month} ${year}`;
-            } catch (e) {
-              /* ignore */
-            }
-            if (!alertsByDate[dateKey]) alertsByDate[dateKey] = [];
-            alertsByDate[dateKey].push(alert);
-          });
-
-          const sortedDates = Object.keys(alertsByDate).sort((a, b) => {
-            try {
-              return new Date(a).getTime() - new Date(b).getTime();
-            } catch (e) {
-              return 0;
-            }
-          });
-
-          return sortedDates.map(dateKey => {
-            const sortedAlerts = [...alertsByDate[dateKey]].sort((a, b) =>
-              a.municipality_name.localeCompare(b.municipality_name),
-            );
-
-            return (
-              <div key={dateKey} style={{ marginBottom: '30px' }}>
-                <div
-                  style={{
-                    fontSize: '18px',
-                    fontWeight: 600,
-                    marginBottom: '15px',
-                    padding: '10px',
-                    borderBottom: '2px solid #f0f0f0',
-                  }}
-                >
-                  {dateKey}{' '}
-                  {alertGroup.isDisease
-                    ? '(Forecast Week Start)'
-                    : '(Forecast Day)'}
-                </div>
-                {sortedAlerts.map(alert => {
-                  let statusColor = '#888888'; // Default
-                  const level = alert.alert_level.toLowerCase();
-                  // Unified color logic
-                  if (level.includes('extreme danger') || level === 'severe')
-                    statusColor = '#F44336';
-                  else if (
-                    level === 'danger' ||
-                    level === 'heavy' ||
-                    level === 'strong' ||
-                    level === 'high'
-                  )
-                    statusColor = '#FF9800';
-                  else if (
-                    level.includes('extreme caution') ||
-                    level === 'moderate' ||
-                    level === 'caution'
-                  )
-                    statusColor = '#FFEB3B';
-                  else if (
-                    level === 'light' ||
-                    level === 'normal' ||
-                    level === 'low'
-                  )
-                    statusColor = '#4CAF50';
-
-                  // Define variables outside the conditional block
-                  let parameterName: string;
-                  let parameterValue: string | number;
-                  let valueName: string;
-                  let value: string | number;
-
-                  // Use if/else based on group type for clearer type narrowing
-                  if (alertGroup.isDisease) {
-                    const diseaseAlert = alert as DiseaseAlertType; // Cast once here
-                    parameterName = 'Disease';
-                    parameterValue = diseaseAlert.disease_type;
-                    valueName = 'Predicted Cases';
-                    value = diseaseAlert.predicted_cases;
-                  } else {
-                    // Add extra type guard check
-                    if (!('disease_type' in alert)) {
-                      const weatherAlert = alert as WeatherAlertType; // Cast once here
-                      parameterName = 'Parameter';
-                      parameterValue = weatherAlert.weather_parameter;
-                      valueName = 'Value';
-                      value = weatherAlert.parameter_value;
-                    } else {
-                      // Fallback for unexpected case
-                      parameterName = 'Unknown';
-                      parameterValue = 'N/A';
-                      valueName = 'Unknown';
-                      value = 'N/A';
-                    }
-                  }
-
-                  return (
-                    <div
-                      key={alert.id}
-                      style={{
-                        marginBottom: '20px',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: '12px 20px',
-                          borderBottom: '1px solid #f0f0f0',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          background: '#fafafa',
-                        }}
-                      >
-                        <div style={{ fontSize: '18px', fontWeight: 500 }}>
-                          {alert.municipality_name}
-                        </div>
-                        <div
-                          style={{
-                            background: statusColor,
-                            // color: statusColor === '#FFEB3B' ? '#333' : 'white',
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {alert.alert_level}
-                        </div>
-                      </div>
-                      <div style={{ padding: '15px 20px' }}>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '10px',
-                            marginBottom: '15px',
-                          }}
-                        >
-                          <div>
-                            <div
-                              style={{
-                                fontSize: '13px',
-                                color: '#666',
-                                marginBottom: '4px',
-                              }}
-                            >
-                              {parameterName}
-                            </div>
-                            <div style={{ fontSize: '15px' }}>
-                              {parameterValue}
-                            </div>
-                          </div>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: '13px',
-                                color: '#666',
-                                marginBottom: '4px',
-                              }}
-                            >
-                              {valueName}
-                            </div>
-                            <div style={{ fontSize: '15px' }}>
-                              {(() => {
-                                if (typeof value === 'number') {
-                                  const formattedValue = Number.isInteger(value)
-                                    ? value
-                                    : value.toFixed(2);
-                                  // Add units based on parameter type
-                                  if (!alertGroup.isDisease) {
-                                    const weatherAlert =
-                                      alert as WeatherAlertType;
-                                    if (
-                                      weatherAlert.weather_parameter ===
-                                      'Rainfall'
-                                    ) {
-                                      return `${formattedValue} mm`;
-                                    }
-                                    if (
-                                      weatherAlert.weather_parameter ===
-                                      'Wind Speed'
-                                    ) {
-                                      return `${formattedValue} km/h`;
-                                    }
-                                    if (
-                                      weatherAlert.weather_parameter ===
-                                      'Heat Index'
-                                    ) {
-                                      return `${formattedValue} °C`;
-                                    }
-                                  } else {
-                                    // For disease cases, just show the number
-                                    return formattedValue;
-                                  }
-                                  return formattedValue;
-                                }
-                                return value;
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ marginTop: '15px' }}>
-                          <div
-                            style={{
-                              fontSize: '13px',
-                              color: '#666',
-                              marginBottom: '4px',
-                            }}
-                          >
-                            Advisory Message
-                          </div>
-                          <div
-                            style={{
-                              fontSize: '15px',
-                              padding: '10px',
-                              background: '#f9f9f9',
-                              borderRadius: '6px',
-                              lineHeight: '1.5',
-                            }}
-                          >
-                            {alert.alert_message}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          });
-        })()}
-      </div>
-    );
-    setModalContent(content);
+    setModalAlertGroup(alertGroup);
+    setSelectedDate('');
     setShowModal(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setShowModal(false);
+    // MODIFIED: Reset selectedDate and modalAlertGroup on close
+    setModalAlertGroup(null);
+    setSelectedDate('');
   }, []);
 
   // Combined weather/disease icons
@@ -1616,6 +1380,290 @@ function Welcome({
     }
   };
 
+  // MODIFIED: New function to handle rendering the modal's content dynamically
+  const renderModalContent = useCallback(() => {
+    if (!modalAlertGroup) {
+      return null;
+    }
+
+    const uniqueDates = Array.from(new Set(
+        modalAlertGroup.alertData.map(alert => {
+            const date = new Date(alert.forecast_date);
+            const day = date.getDate();
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const year = date.getFullYear();
+            return `${day} ${month} ${year}`;
+        })
+    )).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
+
+    let filteredAlerts = modalAlertGroup.alertData;
+    if (selectedDate) {
+        filteredAlerts = filteredAlerts.filter(alert => {
+            try {
+                const date = new Date(alert.forecast_date);
+                const day = date.getDate();
+                const month = date.toLocaleString('en-US', { month: 'short' });
+                const year = date.getFullYear();
+                const formattedDate = `${day} ${month} ${year}`;
+                return formattedDate === selectedDate;
+            } catch (e) {
+                return false;
+            }
+        });
+    }
+
+    const alertsByDate: Record<string, AlertType[]> = {};
+    
+    filteredAlerts.forEach(alert => {
+        let dateKey = '';
+        try {
+            const date = new Date(alert.forecast_date);
+            const day = date.getDate();
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const year = date.getFullYear();
+            dateKey = `${day} ${month} ${year}`;
+        } catch (e) {
+            /* ignore */
+        }
+        if (!alertsByDate[dateKey]) alertsByDate[dateKey] = [];
+        alertsByDate[dateKey].push(alert);
+    });
+
+    const sortedDates = Object.keys(alertsByDate).sort((a, b) => {
+        try {
+            return new Date(a).getTime() - new Date(b).getTime();
+        } catch (e) {
+            return 0;
+        }
+    });
+
+    return (
+      <div>
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="date-filter-dropdown" style={{ marginRight: '10px' }}>
+            Filter by Date:
+          </label>
+          <select
+            id="date-filter-dropdown"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+          >
+            <option value="">All Dates</option>
+            {uniqueDates.map(date => (
+              <option key={date} value={date}>{date}</option>
+            ))}
+          </select>
+        </div>
+        
+        {sortedDates.map(dateKey => {
+            const sortedAlerts = [...alertsByDate[dateKey]].sort((a, b) =>
+                a.municipality_name.localeCompare(b.municipality_name),
+            );
+
+            return (
+                <div key={dateKey} style={{ marginBottom: '30px' }}>
+                    <div
+                        style={{
+                            fontSize: '18px',
+                            fontWeight: 600,
+                            marginBottom: '15px',
+                            padding: '10px',
+                            borderBottom: '2px solid #f0f0f0',
+                        }}
+                    >
+                        {dateKey}{' '}
+                        {modalAlertGroup.isDisease
+                            ? '(Forecast Week Start)'
+                            : '(Forecast Day)'}
+                    </div>
+                    {sortedAlerts.map(alert => {
+                        let statusColor = '#888888';
+                        const level = alert.alert_level.toLowerCase();
+                        if (level.includes('extreme danger') || level === 'severe')
+                            statusColor = '#F44336';
+                        else if (
+                            level === 'danger' ||
+                            level === 'heavy' ||
+                            level === 'strong' ||
+                            level === 'high'
+                        )
+                            statusColor = '#FF9800';
+                        else if (
+                            level.includes('extreme caution') ||
+                            level === 'moderate' ||
+                            level === 'caution'
+                        )
+                            statusColor = '#FFEB3B';
+                        else if (
+                            level === 'light' ||
+                            level === 'normal' ||
+                            level === 'low'
+                        )
+                            statusColor = '#4CAF50';
+
+                        let parameterName: string;
+                        let parameterValue: string | number;
+                        let valueName: string;
+                        let value: string | number;
+
+                        if (modalAlertGroup.isDisease) {
+                            const diseaseAlert = alert as DiseaseAlertType;
+                            parameterName = 'Disease';
+                            parameterValue = diseaseAlert.disease_type;
+                            valueName = 'Predicted Cases';
+                            value = diseaseAlert.predicted_cases;
+                        } else {
+                            if (!('disease_type' in alert)) {
+                                const weatherAlert = alert as WeatherAlertType;
+                                parameterName = 'Parameter';
+                                parameterValue = weatherAlert.weather_parameter;
+                                valueName = 'Value';
+                                value = weatherAlert.parameter_value;
+                            } else {
+                                parameterName = 'Unknown';
+                                parameterValue = 'N/A';
+                                valueName = 'Unknown';
+                                value = 'N/A';
+                            }
+                        }
+
+                        return (
+                            <div
+                                key={alert.id}
+                                style={{
+                                    marginBottom: '20px',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        padding: '12px 20px',
+                                        borderBottom: '1px solid #f0f0f0',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        background: '#fafafa',
+                                    }}
+                                >
+                                    <div style={{ fontSize: '18px', fontWeight: 500 }}>
+                                        {alert.municipality_name}
+                                    </div>
+                                    <div
+                                        style={{
+                                            background: statusColor,
+                                            padding: '4px 12px',
+                                            borderRadius: '12px',
+                                            fontSize: '14px',
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        {alert.alert_level}
+                                    </div>
+                                </div>
+                                <div style={{ padding: '15px 20px' }}>
+                                    <div
+                                        style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(2, 1fr)',
+                                            gap: '10px',
+                                            marginBottom: '15px',
+                                        }}
+                                    >
+                                        <div>
+                                            <div
+                                                style={{
+                                                    fontSize: '13px',
+                                                    color: '#666',
+                                                    marginBottom: '4px',
+                                                }}
+                                            >
+                                                {parameterName}
+                                            </div>
+                                            <div style={{ fontSize: '15px' }}>
+                                                {parameterValue}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div
+                                                style={{
+                                                    fontSize: '13px',
+                                                    color: '#666',
+                                                    marginBottom: '4px',
+                                                }}
+                                            >
+                                                {valueName}
+                                            </div>
+                                            <div style={{ fontSize: '15px' }}>
+                                                {(() => {
+                                                    if (typeof value === 'number') {
+                                                        const formattedValue = Number.isInteger(value)
+                                                            ? value
+                                                            : value.toFixed(2);
+                                                        if (!modalAlertGroup.isDisease) {
+                                                            const weatherAlert = alert as WeatherAlertType;
+                                                            if (
+                                                                weatherAlert.weather_parameter === 'Rainfall'
+                                                            ) {
+                                                                return `${formattedValue} mm`;
+                                                            }
+                                                            if (
+                                                                weatherAlert.weather_parameter ===
+                                                                'Wind Speed'
+                                                            ) {
+                                                                return `${formattedValue} km/h`;
+                                                            }
+                                                            if (
+                                                                weatherAlert.weather_parameter ===
+                                                                'Heat Index'
+                                                            ) {
+                                                                return `${formattedValue} °C`;
+                                                            }
+                                                        } else {
+                                                            return formattedValue;
+                                                        }
+                                                        return formattedValue;
+                                                    }
+                                                    return value;
+                                                })()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '15px' }}>
+                                        <div
+                                            style={{
+                                                fontSize: '13px',
+                                                color: '#666',
+                                                marginBottom: '4px',
+                                            }}
+                                        >
+                                            Advisory Message
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: '15px',
+                                                padding: '10px',
+                                                background: '#f9f9f9',
+                                                borderRadius: '6px',
+                                                lineHeight: '1.5',
+                                            }}
+                                        >
+                                            {alert.alert_message}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        })}
+      </div>
+    );
+  }, [modalAlertGroup, selectedDate]);
+  
   // Combine all alerts, sort maybe? For now, just concatenate
   const allAlerts = [...weatherAlerts, ...diseaseAlerts];
   const allLoading = isWeatherLoading || isDiseaseLoading;
@@ -1813,7 +1861,7 @@ function Welcome({
           </button>,
         ]}
       >
-        {modalContent}
+        {renderModalContent()}
       </Modal>
     </ChartContainer>
   );
