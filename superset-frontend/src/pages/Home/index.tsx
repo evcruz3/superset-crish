@@ -56,7 +56,6 @@ const AlertsContainer = styled.div`
 
 const AlertCard = styled.div`
   display: flex;
-  background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
@@ -73,7 +72,6 @@ const IconContainer = styled.div<{ bgColor: string }>`
   align-items: center;
   justify-content: center;
   background-color: ${({ bgColor }) => bgColor};
-  color: white;
   width: 80px;
   padding: 20px;
 `;
@@ -639,128 +637,168 @@ const WindAnimation = () => (
 );
 
 const HeatAnimation = () => (
+  // <SvgContainer>
+  //   <svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet">
+  //     <defs>
+  //       <radialGradient
+  //         id="sunGradient"
+  //         cx="50%"
+  //         cy="50%"
+  //         r="50%"
+  //         fx="50%"
+  //         fy="50%"
+  //       >
+  //         <stop offset="0%" stopColor="#FFEB3B" />
+  //         <stop offset="70%" stopColor="#FF9800" />
+  //         <stop offset="100%" stopColor="#FF5722" />
+  //       </radialGradient>
+  //       <filter id="heatBlur" x="-50%" y="-50%" width="200%" height="200%">
+  //         <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+  //       </filter>
+  //       <filter id="heatGlow" x="-50%" y="-50%" width="200%" height="200%">
+  //         <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur" />
+  //         <feComposite in="SourceGraphic" in2="blur" operator="over" />
+  //       </filter>
+  //     </defs>
+
+  //     {/* Sun with pulsating effect */}
+  //     <circle
+  //       cx="20"
+  //       cy="17"
+  //       r="8"
+  //       fill="url(#sunGradient)"
+  //       filter="url(#heatGlow)"
+  //     >
+  //       <animate
+  //         attributeName="r"
+  //         values="8;8.5;8"
+  //         dur="2s"
+  //         repeatCount="indefinite"
+  //       />
+  //       <animate
+  //         attributeName="opacity"
+  //         values="0.8;1;0.8"
+  //         dur="2s"
+  //         repeatCount="indefinite"
+  //       />
+  //     </circle>
+
+  //     {/* Sun rays */}
+  //     {[...Array(8)].map((_, i) => {
+  //       const angle = (i * 45 * Math.PI) / 180;
+  //       const x1 = 20 + Math.cos(angle) * 10;
+  //       const y1 = 17 + Math.sin(angle) * 10;
+  //       const x2 = 20 + Math.cos(angle) * 14;
+  //       const y2 = 17 + Math.sin(angle) * 14;
+
+  //       return (
+  //         <line
+  //           key={`ray-${i}`}
+  //           x1={x1}
+  //           y1={y1}
+  //           x2={x2}
+  //           y2={y2}
+  //           stroke="#FFEB3B"
+  //           strokeWidth="1.5"
+  //           opacity="0.6"
+  //           strokeLinecap="round"
+  //         >
+  //           <animate
+  //             attributeName="opacity"
+  //             values="0.2;0.6;0.2"
+  //             dur={`${1 + (i % 3) * 0.3}s`}
+  //             begin={`${i * 0.1}s`}
+  //             repeatCount="indefinite"
+  //           />
+  //           <animate
+  //             attributeName="x2"
+  //             values={`${x2};${20 + Math.cos(angle) * 16};${x2}`}
+  //             dur={`${1.5 + (i % 2) * 0.5}s`}
+  //             begin={`${i * 0.1}s`}
+  //             repeatCount="indefinite"
+  //           />
+  //           <animate
+  //             attributeName="y2"
+  //             values={`${y2};${17 + Math.sin(angle) * 16};${y2}`}
+  //             dur={`${1.5 + (i % 2) * 0.5}s`}
+  //             begin={`${i * 0.1}s`}
+  //             repeatCount="indefinite"
+  //           />
+  //         </line>
+  //       );
+  //     })}
+
+  //     {/* Heat waves */}
+  //     {[...Array(3)].map((_, i) => {
+  //       const yPos = 26 + i * 3;
+
+  //       return (
+  //         <path
+  //           key={`wave-${i}`}
+  //           d={`M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos}`}
+  //           stroke="rgba(255, 87, 34, 0.6)"
+  //           strokeWidth="1.5"
+  //           fill="none"
+  //           filter="url(#heatBlur)"
+  //         >
+  //           <animate
+  //             attributeName="d"
+  //             values={`M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos};
+  //                     M5,${yPos} Q12,${yPos + 4} 20,${yPos} Q28,${yPos - 4} 35,${yPos};
+  //                     M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos}`}
+  //             dur={`${3 + i}s`}
+  //             repeatCount="indefinite"
+  //           />
+  //           <animate
+  //             attributeName="opacity"
+  //             values="0.2;0.6;0.2"
+  //             dur={`${3 + i}s`}
+  //             repeatCount="indefinite"
+  //           />
+  //         </path>
+  //       );
+  //     })}
+  //   </svg>
+  // </SvgContainer>
   <SvgContainer>
-    <svg viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <radialGradient
-          id="sunGradient"
-          cx="50%"
-          cy="50%"
-          r="50%"
-          fx="50%"
-          fy="50%"
-        >
-          <stop offset="0%" stopColor="#FFEB3B" />
-          <stop offset="70%" stopColor="#FF9800" />
-          <stop offset="100%" stopColor="#FF5722" />
-        </radialGradient>
-        <filter id="heatBlur" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
-        </filter>
-        <filter id="heatGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-      </defs>
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  {/* Sun */}
+  <circle cx="7" cy="7" r="3.5" fill="#FFC107"/>
+  {/* Sun Rays - these are thinner in the example */}
+  <g fill="#FFC107">
+    <rect x="6.25" y="2.5" width="1.5" height="1.5" rx="0.75" ry="0.75"/> {/* Top */}
+    <rect x="6.25" y="10" width="1.5" height="1.5" rx="0.75" ry="0.75"/> {/* Bottom */}
+    <rect x="2.5" y="6.25" width="1.5" height="1.5" rx="0.75" ry="0.75"/> {/* Left */}
+    <rect x="10" y="6.25" width="1.5" height="1.5" rx="0.75" ry="0.75"/> {/* Right */}
 
-      {/* Sun with pulsating effect */}
-      <circle
-        cx="20"
-        cy="17"
-        r="8"
-        fill="url(#sunGradient)"
-        filter="url(#heatGlow)"
-      >
-        <animate
-          attributeName="r"
-          values="8;8.5;8"
-          dur="2s"
-          repeatCount="indefinite"
-        />
-        <animate
-          attributeName="opacity"
-          values="0.8;1;0.8"
-          dur="2s"
-          repeatCount="indefinite"
-        />
-      </circle>
+    {/* Diagonal rays */}
+    <rect x="3.75" y="3.75" width="1.5" height="1.5" rx="0.75" ry="0.75" transform="rotate(45 4.5 4.5)"/>
+    <rect x="8.75" y="3.75" width="1.5" height="1.5" rx="0.75" ry="0.75" transform="rotate(-45 9.5 4.5)"/>
+    <rect x="3.75" y="8.75" width="1.5" height="1.5" rx="0.75" ry="0.75" transform="rotate(-45 4.5 9.5)"/>
+    <rect x="8.75" y="8.75" width="1.5" height="1.5" rx="0.75" ry="0.75" transform="rotate(45 9.5 9.5)"/>
+  </g>
 
-      {/* Sun rays */}
-      {[...Array(8)].map((_, i) => {
-        const angle = (i * 45 * Math.PI) / 180;
-        const x1 = 20 + Math.cos(angle) * 10;
-        const y1 = 17 + Math.sin(angle) * 10;
-        const x2 = 20 + Math.cos(angle) * 14;
-        const y2 = 17 + Math.sin(angle) * 14;
+  {/* Thermometer Tube - White Outline */}
+  <rect x="14.5" y="4" width="3" height="13" rx="1.5" ry="1.5" fill="white"/>
 
-        return (
-          <line
-            key={`ray-${i}`}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke="#FFEB3B"
-            strokeWidth="1.5"
-            opacity="0.6"
-            strokeLinecap="round"
-          >
-            <animate
-              attributeName="opacity"
-              values="0.2;0.6;0.2"
-              dur={`${1 + (i % 3) * 0.3}s`}
-              begin={`${i * 0.1}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="x2"
-              values={`${x2};${20 + Math.cos(angle) * 16};${x2}`}
-              dur={`${1.5 + (i % 2) * 0.5}s`}
-              begin={`${i * 0.1}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="y2"
-              values={`${y2};${17 + Math.sin(angle) * 16};${y2}`}
-              dur={`${1.5 + (i % 2) * 0.5}s`}
-              begin={`${i * 0.1}s`}
-              repeatCount="indefinite"
-            />
-          </line>
-        );
-      })}
+  {/* Thermometer Bulb - White Outline */}
+  <circle cx="16" cy="18.5" r="3.5" fill="white"/>
 
-      {/* Heat waves */}
-      {[...Array(3)].map((_, i) => {
-        const yPos = 26 + i * 3;
+  {/* Red Mercury Fill */}
+  <rect x="15.25" y="8.5" width="1.5" height="8.5" rx="0.75" ry="0.75" fill="red"/>
 
-        return (
-          <path
-            key={`wave-${i}`}
-            d={`M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos}`}
-            stroke="rgba(255, 87, 34, 0.6)"
-            strokeWidth="1.5"
-            fill="none"
-            filter="url(#heatBlur)"
-          >
-            <animate
-              attributeName="d"
-              values={`M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos};
-                      M5,${yPos} Q12,${yPos + 4} 20,${yPos} Q28,${yPos - 4} 35,${yPos};
-                      M5,${yPos} Q12,${yPos - 4} 20,${yPos} Q28,${yPos + 4} 35,${yPos}`}
-              dur={`${3 + i}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values="0.2;0.6;0.2"
-              dur={`${3 + i}s`}
-              repeatCount="indefinite"
-            />
-          </path>
-        );
-      })}
-    </svg>
+  {/* Red fill for the bulb */}
+  <circle cx="16" cy="18.5" r="2.25" fill="red"/>
+
+  {/* Markings */}
+  <g fill="white">
+    <rect x="18.5" y="6" width="2" height="1" rx="0.5" ry="0.5"/>
+    <rect x="18.5" y="8" width="2" height="1" rx="0.5" ry="0.5"/>
+    <rect x="18.5" y="10" width="2" height="1" rx="0.5" ry="0.5"/>
+    <rect x="18.5" y="12" width="2" height="1" rx="0.5" ry="0.5"/>
+    <rect x="18.5" y="14" width="2" height="1" rx="0.5" ry="0.5"/>
+  </g>
+</svg>
   </SvgContainer>
 );
 
@@ -1392,7 +1430,7 @@ function Welcome({
                         <div
                           style={{
                             background: statusColor,
-                            color: statusColor === '#FFEB3B' ? '#333' : 'white',
+                            // color: statusColor === '#FFEB3B' ? '#333' : 'white',
                             padding: '4px 12px',
                             borderRadius: '12px',
                             fontSize: '14px',
