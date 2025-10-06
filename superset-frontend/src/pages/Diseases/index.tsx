@@ -416,11 +416,11 @@ function Diseases() {
             </ChartContainer>
           </TabContentContainer>
         </LineEditableTabs.TabPane>
-        <LineEditableTabs.TabPane tab="Trendlines" key="trendlines">
+        {/* <LineEditableTabs.TabPane tab="Trendlines" key="trendlines"> */}
           <TabContentContainer>
             {/* Content for Trendlines */}
           </TabContentContainer>
-        </LineEditableTabs.TabPane>
+        {/* </LineEditableTabs.TabPane> */}
       </LineEditableTabs>
     </StyledTabsContainer>
   );
