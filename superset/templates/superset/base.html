@@ -31,7 +31,16 @@
     >
   {% endfor %}
   {{ css_bundle("theme") }}
-{% endblock %}
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NPKFWM5RJL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-NPKFWM5RJL');
+  </script>
+  {% endblock %}
 
 {% block head_js %}
   {{ super() }}
