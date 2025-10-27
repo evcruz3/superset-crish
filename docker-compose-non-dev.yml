@@ -39,12 +39,32 @@ x-common-build: &common-build
     BUILD_TRANSLATIONS: "true"
 
 services:
+  nginx-certbot:
+    image: jonasal/nginx-certbot:5.4.0
+    container_name: superset_nginx
+    environment:
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL:-admin@dnmg.gov.tl}
+      # - STAGING=1  # Uncomment for testing to avoid rate limits
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - nginx_secrets:/etc/letsencrypt
+      - ./docker/nginx/user_conf.d:/etc/nginx/user_conf.d:ro
+    depends_on:
+      - superset
+    networks:
+      - superset_network
+    restart: unless-stopped
+
   redis:
     image: redis:7
     container_name: superset_cache
     restart: unless-stopped
     volumes:
       - redis:/data
+    networks:
+      - superset_network
 
   db:
     env_file:
@@ -58,6 +78,8 @@ services:
     volumes:
       - db_home:/var/lib/postgresql/data
       - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    networks:
+      - superset_network
 
   superset:
     env_file:
@@ -71,10 +93,13 @@ services:
     command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
     user: "root"
     restart: unless-stopped
-    ports:
-      - 8088:8088
+    # Remove external port mapping - nginx will handle external access
+    # ports:
+    #   - 8088:8088
     depends_on: *superset-depends-on
     volumes: *superset-volumes
+    networks:
+      - superset_network
 
   superset-init:
     container_name: superset_init
@@ -91,6 +116,8 @@ services:
     volumes: *superset-volumes
     healthcheck:
       disable: true
+    networks:
+      - superset_network
 
   superset-worker:
     build:
@@ -112,6 +139,8 @@ services:
           "CMD-SHELL",
           "celery -A superset.tasks.celery_app:app inspect ping -d celery@$$HOSTNAME",
         ]
+    networks:
+      - superset_network
 
   superset-worker-beat:
     build:
@@ -129,6 +158,8 @@ services:
     volumes: *superset-volumes
     healthcheck:
       disable: true
+    networks:
+      - superset_network
 
   disease-predictor:
     build: ./crish-disease-predictor
@@ -145,6 +176,8 @@ services:
       - db
     restart: unless-stopped
     user: "root"
+    networks:
+      - superset_network
 
   weather-forecast-puller:
     build: ./crish-weather-forecast-puller
@@ -161,6 +194,8 @@ services:
       - db
     restart: unless-stopped
     user: "root"
+    networks:
+      - superset_network
 
   case-reports-initializer:
     build: ./crish-case-reports-initializer
@@ -177,6 +212,8 @@ services:
       - superset-init
     restart: "no"
     user: "root"
+    networks:
+      - superset_network
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z # You can update this version if desired
@@ -200,6 +237,8 @@ services:
       timeout: 20s
       retries: 3
     restart: unless-stopped
+    networks:
+      - superset_network
 
   # minio-init:
   #   image: minio/mc
@@ -226,3 +265,9 @@ volumes:
     external: false
   minio_data:
     external: false
+  nginx_secrets:
+    external: false
+
+networks:
+  superset_network:
+    driver: bridge
