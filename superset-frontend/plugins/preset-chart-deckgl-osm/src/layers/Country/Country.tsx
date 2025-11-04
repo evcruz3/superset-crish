@@ -37,6 +37,17 @@ import { scaleLinear, ScaleLinear } from 'd3-scale';
 import { Slider, DatePicker } from 'antd';
 import moment, { Moment } from 'moment';
 import locale from 'antd/es/date-picker/locale/en_US';
+import Modal from 'src/components/Modal';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 import {
   DeckGLContainerHandle,
@@ -51,7 +62,6 @@ import { TooltipProps } from '../../components/Tooltip';
 import { countries } from './countries';
 import { ICON_MAPPING, createSVGIcon, cleanupIconUrl } from './markers';
 import { LayerOptions, LayerReturn } from '../../types/layers';
-import RegionInfoModal from '../../components/RegionInfoModal';
 
 // Configure moment to use Monday as first day of week
 moment.updateLocale('en', {
@@ -96,12 +106,12 @@ interface ViewState extends Viewport {
   longitude: number;
 }
 
-// Update the DataRecord interface to include temporal_column
+// Update the DataRecord interface to include temporal_column and multiple metrics
 interface DataRecord {
-  metric?: number;
+  metric?: number; // For backwards compatibility
   categorical_value?: string;
   country_id: string;
-  [key: string]: any; // Allow for dynamic temporal column access
+  [key: string]: any; // Allow for dynamic temporal column and metric access
 }
 
 // Helper function to process conditional icons
@@ -583,6 +593,21 @@ export function getLayer(
   const strokeColor = [sc.r, sc.g, sc.b, 255 * sc.a];
   const data = payload.data?.data || [];
   const records = Array.isArray(data) ? data : data?.records || [];
+  
+  // Determine the primary metric for map coloring
+  let primaryMetric: string;
+  if (fd.primary_metric) {
+    primaryMetric = fd.primary_metric;
+  } else if (fd.metrics && fd.metrics.length > 0) {
+    // Use the first metric as primary if not specified
+    const firstMetric = fd.metrics[0];
+    primaryMetric = typeof firstMetric === 'object' ? (firstMetric.label || (firstMetric as any).column_name || String(firstMetric)) : String(firstMetric);
+  } else if (fd.metric) {
+    // Backwards compatibility
+    primaryMetric = typeof fd.metric === 'object' ? (fd.metric.label || (fd.metric as any).column_name || String(fd.metric)) : String(fd.metric);
+  } else {
+    primaryMetric = 'metric'; // Default fallback
+  }
 
   // Use temporalData for color scale calculation if provided, otherwise use current records
   const dataForColorScale = temporalData.length > 0 ? temporalData : records;
@@ -599,11 +624,14 @@ export function getLayer(
     const uniqueValues = new Set<string>();
 
     dataForColorScale.forEach((d: DataRecord) => {
-      if (d.categorical_value !== undefined && d.metric !== undefined) {
+      // For backward compatibility, check both the primaryMetric name and 'metric' field
+      const metricValue = d[primaryMetric] ?? d.metric ?? d[primaryMetric.toLowerCase()];
+      
+      if (d.categorical_value !== undefined && metricValue !== undefined) {
         // If we have multiple metrics for the same categorical value, use the highest one
         const currentMetric = valueToMetricMap.get(d.categorical_value);
-        if (currentMetric === undefined || d.metric > currentMetric) {
-          valueToMetricMap.set(d.categorical_value, d.metric);
+        if (currentMetric === undefined || metricValue > currentMetric) {
+          valueToMetricMap.set(d.categorical_value, metricValue);
         }
         uniqueValues.add(d.categorical_value);
       }
@@ -660,7 +688,10 @@ export function getLayer(
   } else {
     // For metric values, use the linear color scheme
     const allMetricValues = dataForColorScale
-      .map((d: DataRecord) => d.metric)
+      .map((d: DataRecord) => {
+        // For backward compatibility, check both the primaryMetric name and 'metric' field
+        return d[primaryMetric] ?? d.metric ?? d[primaryMetric.toLowerCase()];
+      })
       .filter((v: number) => v !== undefined && v !== null);
     metricValues = allMetricValues;
     const minMaxExtent: [number, number] =
@@ -714,7 +745,9 @@ export function getLayer(
   // Filter records based on current time for display
   const valueMap: { [key: string]: number | string } = {};
   records.forEach((d: DataRecord) => {
-    const value = fd.categorical_column ? d.categorical_value : d.metric;
+    // For backward compatibility: single metric is renamed to 'metric' by backend
+    const metricValue = d[primaryMetric] ?? d.metric ?? d[primaryMetric.toLowerCase()];
+    const value = fd.categorical_column ? d.categorical_value : metricValue;
     if (value !== undefined && value !== null) {
       // If we have temporal data, only include values up to the current time
       if (currentTime && fd.temporal_column) {
@@ -793,6 +826,8 @@ export function getLayer(
       const tooltipRows = [
         <TooltipRow key="area" label={`${areaName} `} value={t(value)} />,
       ];
+
+      console.log('formData: ', formData)
 
       // Add temporal information if available
       // Format the date based on the formdata
@@ -1097,9 +1132,12 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     latitude: props.viewport.latitude,
     longitude: props.viewport.longitude,
   });
-  const [selectedRegion, setSelectedRegion] = useState<{
-    properties: any;
-  } | null>(null);
+  const [regionChartModalVisible, setRegionChartModalVisible] =
+    useState<boolean>(false);
+  const [regionChartModalContent, setRegionChartModalContent] =
+    useState<React.ReactNode>(null);
+  const [regionChartModalTitle, setRegionChartModalTitle] =
+    useState<string>('');
 
   const {
     formData,
@@ -1233,8 +1271,188 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     const handleClick = (info: { object?: any }) => {
       console.log('GeoJsonLayer onClick fired:', info);
       if (info.object && info.object.properties) {
-        console.log('Setting selected region:', info.object);
-        setSelectedRegion(info.object);
+        const clickedFeature = info.object;
+        const properties = clickedFeature.properties;
+        
+        // Extract region identifier and name
+        const regionId = properties.ISO || properties.id || properties.name;
+        const regionName = properties.ADM1 || properties.name || properties.NAME || regionId || 'Selected Region';
+        
+        if (!regionId) {
+          console.warn('Could not determine region identifier from clicked feature properties:', properties);
+          setRegionChartModalTitle(`Data for ${regionName}`);
+          setRegionChartModalContent(
+            <div>Could not identify the specific region from the click event.</div>
+          );
+          setRegionChartModalVisible(true);
+          return;
+        }
+
+        // Get the original data from payload
+        const originalData = payload.data?.data || [];
+        const regionData = originalData.filter((row: any) => row.country_id === regionId);
+        
+        if (formData.temporal_column && regionData.length > 0) {
+          // Check if it's a categorical layer
+          const isCategorical = formData.value_map && Object.keys(formData.value_map).length > 0 && formData.categorical_column;
+          
+          if (isCategorical) {
+            // Categorical Data Visualization
+            const valueMap = formData.value_map as Record<string, string>;
+            const categoryTimelineData = regionData
+              .map((row: any) => ({
+                time: new Date(row[formData.temporal_column]).getTime(),
+                category: row.categorical_value,
+              }))
+              .filter((item: any) => item.category !== undefined && item.category !== null)
+              .sort((a: any, b: any) => a.time - b.time)
+              .map((item: any) => ({
+                ...item,
+                timeFormatted: moment(item.time).format(formData.date_format || 'DD MMM YYYY'),
+              }));
+            
+            const metricLabel = typeof formData.metric === 'object' && formData.metric !== null 
+              ? formData.metric.label || 'Data'
+              : formData.metric || 'Data';
+            setRegionChartModalTitle(`${metricLabel} (${regionName})`);
+            
+            if (categoryTimelineData.length > 0) {
+              setRegionChartModalContent(
+                <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+                  <h4>{formData.categorical_column_label || formData.categorical_column} Over Time</h4>
+                  <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {categoryTimelineData.map((item: any, index: any) => (
+                      <li
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          marginBottom: '8px',
+                          padding: '6px',
+                          borderLeft: `5px solid ${valueMap[item.category] || '#ccc'}`,
+                          backgroundColor: '#f9f9f9',
+                          borderRadius: '3px',
+                        }}
+                      >
+                        <span
+                          style={{
+                            backgroundColor: valueMap[item.category] || '#ccc',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '3px',
+                            marginRight: '10px',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span style={{ fontWeight: 500, marginRight: '10px', minWidth: '150px' }}>
+                          {item.timeFormatted}:
+                        </span>
+                        <span>{t(item.category)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            } else {
+              setRegionChartModalContent(
+                <div>No valid categorical data points found for this timeline.</div>
+              );
+            }
+          } else {
+            // Numerical Data Visualization with Multiple Metrics
+            
+            // Get all metrics to display
+            const metricsToDisplay = formData.metrics || (formData.metric ? [formData.metric] : []);
+            
+            // Process data for all metrics
+            const chartData = regionData
+              .map((row: any) => {
+                const dataPoint: any = {
+                  time: new Date(row[formData.temporal_column]).getTime(),
+                };
+                
+                // Add each metric to the data point
+                metricsToDisplay.forEach((metric: any) => {
+                  const metricKey = typeof metric === 'object' ? (metric.label || metric.column_name) : metric;
+                  // Try to get the value using the metric key, fallback to row.metric for backwards compatibility
+                  const value = row[metricKey] !== undefined ? Number(row[metricKey]) : Number(row.metric);
+                  if (!isNaN(value)) {
+                    dataPoint[metricKey] = value;
+                  }
+                });
+                
+                return dataPoint;
+              })
+              .filter((item: any) => {
+                // Keep only rows that have at least one valid metric value
+                return metricsToDisplay.some((metric: any) => {
+                  const metricKey = typeof metric === 'object' ? (metric.label || metric.column_name) : metric;
+                  return item[metricKey] !== undefined;
+                });
+              })
+              .sort((a: any, b: any) => a.time - b.time)
+              .map((point: any) => ({
+                ...point,
+                time: moment(point.time).format(formData.date_format || 'DD MMM YYYY'),
+              }));
+            
+            if (chartData.length > 0) {
+              // Get color scheme for multiple lines
+              const colorScheme = getCategoricalSchemeRegistry().get('supersetColors');
+              const colors = colorScheme?.colors || [
+                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+              ];
+              
+              // Create title with all metric names
+              const metricLabels = metricsToDisplay.map((metric: any) => 
+                typeof metric === 'object' ? (metric.label || metric.column_name || 'Metric') : metric
+              );
+              setRegionChartModalTitle(
+                `${metricLabels.join(', ')} (${regionName}) ${formData.metric_unit ? `(${formData.metric_unit})` : ''}`
+              );
+              setRegionChartModalContent(
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={['dataMin', 'dataMax']} />
+                    <RechartsTooltip />
+                    <Legend />
+                    {metricsToDisplay.map((metric: any, index: number) => {
+                      const metricKey = typeof metric === 'object' ? (metric.label || metric.column_name) : metric;
+                      const metricLabel = typeof metric === 'object' ? (metric.label || metric.column_name || metricKey) : metric;
+                      return (
+                        <Line
+                          key={metricKey}
+                          type="monotone"
+                          dataKey={metricKey}
+                          stroke={colors[index % colors.length]}
+                          activeDot={{ r: 8 }}
+                          name={metricLabel}
+                        />
+                      );
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              );
+            } else {
+              setRegionChartModalTitle(`Data for ${regionName}`);
+              setRegionChartModalContent(
+                <div>No valid temporal data points found for charting.</div>
+              );
+            }
+          }
+        } else {
+          // No temporal column or no data
+          setRegionChartModalTitle(`Data for ${regionName}`);
+          const message = regionData.length === 0
+            ? `No data found for ${regionName} in this layer.`
+            : `No temporal data configured for this layer to display a chart for ${regionName}.`;
+          setRegionChartModalContent(<div>{message}</div>);
+        }
+        
+        setRegionChartModalVisible(true);
       }
     };
 
@@ -1267,6 +1485,9 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
     geoJson,
     currentTime,
     viewState,
+    setRegionChartModalVisible,
+    setRegionChartModalContent,
+    setRegionChartModalTitle,
   ]);
 
   // Get formatter and layer metadata
@@ -1351,13 +1572,6 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
         height={height}
         onViewportChange={onViewportChange}
       >
-        {selectedRegion && (
-          <RegionInfoModal
-            visible={!!selectedRegion}
-            onClose={() => setSelectedRegion(null)}
-            properties={selectedRegion?.properties}
-          />
-        )}
         {timeRange && formData.temporal_column && (
           <StyledTimelineSlider>
             <div className="date-indicator">
@@ -1515,11 +1729,27 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
             metricName={
               formData.categorical_column
                 ? formData.categorical_column || 'Categories'
-                : typeof formData.metric === 'object'
-                  ? formData.metric.label ||
-                    formData.metric_label ||
-                    'Metric Range'
-                  : formData.metric || formData.metric_label || 'Metric Range'
+                : (() => {
+                    // Get the primary metric label
+                    const metrics = formData.metrics || (formData.metric ? [formData.metric] : []);
+                    const primaryMetricObj = formData.primary_metric 
+                      ? metrics.find((m: any) => {
+                          const key = typeof m === 'object' ? (m.label || m.column_name) : m;
+                          return key === formData.primary_metric;
+                        })
+                      : metrics[0];
+                    
+                    if (primaryMetricObj) {
+                      return typeof primaryMetricObj === 'object'
+                        ? primaryMetricObj.label || primaryMetricObj.column_name || 'Metric Range'
+                        : primaryMetricObj || 'Metric Range';
+                    }
+                    
+                    // Fallback for backwards compatibility
+                    return typeof formData.metric === 'object'
+                      ? formData.metric.label || 'Metric Range'
+                      : formData.metric || 'Metric Range';
+                  })()
             }
             isCategorical={!!formData.categorical_column}
             valueMap={formData.value_map}
@@ -1527,6 +1757,16 @@ export const DeckGLCountry = memo((props: DeckGLCountryProps) => {
           />
         )}
       </DeckGLContainerStyledWrapper>
+      {/* Modal for Region Chart/Data */}
+      <Modal
+        show={regionChartModalVisible}
+        onHide={() => setRegionChartModalVisible(false)}
+        title={regionChartModalTitle}
+        footer={<></>}
+        responsive
+      >
+        {regionChartModalContent}
+      </Modal>
     </div>
   );
 });

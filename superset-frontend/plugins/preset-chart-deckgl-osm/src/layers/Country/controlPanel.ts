@@ -20,6 +20,7 @@ import {
   ControlPanelConfig,
   getStandardizedControls,
   sharedControls,
+  defineSavedMetrics,
 } from '@superset-ui/chart-controls';
 import {
   t,
@@ -103,7 +104,72 @@ const config: ControlPanelConfig = {
           },
         ],
         ['entity'],
-        ['metric'],
+        [
+          {
+            name: 'metrics',
+            config: {
+              ...sharedControls.metrics,
+              multi: true,
+              label: t('Metrics'),
+              validators: [validateNonEmpty],
+              description: t('Select one or more metrics to display. First metric colors the map, all metrics appear in the line chart.'),
+              mapStateToProps: (state: any, controlState: any) => {
+                // Include all the required properties for DndMetricSelect
+                const { datasource } = state;
+                const savedMetrics = defineSavedMetrics(datasource);
+                const result = {
+                  columns: datasource?.columns || [],
+                  savedMetrics: Array.isArray(savedMetrics) ? savedMetrics : [],
+                  datasource,
+                  datasourceType: datasource?.type,
+                };
+                
+                // If there's an old single metric, use it as initial value
+                const formData = state.form_data || {};
+                const oldMetric = formData.metric;
+                const currentMetrics = controlState?.value || formData.metrics;
+                
+                // If no metrics but old metric exists, use old metric
+                if (!currentMetrics && oldMetric) {
+                  return { ...result, value: [oldMetric] };
+                }
+                
+                return { ...result, value: currentMetrics };
+              },
+            },
+          },
+        ],
+        [
+          {
+            name: 'primary_metric',
+            config: {
+              type: 'SelectControl',
+              label: t('Primary Metric (for Map Color)'),
+              description: t(
+                'Select which metric to use for coloring the map regions. This metric will determine the color scale.',
+              ),
+              mapStateToProps: (state: any) => {
+                const metrics = state.controls?.metrics?.value || [];
+                const choices = Array.isArray(metrics)
+                  ? metrics.map((m: any) => {
+                      const label = typeof m === 'object' ? (m.label || m.column_name || String(m)) : String(m);
+                      const value = typeof m === 'object' ? (m.label || m.column_name || String(m)) : String(m);
+                      return [value, label];
+                    })
+                  : [];
+                return {
+                  choices,
+                  value: choices.length > 0 ? choices[0][0] : null,
+                };
+              },
+              visibility: ({ controls }: any) => {
+                const metrics = controls?.metrics?.value || [];
+                return Array.isArray(metrics) && metrics.length > 1;
+              },
+              renderTrigger: true,
+            },
+          },
+        ],
         [
           {
             name: 'categorical_column',
@@ -429,16 +495,48 @@ const config: ControlPanelConfig = {
         'Column containing ISO 3166-2 codes of region/province/department in your table.',
       ),
     },
-    metric: {
-      label: t('Metric'),
-      description: t('Metric to display in the map'),
+    metrics: {
+      label: t('Metrics'),
+      description: t('One or more metrics to display. The first metric (or primary metric if selected) colors the map, all metrics appear in charts.'),
+      multi: true,
     },
   },
-  formDataOverrides: formData => ({
-    ...formData,
-    entity: getStandardizedControls().shiftColumn(),
-    metric: getStandardizedControls().shiftMetric(),
-  }),
+  formDataOverrides: formData => {
+    const baseOverrides: any = {
+      ...formData,
+      entity: getStandardizedControls().shiftColumn(),
+    };
+    
+    // Handle backwards compatibility: if old 'metric' exists, convert to 'metrics'
+    if ((formData as any).metric && !formData.metrics) {
+      baseOverrides.metrics = [(formData as any).metric];
+      // Set primary_metric to the old metric for backward compatibility
+      const metric = (formData as any).metric;
+      baseOverrides.primary_metric = typeof metric === 'object' 
+        ? (metric.label || metric.column_name || String(metric))
+        : String(metric);
+      // Keep the original metric for backward compatibility in the component
+      // delete baseOverrides.metric;
+    }
+    
+    // If metrics is empty, try to get a default metric
+    if (!baseOverrides.metrics || baseOverrides.metrics.length === 0) {
+      const defaultMetric = getStandardizedControls().shiftMetric();
+      if (defaultMetric) {
+        baseOverrides.metrics = [defaultMetric];
+      }
+    }
+    
+    // Set primary_metric if not set but metrics exist
+    if (baseOverrides.metrics && baseOverrides.metrics.length > 0 && !baseOverrides.primary_metric) {
+      const firstMetric = baseOverrides.metrics[0];
+      baseOverrides.primary_metric = typeof firstMetric === 'object'
+        ? (firstMetric.label || firstMetric.column_name || String(firstMetric))
+        : String(firstMetric);
+    }
+    
+    return baseOverrides;
+  },
 };
 
 export default config;

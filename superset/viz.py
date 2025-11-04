@@ -1168,7 +1168,7 @@ class NVD3TimePivotViz(NVD3TimeSeriesViz):
         df = df.pivot_table(
             index=DTTM_ALIAS,
             columns="series",
-            values=utils.get_metric_name(self.form_data["metric"]),
+            values=utils.get_metric_name(self.form_data.get("metric")),
         )
         chart_data = self.to_series(df)
         for series in chart_data:
@@ -1355,7 +1355,7 @@ class SankeyViz(BaseViz):
             raise QueryObjectValidationError(
                 _("Pick exactly 2 columns as [Source / Target]")
             )
-        query_obj["metrics"] = [self.form_data["metric"]]
+        query_obj["metrics"] = [self.form_data.get("metric")]
         if self.form_data.get("sort_by_metric", False):
             query_obj["orderby"] = [(query_obj["metrics"][0], False)]
         return query_obj
@@ -1514,7 +1514,7 @@ class WorldMapViz(BaseViz):
         from superset.examples import countries
 
         cols = get_column_names([self.form_data.get("entity")])  # type: ignore
-        metric = utils.get_metric_name(self.form_data["metric"])
+        metric = utils.get_metric_name(self.form_data.get("metric"))
         secondary_metric = (
             utils.get_metric_name(self.form_data["secondary_metric"])
             if self.form_data.get("secondary_metric")
@@ -2295,9 +2295,16 @@ class DeckCountry(BaseDeckGLViz):
         if not entity:
             raise QueryObjectValidationError(_("Must provide ISO codes column"))
 
+        # Handle both 'metric' and 'metrics' for backwards compatibility
+        metrics = self.form_data.get("metrics", [])
         metric = self.form_data.get("metric")
-        if not metric:
-            raise QueryObjectValidationError(_("Must specify a metric"))
+        
+        if not metrics and metric:
+            # Backwards compatibility: convert single metric to list
+            metrics = [metric]
+        
+        if not metrics:
+            raise QueryObjectValidationError(_("Must specify at least one metric"))
 
         # Set up time grain handling
         temporal_column = self.form_data.get("temporal_column")
@@ -2321,7 +2328,7 @@ class DeckCountry(BaseDeckGLViz):
             query_obj["to_dttm"] = None
             
         # Set up metrics and columns
-        query_obj["metrics"] = [metric]
+        query_obj["metrics"] = metrics
         query_obj["columns"] = [entity]
 
         # Add categorical column if specified
@@ -2351,12 +2358,22 @@ class DeckCountry(BaseDeckGLViz):
             return None
 
         entity = self.form_data.get("entity")
-        metric = utils.get_metric_name(self.form_data["metric"])
         temporal_column = self.form_data.get("temporal_column")
         categorical_column = self.form_data.get("categorical_column")
         
+        # Handle metrics - both single and multiple
+        metrics = self.form_data.get("metrics", [])
+        metric = self.form_data.get("metric")
+        
+        if not metrics and metric:
+            # Backwards compatibility
+            metrics = [metric]
+            
+        # Get metric names for all metrics
+        metric_names = [utils.get_metric_name(m) for m in metrics]
+        
         # Prepare the data for the visualization
-        columns_to_use = [entity, metric]
+        columns_to_use = [entity] + metric_names
         if temporal_column:
             columns_to_use.append(temporal_column)
         if categorical_column:
@@ -2365,12 +2382,21 @@ class DeckCountry(BaseDeckGLViz):
         df = df[columns_to_use]
         
         # Rename columns for consistency
-        column_names = ["country_id", "metric"]
-        if temporal_column:
-            column_names.append(temporal_column)
+        rename_dict = {entity: "country_id"}
+        
+        # For backwards compatibility, if single metric, rename to "metric"
+        if len(metric_names) == 1:
+            rename_dict[metric_names[0]] = "metric"
+        else:
+            # For multiple metrics, include all with their names
+            for metric_name in metric_names:
+                # Keep the metric names as is for multi-metric support
+                pass
+            
         if categorical_column:
-            column_names.append("categorical_value")
-        df.columns = column_names
+            rename_dict[categorical_column] = "categorical_value"
+            
+        df = df.rename(columns=rename_dict)
         
         # If temporal data exists, ensure proper datetime format
         if temporal_column:
@@ -2387,6 +2413,14 @@ class DeckCountry(BaseDeckGLViz):
         if self.form_data.get("js_data_mutator"):
             data = self.get_js_fn(self.form_data.get("js_data_mutator"))(data)
 
+        # Get metric labels for frontend
+        metric_labels = []
+        for m in metrics:
+            if isinstance(m, dict):
+                metric_labels.append(m.get("label", utils.get_metric_name(m)))
+            else:
+                metric_labels.append(utils.get_metric_name(m))
+        
         return {
             "data": data,
             "mapboxApiKey": config["MAPBOX_API_KEY"],
@@ -2400,15 +2434,37 @@ class DeckCountry(BaseDeckGLViz):
             "color": self.form_data.get("mapbox_color"),
             "temporal_column": temporal_column,
             "time_grain_sqla": self.form_data.get("time_grain_sqla"),
+            "metric_labels": metric_labels if len(metric_labels) > 1 else None,
         }
 
     def get_properties(self, data: dict[str, Any]) -> dict[str, Any]:
         temporal_column = self.form_data.get("temporal_column")
         categorical_column = self.form_data.get("categorical_column")
+        
+        # Handle metrics - both single and multiple
+        metrics = self.form_data.get("metrics", [])
+        metric = self.form_data.get("metric")
+        
+        if not metrics and metric:
+            # Backwards compatibility
+            metrics = [metric]
+            
+        metric_names = [utils.get_metric_name(m) for m in metrics]
+        
         properties = {
-            "metric": data.get("metric"),
             "country_id": data.get("country_id"),
         }
+        
+        # Add metric values
+        if len(metric_names) == 1 and "metric" in data:
+            # Backwards compatibility: single metric
+            properties["metric"] = data.get("metric")
+        else:
+            # Multiple metrics: include all
+            for metric_name in metric_names:
+                if metric_name in data:
+                    properties[metric_name] = data.get(metric_name)
+        
         if temporal_column and temporal_column in data:
             properties[temporal_column] = data.get(temporal_column)
         if categorical_column:
@@ -2457,7 +2513,7 @@ class DeckFeed(DeckCountry):
             return None
 
         entity = self.form_data.get("entity")
-        metric = utils.get_metric_name(self.form_data["metric"])
+        metric = utils.get_metric_name(self.form_data.get("metric"))
         title_column = self.form_data.get("title_column")
         message_column = self.form_data.get("message_column")
         parameter_column = self.form_data.get("parameter_column")
