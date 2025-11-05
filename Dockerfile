@@ -49,11 +49,10 @@ WORKDIR /app/superset-frontend
 RUN mkdir -p /app/superset/static/assets \
              /app/superset/translations
 
-# Mount package files and install dependencies if not in dev mode
-RUN --mount=type=bind,source=./superset-frontend/package.json,target=./package.json \
-    --mount=type=bind,source=./superset-frontend/package-lock.json,target=./package-lock.json \
-    if [ "$DEV_MODE" = "false" ]; then \
-        npm ci; \
+# Copy package files and install dependencies if not in dev mode
+COPY superset-frontend/package.json superset-frontend/package-lock.json ./
+RUN if [ "$DEV_MODE" = "false" ]; then \
+        npm ci --loglevel=error --no-audit --no-fund; \
     else \
         echo "Skipping 'npm ci' in dev mode"; \
     fi
