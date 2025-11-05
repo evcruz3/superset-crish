@@ -52,9 +52,16 @@ RUN mkdir -p /app/superset/static/assets \
 # Copy package files and install dependencies if not in dev mode
 COPY superset-frontend/package.json superset-frontend/package-lock.json ./
 RUN if [ "$DEV_MODE" = "false" ]; then \
-        npm ci --loglevel=error --no-audit --no-fund; \
+        npm config set fetch-timeout 600000 && \
+        npm config set fetch-retry-maxtimeout 120000 && \
+        npm config set fetch-retry-mintimeout 20000 && \
+        npm config set prefer-offline true && \
+        npm config set audit false && \
+        npm config set fund false && \
+        npm config set loglevel error && \
+        npm ci || npm install; \
     else \
-        echo "Skipping 'npm ci' in dev mode"; \
+        echo "Skipping npm install in dev mode"; \
     fi
 
 # Runs the webpack build process
