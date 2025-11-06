@@ -37,7 +37,8 @@ RUN --mount=type=bind,source=./docker,target=/docker \
 
 # Define environment variables for frontend build
 ENV BUILD_CMD=${NPM_BUILD_CMD} \
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    CYPRESS_INSTALL_BINARY=0
 
 # Run the frontend memory monitoring script
 RUN --mount=type=bind,source=./docker,target=/docker \
@@ -49,19 +50,13 @@ WORKDIR /app/superset-frontend
 RUN mkdir -p /app/superset/static/assets \
              /app/superset/translations
 
-# Copy package files and install dependencies if not in dev mode
-COPY superset-frontend/package.json superset-frontend/package-lock.json ./
-RUN if [ "$DEV_MODE" = "false" ]; then \
-        npm config set fetch-timeout 600000 && \
-        npm config set fetch-retry-maxtimeout 120000 && \
-        npm config set fetch-retry-mintimeout 20000 && \
-        npm config set prefer-offline true && \
-        npm config set audit false && \
-        npm config set fund false && \
-        npm config set loglevel error && \
-        npm ci || npm install; \
+# Mount package files and install dependencies if not in dev mode
+RUN --mount=type=bind,source=./superset-frontend/package.json,target=./package.json \
+    --mount=type=bind,source=./superset-frontend/package-lock.json,target=./package-lock.json \
+    if [ "$DEV_MODE" = "false" ]; then \
+        npm ci; \
     else \
-        echo "Skipping npm install in dev mode"; \
+        echo "Skipping 'npm ci' in dev mode"; \
     fi
 
 # Runs the webpack build process
