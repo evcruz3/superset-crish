@@ -37,7 +37,8 @@ RUN --mount=type=bind,source=./docker,target=/docker \
 
 # Define environment variables for frontend build
 ENV BUILD_CMD=${NPM_BUILD_CMD} \
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    CYPRESS_INSTALL_BINARY=0
 
 # Run the frontend memory monitoring script
 RUN --mount=type=bind,source=./docker,target=/docker \
