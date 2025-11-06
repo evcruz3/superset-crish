@@ -845,7 +845,6 @@ const MapViewTab: React.FC<MapViewTabProps> = ({
               width="100%"
               height="100%"
               layers={mapLayers} // Use layers including the new tileLayer
-              glOptions={{ preserveDrawingBuffer: true }}
               getTooltip={getFacilityTooltip}
             >
               {/* Remove StaticMap component */}

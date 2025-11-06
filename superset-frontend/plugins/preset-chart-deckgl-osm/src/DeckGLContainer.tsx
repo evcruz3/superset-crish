@@ -507,7 +507,6 @@ export const DeckGLContainer = memo(
             layers={layers()}
             viewState={internalViewState}
             onViewStateChange={handleViewStateChange}
-            glOptions={{ preserveDrawingBuffer: true }}
           >
             {/* <StaticMap
               preserveDrawingBuffer

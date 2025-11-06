@@ -484,20 +484,22 @@ const SqlEditor: FC<Props> = ({
           const cursorPosition = editor.getCursorPosition();
           const totalLine = session.getLength();
           const currentRow = editor.getFirstVisibleRow();
-          let end = editor.find(';', {
+          const endResult = editor.find(';', {
             backwards: false,
             skipCurrent: true,
-          })?.end;
+          });
+          let end = endResult ? endResult.end : null;
           if (!end || end.row < cursorPosition.row) {
             end = {
               row: totalLine + 1,
               column: 0,
             };
           }
-          let start = editor.find(';', {
+          const startResult = editor.find(';', {
             backwards: true,
             skipCurrent: true,
-          })?.end;
+          });
+          let start = startResult ? startResult.end : null;
           let currentLine = start?.row;
           if (
             !currentLine ||
