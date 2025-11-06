@@ -22,6 +22,7 @@ import {
   styled,
   getNumberFormatter,
   getSequentialSchemeRegistry, // Import the color scheme registry
+  getCategoricalSchemeRegistry, // Import the categorical color scheme registry
   t,
 } from '@superset-ui/core';
 import { Layer } from '@deck.gl/core';
@@ -75,21 +76,8 @@ moment.updateLocale('en', {
   },
 });
 
-// Removed unused components: Card, CardHeader, CardTitle, GuideText
-
 // Type alias for CountryKeys
 type CountryKeys = keyof typeof countries;
-
-// const CardContent: React.FC<React.PropsWithChildren> = ({ children }) => (
-//   <div style={{ padding: '1rem' }}>
-//     {children}
-//   </div>
-// )
-
-// Removed unused components: Checkbox, Label
-
-// Type alias for FeedLayerProps to avoid naming conflict
-type FeedLayerProps = FeedLayerPropsImport;
 
 const geoJsonCache: { [key: string]: JsonObject } = {};
 
@@ -618,6 +606,11 @@ interface ExtendedLayer extends Layer {
 }
 
 // Add type definitions for the form data
+interface MetricDefinition {
+  column_name: string;
+  label: string;
+}
+
 interface SubsliceFormData extends QueryFormData {
   viz_type: string;
   filters?: any[];
@@ -648,175 +641,6 @@ const getLargestTimeGrain = (timeGrains: string[]): string =>
       TIME_GRAIN_ORDER[current as keyof typeof TIME_GRAIN_ORDER] || 0;
     return currentOrder > largestOrder ? current : largest;
   }, 'P1D'); // Default to daily if no valid grains found
-// Unused function - commenting out to avoid type errors
-/* const aggregateDataToTimeGrain = (
-  data: JsonObject[],
-  sourceColumn: string,
-  sourceGrain: string,
-  targetGrain: string,
-  metricColumns: string[]
-): JsonObject[] => {
-  console.log('Aggregating data:', {
-    sourceGrain,
-    targetGrain,
-    metricColumns,
-    dataLength: data.length,
-    sampleData: data.slice(0, 2),
-  });
-
-  // First convert all dates to Date objects
-  const dataWithDates = data.map(row => ({
-    ...row,
-    __date: new Date(row[sourceColumn]),
-  }));
-
-  // Function to get the period start date based on grain
-  const getPeriodStart = (date: Date, grain: string): Date => {
-    const newDate = new Date(date);
-    switch (grain) {
-      case 'P1Y':
-        return new Date(newDate.getFullYear(), 0, 1, 0, 0, 0, 0);
-      case 'P1M':
-        return new Date(newDate.getFullYear(), newDate.getMonth(), 1, 0, 0, 0, 0);
-      case 'P1W':
-        // Get the first day of the week (Sunday)
-        const dayOfWeek = newDate.getDay();
-        newDate.setDate(newDate.getDate() - dayOfWeek);
-        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 0, 0, 0, 0);
-      case 'P1D':
-        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 0, 0, 0, 0);
-      case 'PT1H':
-        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), newDate.getHours(), 0, 0, 0);
-      default:
-        return new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), 0, 0, 0, 0);
-    }
-  };
-
-  // Function to get the period end date based on grain
-  const getPeriodEnd = (date: Date, grain: string): Date => {
-    const startDate = getPeriodStart(date, grain);
-    const endDate = new Date(startDate);
-    
-    switch (grain) {
-      case 'P1Y':
-        endDate.setFullYear(endDate.getFullYear() + 1);
-        break;
-      case 'P1M':
-        endDate.setMonth(endDate.getMonth() + 1);
-        break;
-      case 'P1W':
-        endDate.setDate(endDate.getDate() + 7);
-        break;
-      case 'P1D':
-        endDate.setDate(endDate.getDate() + 1);
-        break;
-      case 'PT1H':
-        endDate.setHours(endDate.getHours() + 1);
-        break;
-      default:
-        endDate.setDate(endDate.getDate() + 1);
-    }
-    
-    // Subtract 1 millisecond to get the end of the previous period
-    endDate.setMilliseconds(-1);
-    return endDate;
-  };
-
-  // Function to check if a date falls within a target period
-  const isWithinPeriod = (date: Date, periodStart: Date, grain: string): boolean => {
-    const periodEnd = getPeriodEnd(periodStart, grain);
-    return date >= periodStart && date <= periodEnd;
-  };
-
-  // Group data by country_id AND target time grain, ensuring proper period alignment
-  const groupedData = new Map<string, JsonObject[]>();
-  dataWithDates.forEach(row => {
-    const rowDate = row.__date;
-    // Get the aligned period start for the target grain
-    const periodStart = getPeriodStart(rowDate, targetGrain);
-    
-    // Create a composite key using both country_id and aligned period
-    const countryId = row.country_id || 'unknown';
-    const key = `${countryId}|${periodStart.toISOString()}`;
-    
-    // Only include the row if it falls within the target period
-    if (isWithinPeriod(rowDate, periodStart, targetGrain)) {
-      // console.log('Grouping row:', {
-      //   countryId,
-      //   rowDate: rowDate.toISOString(),
-      //   periodStart: periodStart.toISOString(),
-      //   periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
-      //   key,
-      // });
-
-      if (!groupedData.has(key)) {
-        groupedData.set(key, []);
-      }
-      groupedData.get(key)?.push(row);
-    } else {
-      console.warn('Row falls outside target period:', {
-        rowDate: rowDate.toISOString(),
-        periodStart: periodStart.toISOString(),
-        periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
-      });
-    }
-  });
-
-  console.log('Grouped data stats:', {
-    numberOfGroups: groupedData.size,
-    sampleGroup: Array.from(groupedData.entries())[0],
-    allKeys: Array.from(groupedData.keys()),
-    periodBoundaries: Array.from(groupedData.keys()).map(key => {
-      const [countryId, periodStr] = key.split('|');
-      const periodStart = new Date(periodStr);
-      return {
-        countryId,
-        periodStart: periodStart.toISOString(),
-        periodEnd: getPeriodEnd(periodStart, targetGrain).toISOString(),
-      };
-    }),
-  });
-
-  // Rest of the aggregation logic remains the same
-  const result = Array.from(groupedData.entries()).map(([key, rows]) => {
-    const [countryId, periodKey] = key.split('|');
-    const aggregated: JsonObject = {
-      [sourceColumn]: periodKey,
-      country_id: countryId,
-    };
-
-    metricColumns.forEach(metric => {
-      const values = rows.map(row => Number(row[metric])).filter(v => !isNaN(v));
-      if (values.length > 0) {
-        aggregated[metric] = values.reduce((a, b) => a + b, 0) / values.length;
-      }
-    });
-
-    Object.keys(rows[0]).forEach(key => {
-      if (!metricColumns.includes(key) && 
-          key !== sourceColumn && 
-          key !== '__date' && 
-          key !== 'country_id') {
-        aggregated[key] = rows[0][key];
-      }
-    });
-
-    return aggregated;
-  });
-
-  console.log('Aggregation result:', {
-    resultLength: result.length,
-    sampleResult: result.slice(0, 2),
-    uniqueCountries: new Set(result.map(r => r.country_id)).size,
-    periodSummary: result.map(r => ({
-      country: r.country_id,
-      period: r[sourceColumn],
-      periodEnd: getPeriodEnd(new Date(r[sourceColumn]), targetGrain).toISOString(),
-    })),
-  });
-
-  return result;
-}; */
 
 const getDatesInRange = (
   startDate: Date,
@@ -913,7 +737,7 @@ export interface LocalFeedLayerProps extends LayerOptions {
 // Interface for chart data points
 interface ChartDataPoint {
   time: number | string; // Timestamp or formatted date string
-  [key: string]: number | string; // Metric values
+  [key: string]: number | string | number; // Metric values
 }
 
 const DeckMulti = (props: DeckMultiProps) => {
@@ -971,8 +795,7 @@ const DeckMulti = (props: DeckMultiProps) => {
         return false;
       if (!feature.properties || typeof feature.properties !== 'object')
         return false;
-      if (typeof feature.properties.ISO !== 'string') return false;
-
+      if (typeof feature.properties.ISO !== 'string') return true; // Change back to true if ISO is not strictly required
       return true;
     });
   };
@@ -1069,49 +892,6 @@ const DeckMulti = (props: DeckMultiProps) => {
     }
   }, []);
 
-  /* Unused function - commented out
-  const panToFeature = useCallback((feature: FeedGeoJSONFeature) => {
-    
-    try {
-      // Cast the feature to the type expected by @turf/bbox
-      const [minLng, minLat, maxLng, maxLat] = bbox(feature as unknown as GeoJSON.Feature<GeoJSON.Geometry>);
-      
-      // Add some padding to the bounds (10% on each side)
-      const padLng = (maxLng - minLng) * 0.1;
-      const padLat = (maxLat - minLat) * 0.1;
-      
-      // Create the new viewport with padding
-      const newViewport = {
-        ...viewport,
-        longitude: (minLng + maxLng) / 2,
-        latitude: (minLat + maxLat) / 2,
-        zoom: Math.min(
-          // Calculate zoom to fit the width
-          Math.log2((360) / (maxLng - minLng + 2 * padLng)) + 1,
-          // Calculate zoom to fit the height
-          Math.log2((180) / (maxLat - minLat + 2 * padLat)) + 1
-        ),
-        transitionDuration: 1000,
-      };
-
-      setViewport(newViewport);
-    } catch (error) {
-      console.error('Error calculating feature bounds:', error);
-    }
-  }, [viewport, setViewport]); */
-
-  // Add retry function for failed loads
-  /* const retryGeoJsonLoad = useCallback((sliceId: number, country: string) => {
-    setFeedLayerState(prev => ({
-      ...prev,
-      loadingState: {
-        ...prev.loadingState,
-        [sliceId]: { loading: false }, // Reset error state
-      },
-    }));
-    loadGeoJson(sliceId, country);
-  }, [loadGeoJson]); */
-
   // Function to create layer based on filtered data
   const createLayer = useCallback(
     (
@@ -1128,13 +908,21 @@ const DeckMulti = (props: DeckMultiProps) => {
         originalDataLength: json.data?.data?.length, // Log original length
       });
 
-      // ... (rest of the aggregation logic remains the same) ...
       // Use the *original* unfiltered data for the click handler context
       const originalLayerData = Array.isArray(json.data?.data)
         ? json.data.data
         : Array.isArray(json.data)
-          ? json.data
-          : [];
+        ? json.data
+        : [];
+
+      // Helper to get metric key from definition or string
+      const getMetricKey = (metric: string | MetricDefinition): string =>
+        typeof metric === 'object' ? metric.label || metric.column_name : metric;
+
+      // Consolidate metrics for consistency
+      const rawMetrics = subslice.form_data.metrics || (subslice.form_data.metric ? [subslice.form_data.metric] : []);
+      const metricKeys = rawMetrics.map(getMetricKey);
+
 
       const layerGeneratorOptions: LayerOptions = {
         // Use LayerOptions type
@@ -1159,27 +947,16 @@ const DeckMulti = (props: DeckMultiProps) => {
       } else if (subslice.form_data.viz_type === 'deck_country') {
         const country = subslice.form_data.select_country;
         // Define identifier column (needs to be configured or inferred)
-        // Let's assume it's 'country_id' for now, adjust as needed
         const regionIdentifierColumn =
           subslice.form_data.country_column || 'country_id';
         const temporalColumn = subslice.form_data.temporal_column;
-        const metricColumns = Array.isArray(subslice.form_data.metric)
-          ? subslice.form_data.metric.map((m: any) =>
-              typeof m === 'string' ? m : m.label || 'value',
-            ) // Handle object metrics
-          : typeof subslice.form_data.metric === 'string'
-            ? [subslice.form_data.metric]
-            : typeof subslice.form_data.metric === 'object' &&
-                subslice.form_data.metric !== null
-              ? [subslice.form_data.metric.label || 'value'] // Handle single object metric
-              : ['value']; // Default fallback
-
+        
         const createAndSetLayer = (geoJsonData: JsonObject) => {
           console.log('Creating deck_country layer:', {
             sliceId: subslice.slice_id,
             temporalColumn,
             regionIdentifierColumn,
-            metricColumns,
+            metricKeys,
             originalDataLength: originalLayerData.length,
           });
 
@@ -1236,12 +1013,8 @@ const DeckMulti = (props: DeckMultiProps) => {
                 subslice.form_data.categorical_column;
 
               if (isCategorical) {
-                // --- Categorical Data Visualization ---
-                console.log(
-                  '[DEBUG] Handling categorical click with value_map:',
-                  subslice.form_data.value_map,
-                );
-                const categoricalColumn = subslice.form_data.temporal_column;
+                // --- Categorical Data Visualization (List View) ---
+                const categoricalColumn = subslice.form_data.categorical_column;
                 const valueMap = subslice.form_data.value_map as Record<
                   string,
                   string
@@ -1249,10 +1022,9 @@ const DeckMulti = (props: DeckMultiProps) => {
 
                 const categoryTimelineData = regionData
                   .map((row: any) => {
-                    console.log('[DEBUG] row: ', row);
                     return {
                       time: new Date(row[temporalColumn]).getTime(),
-                      category: row.categorical_value,
+                      category: row[categoricalColumn], // Use the correct categorical column
                     };
                   })
                   .filter(
@@ -1333,24 +1105,36 @@ const DeckMulti = (props: DeckMultiProps) => {
                   );
                 }
               } else {
-                // --- Numerical Data Visualization (Existing Line Chart) ---
-                // Prepare data for line chart
+                // 🚀 --- Numerical Data Visualization (Multi-Metric Line Chart) --- 🚀
+                
+                // 1. Prepare data structure
                 const chartData: ChartDataPoint[] = regionData
                   .map((row: any) => {
                     const point: ChartDataPoint = {
                       time: new Date(row[temporalColumn]).getTime(),
                     };
-                    metricColumns.forEach(metric => {
-                      // Ensure metric value is a number
-                      // Check if metric is an object like { label: 'Actual Metric Name' }
-                      // const metricKey = typeof subslice.form_data.metric === 'object' && subslice.form_data.metric !== null && !Array.isArray(subslice.form_data.metric)
-                      // ? subslice.form_data.metric.label // Use label if metric is an object
-                      // : metric; // Otherwise use the string directly
-                      const value = Number(row.metric); // Use the potentially adjusted key
-                      point[metric] = isNaN(value) ? 0 : value; // Handle non-numeric values
+                    
+                    let hasValidMetric = false;
+                    
+                    // Iterate over all metric keys to build the data point
+                    metricKeys.forEach(metricKey => {
+                      // Check for value by metric key, falling back to 'metric' if available and key is 'metric'
+                      let value = row[metricKey];
+                      if (value === undefined && metricKey === 'metric' && row.metric !== undefined) {
+                          value = row.metric;
+                      }
+
+                      const numValue = Number(value);
+                      if (!isNaN(numValue) && numValue !== null) {
+                        point[metricKey] = numValue;
+                        hasValidMetric = true;
+                      }
                     });
-                    return point;
+                    
+                    // Only return data points that have at least one valid metric value
+                    return hasValidMetric ? point : null;
                   })
+                  .filter((point: ChartDataPoint | null): point is ChartDataPoint => point !== null) // Filter out nulls
                   .sort(
                     (a: any, b: any) => (a.time as number) - (b.time as number),
                   )
@@ -1358,32 +1142,30 @@ const DeckMulti = (props: DeckMultiProps) => {
                     ...point,
                     time: moment(point.time).format(
                       subslice.form_data.date_format || 'DD MMM YYYY',
-                    ), // Use configured/default format
+                    ), // Use configured/default format for XAxis
                   }));
 
-                // Basic check if data looks plottable
-                if (chartData.length > 0 && metricColumns.length > 0) {
-                  // --- Get Color Scheme ---
-                  const schemeName =
-                    subslice.form_data.linear_color_scheme || 'supersetColors'; // Default scheme
-                  const colorScheme =
-                    getSequentialSchemeRegistry().get(schemeName);
-                  const lineColors = colorScheme?.colors || [
-                    '#1f77b4',
-                    '#ff7f0e',
-                    '#2ca02c',
-                    '#d62728',
-                    '#9467bd',
-                    '#8c564b',
-                    '#e377c2',
-                    '#7f7f7f',
-                    '#bcbd22',
-                    '#17becf',
-                  ]; // Default colors if scheme not found
-
-                  setRegionChartModalTitle(
-                    `${t(subslice.slice_name)} (${regionName}) (${subslice.form_data.metric_unit || ''})`,
+                // 2. Render Chart if data is present
+                if (chartData.length > 0 && metricKeys.length > 0) {
+                  // --- Get Color Scheme for Multiple Lines ---
+                  // Use a categorical scheme for the lines to ensure differentiation
+                  const colorScheme = getCategoricalSchemeRegistry().get(
+                    subslice.form_data.categorical_color_scheme || 'supersetColors' // Use a default categorical scheme
                   );
+                  const lineColors = colorScheme?.colors || [
+                    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+                  ];
+                  
+                  // Construct title with all metric labels
+                  const metricLabels = rawMetrics.map(metric => 
+                    typeof metric === 'object' ? metric.label || metric.column_name : metric
+                  );
+                  
+                  setRegionChartModalTitle(
+                    `${metricLabels.join(', ')} (${regionName}) ${subslice.form_data.metric_unit ? `(${subslice.form_data.metric_unit})` : ''}`
+                  );
+                  
                   setRegionChartModalContent(
                     <ResponsiveContainer width="100%" height={400}>
                       <LineChart
@@ -1395,27 +1177,27 @@ const DeckMulti = (props: DeckMultiProps) => {
                         <YAxis domain={['dataMin', 'dataMax']} />
                         <RechartsTooltip />
                         <Legend />
-                        {metricColumns.map((metric, index) => (
-                          <Line
-                            key={metric}
-                            type="monotone"
-                            dataKey={metric}
-                            // Use a consistent color, maybe the last but one from the scheme?
-                            stroke={
-                              lineColors[lineColors.length - 2] || '#1f77b4'
-                            }
-                            activeDot={{ r: 8 }}
-                            // Try to get a better name if metric is an object
-                            name={
-                              subslice.form_data.metric.column.column_name ||
-                              metric
-                            }
-                          />
-                        ))}
+                        {metricKeys.map((metricKey, index) => {
+                          // Get the label to display in the legend
+                          const metricLabel = metricLabels[index] || metricKey;
+                          
+                          return (
+                            <Line
+                              key={metricKey}
+                              type="monotone"
+                              dataKey={metricKey} // Use the specific metric key as data key
+                              stroke={lineColors[index % lineColors.length]} // Assign a color from the scheme
+                              activeDot={{ r: 8 }}
+                              name={metricLabel} // Use the human-readable label
+                              strokeWidth={2}
+                            />
+                          );
+                        })}
                       </LineChart>
-                    </ResponsiveContainer>,
+                    </ResponsiveContainer>
                   );
                 } else {
+                  // No temporal data or no metric data
                   setRegionChartModalTitle(`Trendline Data for ${regionName}`);
                   setRegionChartModalContent(
                     <div>
@@ -1430,7 +1212,7 @@ const DeckMulti = (props: DeckMultiProps) => {
               const message =
                 regionData.length === 0
                   ? `No data found for ${regionName} in this layer.`
-                  : `Placeholder: No temporal data configured for this layer to display a chart or timeline for ${regionName}.`;
+                  : `No temporal data configured for this layer to display a chart for ${regionName}.`;
               setRegionChartModalContent(<div>{message}</div>);
             }
             setRegionChartModalVisible(true); // Show the modal
@@ -1520,14 +1302,8 @@ const DeckMulti = (props: DeckMultiProps) => {
       props.datasource,
       setTooltip,
       currentTime,
-      // layerOpacities, // Opacity is no longer a dependency
       temporalData,
-      feedLayerState.geoJson, // Only need geoJson here, selection handled elsewhere
-      // props.payload.data.slices, // Avoid dependency if possible, use args
-      // panToFeature, // Not directly used in createLayer
-      // layerOrder, // Not directly used in createLayer
-      // viewport, // Used for elevation calculation, keep if needed there
-      // Include new modal setters if they were used inside (they are now)
+      feedLayerState.geoJson,
       setRegionChartModalVisible,
       setRegionChartModalContent,
       setRegionChartModalTitle,
@@ -1544,10 +1320,6 @@ const DeckMulti = (props: DeckMultiProps) => {
       });
 
       // filtering must be in the level of granularity of time
-      // const filtered = data.filter(row => {
-      //   const rowDate = new Date(row[temporalColumn]);
-      //   return rowDate <= time;
-      // });
       const filtered = data.filter(row => {
         const rowDate = new Date(row[temporalColumn]);
         return rowDate.getTime() === time.getTime();
@@ -1602,8 +1374,8 @@ const DeckMulti = (props: DeckMultiProps) => {
             const layerData = Array.isArray(json.data?.data)
               ? json.data.data
               : Array.isArray(json.data)
-                ? json.data
-                : [];
+              ? json.data
+              : [];
 
             // Store temporal data if available
             const temporalColumn = subsliceCopy.form_data.temporal_column;
@@ -1728,149 +1500,84 @@ const DeckMulti = (props: DeckMultiProps) => {
 
   console.log('[DEBUG] visibleLayers: ', visibleLayers);
 
-  // const toggleLayerVisibility = (layerId: number) => {
-  //   console.log('Toggling Layer Visibility:', {
-  //     layerId,
-  //     currentVisibility: visibleLayers[layerId],
-  //     layerType: props.payload.data.slices.find(
-  //       (s: any) => s.slice_id === layerId,
-  //     )?.form_data.viz_type,
-  //     isFeedLayer:
-  //       props.payload.data.slices.find((s: any) => s.slice_id === layerId)
-  //         ?.form_data.viz_type === 'deck_feed',
-  //   });
-
-  //   setVisibleLayers(prev => {
-  //     const newState = {
-  //       ...prev,
-  //       [layerId]: !prev[layerId],
-  //     };
-  //     console.log('New Visibility State:', newState);
-  //     return newState;
-  //   });
-
-  //   // If it's a Feed layer being hidden, clear its selection
-  //   const subslice = props.payload.data.slices.find(
-  //     (slice: { slice_id: number }) => slice.slice_id === layerId,
-  //   );
-  //   if (
-  //     subslice?.form_data.viz_type === 'deck_feed' &&
-  //     visibleLayers[layerId]
-  //   ) {
-  //     console.log('Clearing Feed Layer Selection:', {
-  //       layerId,
-  //       currentSelection: feedLayerState.selectedRegions[layerId],
-  //     });
-  //     setFeedLayerState(prev => ({
-  //       ...prev,
-  //       selectedRegions: {
-  //         ...prev.selectedRegions,
-  //         [layerId]: null,
-  //       },
-  //     }));
-  //   }
-
-  //   // If layer is being toggled back to visible, reinitialize it
-  //   if (!visibleLayers[layerId] && subslice) {
-  //     console.log('Reinitializing Layer:', {
-  //       layerId,
-  //       vizType: subslice.form_data.viz_type,
-  //       hasGeoJson:
-  //         subslice.form_data.viz_type === 'deck_feed'
-  //           ? !!feedLayerState.geoJson[layerId]
-  //           : 'N/A',
-  //     });
-
-  //     // Collect all filters
-  //     const filters = [
-  //       ...(subslice.form_data.filters || []),
-  //       ...(props.formData.filters || []),
-  //       ...(props.formData.extra_filters || []),
-  //     ];
-
-  //     // Use loadLayer to reinitialize the layer
-  //     loadLayer(subslice, filters);
-  //   }
-  // };
-
   // Inside DeckMulti function component
 
-const toggleLayerVisibility = useCallback((layerId: number) => {
-  // A flag to check if the layer is currently visible
-  const isCurrentlyVisible = visibleLayers[layerId];
+  const toggleLayerVisibility = useCallback((layerId: number) => {
+    // A flag to check if the layer is currently visible
+    const isCurrentlyVisible = visibleLayers[layerId];
 
-  console.log('Toggling Layer Visibility:', {
+    console.log('Toggling Layer Visibility:', {
       layerId,
       currentVisibility: isCurrentlyVisible,
-  });
+    });
 
-  setVisibleLayers(prev => {
+    setVisibleLayers(prev => {
       // If the clicked layer is already visible, the new state is all false (hides it)
       if (isCurrentlyVisible) {
-          const newState: { [key: number]: boolean } = {};
-          Object.keys(prev).forEach(id => {
-              newState[Number(id)] = false;
-          });
-          console.log('New Visibility State: All layers hidden (toggled off)');
-          return newState;
+        const newState: { [key: number]: boolean } = {};
+        Object.keys(prev).forEach(id => {
+          newState[Number(id)] = false;
+        });
+        console.log('New Visibility State: All layers hidden (toggled off)');
+        return newState;
       }
 
       // If the clicked layer is hidden, the new state has ONLY this layer visible
       const newState: { [key: number]: boolean } = {};
       Object.keys(prev).forEach(id => {
-          newState[Number(id)] = Number(id) === layerId;
+        newState[Number(id)] = Number(id) === layerId;
       });
       newState[layerId] = true; // Ensure the target layer is true
 
       console.log('New Visibility State: Single layer visible');
       return newState;
-  });
+    });
 
-  // --- Feed Layer Selection Clearing Logic (Remains the same) ---
-  // If it's a Feed layer being hidden, clear its selection
-  const subslice = props.payload.data.slices.find(
+    // --- Feed Layer Selection Clearing Logic (Remains the same) ---
+    // If it's a Feed layer being hidden, clear its selection
+    const subslice = props.payload.data.slices.find(
       (slice: { slice_id: number }) => slice.slice_id === layerId,
-  );
-  if (
+    );
+    if (
       subslice?.form_data.viz_type === 'deck_feed' &&
       isCurrentlyVisible // Check if it *was* visible before the toggle
-  ) {
+    ) {
       console.log('Clearing Feed Layer Selection due to layer hide:', {
-          layerId,
+        layerId,
       });
       setFeedLayerState(prev => ({
-          ...prev,
-          selectedRegions: {
-              ...prev.selectedRegions,
-              [layerId]: null,
-          },
+        ...prev,
+        selectedRegions: {
+          ...prev.selectedRegions,
+          [layerId]: null,
+        },
       }));
-  }
+    }
 
-  // --- Layer Reinitialization Logic (Remains the same, but now runs on any visibility change) ---
-  // If the layer is now visible, reinitialize it to ensure proper data/deck.gl state
-  if (!isCurrentlyVisible && subslice) {
+    // --- Layer Reinitialization Logic (Remains the same, but now runs on any visibility change) ---
+    // If the layer is now visible, reinitialize it to ensure proper data/deck.gl state
+    if (!isCurrentlyVisible && subslice) {
       console.log('Reinitializing Layer on visibility turn on:', {
-          layerId,
+        layerId,
       });
 
       const filters = [
-          ...(subslice.form_data.filters || []),
-          ...(props.formData.filters || []),
-          ...(props.formData.extra_filters || []),
+        ...(subslice.form_data.filters || []),
+        ...(props.formData.filters || []),
+        ...(props.formData.extra_filters || []),
       ];
 
       // Use loadLayer to reinitialize the layer
       loadLayer(subslice, filters);
-  }
-}, [
-  visibleLayers,
-  feedLayerState.selectedRegions,
-  props.payload.data.slices,
-  props.formData.filters,
-  props.formData.extra_filters,
-  loadLayer,
-]);
+    }
+  }, [
+    visibleLayers,
+    feedLayerState.selectedRegions,
+    props.payload.data.slices,
+    props.formData.filters,
+    props.formData.extra_filters,
+    loadLayer,
+  ]);
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -1965,12 +1672,7 @@ const toggleLayerVisibility = useCallback((layerId: number) => {
                 baseElevation,
               ]);
 
-              // console.log('[DEBUG] Layer ID:', id, 'Index:', layerIndex, 'Pitch:', viewport?.pitch, 'Base Elevation:', baseElevation);
-
               // Clone the layer and apply the modelMatrix
-              // Pass other necessary props if clone clears them (check deck.gl docs if needed)
-              // Get maximum value from metricValues
-              // const maxValue = layer.metricValues?.reduce((max: number, value: number) => Math.max(max, value), 1) ?? 1;
               const scaledLayer = layer.clone({
                 modelMatrix,
                 // extruded: pitch > 1 ? true : false,
@@ -2145,8 +1847,8 @@ const toggleLayerVisibility = useCallback((layerId: number) => {
             )
               ? originalJsonPayload.data.data
               : Array.isArray(originalJsonPayload.data)
-                ? originalJsonPayload.data
-                : [];
+              ? originalJsonPayload.data
+              : [];
 
             // Filter data for the current time step for rendering
             const filteredDataForTime = filterDataByTime(
@@ -2203,42 +1905,6 @@ const toggleLayerVisibility = useCallback((layerId: number) => {
       }
     }
   }, [temporalData, currentTime]);
-
-  // useEffect(() => {
-  //   const initialVisibility: { [key: number]: boolean } = {}
-  //   const initialOpacities: { [key: number]: number } = {}
-  //   props.payload.data.slices.forEach((slice: any, index: number) => {
-  //     // Make the first layer (index 0) visible, all others invisible
-  //     initialVisibility[slice.slice_id] = index === 0
-  //     initialOpacities[slice.slice_id] = 1.0
-  //   })
-  //   setVisibleLayers(initialVisibility)
-  //   setLayerOpacities(initialOpacities)
-  // }, [props.payload.data.slices])
-
-  // Add selection state management functions
-  // const handleFeedLayerSelection = useCallback((sliceId: number, region: SelectedRegion | null) => {
-  //   console.log('Feed Layer Selection Handler:', {
-  //     sliceId,
-  //     region: region ? {
-  //       name: region.name,
-  //       id: region.id,
-  //       entriesCount: region.entries.length
-  //     } : null,
-  //     currentState: {
-  //       hasSelection: Boolean(feedLayerState.selectedRegions[sliceId]),
-  //       isLayerVisible: visibleLayers[sliceId]
-  //     }
-  //   });
-
-  //   setFeedLayerState(prev => ({
-  //     ...prev,
-  //     selectedRegions: {
-  //       ...prev.selectedRegions,
-  //       [sliceId]: region,
-  //     },
-  //   }));
-  // }, [feedLayerState.selectedRegions, visibleLayers]);
 
   const clearFeedLayerSelection = useCallback((sliceId: number) => {
     console.log('Clearing Feed Layer Selection:', {
@@ -2375,17 +2041,6 @@ const toggleLayerVisibility = useCallback((layerId: number) => {
         ).filter(
           ([sliceId, region]) => region && visibleLayers[Number(sliceId)],
         );
-
-        // console.log('Feed Side Panel Render State:', {
-        //   selectedRegions: Object.keys(feedLayerState.selectedRegions),
-        //   visibleLayers: Object.keys(visibleLayers).filter(id => visibleLayers[Number(id)]),
-        //   activePanels: activeFeedPanels.map(([sliceId, region]) => ({
-        //     sliceId,
-        //     regionName: region.name,
-        //     entriesCount: region.entries.length,
-        //     entries: region.entries
-        //   }))
-        // });
 
         return activeFeedPanels.map(([sliceId, region]) => {
           const slice = props.payload.data.slices.find(
@@ -2726,11 +2381,27 @@ const toggleLayerVisibility = useCallback((layerId: number) => {
             const metricUnit = subslice.form_data.metric_unit
               ? ` ${subslice.form_data.metric_unit}`
               : '';
-            // const metricName = isCategorical
-            //   ? (subslice.form_data.categorical_column || 'Categories')
-            //   : (typeof subslice.form_data.metric === 'object'
-            //     ? (subslice.form_data.metric.label || subslice.form_data.metric_label || 'Values')
-            //     : (subslice.form_data.metric || subslice.form_data.metric_label || 'Values'));
+
+            const metricName = isCategorical
+              ? subslice.form_data.categorical_column || 'Categories'
+              : (() => {
+                  // Find the primary metric name for the legend title
+                  const primaryMetricKey = subslice.form_data.primary_metric;
+                  const rawMetrics = subslice.form_data.metrics || (subslice.form_data.metric ? [subslice.form_data.metric] : []);
+                  
+                  const primaryMetricDef = rawMetrics.find(m => {
+                    const key = typeof m === 'object' ? m.label || m.column_name : m;
+                    return key === primaryMetricKey;
+                  }) || rawMetrics[0];
+
+                  if (primaryMetricDef) {
+                      return typeof primaryMetricDef === 'object'
+                          ? primaryMetricDef.label || primaryMetricDef.column_name || 'Metric Range'
+                          : primaryMetricDef || 'Metric Range';
+                  }
+
+                  return 'Values';
+              })()
 
             return (
               <ColorLegend
@@ -2741,7 +2412,7 @@ const toggleLayerVisibility = useCallback((layerId: number) => {
                 metricPrefix={metricPrefix}
                 metricUnit={metricUnit}
                 values={isCategorical ? categoricalValues : metricValues}
-                metricName=""
+                metricName={metricName}
                 layerName={t(subslice.slice_name)}
                 isCategorical={isCategorical}
                 rangeMap={subslice.form_data.range_map}
