@@ -54,7 +54,7 @@ RUN mkdir -p /app/superset/static/assets \
 RUN --mount=type=bind,source=./superset-frontend/package.json,target=./package.json \
     --mount=type=bind,source=./superset-frontend/package-lock.json,target=./package-lock.json \
     if [ "$DEV_MODE" = "false" ]; then \
-        npm ci; \
+        npm ci --legacy-peer-deps; \
     else \
         echo "Skipping 'npm ci' in dev mode"; \
     fi
