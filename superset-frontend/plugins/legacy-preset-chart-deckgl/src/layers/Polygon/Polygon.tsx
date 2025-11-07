@@ -284,6 +284,7 @@ const DeckGLPolygon = (props: DeckGLPolygonProps) => {
       <DeckGLContainerStyledWrapper
         ref={containerRef}
         viewport={viewport}
+        // @ts-expect-error Type mismatch between deck.gl versions - isDrawable property not required in 9.0.28
         layers={getLayers()}
         setControlValue={setControlValue}
         mapStyle={formData.mapbox_style}

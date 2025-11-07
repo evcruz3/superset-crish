@@ -223,6 +223,7 @@ const DeckGLGeoJson = (props: DeckGLGeoJsonProps) => {
       ref={containerRef}
       mapboxApiAccessToken={payload.data.mapboxApiKey}
       viewport={viewport}
+      // @ts-expect-error Type mismatch between deck.gl versions - isDrawable property not required in 9.0.28
       layers={[layer]}
       mapStyle={formData.mapbox_style}
       setControlValue={setControlValue}

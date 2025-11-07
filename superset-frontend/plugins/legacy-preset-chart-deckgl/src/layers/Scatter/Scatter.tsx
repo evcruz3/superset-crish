@@ -103,4 +103,5 @@ export function getLayer(
   });
 }
 
+// @ts-expect-error Type mismatch between deck.gl versions - isDrawable property not required in 9.0.28
 export default createCategoricalDeckGLComponent(getLayer, getPoints);
