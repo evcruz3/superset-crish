@@ -149,17 +149,17 @@ const MapControls: React.FC<MapControlsProps> = ({
 }) => (
   <ControlsContainer>
     {/* Zoom Controls */}
-    <div className="control-group control-column">
+    {/* <div className="control-group control-column">
       <button onClick={onZoomIn} title="Zoom In">
         <PlusOutlined />
       </button>
       <button onClick={onZoomOut} title="Zoom Out">
         <MinusOutlined />
       </button>
-    </div>
+    </div> */}
 
     {/* Rotation Controls */}
-    <div className="control-group control-row">
+    {/* <div className="control-group control-row">
       <button
         onClick={onRotateLeft}
         title="Rotate Left (U-turn Counter-Clockwise)"
@@ -177,10 +177,10 @@ const MapControls: React.FC<MapControlsProps> = ({
       <button onClick={onRotateRight} title="Rotate Right (U-turn Clockwise)">
         <RedoOutlined />
       </button>
-    </div>
+    </div> */}
 
     {/* Tilt & Toggle Max Pitch Controls */}
-    <div className="control-group control-row">
+    {/* <div className="control-group control-row">
       <button onClick={onTiltUp} title="Tilt Up (Decrease Pitch)">
         <ArrowUpOutlined />
       </button>
@@ -190,7 +190,7 @@ const MapControls: React.FC<MapControlsProps> = ({
       <button onClick={onTiltDown} title="Tilt Down (Increase Pitch)">
         <ArrowDownOutlined />
       </button>
-    </div>
+    </div> */}
   </ControlsContainer>
 );
 
