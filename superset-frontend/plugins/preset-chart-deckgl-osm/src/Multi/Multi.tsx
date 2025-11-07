@@ -1107,43 +1107,42 @@ const DeckMulti = (props: DeckMultiProps) => {
               } else {
                 // 🚀 --- Numerical Data Visualization (Multi-Metric Line Chart) --- 🚀
                 
-                // 1. Prepare data structure
-                const chartData: ChartDataPoint[] = regionData
-                  .map((row: any) => {
-                    const point: ChartDataPoint = {
-                      time: new Date(row[temporalColumn]).getTime(),
-                    };
-                    
-                    let hasValidMetric = false;
-                    
-                    // Iterate over all metric keys to build the data point
-                    metricKeys.forEach(metricKey => {
-                      // Check for value by metric key, falling back to 'metric' if available and key is 'metric'
-                      let value = row[metricKey];
-                      if (value === undefined && metricKey === 'metric' && row.metric !== undefined) {
-                          value = row.metric;
-                      }
-
-                      const numValue = Number(value);
-                      if (!isNaN(numValue) && numValue !== null) {
-                        point[metricKey] = numValue;
-                        hasValidMetric = true;
-                      }
-                    });
-                    
-                    // Only return data points that have at least one valid metric value
-                    return hasValidMetric ? point : null;
-                  })
-                  .filter((point: ChartDataPoint | null): point is ChartDataPoint => point !== null) // Filter out nulls
-                  .sort(
-                    (a: any, b: any) => (a.time as number) - (b.time as number),
-                  )
-                  .map((point: any) => ({
-                    ...point,
-                    time: moment(point.time).format(
-                      subslice.form_data.date_format || 'DD MMM YYYY',
-                    ), // Use configured/default format for XAxis
-                  }));
+// 1. Prepare data structure
+const chartData: ChartDataPoint[] = regionData
+  .map((row: any) => {
+    const point: ChartDataPoint = {
+      time: new Date(row[temporalColumn]).getTime(),
+    };
+   
+    let hasValidMetric = false;
+   
+    // Iterate over all metric keys to build the data point
+    metricKeys.forEach(metricKey => {
+      let value = row[metricKey];
+      // Fallback for single-metric datasets where Superset uses 'metric' as the key
+      if (value === undefined && metricKeys.length === 1 && row.metric !== undefined) {
+        value = row.metric;
+      }
+      const numValue = Number(value);
+      if (!isNaN(numValue) && numValue !== null) {
+        point[metricKey] = numValue;
+        hasValidMetric = true;
+      }
+    });
+   
+    // Only return data points that have at least one valid metric value
+    return hasValidMetric ? point : null;
+  })
+  .filter((point: ChartDataPoint | null): point is ChartDataPoint => point !== null) // Filter out nulls
+  .sort(
+    (a: any, b: any) => (a.time as number) - (b.time as number),
+  )
+  .map((point: any) => ({
+    ...point,
+    time: moment(point.time).format(
+      subslice.form_data.date_format || 'DD MMM YYYY',
+    ), // Use configured/default format for XAxis
+  }));
 
                 // 2. Render Chart if data is present
                 if (chartData.length > 0 && metricKeys.length > 0) {
