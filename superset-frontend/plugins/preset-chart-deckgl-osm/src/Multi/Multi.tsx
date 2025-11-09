@@ -482,7 +482,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
   metricPrefix = '',
   metricUnit = '',
   values,
-  metricName = 'Values',
+  // metricName = 'Values',
   layerName,
   isCategorical = false,
   rangeMap = {}, // Default to empty object
@@ -500,7 +500,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
     return (
       <LegendCard>
         <div className="layer-name">{layerName}</div>
-        <div className="legend-title">{metricName}</div>
+        {/* <div className="legend-title">{metricName}</div> */}
         <div className="legend-items">
           {Object.entries(rangeMap).map(([range, color], i) => {
             const [min, max] = range.split('-').map(Number);
@@ -541,7 +541,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({
   return (
     <LegendCard>
       <div className="layer-name">{layerName}</div>
-      <div className="legend-title">{metricName}</div>
+      {/* <div className="legend-title">{metricName}</div> */}
       <div className="legend-items">
         {displayValues.map((value, i) => (
           <div key={i} className="legend-item">
@@ -2411,7 +2411,7 @@ const chartData: ChartDataPoint[] = regionData
                 metricPrefix={metricPrefix}
                 metricUnit={metricUnit}
                 values={isCategorical ? categoricalValues : metricValues}
-                metricName={metricName}
+                // metricName={metricName}
                 layerName={t(subslice.slice_name)}
                 isCategorical={isCategorical}
                 rangeMap={subslice.form_data.range_map}
