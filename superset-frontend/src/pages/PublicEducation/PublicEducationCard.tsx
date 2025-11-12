@@ -233,9 +233,10 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
     );
   };
 
+  // THIS IS THE HANDLER THAT MAKES THE CARD CLICKABLE
   const handleCardClick = () => {
     if (!bulkSelectEnabled && onClick) {
-      onClick();
+      onClick(); // Calls the function passed from PublicEducationList which opens the modal
     }
   };
 
@@ -257,7 +258,7 @@ const PublicEducationCard: React.FC<PublicEducationCardProps> = ({
 
   return (
     <StyledCard
-      onClick={handleCardClick}
+      onClick={handleCardClick} // THIS IS WHERE THE CLICK HANDLER IS APPLIED
       style={{ cursor: bulkSelectEnabled ? 'default' : 'pointer' }}
     >
       <CardTitle level={4}>{post.title}</CardTitle>

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from flask import redirect, send_file, request, Response, g
 from flask_appbuilder import expose, has_access
-from flask_appbuilder.api import BaseApi, expose, permission_name, protect, rison, safe
+from flask_appbuilder.api import BaseApi, expose as api_expose, permission_name, protect, rison, safe
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.security.decorators import has_access_api
 from flask_appbuilder.security.sqla.models import User
@@ -15,13 +15,13 @@ from werkzeug.utils import secure_filename
 from werkzeug.wrappers import Response as WerkzeugResponse
 
 from superset.views.base import BaseSupersetView
-from superset.extensions import db
-from superset.models.public_education import PublicEducationPost, PublicEducationAttachment
 from superset.views.base_api import BaseSupersetModelRestApi, requires_json, statsd_metrics
-from flask_appbuilder import ModelRestApi
+from superset.extensions import db
+from superset.models.public_education import PublicEducationPost, PublicEducationAttachment  # Assuming your models are defined here
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.utils.urls import get_url_path
 from superset.commands.exceptions import DeleteFailedError
+from superset import appbuilder  # For potential menu additions
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
     class_permission_name = "PublicEducation"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
     include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
-        "bulk_delete",  # not using RouteMethod since locally defined
+        "bulk_delete",
         "download_attachment",
         "get_attachment"
     }
@@ -86,54 +86,18 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
         if item.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
             raise DeleteFailedError("You can only delete posts that you created")
 
-    @expose("/", methods=["DELETE"])
+    @api_expose("/", methods=["DELETE"])
     @protect()
     @safe
     @statsd_metrics
     @rison(schema={"type": "array", "items": {"type": "integer"}})
     def bulk_delete(self, **kwargs: Any) -> Response:
-        """Delete bulk posts
-        ---
-        delete:
-          description: >-
-            Deletes multiple posts in a bulk operation.
-          parameters:
-          - in: query
-            name: q
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: integer
-          responses:
-            200:
-              description: Posts deleted
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-            401:
-              $ref: '#/components/responses/401'
-            403:
-              $ref: '#/components/responses/403'
-            404:
-              $ref: '#/components/responses/404'
-            422:
-              $ref: '#/components/responses/422'
-            500:
-              $ref: '#/components/responses/500'
-        """
+        """Delete bulk posts"""
         item_ids = kwargs["rison"]
         try:
-            # Check if user has permission to delete
             if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
                 return self.response_403()
 
-            # Get posts
             posts = self.datamodel.session.query(PublicEducationPost).filter(
                 PublicEducationPost.id.in_(item_ids)
             ).all()
@@ -141,16 +105,13 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
             if not posts:
                 return self.response_404()
 
-            # Check if user has permission to delete each post
             for post in posts:
                 try:
                     self.pre_delete(post)
                 except DeleteFailedError as ex:
                     return self.response_403(message=str(ex))
 
-            # Delete posts and their attachments
             for post in posts:
-                # Delete attachments first
                 for attachment in post.attachments:
                     try:
                         if os.path.exists(attachment.file_path):
@@ -161,7 +122,6 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
                 
                 self.datamodel.delete(post)
 
-            # Commit the transaction
             db.session.commit()
             return self.response(
                 200,
@@ -171,56 +131,22 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
             db.session.rollback()
             return self.response_422(message=str(ex))
 
-    @expose("/<pk>", methods=["DELETE"])
+    @api_expose("/<pk>", methods=["DELETE"])
     @protect()
     @safe
     def delete(self, pk: int) -> Response:
-        """Delete a post
-        ---
-        delete:
-          description: >-
-            Delete a post
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-            description: The post id
-          responses:
-            200:
-              description: Post deleted
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-            401:
-              $ref: '#/components/responses/401'
-            403:
-              $ref: '#/components/responses/403'
-            404:
-              $ref: '#/components/responses/404'
-            422:
-              $ref: '#/components/responses/422'
-            500:
-              $ref: '#/components/responses/500'
-        """
+        """Delete a post"""
         try:
             post = self.datamodel.get(pk, self._base_filters)
             if not post:
                 return self.response_404()
 
-            # Check if user has permission to delete
             if not self.appbuilder.sm.has_access('can_write', self.class_permission_name):
                 return self.response_403()
 
-            # Check if user is the creator or has admin rights
             if post.created_by_fk != g.user.id and not self.appbuilder.sm.is_admin():
                 return self.response_403()
 
-            # Delete post and any associated attachments
             attachments = post.attachments
             for attachment in attachments:
                 try:
@@ -264,11 +190,12 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
                 item["attachments"] = attachments
         return result
 
-    @expose("/create/", methods=["POST"])
+    @api_expose("/", methods=["POST"])
     @protect()
     @safe
-    def create(self) -> Response:
-        """Create a new public education post"""
+    @statsd_metrics
+    def post(self) -> Response:
+        """Create a new public education post (handles FormData for files)"""
         logger.info("Received create request")
         logger.info(f"Files in request: {request.files}")
         logger.info(f"Form data in request: {request.form}")
@@ -279,22 +206,19 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
             return self.response(400, message="No data provided")
 
         try:
-            # Create upload directory if it doesn't exist
             upload_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), UPLOAD_FOLDER)
             os.makedirs(upload_path, exist_ok=True)
 
-            # Create post
             post = PublicEducationPost(
                 title=request.form["title"],
                 message=request.form["message"],
                 hashtags=request.form["hashtags"],
-                video_url=request.form.get("video_url"),  # Optional video URL
-                created_by=g.user,
+                video_url=request.form.get("video_url"),
             )
+            post.created_by_fk = g.user.id
             db.session.add(post)
-            db.session.flush()  # Get post ID
+            db.session.flush()  # Flush to get post.id
 
-            # Handle file uploads if any
             if request.files:
                 files = request.files.getlist("attachments")
                 for file in files:
@@ -303,7 +227,6 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
                         file_path = os.path.join(upload_path, f"{post.id}_{filename}")
                         file.save(file_path)
 
-                        # Create attachment record
                         file_type = "pdf" if filename.lower().endswith(".pdf") else "image"
                         attachment = PublicEducationAttachment(
                             post_id=post.id,
@@ -314,13 +237,13 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
                         db.session.add(attachment)
 
             db.session.commit()
-            return self.response(201, message="Post created successfully")
+            return self.response(201, result={"id": post.id, "message": "Post created successfully"})
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error creating public education post: {e}")
             return self.response(500, message=str(e))
 
-    @expose("/attachment/<int:attachment_id>", methods=["GET"])
+    @api_expose("/attachment/<int:attachment_id>", methods=["GET"])
     @protect()
     @safe
     @has_access_api
@@ -340,7 +263,7 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
             logger.error(f"Error serving attachment: {e}")
             return self.response(500, message=str(e))
 
-    @expose("/attachment/<int:attachment_id>/download", methods=["GET"])
+    @api_expose("/attachment/<int:attachment_id>/download", methods=["GET"])
     @protect()
     @safe
     @has_access_api
@@ -358,4 +281,4 @@ class PublicEducationRestApi(BaseSupersetModelRestApi):
             )
         except Exception as e:
             logger.error(f"Error downloading attachment: {e}")
-            return self.response(500, message=str(e)) 
+            return self.response(500, message=str(e))

@@ -166,17 +166,41 @@ function PublicEducationList({
   const columns = useMemo(
     () => [
       {
-        Cell: ({ row: { original } }: any) => original.title,
+        Cell: ({ row: { original } }: any) => (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedPost(original)}
+          >
+            {original.title}
+          </span>
+        ),
         Header: t('Title'),
         accessor: 'title',
       },
       {
-        Cell: ({ row: { original } }: any) => original.message,
+        Cell: ({ row: { original } }: any) =>(
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedPost(original)}
+          >
+            {original.message}
+          </span>
+        ), 
         Header: t('Message'),
         accessor: 'message',
       },
       {
-        Cell: ({ row: { original } }: any) => original.hashtags,
+        Cell: ({ row: { original } }: any) => (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedPost(original)}
+          >
+            {original.hashtags}
+          </span>
+        ), 
         Header: t('Hashtags'),
         accessor: 'hashtags',
       },
@@ -233,7 +257,7 @@ function PublicEducationList({
         disableSortBy: true,
       },
     ],
-    [hasPerm],
+    [hasPerm, setSelectedPost], // Ensure setSelectedPost is in the dependency array
   );
 
   const filters: Filter[] = useMemo(

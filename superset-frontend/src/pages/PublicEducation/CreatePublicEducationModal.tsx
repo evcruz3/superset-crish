@@ -68,7 +68,7 @@ export default function CreatePublicEducationModal({
     try {
       setLoading(true);
       const values = await form.validateFields();
-
+  
       const formData = new FormData();
       formData.append('title', values.title);
       formData.append('message', values.message);
@@ -79,12 +79,12 @@ export default function CreatePublicEducationModal({
       fileList.forEach(file => {
         formData.append('attachments', file);
       });
-
+  
       await SupersetClient.post({
-        endpoint: '/api/v1/public_education/create/',
+        endpoint: '/api/v1/public_education/',  // Changed: Use standard collection endpoint
         postPayload: formData,
       });
-
+  
       addSuccessToast(t('Post created successfully'));
       form.resetFields();
       setFileList([]);
