@@ -1177,17 +1177,34 @@ const createLayer = useCallback(
                   '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
                 ];
 
-                  // Construct title with all metric labels
-                  const metricLabels = metricKeys.map(key => {
-                      const metricDef = getMetricObject(subslice.form_data, key);
-                      return typeof metricDef === 'object' 
-                          ? metricDef.label || metricDef.column_name 
-                          : metricDef || key;
-                  });
-
+                  // // Construct title with all metric labels
+                  // const metricLabels = metricKeys.map(key => {
+                  //     const metricDef = getMetricObject(subslice.form_data, key);
+                  //     return typeof metricDef === 'object' 
+                  //         ? metricDef.label || metricDef.column_name 
+                  //         : metricDef || key;
+                  // });
+// Function to clean up the metric name (e.g., remove SUM(), COUNT(), etc.)
+                  const cleanMetricName = (name: string) => {
+                      if (!name) return '';
+                      // Matches SUM(name), COUNT(name), etc. and extracts 'name'
+                      const match = name.match(/(\w+)\((.+?)\)/);
+                      return match ? match[2].trim() : name; // Use inner part if matched, otherwise use the whole name
+                    }
+  
+                    // Construct title with all metric labels
+                    const metricLabels = metricKeys.map(key => {
+                        const metricDef = getMetricObject(subslice.form_data, key);
+                        const rawLabel = typeof metricDef === 'object' 
+                            ? metricDef.label || metricDef.column_name 
+                            : metricDef || key;
+                        
+                        return cleanMetricName(rawLabel); // Apply the cleanup
+                    });
 
                 setRegionChartModalTitle(
-                  `${metricLabels.join(', ')} (${regionName}) ${subslice.form_data.metric_unit ? `(${subslice.form_data.metric_unit})` : ''}`
+                  // `${metricLabels.join(', ')} (${regionName}) ${subslice.form_data.metric_unit ? `(${subslice.form_data.metric_unit})` : ''}`
+                  regionName,
                 );
                   
                 setRegionChartModalContent(
