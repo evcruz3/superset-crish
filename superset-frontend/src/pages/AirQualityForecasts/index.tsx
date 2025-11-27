@@ -5,10 +5,11 @@ import {
   t,
   JsonObject,
 } from '@superset-ui/core';
-import { Spin, Alert, Select, DatePicker, Empty } from 'antd';
+import { Spin, Select, DatePicker, Empty } from 'antd';
 import { DeckGL } from '@deck.gl/react';
-import { GeoJsonLayer, GeoJsonLayerProps, BitmapLayer } from '@deck.gl/layers';
+import { GeoJsonLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
+import { BitmapLayer } from '@deck.gl/layers';
 import moment from 'moment';
 import { LineEditableTabs } from 'src/components/Tabs';
 import {
@@ -25,6 +26,9 @@ import {
   StyledTabsContainer,
   TabContentContainer,
 } from '../WeatherForecasts/DashboardTabs';
+
+// --- IMPORT GEOJSON ---
+import timorLesteGeoJson from 'src/assets/geojson/timorleste.geojson';
 
 const { Option } = Select;
 
@@ -111,7 +115,6 @@ const LegendContainer = styled.div`
   }
 `;
 
-// --- MODIFIED FORECAST CARD FOR ROW LAYOUT ---
 const ForecastCard = styled.div`
   background-color: white;
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
@@ -122,13 +125,8 @@ const ForecastCard = styled.div`
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  width: 100%; /* Ensure full width */
+  width: 100%;
 
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Header Styles */
   .forecast-header {
     display: flex;
     justify-content: space-between;
@@ -145,7 +143,6 @@ const ForecastCard = styled.div`
     }
   }
 
-  /* CHANGED: Flex row layout instead of Grid */
   .pollutant-grid {
     display: flex;
     flex-direction: row;
@@ -155,19 +152,16 @@ const ForecastCard = styled.div`
   }
 
   .pollutant-item {
-    flex: 1; /* Distribute space evenly */
+    flex: 1;
     padding: 0 ${({ theme }) => theme.gridUnit * 2}px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    
-    /* The vertical colored bar */
     border-left-width: 4px;
     border-left-style: solid;
     
-    /* Vertical divider lines between items */
     &:not(:last-child) {
         border-right: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
     }
@@ -181,13 +175,12 @@ const ForecastCard = styled.div`
     }
 
     .pollutant-value {
-      font-size: 24px; /* Larger font for visibility */
+      font-size: 24px;
       font-weight: ${({ theme }) => theme.typography.weights.bold};
       color: ${({ theme }) => theme.colors.grayscale.dark2};
       line-height: 1.2;
     }
     
-    /* New Class for Units */
     .pollutant-unit {
         font-size: 12px;
         color: ${({ theme }) => theme.colors.grayscale.light1};
@@ -228,15 +221,6 @@ const FilterContainer = styled.div`
   }
 `;
 
-const PollutantPill = styled.span`
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-`;
-
 const TooltipContainer = styled.div`
   background: rgba(255, 255, 255, 0.95);
   padding: ${({ theme }) => theme.gridUnit * 3}px;
@@ -250,7 +234,6 @@ const TooltipContainer = styled.div`
   transform: translate(-50%, -100%);
   margin-top: -10px;
 
-  /* Arrow */
   &::after {
     content: '';
     position: absolute;
@@ -275,6 +258,7 @@ const INITIAL_VIEW_STATE = {
   bearing: 0,
 };
 
+// Station options (Hardcoded fallback if API fails, but also used for select matching)
 const MUNICIPALITIES: Record<string, string> = {
   TL01: 'Aileu',
   TL02: 'Ainaro',
@@ -298,12 +282,12 @@ const POLLUTANT_OPTIONS = [
 ];
 
 const AQI_COLORS = {
-  good: '#4CAF50', // Bright Green
-  moderate: '#FFEB3B', // Yellow
-  unhealthySG: '#FF9800', // Orange (Sensitive Groups)
-  unhealthy: '#F44336', // Red
-  veryUnhealthy: '#800000', // Maroon/Dark Red
-  hazardous: '#8B0000', // Darker Red
+  good: '#4CAF50',
+  moderate: '#FFEB3B',
+  unhealthySG: '#FF9800',
+  unhealthy: '#F44336',
+  veryUnhealthy: '#800000',
+  hazardous: '#8B0000',
   unknown: '#cccccc'
 };
 
@@ -334,26 +318,41 @@ const AQI_STANDARDS = [
 
 // --- Interfaces ---
 
-interface HourlyApiData {
-  adm_code3: string;
-  latitude: string;
-  longitude: string;
-  fcst_date: string;
-  hour: number;
-  pm25?: { value: number };
-  pm10?: { value: number };
-  aqi?: { value: number };
+interface PollutantData {
+    status: string;
+    color: string;
+    value: number;
+    code: string;
+    textcolor: string;
 }
 
-interface AirQualityData {
-  id: string;
-  station_name: string;
-  latitude: string;
-  longitude: string;
-  ts: { date: string };
-  pm25_val?: number;
-  pm10_val?: number;
-  aqi_val?: number;
+interface HourData {
+    hour: number;
+    fcst_date: string;
+    pm25_value: number;
+    pm25: PollutantData;
+    pm10_value: number;
+    pm10: PollutantData;
+    aqi_value: number;
+    aqi: PollutantData;
+}
+
+interface MunicipalityData {
+    adm1_code: string; // Matches ADM_Code in GeoJSON (e.g., TL01)
+    municipality_name: string;
+    latitude: number;
+    longitude: number;
+    date: string;
+    hours: HourData[];
+}
+
+interface CurrentMapData {
+    adm_code: string;
+    station_name: string;
+    ts: string;
+    pm25_val?: number;
+    pm10_val?: number;
+    aqi_val?: number;
 }
 
 export default function AirQualityForecastsPage() {
@@ -362,14 +361,16 @@ export default function AirQualityForecastsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Map State
-  const [mapData, setMapData] = useState<AirQualityData[]>([]);
+  // Store the raw API response for all municipalities
+  const [fullApiData, setFullApiData] = useState<MunicipalityData[]>([]);
+
+  // Map State: Key = ADM_Code (e.g., "TL01")
+  const [mapDataValues, setMapDataValues] = useState<Record<string, CurrentMapData>>({});
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   const [selectedMapPollutant, setSelectedMapPollutant] = useState<string>('pm25');
 
   // Hourly Forecast State (Tab 2)
   const [selectedStation, setSelectedStation] = useState<string>('TL06');
-  const [hourlyForecastData, setHourlyForecastData] = useState<HourlyApiData[]>([]);
 
   // Trendline State (Tab 3)
   const [trendlineData, setTrendlineData] = useState<any[]>([]);
@@ -377,7 +378,6 @@ export default function AirQualityForecastsPage() {
   const [selectedTrendPollutants, setSelectedTrendPollutants] = useState<string[]>(['pm25']);
   const [selectedTrendStations, setSelectedTrendStations] = useState<string[]>(['TL06', 'TL03']);
 
-  // --- Station Options ---
   const stationOptions = useMemo(() => {
     return Object.entries(MUNICIPALITIES).map(([id, name]) => ({
       label: name,
@@ -407,129 +407,188 @@ export default function AirQualityForecastsPage() {
         hex: colorHex
     };
   }, []);
-  
-  const fetchStationHourlyData = async (id: string) => {
+
+  const fetchAllData = async () => {
+    setLoading(true);
     try {
-      const response = await fetch(
-        `https://gcf-app.rimes.int/api_mobile/api_health/getOpenAQIHourly?id=${id}`
-      );
-      const json = await response.json();
-      if (json.status === 'success') {
-        return json.data as HourlyApiData[];
-      }
-      return [];
+        const response = await fetch('https://gcf-app.rimes.int/api_mobile/api_health/getAQIHourlyAllMunicipalities');
+        const json = await response.json();
+        
+        if (json.status === 'success' && Array.isArray(json.data)) {
+            setFullApiData(json.data);
+            processMapData(json.data);
+        } else {
+            setError('Invalid API response structure');
+        }
     } catch (e) {
-      console.error(`Error fetching data for ${id}`, e);
-      return [];
+        console.error('Error fetching data:', e);
+        setError('Failed to fetch data');
     }
+    setLoading(false);
+  };
+
+  // Process raw data into current hour values for the map
+  const processMapData = (data: MunicipalityData[]) => {
+      const currentHour = moment().hour();
+      const lookup: Record<string, CurrentMapData> = {};
+
+      data.forEach(muni => {
+          // Find data for the current hour
+          const hourData = muni.hours.find(h => h.hour === currentHour) || muni.hours[0]; // Fallback to first hour if current not found
+          
+          if (hourData) {
+            lookup[muni.adm1_code] = { // Key is TL01, TL02 etc.
+                adm_code: muni.adm1_code,
+                station_name: muni.municipality_name,
+                ts: hourData.fcst_date,
+                pm25_val: hourData.pm25_value,
+                pm10_val: hourData.pm10_value,
+                aqi_val: hourData.aqi_value
+            };
+          }
+      });
+      setMapDataValues(lookup);
   };
 
   // --- Effects ---
 
-  // 1. Fetch Map Data
+  // 1. Initial Load
   useEffect(() => {
-    if (activeTab !== '1') return;
-    const loadMapData = async () => {
-      setLoading(true);
-      try {
-        const promises = Object.keys(MUNICIPALITIES).map(async (id) => {
-            const data = await fetchStationHourlyData(id);
-            if (data && data.length > 0) {
-                const currentHour = moment().hour();
-                const currentData = data.find(d => {
-                   const dataHour = moment(d.fcst_date).hour();
-                   return dataHour === currentHour;
-                });
-                const displayData = currentData || data[data.length - 1];
+    fetchAllData();
+  }, []);
 
-                return {
-                    id,
-                    station_name: MUNICIPALITIES[id],
-                    latitude: displayData.latitude,
-                    longitude: displayData.longitude,
-                    pm25_val: displayData.pm25?.value,
-                    pm10_val: displayData.pm10?.value,
-                    aqi_val: displayData.aqi?.value,
-                    ts: { date: displayData.fcst_date }
-                } as AirQualityData;
-            }
-            return null;
-        });
-
-        const results = await Promise.all(promises);
-        setMapData(results.filter((item): item is AirQualityData => item !== null));
-      } catch (err) {
-        console.error(err);
-        setError('Failed to load map data');
-      }
-      setLoading(false);
-    };
-    loadMapData();
-  }, [activeTab]);
-
-  // 2. Fetch Hourly Forecast
+  // 2. Trendline Logic (Derived from fullApiData)
   useEffect(() => {
-    if (activeTab !== '2') return;
-    const loadForecast = async () => {
-        setLoading(true);
-        const data = await fetchStationHourlyData(selectedStation);
-        setHourlyForecastData(data);
-        setLoading(false);
-    };
-    loadForecast();
-  }, [activeTab, selectedStation]);
-
-  // 3. Fetch Trendlines
-  useEffect(() => {
-    if (activeTab !== '3') return;
+    if (activeTab !== '3' || fullApiData.length === 0) return;
     if (selectedTrendStations.length === 0 || selectedTrendPollutants.length === 0) {
         setTrendlineData([]);
         return;
     }
 
-    const loadTrends = async () => {
-        setLoading(true);
-        try {
-            const promises = selectedTrendStations.map(id => fetchStationHourlyData(id));
-            const results = await Promise.all(promises);
+    const mergedMap: Record<string, any> = {};
+    const keys: string[] = [];
 
-            const mergedMap: Record<string, any> = {};
-            const keys: string[] = [];
+    // Filter data for selected stations
+    const selectedData = fullApiData.filter(d => selectedTrendStations.includes(d.adm1_code));
 
-            results.forEach((stationData, idx) => {
-                const stationId = selectedTrendStations[idx];
-                
-                stationData.forEach(item => {
-                    const time = item.fcst_date;
-                    if (!mergedMap[time]) {
-                        mergedMap[time] = { date: time, timestamp: new Date(time).getTime() };
-                    }
-                    
-                    selectedTrendPollutants.forEach(poll => {
-                        const pVal = (item as any)[poll]?.value;
-                        if (pVal !== undefined) {
-                            const key = `${poll}_${stationId}`;
-                            mergedMap[time][key] = pVal;
-                            if (!keys.includes(key)) keys.push(key);
-                        }
-                    });
-                });
+    selectedData.forEach(station => {
+        station.hours.forEach(hourItem => {
+            const time = hourItem.fcst_date;
+            if (!mergedMap[time]) {
+                mergedMap[time] = { date: time, timestamp: new Date(time).getTime() };
+            }
+
+            selectedTrendPollutants.forEach(poll => {
+                let val: number | undefined;
+                if (poll === 'pm25') val = hourItem.pm25_value;
+                if (poll === 'pm10') val = hourItem.pm10_value;
+                if (poll === 'aqi') val = hourItem.aqi_value;
+
+                if (val !== undefined) {
+                    const key = `${poll}_${station.adm1_code}`;
+                    mergedMap[time][key] = val;
+                    if (!keys.includes(key)) keys.push(key);
+                }
             });
+        });
+    });
 
-            const sortedData = Object.values(mergedMap).sort((a: any, b: any) => a.timestamp - b.timestamp);
-            setTrendlineData(sortedData);
-            setTrendlineSeriesKeys(keys);
+    const sortedData = Object.values(mergedMap).sort((a: any, b: any) => a.timestamp - b.timestamp);
+    setTrendlineData(sortedData);
+    setTrendlineSeriesKeys(keys);
 
-        } catch (err) {
-            console.error(err);
-            setError('Failed to load trend data');
-        }
-        setLoading(false);
-    };
-    loadTrends();
-  }, [activeTab, selectedTrendStations, selectedTrendPollutants]);
+  }, [activeTab, fullApiData, selectedTrendStations, selectedTrendPollutants]);
 
   // --- Renderers ---
+
+  // Get value helper from the Map dictionary
+  const getMapValue = useCallback((admCode: string) => {
+      const data = mapDataValues[admCode];
+      if (!data) return undefined;
+
+      switch(selectedMapPollutant) {
+          case 'pm25': return data.pm25_val;
+          case 'pm10': return data.pm10_val;
+          case 'aqi': return data.aqi_val;
+          default: return undefined;
+      }
+  }, [selectedMapPollutant, mapDataValues]);
+
+  // --- GEOJSON LAYER CONFIGURATION ---
+  const municipalityLayer = new GeoJsonLayer({
+    id: 'municipalities',
+    data: timorLesteGeoJson,
+    pickable: true,
+    filled: true,
+    stroked: true,
+    lineWidthMinPixels: 1,
+    getLineColor: [255, 255, 255, 255], 
+    
+    // COLORING LOGIC
+    getFillColor: (d: any) => {
+        // MATCHING: GeoJSON 'ADM_Code' (e.g. TL01) -> API 'adm1_code'
+        const code = d.properties.ADM_Code; 
+        
+        const val = getMapValue(code);
+        const status = getAQIStatus(val, selectedMapPollutant);
+        
+        const hex = status.hex.replace('#', '');
+        if (hex.length === 6) {
+            return [
+                parseInt(hex.slice(0,2), 16),
+                parseInt(hex.slice(2,4), 16),
+                parseInt(hex.slice(4,6), 16),
+                180 
+            ];
+        }
+        return [200, 200, 200, 150]; // Fallback
+    },
+    
+    onHover: setHoverInfo,
+    updateTriggers: {
+        getFillColor: [selectedMapPollutant, mapDataValues]
+    }
+  });
+
+  const renderTooltip = () => {
+    if (!hoverInfo?.object) return null;
+    
+    // Read properties from the GeoJSON feature
+    const geoProps = hoverInfo.object.properties;
+    const code = geoProps.ADM_Code;
+    const name = geoProps.ADM1 || MUNICIPALITIES[code];
+    
+    // Look up our API data
+    const apiData = mapDataValues[code];
+    const val = getMapValue(code);
+    const status = getAQIStatus(val, selectedMapPollutant);
+
+    return (
+        <TooltipContainer style={{left: hoverInfo.x, top: hoverInfo.y}}>
+            <div style={{fontWeight: 'bold', fontSize: theme.typography.sizes.m, marginBottom: 8}}>
+                {name}
+            </div>
+            <div style={{fontSize: 12, marginBottom: 8, color: theme.colors.grayscale.base}}>
+                {apiData ? moment(apiData.ts).format('DD MMM HH:mm') : 'No Data'}
+            </div>
+            {apiData ? (
+                <div>
+                    <div style={{fontSize: 16, fontWeight: 'bold', color: status.color}}>
+                        {val !== undefined ? val : 'N/A'}
+                        <span style={{fontSize: 12, marginLeft: 4, color: theme.colors.grayscale.dark1}}>
+                            {selectedMapPollutant === 'aqi' ? '' : 'µg/m³'}
+                        </span>
+                    </div>
+                    <div style={{ color: status.color, fontWeight: 'bold', marginTop: 4 }}>
+                        {status.label}
+                    </div>
+                </div>
+            ) : (
+                <div>Data Unavailable</div>
+            )}
+        </TooltipContainer>
+    );
+  };
 
   const renderMapLegend = () => {
     let standards;
@@ -559,88 +618,13 @@ export default function AirQualityForecastsPage() {
     );
   }
 
-  const mapFeatures = useMemo(() => {
-    return {
-      type: 'FeatureCollection',
-      features: mapData.map(d => ({
-        type: 'Feature',
-        properties: d,
-        geometry: {
-          type: 'Point',
-          coordinates: [parseFloat(d.longitude), parseFloat(d.latitude)],
-        },
-      })),
-    };
-  }, [mapData]);
-
-  const getMapValue = useCallback((props: AirQualityData) => {
-      switch(selectedMapPollutant) {
-          case 'pm25': return props.pm25_val;
-          case 'pm10': return props.pm10_val;
-          case 'aqi': return props.aqi_val;
-          default: return undefined;
-      }
-  }, [selectedMapPollutant]);
-
-  const stationLayer = new GeoJsonLayer<JsonObject, GeoJsonLayerProps<JsonObject>>({
-    id: 'stations',
-    data: mapFeatures as any, 
-    pickable: true,
-    filled: true,
-    stroked: true,
-    pointType: 'circle',
-    getPointRadius: 8000,
-    getFillColor: (d: any) => {
-        const val = getMapValue(d.properties);
-        const status = getAQIStatus(val, selectedMapPollutant);
-        
-        const hex = status.hex.replace('#', '');
-        if (hex.length === 6) {
-            return [
-                parseInt(hex.slice(0,2), 16),
-                parseInt(hex.slice(2,4), 16),
-                parseInt(hex.slice(4,6), 16),
-                200 
-            ];
-        }
-        return [200, 200, 200, 200];
-    },
-    getLineColor: [0, 0, 0, 255], 
-    lineWidthMinPixels: 2, 
-    onHover: setHoverInfo,
-    updateTriggers: {
-        getFillColor: [selectedMapPollutant, mapData]
-    }
-  });
-
-  const renderTooltip = () => {
-    if (!hoverInfo?.object) return null;
-    const props = hoverInfo.object.properties as AirQualityData;
-    const val = getMapValue(props);
-    const status = getAQIStatus(val, selectedMapPollutant);
-
-    return (
-        <TooltipContainer style={{left: hoverInfo.x, top: hoverInfo.y}}>
-            <div style={{fontWeight: 'bold', fontSize: theme.typography.sizes.m, marginBottom: 8}}>
-                {props.station_name}
-            </div>
-            <div style={{fontSize: 12, marginBottom: 8, color: theme.colors.grayscale.base}}>
-                {moment(props.ts.date).format('DD MMM HH:mm')}
-            </div>
-            <div>
-                <div style={{fontSize: 16, fontWeight: 'bold', color: status.color}}>
-                    {val !== undefined ? val : 'N/A'}
-                    <span style={{fontSize: 12, marginLeft: 4, color: theme.colors.grayscale.dark1}}>
-                        {selectedMapPollutant === 'aqi' ? '' : 'µg/m³'}
-                    </span>
-                </div>
-                <div style={{ color: status.color, fontWeight: 'bold', marginTop: 4 }}>
-                    {status.label}
-                </div>
-            </div>
-        </TooltipContainer>
-    );
+  // Helper to get hourly data for Tab 2
+  const getCurrentStationHourlyData = () => {
+      const station = fullApiData.find(d => d.adm1_code === selectedStation);
+      return station ? station.hours : [];
   };
+
+  const currentStationHourly = getCurrentStationHourlyData();
 
   return (
     <StyledTabsContainer>
@@ -672,9 +656,9 @@ export default function AirQualityForecastsPage() {
                  </span>
             </FilterContainer>
 
-            {loading && <Spin tip="Loading map data..." style={{margin: '20px'}} />}
+            {loading && fullApiData.length === 0 && <Spin tip="Loading map data..." style={{margin: '20px'}} />}
             
-            {!loading && (
+            {(!loading || fullApiData.length > 0) && (
                 <MapContainer>
                     <DeckGL
                         initialViewState={INITIAL_VIEW_STATE}
@@ -697,7 +681,7 @@ export default function AirQualityForecastsPage() {
                                     });
                                 },
                             }),
-                            stationLayer
+                            municipalityLayer
                         ]}
                     >
                       {renderTooltip()}
@@ -709,7 +693,7 @@ export default function AirQualityForecastsPage() {
           </TabContentContainer>
         </LineEditableTabs.TabPane>
 
-        {/* TAB 2: HOURLY FORECAST (MODIFIED LAYOUT) */}
+        {/* TAB 2: HOURLY FORECAST */}
         <LineEditableTabs.TabPane tab={t('Hourly Forecast')} key="2">
           <TabContentContainer>
             <FilterContainer>
@@ -721,53 +705,41 @@ export default function AirQualityForecastsPage() {
                 />
             </FilterContainer>
 
-            {loading ? <Spin /> : (
+            {loading && fullApiData.length === 0 ? <Spin /> : (
                 <>
-                    {hourlyForecastData.length === 0 ? <Empty description="No hourly data available" /> : (
+                    {currentStationHourly.length === 0 ? <Empty description="No hourly data available" /> : (
                         <div>
-                             {/* CHANGED: Flex column instead of grid for full width rows */}
                              <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                                {hourlyForecastData.map((hourItem, idx) => {
-                                    const aqiStatus = getAQIStatus(hourItem.aqi?.value, 'aqi');
-                                    const pm25Status = getAQIStatus(hourItem.pm25?.value, 'pm25');
-                                    const pm10Status = getAQIStatus(hourItem.pm10?.value, 'pm10');
+                                {currentStationHourly.map((hourItem, idx) => {
+                                    const aqiStatus = getAQIStatus(hourItem.aqi_value, 'aqi');
+                                    const pm25Status = getAQIStatus(hourItem.pm25_value, 'pm25');
+                                    const pm10Status = getAQIStatus(hourItem.pm10_value, 'pm10');
 
                                     return (
                                     <ForecastCard key={idx}>
                                         <div className="forecast-header">
                                             <h3>{moment(hourItem.fcst_date).format('dddd, DD MMMM YYYY - HH:mm')}</h3>
-                                            {/* {hourItem.aqi?.value !== undefined && ( */}
-                                                {/* <PollutantPill style={{backgroundColor: aqiStatus.color}}>
-                                                    {aqiStatus.label}
-                                                </PollutantPill> */}
-                                            {/* )} */}
                                         </div>
                                         <div className="pollutant-grid">
-                                            
-                                            {/* PM2.5 Section */}
                                             <div className="pollutant-item" style={{borderColor: pm25Status.color}}>
                                                 <div className="pollutant-name">PM2.5</div>
-                                                <div className="pollutant-value">{hourItem.pm25?.value ?? '-'}</div>
+                                                <div className="pollutant-value">{hourItem.pm25_value ?? '-'}</div>
                                                 <div className="pollutant-unit">µg/m³</div>
                                                 <div className="pollutant-status" style={{color: pm25Status.color}}>
                                                     {pm25Status.label}
                                                 </div>
                                             </div>
-
-                                            {/* PM10 Section */}
                                             <div className="pollutant-item" style={{borderColor: pm10Status.color}}>
                                                 <div className="pollutant-name">PM10</div>
-                                                <div className="pollutant-value">{hourItem.pm10?.value ?? '-'}</div>
+                                                <div className="pollutant-value">{hourItem.pm10_value ?? '-'}</div>
                                                 <div className="pollutant-unit">µg/m³</div>
                                                 <div className="pollutant-status" style={{color: pm10Status.color}}>
                                                     {pm10Status.label}
                                                 </div>
                                             </div>
-
-                                            {/* AQI Section */}
                                             <div className="pollutant-item" style={{borderColor: aqiStatus.color, borderRight: 'none'}}>
                                                 <div className="pollutant-name">AQI</div>
-                                                <div className="pollutant-value">{hourItem.aqi?.value ?? '-'}</div>
+                                                <div className="pollutant-value">{hourItem.aqi_value ?? '-'}</div>
                                                 <div className="pollutant-unit">Index</div>
                                                 <div className="pollutant-status" style={{color: aqiStatus.color}}>
                                                     {aqiStatus.label}
@@ -807,7 +779,7 @@ export default function AirQualityForecastsPage() {
                 />
             </FilterContainer>
             
-            {loading && <Spin tip="Aggregating hourly data..." />}
+            {loading && fullApiData.length === 0 && <Spin tip="Aggregating hourly data..." />}
             {!loading && trendlineData.length > 0 && (
                 <div style={{ height: 500, background: '#fff', padding: 20, borderRadius: 8 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -830,7 +802,7 @@ export default function AirQualityForecastsPage() {
                             {trendlineSeriesKeys.map((key, i) => {
                                 const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088FE', '#00C49F'];
                                 const [pollutant, stationId] = key.split('_');
-                                const stationName = MUNICIPALITIES[stationId];
+                                const stationName = MUNICIPALITIES[stationId] || stationId;
                                 return (
                                     <Line 
                                         key={key}
