@@ -111,29 +111,24 @@ const LegendContainer = styled.div`
   }
 `;
 
+// --- MODIFIED FORECAST CARD FOR ROW LAYOUT ---
 const ForecastCard = styled.div`
-  background-color: ${({ theme }) => theme.colors.grayscale.light5};
+  background-color: white;
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
   border-radius: ${({ theme }) => theme.gridUnit * 2}px;
   padding: ${({ theme }) => theme.gridUnit * 3}px;
   margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  width: 100%; /* Ensure full width */
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
-  h3 {
-    color: ${({ theme }) => theme.colors.grayscale.dark2};
-    margin: 0;
-    font-size: ${({ theme }) => theme.typography.sizes.m}px;
-    font-weight: ${({ theme }) => theme.typography.weights.bold};
-  }
-
+  /* Header Styles */
   .forecast-header {
     display: flex;
     justify-content: space-between;
@@ -141,42 +136,71 @@ const ForecastCard = styled.div`
     margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
     padding-bottom: ${({ theme }) => theme.gridUnit * 2}px;
     border-bottom: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+
+    h3 {
+      color: ${({ theme }) => theme.colors.grayscale.dark2};
+      margin: 0;
+      font-size: ${({ theme }) => theme.typography.sizes.l}px;
+      font-weight: ${({ theme }) => theme.typography.weights.bold};
+    }
   }
 
+  /* CHANGED: Flex row layout instead of Grid */
   .pollutant-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: ${({ theme }) => theme.gridUnit * 2}px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
 
   .pollutant-item {
-    background: ${({ theme }) => theme.colors.grayscale.light4};
-    padding: ${({ theme }) => theme.gridUnit}px;
-    border-radius: ${({ theme }) => theme.borderRadius}px;
-    text-align: center;
+    flex: 1; /* Distribute space evenly */
+    padding: 0 ${({ theme }) => theme.gridUnit * 2}px;
     display: flex;
     flex-direction: column;
+    align-items: center;
     justify-content: center;
+    text-align: center;
+    
+    /* The vertical colored bar */
     border-left-width: 4px;
     border-left-style: solid;
+    
+    /* Vertical divider lines between items */
+    &:not(:last-child) {
+        border-right: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+    }
 
     .pollutant-name {
-      font-size: 10px;
+      font-size: 11px;
       color: ${({ theme }) => theme.colors.grayscale.base};
       text-transform: uppercase;
+      font-weight: bold;
       margin-bottom: 4px;
     }
 
     .pollutant-value {
-      font-size: ${({ theme }) => theme.typography.sizes.l}px;
+      font-size: 24px; /* Larger font for visibility */
       font-weight: ${({ theme }) => theme.typography.weights.bold};
       color: ${({ theme }) => theme.colors.grayscale.dark2};
+      line-height: 1.2;
+    }
+    
+    /* New Class for Units */
+    .pollutant-unit {
+        font-size: 12px;
+        color: ${({ theme }) => theme.colors.grayscale.light1};
+        margin-bottom: 4px;
     }
 
     .pollutant-status {
-        font-size: 10px;
+        font-size: 11px;
         font-weight: bold;
         margin-top: 4px;
+        padding: 2px 8px;
+        background: ${({ theme }) => theme.colors.grayscale.light5};
+        border-radius: 8px;
     }
   }
 `;
@@ -273,39 +297,35 @@ const POLLUTANT_OPTIONS = [
   { label: t('AQI'), value: 'aqi' },
 ];
 
-// Define standard colors and ranges
 const AQI_COLORS = {
-  good: '#2ecc40',
-  moderate: '#f3eb12',
-  unhealthySG: '#f39a3a',
-  unhealthy: '#e62d39',
-  veryUnhealthy: '#8b008b',
-  hazardous: '#7e0023',
+  good: '#4CAF50', // Bright Green
+  moderate: '#FFEB3B', // Yellow
+  unhealthySG: '#FF9800', // Orange (Sensitive Groups)
+  unhealthy: '#F44336', // Red
+  veryUnhealthy: '#800000', // Maroon/Dark Red
+  hazardous: '#8B0000', // Darker Red
   unknown: '#cccccc'
 };
 
 const PM25_STANDARDS = [
-    { limit: 50, label: 'Good', color: AQI_COLORS.good },
-    { limit: 100, label: 'Moderate', color: AQI_COLORS.moderate },
-    { limit: 150, label: 'Unhealthy for SG', color: AQI_COLORS.unhealthySG },
-    { limit: 200, label: 'Unhealthy', color: AQI_COLORS.unhealthy },
-    { limit: 300, label: 'Very Unhealthy', color: AQI_COLORS.veryUnhealthy },
-    { limit: Infinity, label: 'Hazardous', color: AQI_COLORS.hazardous },
+    { limit: 12, label: 'Good', color: AQI_COLORS.good },
+    { limit: 35.5, label: 'Moderate', color: AQI_COLORS.moderate },
+    { limit: 55.5, label: 'Unhealthy for Sensitive Groups', color: AQI_COLORS.unhealthySG },
+    { limit: 150.5, label: 'Unhealthy', color: AQI_COLORS.unhealthy },
+    { limit: Infinity, label: 'Very Unhealthy', color: AQI_COLORS.veryUnhealthy },
 ];
 
 const PM10_STANDARDS = [
-    { limit: 50, label: 'Good', color: AQI_COLORS.good },
-    { limit: 100, label: 'Moderate', color: AQI_COLORS.moderate },
-    { limit: 150, label: 'Unhealthy for SG', color: AQI_COLORS.unhealthySG },
-    { limit: 200, label: 'Unhealthy', color: AQI_COLORS.unhealthy },
-    { limit: 300, label: 'Very Unhealthy', color: AQI_COLORS.veryUnhealthy },
-    { limit: Infinity, label: 'Hazardous', color: AQI_COLORS.hazardous },
+    { limit: 55, label: 'Good', color: AQI_COLORS.good },
+    { limit: 155, label: 'Moderate', color: AQI_COLORS.moderate },
+    { limit: 255, label: 'Unhealthy for Sensitive Groups', color: AQI_COLORS.unhealthySG },
+    { limit: Infinity, label: 'Very Unhealthy', color: AQI_COLORS.veryUnhealthy },
 ];
 
 const AQI_STANDARDS = [
     { limit: 50, label: 'Good', color: AQI_COLORS.good },
     { limit: 100, label: 'Moderate', color: AQI_COLORS.moderate },
-    { limit: 150, label: 'Unhealthy for SG', color: AQI_COLORS.unhealthySG },
+    { limit: 150, label: 'Unhealthy for Sensitive Groups', color: AQI_COLORS.unhealthySG },
     { limit: 200, label: 'Unhealthy', color: AQI_COLORS.unhealthy },
     { limit: 300, label: 'Very Unhealthy', color: AQI_COLORS.veryUnhealthy },
     { limit: Infinity, label: 'Hazardous', color: AQI_COLORS.hazardous },
@@ -314,7 +334,6 @@ const AQI_STANDARDS = [
 
 // --- Interfaces ---
 
-// Interface representing the API's raw hourly object
 interface HourlyApiData {
   adm_code3: string;
   latitude: string;
@@ -326,7 +345,6 @@ interface HourlyApiData {
   aqi?: { value: number };
 }
 
-// Processed data structure for App use
 interface AirQualityData {
   id: string;
   station_name: string;
@@ -369,7 +387,6 @@ export default function AirQualityForecastsPage() {
 
   // --- Helpers ---
 
-  // Central Helper to determine Status and Color based on value and type
   const getAQIStatus = useCallback((value: number | undefined | null, type: string) => {
     if (value === undefined || value === null) return { label: 'N/A', color: AQI_COLORS.unknown, hex: AQI_COLORS.unknown };
     
@@ -386,8 +403,8 @@ export default function AirQualityForecastsPage() {
     
     return {
         label: status?.label || 'Unknown',
-        color: colorHex, // For styled components
-        hex: colorHex   // For DeckGL functions
+        color: colorHex, 
+        hex: colorHex
     };
   }, []);
   
@@ -409,7 +426,7 @@ export default function AirQualityForecastsPage() {
 
   // --- Effects ---
 
-  // 1. Fetch Map Data - Gets Current Hour Data
+  // 1. Fetch Map Data
   useEffect(() => {
     if (activeTab !== '1') return;
     const loadMapData = async () => {
@@ -418,16 +435,11 @@ export default function AirQualityForecastsPage() {
         const promises = Object.keys(MUNICIPALITIES).map(async (id) => {
             const data = await fetchStationHourlyData(id);
             if (data && data.length > 0) {
-                // Determine current system hour
                 const currentHour = moment().hour();
-                
-                // Find matching hour in API data
                 const currentData = data.find(d => {
                    const dataHour = moment(d.fcst_date).hour();
                    return dataHour === currentHour;
                 });
-
-                // Fallback to latest available if exact hour not found
                 const displayData = currentData || data[data.length - 1];
 
                 return {
@@ -494,9 +506,7 @@ export default function AirQualityForecastsPage() {
                     }
                     
                     selectedTrendPollutants.forEach(poll => {
-                        // FIX: Use explicit casting to access dynamic properties safely
                         const pVal = (item as any)[poll]?.value;
-                        
                         if (pVal !== undefined) {
                             const key = `${poll}_${stationId}`;
                             mergedMap[time][key] = pVal;
@@ -535,8 +545,8 @@ export default function AirQualityForecastsPage() {
       <LegendContainer>
         <h4>{selectedMapPollutant === 'aqi' ? 'AQI Index' : `${selectedMapPollutant.toUpperCase()} (µg/m³)`}</h4>
         {standards.map((s, i) => {
-            const rangeStr = s.limit === Infinity ? `${previousLimit + 1}+` : `${previousLimit}-${s.limit}`;
-            previousLimit = s.limit + 1;
+            const rangeStr = s.limit === Infinity ? `${previousLimit}+` : `${previousLimit} - ${s.limit}`;
+            previousLimit = s.limit; 
             return (
                 <div key={s.label} className="legend-item">
                     <div className="legend-color" style={{background: s.color}}/>
@@ -680,8 +690,6 @@ export default function AirQualityForecastsPage() {
                                     const {
                                       bbox: { west, south, east, north },
                                     } = props.tile;
-                                    
-                                    // FIX: Removed strict type checking on props and data: null to resolve TS error
                                     return new BitmapLayer(props as any, {
                                       data: undefined, 
                                       image: props.data,
@@ -697,11 +705,11 @@ export default function AirQualityForecastsPage() {
                     {renderMapLegend()}
                 </MapContainer>
             )}
-             <DataSourceAttribution>Data source: RIMES GCF API</DataSourceAttribution>
+             <DataSourceAttribution>Data source: United States Environmental Protection Agency (EPA)</DataSourceAttribution>
           </TabContentContainer>
         </LineEditableTabs.TabPane>
 
-        {/* TAB 2: HOURLY FORECAST (Removed Pagination) */}
+        {/* TAB 2: HOURLY FORECAST (MODIFIED LAYOUT) */}
         <LineEditableTabs.TabPane tab={t('Hourly Forecast')} key="2">
           <TabContentContainer>
             <FilterContainer>
@@ -717,7 +725,8 @@ export default function AirQualityForecastsPage() {
                 <>
                     {hourlyForecastData.length === 0 ? <Empty description="No hourly data available" /> : (
                         <div>
-                             <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px'}}>
+                             {/* CHANGED: Flex column instead of grid for full width rows */}
+                             <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                                 {hourlyForecastData.map((hourItem, idx) => {
                                     const aqiStatus = getAQIStatus(hourItem.aqi?.value, 'aqi');
                                     const pm25Status = getAQIStatus(hourItem.pm25?.value, 'pm25');
@@ -726,31 +735,40 @@ export default function AirQualityForecastsPage() {
                                     return (
                                     <ForecastCard key={idx}>
                                         <div className="forecast-header">
-                                            <h3>{moment(hourItem.fcst_date).format('ddd, DD MMM HH:mm')}</h3>
-                                            {hourItem.aqi?.value !== undefined && (
-                                                <PollutantPill style={{backgroundColor: aqiStatus.color}}>
+                                            <h3>{moment(hourItem.fcst_date).format('dddd, DD MMMM YYYY - HH:mm')}</h3>
+                                            {/* {hourItem.aqi?.value !== undefined && ( */}
+                                                {/* <PollutantPill style={{backgroundColor: aqiStatus.color}}>
                                                     {aqiStatus.label}
-                                                </PollutantPill>
-                                            )}
+                                                </PollutantPill> */}
+                                            {/* )} */}
                                         </div>
                                         <div className="pollutant-grid">
+                                            
+                                            {/* PM2.5 Section */}
                                             <div className="pollutant-item" style={{borderColor: pm25Status.color}}>
                                                 <div className="pollutant-name">PM2.5</div>
                                                 <div className="pollutant-value">{hourItem.pm25?.value ?? '-'}</div>
+                                                <div className="pollutant-unit">µg/m³</div>
                                                 <div className="pollutant-status" style={{color: pm25Status.color}}>
                                                     {pm25Status.label}
                                                 </div>
                                             </div>
+
+                                            {/* PM10 Section */}
                                             <div className="pollutant-item" style={{borderColor: pm10Status.color}}>
                                                 <div className="pollutant-name">PM10</div>
                                                 <div className="pollutant-value">{hourItem.pm10?.value ?? '-'}</div>
+                                                <div className="pollutant-unit">µg/m³</div>
                                                 <div className="pollutant-status" style={{color: pm10Status.color}}>
                                                     {pm10Status.label}
                                                 </div>
                                             </div>
-                                            <div className="pollutant-item" style={{borderColor: aqiStatus.color}}>
+
+                                            {/* AQI Section */}
+                                            <div className="pollutant-item" style={{borderColor: aqiStatus.color, borderRight: 'none'}}>
                                                 <div className="pollutant-name">AQI</div>
                                                 <div className="pollutant-value">{hourItem.aqi?.value ?? '-'}</div>
+                                                <div className="pollutant-unit">Index</div>
                                                 <div className="pollutant-status" style={{color: aqiStatus.color}}>
                                                     {aqiStatus.label}
                                                 </div>
